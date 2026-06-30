@@ -146,11 +146,19 @@
     }
   
 
-    .home-link {
+    .sample-nav {
       position: fixed;
       top: 16px;
       right: 16px;
       z-index: 30;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: min(92vw, 520px);
+    }
+
+    .sample-nav-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -164,17 +172,22 @@
       backdrop-filter: blur(14px);
       color: var(--text, #eef8ff);
       font: 600 0.9rem/1 "Avenir Next", "Hiragino Sans", sans-serif;
+      white-space: nowrap;
     }
 
-    .home-link:hover {
+    .sample-nav-link:hover {
       transform: translateY(-1px);
       border-color: rgba(124, 228, 255, 0.3);
     }
 
     @media (max-width: 720px) {
-      .home-link {
+      .sample-nav {
         top: 12px;
         right: 12px;
+        gap: 8px;
+      }
+
+      .sample-nav-link {
         min-height: 38px;
         padding: 0 12px;
         font-size: 0.82rem;
@@ -183,7 +196,10 @@
   </style>
 </head>
 <body>
-  <a class="home-link" href="../index.html">トップへ戻る / Back to top</a>
+  <nav class="sample-nav" aria-label="Sample navigation">
+    <a class="sample-nav-link" href="../days/2026-06-30.html">その日のページ / Day</a>
+    <a class="sample-nav-link" href="../index.html">トップ / Home</a>
+  </nav>
   <div class="layout">
     <aside class="panel">
       <h1>HTML Rack Focus Planes</h1>
