@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autoplaced Talking Card Mock</title>
+  <style>
+    :root {
+      --bg-a: #07111b;
+      --bg-b: #10263c;
+      --panel: rgba(8, 20, 31, 0.82);
+      --line: rgba(128, 212, 255, 0.22);
+      --text: #e8f6ff;
+      --muted: #9ebacc;
+      --card: rgba(247, 251, 255, 0.97);
+      --accent: #7be4ff;
+      --accent-2: #ffd46f;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 20%, rgba(123, 228, 255, 0.18), transparent 24%),
+        radial-gradient(circle at 86% 12%, rgba(255, 212, 111, 0.12), transparent 24%),
+        linear-gradient(180deg, var(--bg-b), var(--bg-a));
+      overflow: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(123, 228, 255, 0.15);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 44px var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #88ffd1);
+      color: #072434;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.88rem;
+    }
+
+    .meta strong { color: var(--accent-2); }
+
+    .stage {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      perspective: 1200px;
+    }
+
+    .space {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transition: transform 280ms ease-out;
+    }
+
+    .surface {
+      position: absolute;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(123, 228, 255, 0.08), rgba(123, 228, 255, 0.02)),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 34px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 34px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      transform-style: preserve-3d;
+    }
+
+    .surface::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(8, 20, 31, 0.72);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .surface.active {
+      border-color: rgba(123, 228, 255, 0.72);
+      box-shadow: 0 0 0 1px rgba(123, 228, 255, 0.24), 0 24px 50px rgba(0, 0, 0, 0.26);
+    }
+
+    .card {
+      position: absolute;
+      width: 330px;
+      padding: 18px;
+      border-radius: 24px;
+      background: var(--card);
+      color: #0c2334;
+      box-shadow: 0 20px 40px rgba(7, 17, 29, 0.34);
+      transform-style: preserve-3d;
+      transition:
+        left 480ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        top 480ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(123, 228, 255, 0.14), rgba(255, 212, 111, 0.08));
+      pointer-events: none;
+    }
+
+    .tag {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #1c455b;
+      background: rgba(12, 35, 52, 0.08);
+    }
+
+    .card h2 {
+      margin: 10px 0 8px;
+      font-size: 1.18rem;
+    }
+
+    .card small,
+    .card p {
+      color: #506a7c;
+    }
+
+    .guide {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .face {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff, #dce9f3 56%, #c5d8e5 100%);
+      box-shadow: inset 0 -8px 16px rgba(59, 91, 114, 0.12);
+      overflow: hidden;
+    }
+
+    .eye {
+      position: absolute;
+      top: 30px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #113447;
+    }
+
+    .eye.left { left: 22px; }
+    .eye.right { right: 22px; }
+
+    .mouth {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      width: 28px;
+      height: 8px;
+      border-radius: 999px 999px 14px 14px;
+      background: linear-gradient(180deg, #ff808d, #e75f70);
+      transform: translateX(-50%) scaleY(1);
+      transform-origin: center;
+      transition: transform 80ms linear, height 80ms linear, width 80ms linear;
+      box-shadow: inset 0 -2px 0 rgba(145, 39, 57, 0.28);
+    }
+
+    .speech {
+      display: grid;
+      gap: 10px;
+    }
+
+    .level {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(12, 35, 52, 0.08);
+      overflow: hidden;
+    }
+
+    .level-bar {
+      width: 8%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 80ms linear;
+    }
+
+    .status {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(12, 35, 52, 0.06);
+      color: #4b6677;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .hint {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      max-width: 380px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(8, 20, 31, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: 560px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>Autoplaced Talking Card</h1>
+      <p>
+        昨日の `Autoplacement` と `Lipsync Guide Card` を合わせた最小統合モックです。
+        候補面を切り替えながら、カードが `置かれて少し話す` 雰囲気を確認できます。
+      </p>
+
+      <div class="controls">
+        <button class="primary" id="autoPlaceButton">最適面へ自動配置</button>
+        <button class="secondary" id="nextSurfaceButton">候補面を切り替え</button>
+        <button class="secondary" id="talkButton">デモ発話を再生</button>
+      </div>
+
+      <div class="meta" id="meta">
+        <div><strong>統合要素:</strong> 配置 + 情報カード + lipsync 風反応</div>
+        <div><strong>用途:</strong> 空間ガイド、展示キャプション、案内オブジェクト</div>
+        <div><strong>次の拡張:</strong> three.js 化、HTMLTexture 化、XR 面検出</div>
+      </div>
+    </aside>
+
+    <main class="panel stage">
+      <div class="space" id="space">
+        <div class="surface" data-label="Desk" style="left: 120px; top: 360px; width: 320px; height: 160px; transform: rotateX(72deg) rotateZ(-8deg);"></div>
+        <div class="surface" data-label="Shelf" style="left: 470px; top: 250px; width: 240px; height: 110px; transform: rotateX(70deg) rotateZ(6deg);"></div>
+        <div class="surface" data-label="Floor" style="left: 240px; top: 500px; width: 520px; height: 180px; transform: rotateX(80deg);"></div>
+
+        <article class="card" id="card">
+          <span class="tag">integrated mock</span>
+          <h2>空間ガイドカード</h2>
+          <small id="surfaceName">候補面: Desk</small>
+
+          <div class="guide">
+            <div class="face">
+              <div class="eye left"></div>
+              <div class="eye right"></div>
+              <div class="mouth" id="mouth"></div>
+            </div>
+
+            <div class="speech">
+              <p id="message">机の上に自然に現れて、短く話せる情報カードを想定しています。</p>
+              <div class="level"><div class="level-bar" id="levelBar"></div></div>
+            </div>
+          </div>
+
+          <div class="status" id="status">
+            現在: Desk に配置。デモ発話で口の動きだけ確認できます。
+          </div>
+        </article>
+      </div>
+
+      <div class="hint" id="hint">
+        今日は `置く` と `話す` を1つにまとめた最小版です。次はこのカード面を three.js の HTMLTexture へ置き換えるのが自然です。
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const surfaces = [
+      { name: "Desk", left: 165, top: 280, tilt: "rotateX(72deg) rotateZ(-8deg)", score: "distance 0.86 / gaze 0.91 / height 0.74", message: "机の上に自然に現れて、展示キャプションや案内に使う想定です。" },
+      { name: "Shelf", left: 445, top: 155, tilt: "rotateX(70deg) rotateZ(6deg)", score: "distance 0.62 / gaze 0.88 / height 0.83", message: "棚の上なら、商品説明や作品横のガイドとして見せやすいです。" },
+      { name: "Floor", left: 355, top: 410, tilt: "rotateX(80deg)", score: "distance 0.72 / gaze 0.54 / height 0.38", message: "床に置くなら、導線やフロア案内の使い方が合いそうです。" }
+    ];
+
+    const card = document.getElementById("card");
+    const mouth = document.getElementById("mouth");
+    const levelBar = document.getElementById("levelBar");
+    const message = document.getElementById("message");
+    const status = document.getElementById("status");
+    const surfaceName = document.getElementById("surfaceName");
+    const meta = document.getElementById("meta");
+    const hint = document.getElementById("hint");
+    const space = document.getElementById("space");
+    const surfaceEls = [...document.querySelectorAll(".surface")];
+
+    let current = 0;
+    let talkTimer = null;
+
+    function setMouth(level) {
+      const clamped = Math.max(0, Math.min(level, 1));
+      mouth.style.height = `${8 + clamped * 24}px`;
+      mouth.style.width = `${28 + clamped * 10}px`;
+      mouth.style.transform = `translateX(-50%) scaleY(${1 + clamped * 0.2})`;
+      levelBar.style.width = `${8 + clamped * 92}%`;
+    }
+
+    function applySurface(index) {
+      current = index;
+      const surface = surfaces[index];
+
+      card.style.left = `${surface.left}px`;
+      card.style.top = `${surface.top}px`;
+      card.style.transform = `${surface.tilt} translateZ(22px)`;
+      surfaceName.textContent = `候補面: ${surface.name}`;
+      message.textContent = surface.message;
+      status.textContent = `現在: ${surface.name} に配置。評価: ${surface.score}`;
+      hint.textContent = `${surface.name} を選択。次段階では、このカードを three.js / HTMLTexture 化して実際の XR 面検出へ接続すると筋が良いです。`;
+      meta.innerHTML = `
+        <div><strong>統合要素:</strong> 配置 + 情報カード + lipsync 風反応</div>
+        <div><strong>選択面:</strong> ${surface.name}</div>
+        <div><strong>評価:</strong> ${surface.score}</div>
+      `;
+
+      surfaceEls.forEach((el, i) => el.classList.toggle("active", i === index));
+    }
+
+    function stopTalk() {
+      if (talkTimer) {
+        clearInterval(talkTimer);
+        talkTimer = null;
+      }
+    }
+
+    function startTalk() {
+      stopTalk();
+      let t = 0;
+      talkTimer = setInterval(() => {
+        t += 0.24;
+        const level = Math.max(0.05, Math.sin(t) * 0.36 + Math.sin(t * 2.1) * 0.18 + 0.28);
+        setMouth(level);
+      }, 80);
+      status.textContent = `${surfaces[current].name} に配置中。デモ発話を再生しています。`;
+    }
+
+    document.getElementById("autoPlaceButton").addEventListener("click", () => {
+      const best = surfaces
+        .map((surface, index) => ({ index, value: [0.86, 0.78, 0.61][index] }))
+        .sort((a, b) => b.value - a.value)[0];
+      applySurface(best.index);
+      startTalk();
+    });
+
+    document.getElementById("nextSurfaceButton").addEventListener("click", () => {
+      applySurface((current + 1) % surfaces.length);
+    });
+
+    document.getElementById("talkButton").addEventListener("click", startTalk);
+
+    window.addEventListener("pointermove", (event) => {
+      const x = (event.clientX / window.innerWidth - 0.5) * 10;
+      const y = (event.clientY / window.innerHeight - 0.5) * -6;
+      space.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`;
+    });
+
+    window.addEventListener("beforeunload", stopTalk);
+
+    applySurface(0);
+    startTalk();
+  </script>
+</body>
+</html>

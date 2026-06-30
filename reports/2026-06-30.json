@@ -1,0 +1,45 @@
+{
+  "date": "2026-06-30",
+  "headline": "HTML-in-Canvas と焦点面演出の整理",
+  "summary": "HTML-in-Canvas、複数レイヤーの空間化、焦点面だけを読ませる staging が今日の軸です。サンプルは、複数の情報面を奥行きに置き、焦点面だけが立ち上がる最小構成に寄せています。",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.14.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.0",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.0"
+    },
+    {
+      "label": "model-viewer scenegraph examples",
+      "url": "https://modelviewer.dev/examples/scenegraph/"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "body": "three.js r185 の HTMLTexture 対応、Babylon.js 9.14.0 の HtmlTexture、PlayCanvas v2.20.0 の copyElementImageToTexture と stereo XR gsplat が並び、HTML/DOM 系の情報面を 3D 空間に持ち込む下地が複数エンジンで揃ってきています。"
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "body": "model-viewer の multi-model scene と Canvas/Video texture の例は、3D 本体と情報レイヤーを一つの空間で扱う設計の参考になります。特に『固定HUDではなく、意味レイヤーを空間に浮かせる』方向へつなぎやすいです。"
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "body": "常時読ませる UI ではなく、注目時だけ焦点面を合わせて情報が浮き上がる見せ方が有効です。普段は空間の気配として薄く存在し、視線やポインタ、会話の瞬間だけ読める層に切り替える構成が自然です。"
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "body": "HTML-in-Canvas を前提にしておけば、Canvas2D や DOM ベースで組んだ意味レイヤーを、後から WebGL texture / postprocess / XR 投影へ拡張しやすいです。三次元側で全部を書き切るより、情報面の管理がかなり軽くなります。"
+    },
+    {
+      "title": "試すならこれ",
+      "body": "今日のサンプルは、複数の情報面を奥行きに置き、ポインタ上下で焦点面を移動させる最小構成です。読みやすさと演出を同じ素材で往復できるので、今後 WebGL 化して DOF 風処理へ伸ばす土台になります。"
+    }
+  ]
+}

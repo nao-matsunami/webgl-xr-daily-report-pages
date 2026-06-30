@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Scope Breakup</title>
+  <style>
+    :root {
+      --bg0: #050b12;
+      --bg1: #102036;
+      --panel: rgba(8, 18, 28, 0.82);
+      --text: #eef8ff;
+      --muted: #9bb7c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      overflow: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .panel {
+      background: rgba(8, 18, 28, 0.82);
+      border: 1px solid rgba(124, 228, 255, 0.1);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 42px var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc7);
+      color: #062334;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.88rem;
+    }
+
+    .meta strong { color: var(--accent2); }
+
+    .stage {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      border-radius: 22px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(8, 14, 22, 0.42), rgba(6, 11, 18, 0.96));
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 18px;
+    }
+
+    .badge, .hint {
+      background: rgba(8, 18, 28, 0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 360px;
+    }
+
+    .badge strong { color: var(--text); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>Audio Scope Breakup</h1>
+      <p>
+        音入力でオシロスコープ風の波形線が崩れる最小サンプルです。
+        低域で大きな揺れ、中域で線の分裂、高域でノイズと RGB ずれを強めます。
+      </p>
+
+      <div class="controls">
+        <button class="primary" id="micButton">マイク入力を使う</button>
+        <button class="secondary" id="demoButton">デモ信号で動かす</button>
+      </div>
+
+      <div class="meta">
+        <div><strong>テーマ:</strong> 音反応 / 波形線 / signal breakup</div>
+        <div><strong>低域:</strong> 波形の大きなうねり</div>
+        <div><strong>中域:</strong> 線の分裂と残像</div>
+        <div><strong>高域:</strong> ノイズと RGB ずれ</div>
+      </div>
+    </aside>
+
+    <main class="panel stage">
+      <canvas id="canvas"></canvas>
+      <div class="overlay">
+        <div class="badge" id="status"><strong>現在:</strong> デモ信号で動作中</div>
+        <div class="hint">
+          次に足すなら、波形線を WebGL/GLSL に移して、afterimage と blur を別パス化するのが自然です。
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.getElementById("status");
+
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0;
+    let height = 0;
+    let time = 0;
+
+    let audioContext = null;
+    let analyser = null;
+    let timeData = null;
+    let freqData = null;
+    let stream = null;
+    let mode = "demo";
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.floor(rect.width * DPR);
+      height = Math.floor(rect.height * DPR);
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function setStatus(text) {
+      statusEl.innerHTML = `<strong>現在:</strong> ${text}`;
+    }
+
+    function getDemoBands(t) {
+      return {
+        low: Math.max(0.08, Math.sin(t * 0.7) * 0.28 + 0.34),
+        mid: Math.max(0.08, Math.sin(t * 1.5 + 1.1) * 0.24 + 0.38),
+        high: Math.max(0.05, Math.sin(t * 3.1 + 2.0) * 0.22 + 0.24)
+      };
+    }
+
+    function buildDemoWave(low, mid, high) {
+      const len = 256;
+      const arr = new Float32Array(len);
+      for (let i = 0; i < len; i += 1) {
+        const x = i / (len - 1);
+        arr[i] =
+          Math.sin(x * Math.PI * 4 + time * 2.2) * (0.28 + low * 0.42) +
+          Math.sin(x * Math.PI * 13 + time * 4.8) * (0.08 + mid * 0.14) +
+          Math.sin(x * Math.PI * 37 + time * 9.6) * (0.03 + high * 0.08);
+      }
+      return arr;
+    }
+
+    function getAudioState() {
+      const demoBands = getDemoBands(time);
+      if (!analyser || !timeData || !freqData) {
+        return { bands: demoBands, wave: buildDemoWave(demoBands.low, demoBands.mid, demoBands.high) };
+      }
+
+      analyser.getByteTimeDomainData(timeData);
+      analyser.getByteFrequencyData(freqData);
+
+      const len = freqData.length;
+      const lowEnd = Math.floor(len * 0.16);
+      const midEnd = Math.floor(len * 0.5);
+      let low = 0, mid = 0, high = 0;
+
+      for (let i = 0; i < lowEnd; i += 1) low += freqData[i];
+      for (let i = lowEnd; i < midEnd; i += 1) mid += freqData[i];
+      for (let i = midEnd; i < len; i += 1) high += freqData[i];
+
+      low = Math.min(1, (low / lowEnd) / 255 * 2.1);
+      mid = Math.min(1, (mid / (midEnd - lowEnd)) / 255 * 2.0);
+      high = Math.min(1, (high / (len - midEnd)) / 255 * 2.3);
+
+      const wave = new Float32Array(timeData.length);
+      for (let i = 0; i < timeData.length; i += 1) {
+        wave[i] = (timeData[i] - 128) / 128;
+      }
+
+      return { bands: { low, mid, high }, wave };
+    }
+
+    async function startMic() {
+      stopMic();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        timeData = new Uint8Array(analyser.fftSize);
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+        mode = "mic";
+        setStatus("マイク入力で動作中");
+      } catch (error) {
+        mode = "demo";
+        setStatus("マイクを使えなかったためデモ信号へ切り替え");
+      }
+    }
+
+    function stopMic() {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close();
+      }
+      audioContext = null;
+      analyser = null;
+      timeData = null;
+      freqData = null;
+    }
+
+    function drawWave(wave, bands) {
+      const { low, mid, high } = bands;
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const amp = 90 + low * 140;
+      const chroma = 2 + high * 10;
+
+      ctx.fillStyle = `rgba(6, 11, 18, ${0.1 + (1 - low) * 0.16})`;
+      ctx.fillRect(0, 0, width, height);
+
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 160 + low * 220);
+      glow.addColorStop(0, `rgba(124, 226, 255, ${0.08 + low * 0.18})`);
+      glow.addColorStop(0.55, `rgba(255, 216, 104, ${0.04 + low * 0.08})`);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 160 + low * 220, 0, Math.PI * 2);
+      ctx.fill();
+
+      const traceCount = 3;
+      for (let t = 0; t < traceCount; t += 1) {
+        const alpha = 0.1 + mid * 0.12 - t * 0.02;
+        const yOffset = (t - 1) * (8 + mid * 20);
+        const jitter = t === 1 ? 0 : (t - 1) * chroma;
+        const colors = [
+          `rgba(255, 105, 135, ${alpha})`,
+          `rgba(124, 226, 255, ${alpha + 0.04})`,
+          `rgba(110, 160, 255, ${alpha})`
+        ];
+
+        ctx.strokeStyle = colors[t];
+        ctx.lineWidth = (1.2 + high * 1.4) * DPR;
+        ctx.shadowColor = colors[t];
+        ctx.shadowBlur = 10 + high * 24;
+        ctx.beginPath();
+        for (let i = 0; i < wave.length; i += 1) {
+          const x = (i / (wave.length - 1)) * width + jitter;
+          const breakup = Math.sin(i * 0.18 + time * 14) * mid * 10;
+          const noise = Math.sin(i * 0.83 + time * 36 + t * 2) * high * 8;
+          const y = cy + yOffset + wave[i] * amp + breakup + noise;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+
+      const noiseDots = 70;
+      for (let i = 0; i < noiseDots; i += 1) {
+        const x = (Math.sin(i * 19.27 + time * 7.1) * 0.5 + 0.5) * width;
+        const y = (Math.cos(i * 11.13 + time * 5.4) * 0.5 + 0.5) * height;
+        const size = 1 + high * 2.5;
+        ctx.fillStyle = `rgba(124, 226, 255, ${0.015 + high * 0.09})`;
+        ctx.fillRect(x, y, size, size);
+      }
+    }
+
+    function tick() {
+      time += 0.016;
+      const { bands, wave } = getAudioState();
+      drawWave(wave, bands);
+      requestAnimationFrame(tick);
+    }
+
+    document.getElementById("micButton").addEventListener("click", startMic);
+    document.getElementById("demoButton").addEventListener("click", () => {
+      stopMic();
+      mode = "demo";
+      setStatus("デモ信号で動作中");
+    });
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("beforeunload", stopMic);
+
+    resize();
+    setStatus("デモ信号で動作中");
+    tick();
+  </script>
+</body>
+</html>

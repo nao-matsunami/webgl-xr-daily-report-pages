@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML Surface Drift Field</title>
+  <style>
+    :root {
+      --bg0: #040913;
+      --bg1: #10213a;
+      --panel: rgba(8, 18, 28, 0.82);
+      --line: rgba(124, 228, 255, 0.1);
+      --text: #eef8ff;
+      --muted: #9bb7c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(124, 228, 255, 0.15), transparent 22%),
+        radial-gradient(circle at 86% 12%, rgba(255, 216, 104, 0.1), transparent 18%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      overflow: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 42px var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc7);
+      color: #062334;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.88rem;
+    }
+
+    .meta strong { color: var(--accent2); }
+
+    .stage {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      border-radius: 22px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(8, 14, 22, 0.42), rgba(6, 11, 18, 0.96));
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 18px;
+    }
+
+    .badge, .hint {
+      max-width: 380px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(8, 18, 28, 0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .badge strong { color: var(--text); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>HTML Surface Drift Field</h1>
+      <p>
+        情報カードそのものではなく、情報面を「空間に漂う素材」として扱う最小サンプルです。
+        オフスクリーン描画した面を遠近付きで流し、ポインタで視差と整列感を変えます。
+      </p>
+
+      <div class="controls">
+        <button class="primary" id="modeButton">整列モードに切り替える</button>
+        <button class="secondary" id="shuffleButton">面の配置をシャッフルする</button>
+      </div>
+
+      <div class="meta">
+        <div><strong>テーマ:</strong> HTML-in-Canvas / 空間UI素材 / drift field</div>
+        <div><strong>入力:</strong> ポインタ位置で視差と押し戻し</div>
+        <div><strong>変化:</strong> 散開と整列を切り替え</div>
+        <div><strong>狙い:</strong> 情報面を UI ではなく演出レイヤーへ落とし込む</div>
+      </div>
+    </aside>
+
+    <main class="panel stage">
+      <canvas id="canvas"></canvas>
+      <div class="overlay">
+        <div class="badge" id="status"><strong>現在:</strong> 散開モード / ポインタで視差操作</div>
+        <div class="hint">
+          次に足すなら、各面を WebGL テクスチャに置き換え、被写界深度と加算残像を別パスに分けると、
+          「情報面が空間を流れる」見え方が一段強くなります。
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.getElementById("status");
+    const modeButton = document.getElementById("modeButton");
+    const shuffleButton = document.getElementById("shuffleButton");
+
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0;
+    let height = 0;
+    let time = 0;
+    let alignMode = false;
+
+    const pointer = {
+      x: 0.5,
+      y: 0.5,
+      tx: 0.5,
+      ty: 0.5
+    };
+
+    const data = [
+      { title: "Layer", body: "文字面をそのまま UI にせず、空間の粒度として使う。", tag: "space-ui", color: "#7ce4ff" },
+      { title: "Depth", body: "手前は鮮明、奥は淡く。情報量の重みを遠近へ変換する。", tag: "focus", color: "#8effc7" },
+      { title: "Motion", body: "面同士を同期させず、速度差で気配をつくる。", tag: "drift", color: "#ffd868" },
+      { title: "Blend", body: "線・面・グローを分離して後段で混ぜる。", tag: "post", color: "#ff9bc9" },
+      { title: "Cue", body: "注目させたい瞬間だけ整列させ、通常時は泳がせる。", tag: "staging", color: "#bba6ff" },
+      { title: "XR", body: "固定 HUD ではなく、周辺視野に薄く漂う補助情報へ。", tag: "ambient", color: "#7cf4c8" }
+    ];
+
+    const cards = data.map((item, index) => createCard(item, index));
+
+    function createCard(item, index) {
+      const texture = document.createElement("canvas");
+      texture.width = 420;
+      texture.height = 220;
+      const tctx = texture.getContext("2d");
+      const card = {
+        ...item,
+        texture,
+        tctx,
+        seed: index * 13.17 + 3,
+        x: 0,
+        y: 0,
+        z: 0,
+        tx: 0,
+        ty: 0,
+        tz: 0
+      };
+      randomizeCard(card, index);
+      drawCardTexture(card);
+      return card;
+    }
+
+    function randomizeCard(card, index) {
+      const spread = 1.2;
+      card.x = (Math.random() * 2 - 1) * spread;
+      card.y = (Math.random() * 2 - 1) * 0.92;
+      card.z = 0.15 + (index / data.length) * 0.85;
+      card.tx = (index % 3 - 1) * 0.42;
+      card.ty = (Math.floor(index / 3) - 0.5) * 0.48;
+      card.tz = 0.22 + index * 0.11;
+    }
+
+    function drawCardTexture(card) {
+      const { tctx, texture, title, body, tag, color } = card;
+      const w = texture.width;
+      const h = texture.height;
+
+      tctx.clearRect(0, 0, w, h);
+
+      const bg = tctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "rgba(9, 20, 31, 0.96)");
+      bg.addColorStop(1, "rgba(6, 12, 20, 0.88)");
+
+      roundRect(tctx, 0, 0, w, h, 28);
+      tctx.fillStyle = bg;
+      tctx.fill();
+
+      tctx.strokeStyle = "rgba(255,255,255,0.08)";
+      tctx.lineWidth = 2;
+      tctx.stroke();
+
+      tctx.fillStyle = color;
+      roundRect(tctx, 24, 22, 104, 34, 17);
+      tctx.fill();
+
+      tctx.fillStyle = "#04111b";
+      tctx.font = "bold 18px Avenir Next, sans-serif";
+      tctx.fillText(tag, 42, 45);
+
+      tctx.fillStyle = "#eef8ff";
+      tctx.font = "700 34px Avenir Next, sans-serif";
+      tctx.fillText(title, 24, 98);
+
+      tctx.fillStyle = "rgba(238, 248, 255, 0.76)";
+      tctx.font = "22px Hiragino Sans, sans-serif";
+      wrapText(tctx, body, 24, 136, w - 48, 34);
+
+      tctx.strokeStyle = `${color}55`;
+      tctx.lineWidth = 1;
+      for (let i = 0; i < 4; i += 1) {
+        const y = h - 24 - i * 12;
+        tctx.beginPath();
+        tctx.moveTo(24, y);
+        tctx.lineTo(w - 24 - i * 18, y);
+        tctx.stroke();
+      }
+    }
+
+    function wrapText(context, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(/\s+/);
+      let line = "";
+
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (context.measureText(test).width > maxWidth && line) {
+          context.fillText(line, x, y);
+          line = word;
+          y += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+
+      if (line) context.fillText(line, x, y);
+    }
+
+    function roundRect(context, x, y, w, h, r) {
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + w, y, x + w, y + h, r);
+      context.arcTo(x + w, y + h, x, y + h, r);
+      context.arcTo(x, y + h, x, y, r);
+      context.arcTo(x, y, x + w, y, r);
+      context.closePath();
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.floor(rect.width * DPR);
+      height = Math.floor(rect.height * DPR);
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function setStatus(text) {
+      statusEl.innerHTML = `<strong>現在:</strong> ${text}`;
+    }
+
+    function updateCards(dt) {
+      pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 6);
+      pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 6);
+
+      for (let i = 0; i < cards.length; i += 1) {
+        const card = cards[i];
+        const wave = time * 0.3 + card.seed;
+        const driftX = Math.sin(wave * 1.7) * 0.18;
+        const driftY = Math.cos(wave * 1.2) * 0.14;
+        const driftZ = (time * 0.035 + card.seed * 0.02) % 1;
+
+        const targetX = alignMode
+          ? card.tx + Math.sin(time * 0.75 + i) * 0.02
+          : card.tx + driftX;
+        const targetY = alignMode
+          ? card.ty + Math.cos(time * 0.95 + i * 0.7) * 0.02
+          : card.ty + driftY;
+        const targetZ = alignMode
+          ? card.tz
+          : 0.14 + ((card.tz + driftZ) % 0.94);
+
+        card.x += (targetX - card.x) * Math.min(1, dt * 2.8);
+        card.y += (targetY - card.y) * Math.min(1, dt * 2.8);
+        card.z += (targetZ - card.z) * Math.min(1, dt * 2.4);
+      }
+    }
+
+    function drawBackground() {
+      const g = ctx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0, "rgba(7, 14, 26, 0.4)");
+      g.addColorStop(1, "rgba(4, 8, 14, 0.95)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(width * 0.5, height * 0.5);
+      ctx.strokeStyle = "rgba(124, 228, 255, 0.08)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 12; i += 1) {
+        const py = ((i / 11) - 0.5) * height * 0.72;
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.46, py);
+        ctx.lineTo(width * 0.46, py);
+        ctx.stroke();
+      }
+      for (let i = -6; i <= 6; i += 1) {
+        const px = i * width * 0.07;
+        ctx.beginPath();
+        ctx.moveTo(px, -height * 0.34);
+        ctx.lineTo(px, height * 0.34);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawCards() {
+      const centerX = width * 0.56;
+      const centerY = height * 0.5;
+      const focal = width * 0.62;
+
+      const sorted = [...cards].sort((a, b) => b.z - a.z);
+      for (const card of sorted) {
+        const depth = 0.25 + card.z * 1.8;
+        const scale = focal / (focal + depth * 420);
+        const parallaxX = (pointer.x - 0.5) * 180 * (1.35 - scale);
+        const parallaxY = (pointer.y - 0.5) * 110 * (1.35 - scale);
+
+        const sx = centerX + card.x * width * 0.25 + parallaxX;
+        const sy = centerY + card.y * height * 0.22 + parallaxY;
+        const w = card.texture.width * scale;
+        const h = card.texture.height * scale;
+        const alpha = Math.max(0.18, Math.min(0.92, 1.04 - depth * 0.22));
+        const blur = Math.max(0, (depth - 0.4) * 1.8);
+        const glow = 24 * scale;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.22;
+        ctx.fillStyle = card.color;
+        ctx.filter = `blur(${glow}px)`;
+        ctx.fillRect(sx - w * 0.44, sy - h * 0.36, w * 0.88, h * 0.72);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.filter = `blur(${blur + 1.5}px)`;
+        ctx.drawImage(card.texture, sx - w * 0.49 - 6 * scale, sy - h * 0.49, w, h);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.filter = `blur(${blur + 1.5}px)`;
+        ctx.drawImage(card.texture, sx - w * 0.49 + 6 * scale, sy - h * 0.49, w, h);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.filter = `blur(${blur}px)`;
+        ctx.drawImage(card.texture, sx - w * 0.5, sy - h * 0.5, w, h);
+        ctx.restore();
+      }
+    }
+
+    function drawPulse() {
+      const px = pointer.x * width;
+      const py = pointer.y * height;
+      const r = 180 + Math.sin(time * 1.6) * 18;
+
+      const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+      g.addColorStop(0, "rgba(124, 228, 255, 0.14)");
+      g.addColorStop(0.5, "rgba(124, 228, 255, 0.05)");
+      g.addColorStop(1, "rgba(124, 228, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(px - r, py - r, r * 2, r * 2);
+    }
+
+    function frame(now) {
+      const next = now * 0.001;
+      const dt = Math.min(0.033, next - time || 0.016);
+      time = next;
+
+      drawBackground();
+      updateCards(dt);
+      drawCards();
+      drawPulse();
+
+      requestAnimationFrame(frame);
+    }
+
+    function toggleMode() {
+      alignMode = !alignMode;
+      modeButton.textContent = alignMode ? "散開モードに戻す" : "整列モードに切り替える";
+      setStatus(alignMode ? "整列モード / 情報面が前景に寄る" : "散開モード / ポインタで視差操作");
+    }
+
+    function shuffleCards() {
+      cards.forEach((card, index) => randomizeCard(card, index));
+    }
+
+    canvas.addEventListener("pointermove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      pointer.tx = (event.clientX - rect.left) / rect.width;
+      pointer.ty = (event.clientY - rect.top) / rect.height;
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+      pointer.tx = 0.5;
+      pointer.ty = 0.5;
+    });
+
+    modeButton.addEventListener("click", toggleMode);
+    shuffleButton.addEventListener("click", shuffleCards);
+    window.addEventListener("resize", resize);
+
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

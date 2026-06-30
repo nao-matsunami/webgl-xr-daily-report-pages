@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Chromatic Field</title>
+  <style>
+    :root {
+      --bg0: #050b12;
+      --bg1: #112237;
+      --panel: rgba(8, 18, 28, 0.82);
+      --text: #eef8ff;
+      --muted: #9bb7c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      overflow: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .panel {
+      background: rgba(8, 18, 28, 0.82);
+      border: 1px solid rgba(124, 228, 255, 0.1);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 42px var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc7);
+      color: #062334;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.88rem;
+    }
+
+    .meta strong { color: var(--accent2); }
+
+    .stage {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      border-radius: 22px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(8, 14, 22, 0.42), rgba(7, 12, 18, 0.96));
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 18px;
+    }
+
+    .badge, .hint {
+      background: rgba(8, 18, 28, 0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 360px;
+    }
+
+    .badge strong { color: var(--text); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>Audio Chromatic Field</h1>
+      <p>
+        帯域別音反応に `色収差っぽい RGB ずれ` を足した最小サンプルです。
+        低域は大きな波、中域はグリッド歪み、高域は鋭い発光と色ずれを強めます。
+      </p>
+
+      <div class="controls">
+        <button class="primary" id="micButton">マイク入力を使う</button>
+        <button class="secondary" id="demoButton">デモ信号で動かす</button>
+      </div>
+
+      <div class="meta">
+        <div><strong>テーマ:</strong> 音反応 / 色収差 / フィールド</div>
+        <div><strong>低域:</strong> 大域波形と発光</div>
+        <div><strong>中域:</strong> グリッド歪み</div>
+        <div><strong>高域:</strong> RGBずれと粒子</div>
+      </div>
+    </aside>
+
+    <main class="panel stage">
+      <canvas id="canvas"></canvas>
+      <div class="overlay">
+        <div class="badge" id="status"><strong>現在:</strong> デモ信号で動作中</div>
+        <div class="hint">
+          次に足すなら、GLSL 化して RGB ずれを `uv offset` として分離し、bloom と併用するのが自然です。
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.getElementById("status");
+
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0;
+    let height = 0;
+    let time = 0;
+
+    let audioContext = null;
+    let analyser = null;
+    let dataArray = null;
+    let stream = null;
+    let mode = "demo";
+
+    const particles = Array.from({ length: 34 }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      radius: 110 + Math.random() * 240,
+      speed: 0.4 + Math.random() * 0.8,
+      size: 1 + Math.random() * 2.2,
+      seed: Math.random() * 1000
+    }));
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.floor(rect.width * DPR);
+      height = Math.floor(rect.height * DPR);
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function setStatus(text) {
+      statusEl.innerHTML = `<strong>現在:</strong> ${text}`;
+    }
+
+    function getDemoBands(t) {
+      return {
+        low: Math.max(0.08, Math.sin(t * 0.7) * 0.28 + 0.34),
+        mid: Math.max(0.08, Math.sin(t * 1.5 + 1.1) * 0.24 + 0.38),
+        high: Math.max(0.05, Math.sin(t * 3.1 + 2.0) * 0.22 + 0.24)
+      };
+    }
+
+    function getAudioBands() {
+      if (!analyser || !dataArray) return getDemoBands(time);
+      analyser.getByteFrequencyData(dataArray);
+      const len = dataArray.length;
+      const lowEnd = Math.floor(len * 0.16);
+      const midEnd = Math.floor(len * 0.5);
+      let low = 0, mid = 0, high = 0;
+
+      for (let i = 0; i < lowEnd; i += 1) low += dataArray[i];
+      for (let i = lowEnd; i < midEnd; i += 1) mid += dataArray[i];
+      for (let i = midEnd; i < len; i += 1) high += dataArray[i];
+
+      low = Math.min(1, (low / lowEnd) / 255 * 2.1);
+      mid = Math.min(1, (mid / (midEnd - lowEnd)) / 255 * 2.0);
+      high = Math.min(1, (high / (len - midEnd)) / 255 * 2.3);
+
+      return { low, mid, high };
+    }
+
+    async function startMic() {
+      stopMic();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+        mode = "mic";
+        setStatus("マイク入力で動作中");
+      } catch (error) {
+        mode = "demo";
+        setStatus("マイクを使えなかったためデモ信号へ切り替え");
+      }
+    }
+
+    function stopMic() {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close();
+      }
+      audioContext = null;
+      analyser = null;
+      dataArray = null;
+    }
+
+    function strokeChannel(offsetX, offsetY, strokeStyle, alpha, bands) {
+      const { low, mid } = bands;
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const cols = 24;
+      const rows = 16;
+      const cellW = width / cols;
+      const cellH = height / rows;
+
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.strokeStyle = strokeStyle.replace("ALPHA", alpha.toFixed(3));
+      ctx.lineWidth = 1 * DPR;
+
+      for (let y = 0; y <= rows; y += 1) {
+        ctx.beginPath();
+        for (let x = 0; x <= cols; x += 1) {
+          const px = x * cellW;
+          const py = y * cellH;
+          const dx = px - cx;
+          const dy = py - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const wave = Math.sin(dist * 0.02 - time * 2.2) * (low * 22 + mid * 10);
+          const drift = Math.cos(px * 0.016 + time * 1.4 + y * 0.2) * mid * 12;
+          const ny = py + wave + drift;
+          if (x === 0) ctx.moveTo(px, ny);
+          else ctx.lineTo(px, ny);
+        }
+        ctx.stroke();
+      }
+
+      for (let x = 0; x <= cols; x += 1) {
+        ctx.beginPath();
+        for (let y = 0; y <= rows; y += 1) {
+          const px = x * cellW;
+          const py = y * cellH;
+          const drift = Math.sin(py * 0.016 + time * 1.6 + x * 0.18) * mid * 10;
+          if (y === 0) ctx.moveTo(px + drift, py);
+          else ctx.lineTo(px + drift, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function render(bands) {
+      const { low, mid, high } = bands;
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+
+      ctx.fillStyle = `rgba(6, 11, 18, ${0.12 + (1 - low) * 0.14})`;
+      ctx.fillRect(0, 0, width, height);
+
+      const radius = 140 + low * 220;
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      glow.addColorStop(0, `rgba(124, 226, 255, ${0.08 + low * 0.18})`);
+      glow.addColorStop(0.55, `rgba(255, 216, 104, ${0.04 + low * 0.08})`);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      const chroma = 2 + high * 10;
+      strokeChannel(-chroma, 0, "rgba(255, 90, 110, ALPHA)", 0.08 + high * 0.14, bands);
+      strokeChannel(0, 0, "rgba(124, 226, 255, ALPHA)", 0.1 + mid * 0.18, bands);
+      strokeChannel(chroma, 0, "rgba(110, 180, 255, ALPHA)", 0.08 + high * 0.14, bands);
+
+      for (const p of particles) {
+        const angle = p.angle + time * (0.4 + p.speed * 0.45 + high * 1.8);
+        const radiusP = p.radius + Math.sin(time * 2.1 + p.seed) * 14 + low * 72;
+        const x = cx + Math.cos(angle) * radiusP;
+        const y = cy + Math.sin(angle * 1.14) * radiusP * 0.62;
+        const size = p.size + high * 6;
+
+        ctx.shadowColor = `rgba(124, 226, 255, ${0.12 + high * 0.46})`;
+        ctx.shadowBlur = 12 + high * 30;
+
+        ctx.fillStyle = `rgba(255, 120, 140, ${0.08 + high * 0.22})`;
+        ctx.beginPath();
+        ctx.arc(x - chroma, y, size, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(120, 210, 255, ${0.12 + high * 0.28})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(120, 160, 255, ${0.08 + high * 0.22})`;
+        ctx.beginPath();
+        ctx.arc(x + chroma, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+    }
+
+    function tick() {
+      time += 0.016;
+      const bands = mode === "mic" ? getAudioBands() : getDemoBands(time);
+      render(bands);
+      requestAnimationFrame(tick);
+    }
+
+    document.getElementById("micButton").addEventListener("click", startMic);
+    document.getElementById("demoButton").addEventListener("click", () => {
+      stopMic();
+      mode = "demo";
+      setStatus("デモ信号で動作中");
+    });
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("beforeunload", stopMic);
+
+    resize();
+    setStatus("デモ信号で動作中");
+    tick();
+  </script>
+</body>
+</html>

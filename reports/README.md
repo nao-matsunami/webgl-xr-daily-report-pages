@@ -1,0 +1,28 @@
+# reports
+
+このフォルダに `YYYY-MM-DD.json` を置くと、一覧カードから遷移した日別ページに、その日のレポート本文を表示できます。
+
+最小構成の例:
+
+```json
+{
+  "date": "2026-06-30",
+  "headline": "HTML-in-Canvas と焦点面演出の整理",
+  "summary": "その日の要点を短くまとめた文。",
+  "links": [
+    { "label": "three.js r185", "url": "https://github.com/mrdoob/three.js/releases/tag/r185" }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "body": "段落本文",
+      "links": [
+        { "label": "公式リンク", "url": "https://example.com" }
+      ]
+    }
+  ]
+}
+```
+
+`sections` は上から順に表示されます。  
+リンクは `links` 配列で追加できます。

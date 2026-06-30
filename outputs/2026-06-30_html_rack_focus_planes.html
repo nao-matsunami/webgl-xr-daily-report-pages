@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML Rack Focus Planes</title>
+  <style>
+    :root {
+      --bg0: #040913;
+      --bg1: #11223b;
+      --panel: rgba(8, 18, 28, 0.82);
+      --line: rgba(124, 228, 255, 0.1);
+      --text: #eef8ff;
+      --muted: #9bb7c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(124, 228, 255, 0.15), transparent 22%),
+        radial-gradient(circle at 86% 12%, rgba(255, 216, 104, 0.1), transparent 18%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      overflow: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 42px var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc7);
+      color: #062334;
+      font-weight: 700;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.88rem;
+    }
+
+    .meta strong { color: var(--accent2); }
+
+    .stage {
+      position: relative;
+      min-height: 680px;
+      overflow: hidden;
+      border-radius: 22px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(8, 14, 22, 0.42), rgba(6, 11, 18, 0.96));
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 18px;
+    }
+
+    .badge, .hint {
+      max-width: 380px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(8, 18, 28, 0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .badge strong { color: var(--text); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel">
+      <h1>HTML Rack Focus Planes</h1>
+      <p>
+        複数の情報面を奥行きに配置し、焦点面だけが読める最小サンプルです。
+        ポインタの上下でフォーカス距離、左右で視差を変え、読める層と崩れる層を往復できます。
+      </p>
+
+      <div class="controls">
+        <button class="primary" id="sweepButton">フォーカスを自動走査する</button>
+        <button class="secondary" id="shuffleButton">面の奥行きをシャッフルする</button>
+      </div>
+
+      <div class="meta">
+        <div><strong>テーマ:</strong> HTML-in-Canvas / rack focus / depth staging</div>
+        <div><strong>入力:</strong> ポインタ上下で焦点距離、左右で視差</div>
+        <div><strong>変化:</strong> 読める層と読めない層が往復</div>
+        <div><strong>狙い:</strong> UI ではなく「読む瞬間」を演出する</div>
+      </div>
+    </aside>
+
+    <main class="panel stage">
+      <canvas id="canvas"></canvas>
+      <div class="overlay">
+        <div class="badge" id="status"><strong>現在:</strong> 手動フォーカス / 上下で焦点面を移動</div>
+        <div class="hint">
+          次に足すなら、WebGL に移して焦点面だけをシャープに再描画し、前後層は別パスのボケと色収差で処理すると、
+          「読める瞬間が立ち上がる」感覚がさらに強くなります。
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.getElementById("status");
+    const sweepButton = document.getElementById("sweepButton");
+    const shuffleButton = document.getElementById("shuffleButton");
+
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0;
+    let height = 0;
+    let time = 0;
+    let autoSweep = false;
+
+    const pointer = {
+      x: 0.5,
+      y: 0.5,
+      tx: 0.5,
+      ty: 0.5
+    };
+
+    const surfaces = [
+      { title: "Ambient", body: "情報を固定表示せず、空間に薄く滞留させる。", accent: "#7ce4ff", band: "near" },
+      { title: "Focus", body: "注目時だけ焦点面を合わせ、通常時は読ませ切らない。", accent: "#8effc7", band: "mid" },
+      { title: "Blend", body: "DOM の意味と 3D の気配を分けて後段で混ぜる。", accent: "#ffd868", band: "far" },
+      { title: "XR", body: "HUD ではなく、周辺視野に漂う補助情報へ寄せる。", accent: "#ff9bc9", band: "mid" },
+      { title: "Scene", body: "複数モデルと複数情報面を同居させ、状態差分を空間化する。", accent: "#bba6ff", band: "far" },
+      { title: "Cue", body: "揃える、ぼかす、流す、の三段で見るべき瞬間を制御する。", accent: "#7cf4c8", band: "near" }
+    ].map((item, index) => createSurface(item, index));
+
+    function createSurface(item, index) {
+      const texture = document.createElement("canvas");
+      texture.width = 520;
+      texture.height = 120;
+      const tctx = texture.getContext("2d");
+      const surface = {
+        ...item,
+        texture,
+        tctx,
+        seed: index * 1.73 + 4,
+        x: 0,
+        y: 0,
+        z: 0.2 + index * 0.12,
+        tx: 0,
+        ty: 0,
+        tz: 0.2 + index * 0.12
+      };
+      resetSurface(surface, index);
+      drawSurface(surface);
+      return surface;
+    }
+
+    function resetSurface(surface, index) {
+      surface.tx = (index % 2 === 0 ? -1 : 1) * (0.2 + Math.random() * 0.18);
+      surface.ty = (-0.48 + index * 0.18) + (Math.random() * 0.08 - 0.04);
+      surface.tz = 0.1 + index * 0.13 + Math.random() * 0.06;
+      surface.x = surface.tx;
+      surface.y = surface.ty;
+      surface.z = surface.tz;
+    }
+
+    function drawSurface(surface) {
+      const { tctx, texture, title, body, accent, band } = surface;
+      const w = texture.width;
+      const h = texture.height;
+      tctx.clearRect(0, 0, w, h);
+
+      const bg = tctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, "rgba(9, 20, 31, 0.94)");
+      bg.addColorStop(1, "rgba(6, 12, 20, 0.86)");
+
+      tctx.fillStyle = bg;
+      roundRect(tctx, 0, 0, w, h, 24);
+      tctx.fill();
+
+      tctx.strokeStyle = "rgba(255,255,255,0.07)";
+      tctx.lineWidth = 2;
+      tctx.stroke();
+
+      tctx.fillStyle = `${accent}20`;
+      roundRect(tctx, 18, 18, w - 36, h - 36, 18);
+      tctx.fill();
+
+      tctx.fillStyle = accent;
+      tctx.font = "700 16px Avenir Next, sans-serif";
+      tctx.fillText(band.toUpperCase(), 26, 32);
+
+      tctx.fillStyle = "#eef8ff";
+      tctx.font = "700 28px Avenir Next, sans-serif";
+      tctx.fillText(title, 26, 65);
+
+      tctx.fillStyle = "rgba(238, 248, 255, 0.76)";
+      tctx.font = "20px Hiragino Sans, sans-serif";
+      tctx.fillText(body, 26, 95);
+
+      tctx.strokeStyle = `${accent}55`;
+      for (let i = 0; i < 4; i += 1) {
+        tctx.beginPath();
+        tctx.moveTo(w - 180 - i * 34, 22 + i * 18);
+        tctx.lineTo(w - 30, 22 + i * 18);
+        tctx.stroke();
+      }
+    }
+
+    function roundRect(context, x, y, w, h, r) {
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + w, y, x + w, y + h, r);
+      context.arcTo(x + w, y + h, x, y + h, r);
+      context.arcTo(x, y + h, x, y, r);
+      context.arcTo(x, y, x + w, y, r);
+      context.closePath();
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.floor(rect.width * DPR);
+      height = Math.floor(rect.height * DPR);
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function setStatus(text) {
+      statusEl.innerHTML = `<strong>現在:</strong> ${text}`;
+    }
+
+    function updateSurfaces(dt) {
+      pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 7);
+      pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 7);
+
+      for (const surface of surfaces) {
+        const wobble = Math.sin(time * 0.7 + surface.seed);
+        const sway = Math.cos(time * 0.9 + surface.seed * 1.2);
+        const targetX = surface.tx + wobble * 0.04;
+        const targetY = surface.ty + sway * 0.03;
+        surface.x += (targetX - surface.x) * Math.min(1, dt * 3);
+        surface.y += (targetY - surface.y) * Math.min(1, dt * 3);
+      }
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, width, height);
+      const bg = ctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, "rgba(7, 14, 26, 0.42)");
+      bg.addColorStop(1, "rgba(4, 8, 14, 0.95)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(width * 0.56, height * 0.5);
+      ctx.strokeStyle = "rgba(124, 228, 255, 0.07)";
+      for (let i = 0; i < 16; i += 1) {
+        const py = (-0.52 + i / 15) * height * 0.74;
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.46, py);
+        ctx.lineTo(width * 0.46, py);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawFocusPlane(focusDepth) {
+      const y = height * (0.18 + focusDepth * 0.64);
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = "#7ce4ff";
+      ctx.fillRect(0, y - 2, width, 4);
+      ctx.restore();
+    }
+
+    function drawSurfaces(focusDepth) {
+      const centerX = width * 0.57;
+      const centerY = height * 0.5;
+      const focal = width * 0.68;
+      const sorted = [...surfaces].sort((a, b) => b.z - a.z);
+
+      for (const surface of sorted) {
+        const depth = surface.z;
+        const scale = focal / (focal + depth * 460);
+        const parallaxX = (pointer.x - 0.5) * 160 * (1.2 - scale);
+        const screenX = centerX + surface.x * width * 0.26 + parallaxX;
+        const screenY = centerY + surface.y * height * 0.3 + (depth - 0.45) * height * 0.08;
+        const w = surface.texture.width * scale;
+        const h = surface.texture.height * scale;
+        const focusGap = Math.abs(depth - focusDepth);
+        const blur = Math.min(12, focusGap * 32);
+        const alpha = Math.max(0.18, 0.95 - focusGap * 1.2);
+        const glow = Math.max(8, 28 - focusGap * 32);
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.18;
+        ctx.fillStyle = surface.accent;
+        ctx.filter = `blur(${glow}px)`;
+        ctx.fillRect(screenX - w * 0.44, screenY - h * 0.26, w * 0.88, h * 0.52);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.26;
+        ctx.filter = `blur(${blur + 1.5}px)`;
+        ctx.drawImage(surface.texture, screenX - w * 0.5 - 5 * scale, screenY - h * 0.5, w, h);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.24;
+        ctx.filter = `blur(${blur + 1.5}px)`;
+        ctx.drawImage(surface.texture, screenX - w * 0.5 + 5 * scale, screenY - h * 0.5, w, h);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.filter = `blur(${blur}px)`;
+        ctx.drawImage(surface.texture, screenX - w * 0.5, screenY - h * 0.5, w, h);
+        ctx.restore();
+      }
+    }
+
+    function frame(now) {
+      const next = now * 0.001;
+      const dt = Math.min(0.033, next - time || 0.016);
+      time = next;
+
+      if (autoSweep) {
+        pointer.ty = 0.5 + Math.sin(time * 0.8) * 0.42;
+      }
+
+      const focusDepth = 0.08 + pointer.y * 0.82;
+
+      drawBackground();
+      updateSurfaces(dt);
+      drawFocusPlane(focusDepth);
+      drawSurfaces(focusDepth);
+
+      requestAnimationFrame(frame);
+    }
+
+    function toggleSweep() {
+      autoSweep = !autoSweep;
+      sweepButton.textContent = autoSweep ? "手動フォーカスに戻す" : "フォーカスを自動走査する";
+      setStatus(autoSweep ? "自動走査 / 焦点面が前後に移動" : "手動フォーカス / 上下で焦点面を移動");
+    }
+
+    function shuffleDepth() {
+      surfaces.forEach((surface, index) => resetSurface(surface, index));
+    }
+
+    canvas.addEventListener("pointermove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      pointer.tx = (event.clientX - rect.left) / rect.width;
+      pointer.ty = (event.clientY - rect.top) / rect.height;
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+      pointer.tx = 0.5;
+      if (!autoSweep) pointer.ty = 0.5;
+    });
+
+    sweepButton.addEventListener("click", toggleSweep);
+    shuffleButton.addEventListener("click", shuffleDepth);
+    window.addEventListener("resize", resize);
+
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

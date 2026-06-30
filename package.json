@@ -1,0 +1,10 @@
+{
+  "name": "webgl-xr-daily-report",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:gallery": "node scripts/build-gallery.mjs",
+    "publish:pages": "node scripts/publish-pages.mjs"
+  }
+}
