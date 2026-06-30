@@ -144,9 +144,46 @@
       .layout { grid-template-columns: 1fr; }
       .stage { min-height: 520px; }
     }
+  
+
+    .home-link {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 30;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      background: rgba(8, 18, 28, 0.82);
+      border: 1px solid rgba(124, 228, 255, 0.16);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(14px);
+      color: var(--text, #eef8ff);
+      font: 600 0.9rem/1 "Avenir Next", "Hiragino Sans", sans-serif;
+    }
+
+    .home-link:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124, 228, 255, 0.3);
+    }
+
+    @media (max-width: 720px) {
+      .home-link {
+        top: 12px;
+        right: 12px;
+        min-height: 38px;
+        padding: 0 12px;
+        font-size: 0.82rem;
+      }
+    }
   </style>
 </head>
 <body>
+  <a class="home-link" href="../index.html">トップへ戻る / Back to top</a>
   <div class="layout">
     <aside class="panel">
       <h1>Audio Band Reactor</h1>
