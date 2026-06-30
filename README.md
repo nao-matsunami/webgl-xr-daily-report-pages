@@ -33,6 +33,15 @@ npm run build:gallery
 node scripts/build-gallery.mjs
 ```
 
+GitHub Pages 公開用リポジトリへ反映する場合:
+
+```bash
+npm run publish:pages
+```
+
+このコマンドは、親ディレクトリの `webgl-xr-daily-report-pages` リポジトリへ内容を同期し、
+差分があれば commit / push します。
+
 ## サイト構成
 
 - トップページ `index.html`
