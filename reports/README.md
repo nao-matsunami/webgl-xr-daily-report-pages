@@ -2,6 +2,8 @@
 
 このフォルダに `YYYY-MM-DD.json` を置くと、一覧カードから遷移した日別ページに、その日のレポート本文を表示できます。
 
+ひな形は [`template.json`](/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report/reports/template.json) を使えます。
+
 最小構成の例:
 
 ```json
