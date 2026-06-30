@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { Buffer } from "node:buffer";
 
 const sourceDir = "/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report";
 const targetDir = "/Users/nao/Documents/Codex/webgl-xr-daily-report-pages";
@@ -60,6 +61,31 @@ function run(command, args, cwd) {
   });
 }
 
+function runCapture(command, args, cwd) {
+  return new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+
+    const child = spawn(command, args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(stderr.trim() || `${command} ${args.join(" ")} failed with code ${code}`));
+    });
+  });
+}
+
 async function main() {
   const hasGit = await pathExists(path.join(targetDir, ".git"));
   if (!hasGit) {
@@ -87,7 +113,13 @@ async function main() {
 
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
   await run("git", ["commit", "-m", `Publish daily update ${stamp}`], targetDir);
-  await run("git", ["push", "origin", "main"], targetDir);
+  const token = await runCapture("gh", ["auth", "token"], targetDir);
+  const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
+  await run(
+    "git",
+    ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`, "push", "origin", "main"],
+    targetDir
+  );
 }
 
 main().catch((error) => {
