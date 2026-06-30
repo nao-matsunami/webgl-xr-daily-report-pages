@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:gallery": "node scripts/build-gallery.mjs",
-    "publish:pages": "node scripts/publish-pages.mjs"
+    "publish:pages": "node scripts/publish-pages.mjs",
+    "upsert:report": "node scripts/upsert-report.mjs"
   }
 }

@@ -42,6 +42,28 @@ npm run publish:pages
 このコマンドは、親ディレクトリの `webgl-xr-daily-report-pages` リポジトリへ内容を同期し、
 差分があれば commit / push します。
 
+## 毎朝の自動レポートをサイトへ反映する
+
+日次レポート JSON を保存し、そのまま一覧再生成と GitHub Pages 公開まで流す場合:
+
+```bash
+node scripts/upsert-report.mjs --file reports/2026-06-30.json --publish
+```
+
+JSON を標準入力で渡す場合:
+
+```bash
+cat /tmp/report.json | node scripts/upsert-report.mjs --stdin --publish
+```
+
+この処理で次の3つをまとめて行います。
+
+1. `reports/YYYY-MM-DD.json` を保存または更新
+2. `index.html` / `days/` / `pages/` を再生成
+3. GitHub Pages 公開用リポジトリへ push
+
+日次 automation 側でこの形式の JSON を出せるようにしておけば、毎朝のレポート公開まで一気通しで進められます。
+
 ## サイト構成
 
 - トップページ `index.html`
