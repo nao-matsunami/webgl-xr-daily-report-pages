@@ -1,7 +1,9 @@
 {
   "date": "2026-06-30",
   "headline": "HTML-in-Canvas と焦点面演出の整理",
+  "headlineEn": "HTML-in-Canvas and rack-focus staging",
   "summary": "HTML-in-Canvas、複数レイヤーの空間化、焦点面だけを読ませる staging が今日の軸です。サンプルは、複数の情報面を奥行きに置き、焦点面だけが立ち上がる最小構成に寄せています。",
+  "summaryEn": "Today’s focus is HTML-in-Canvas, spatial layering, and staging that reveals information only on the focal plane. The sample places multiple information surfaces in depth and lets one plane rise into legibility.",
   "links": [
     {
       "label": "three.js r185",
@@ -23,23 +25,33 @@
   "sections": [
     {
       "title": "今日の重要トピック",
-      "body": "three.js r185 の HTMLTexture 対応、Babylon.js 9.14.0 の HtmlTexture、PlayCanvas v2.20.0 の copyElementImageToTexture と stereo XR gsplat が並び、HTML/DOM 系の情報面を 3D 空間に持ち込む下地が複数エンジンで揃ってきています。"
+      "titleEn": "Key topics today",
+      "body": "three.js r185 の HTMLTexture 対応、Babylon.js 9.14.0 の HtmlTexture、PlayCanvas v2.20.0 の copyElementImageToTexture と stereo XR gsplat が並び、HTML/DOM 系の情報面を 3D 空間に持ち込む下地が複数エンジンで揃ってきています。",
+      "bodyEn": "three.js r185 adds HTMLTexture support, Babylon.js 9.14.0 adds HtmlTexture, and PlayCanvas v2.20.0 adds copyElementImageToTexture plus stereo XR gsplat. Multiple engines are converging on practical ways to bring HTML and DOM-derived information surfaces into 3D space."
     },
     {
       "title": "注目事例と何が面白いか",
-      "body": "model-viewer の multi-model scene と Canvas/Video texture の例は、3D 本体と情報レイヤーを一つの空間で扱う設計の参考になります。特に『固定HUDではなく、意味レイヤーを空間に浮かせる』方向へつなぎやすいです。"
+      "titleEn": "Notable example and why it matters",
+      "body": "model-viewer の multi-model scene と Canvas/Video texture の例は、3D 本体と情報レイヤーを一つの空間で扱う設計の参考になります。特に『固定HUDではなく、意味レイヤーを空間に浮かせる』方向へつなぎやすいです。",
+      "bodyEn": "The multi-model scene and Canvas/Video texture examples in model-viewer are useful references for treating the main 3D object and its information layers inside one shared space. They point toward floating semantic layers instead of a fixed HUD."
     },
     {
       "title": "表現・インタラクションのアイデア",
-      "body": "常時読ませる UI ではなく、注目時だけ焦点面を合わせて情報が浮き上がる見せ方が有効です。普段は空間の気配として薄く存在し、視線やポインタ、会話の瞬間だけ読める層に切り替える構成が自然です。"
+      "titleEn": "Expression and interaction idea",
+      "body": "常時読ませる UI ではなく、注目時だけ焦点面を合わせて情報が浮き上がる見せ方が有効です。普段は空間の気配として薄く存在し、視線やポインタ、会話の瞬間だけ読める層に切り替える構成が自然です。",
+      "bodyEn": "Rather than making information readable at all times, it works better to let it rise into focus only when attention lands there. Most of the time it stays as a faint spatial presence, then becomes legible on gaze, pointer movement, or conversational cues."
     },
     {
       "title": "制作に使えそうな技術メモ",
-      "body": "HTML-in-Canvas を前提にしておけば、Canvas2D や DOM ベースで組んだ意味レイヤーを、後から WebGL texture / postprocess / XR 投影へ拡張しやすいです。三次元側で全部を書き切るより、情報面の管理がかなり軽くなります。"
+      "titleEn": "Production note",
+      "body": "HTML-in-Canvas を前提にしておけば、Canvas2D や DOM ベースで組んだ意味レイヤーを、後から WebGL texture / postprocess / XR 投影へ拡張しやすいです。三次元側で全部を書き切るより、情報面の管理がかなり軽くなります。",
+      "bodyEn": "If you assume HTML-in-Canvas from the start, meaning layers built in Canvas2D or DOM can later be extended into WebGL textures, post-processing, and XR projection more easily. It is much lighter than forcing every information layer to be authored directly in 3D."
     },
     {
       "title": "試すならこれ",
-      "body": "今日のサンプルは、複数の情報面を奥行きに置き、ポインタ上下で焦点面を移動させる最小構成です。読みやすさと演出を同じ素材で往復できるので、今後 WebGL 化して DOF 風処理へ伸ばす土台になります。"
+      "titleEn": "If you try one thing",
+      "body": "今日のサンプルは、複数の情報面を奥行きに置き、ポインタ上下で焦点面を移動させる最小構成です。読みやすさと演出を同じ素材で往復できるので、今後 WebGL 化して DOF 風処理へ伸ばす土台になります。",
+      "bodyEn": "Today’s sample places multiple information surfaces in depth and moves the focal plane with vertical pointer motion. Because the same material can shift between readability and atmospheric staging, it is a good base for a future WebGL version with depth-of-field style processing."
     }
   ]
 }

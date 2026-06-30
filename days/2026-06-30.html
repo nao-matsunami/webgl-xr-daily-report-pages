@@ -65,6 +65,23 @@
       line-height: 1.7;
     }
 
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
     .date {
       margin: 0 0 10px;
       color: var(--accent2);
@@ -188,58 +205,65 @@
     <section class="hero">
       <p class="date">2026.06.30</p>
       <h1>HTML-in-Canvas と焦点面演出の整理</h1>
+      <p class="hero-subtitle">HTML-in-Canvas and rack-focus staging</p>
       <p>HTML-in-Canvas、複数レイヤーの空間化、焦点面だけを読ませる staging が今日の軸です。サンプルは、複数の情報面を奥行きに置き、焦点面だけが立ち上がる最小構成に寄せています。</p>
+      <p class="en-copy">Today’s focus is HTML-in-Canvas, spatial layering, and staging that reveals information only on the focal plane. The sample places multiple information surfaces in depth and lets one plane rise into legibility.</p>
       <div class="actions">
-        <a class="primary" href="../outputs/2026-06-30_html_rack_focus_planes.html">サンプルを開く</a>
-        <a class="secondary-link" href="../index.html">一覧へ戻る</a>
+        <a class="primary" href="../outputs/2026-06-30_html_rack_focus_planes.html">サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
       </div>
     </section>
 
     <nav class="day-nav" aria-label="日付移動">
       <a class="day-link" href="../days/2026-06-29.html">← 2026.06.29</a>
-      <span class="day-link">最新日</span>
+      <span class="day-link">最新日 / Latest</span>
     </nav>
 
     <section class="content">
       <div class="stack">
         
         <section class="detail-block">
-          <h2>今日の重要トピック</h2>
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
           <p>three.js r185 の HTMLTexture 対応、Babylon.js 9.14.0 の HtmlTexture、PlayCanvas v2.20.0 の copyElementImageToTexture と stereo XR gsplat が並び、HTML/DOM 系の情報面を 3D 空間に持ち込む下地が複数エンジンで揃ってきています。</p>
+          <p class="en-copy">three.js r185 adds HTMLTexture support, Babylon.js 9.14.0 adds HtmlTexture, and PlayCanvas v2.20.0 adds copyElementImageToTexture plus stereo XR gsplat. Multiple engines are converging on practical ways to bring HTML and DOM-derived information surfaces into 3D space.</p>
           
         </section>
       
 
         <section class="detail-block">
-          <h2>注目事例と何が面白いか</h2>
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
           <p>model-viewer の multi-model scene と Canvas/Video texture の例は、3D 本体と情報レイヤーを一つの空間で扱う設計の参考になります。特に『固定HUDではなく、意味レイヤーを空間に浮かせる』方向へつなぎやすいです。</p>
+          <p class="en-copy">The multi-model scene and Canvas/Video texture examples in model-viewer are useful references for treating the main 3D object and its information layers inside one shared space. They point toward floating semantic layers instead of a fixed HUD.</p>
           
         </section>
       
 
         <section class="detail-block">
-          <h2>表現・インタラクションのアイデア</h2>
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
           <p>常時読ませる UI ではなく、注目時だけ焦点面を合わせて情報が浮き上がる見せ方が有効です。普段は空間の気配として薄く存在し、視線やポインタ、会話の瞬間だけ読める層に切り替える構成が自然です。</p>
+          <p class="en-copy">Rather than making information readable at all times, it works better to let it rise into focus only when attention lands there. Most of the time it stays as a faint spatial presence, then becomes legible on gaze, pointer movement, or conversational cues.</p>
           
         </section>
       
 
         <section class="detail-block">
-          <h2>制作に使えそうな技術メモ</h2>
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
           <p>HTML-in-Canvas を前提にしておけば、Canvas2D や DOM ベースで組んだ意味レイヤーを、後から WebGL texture / postprocess / XR 投影へ拡張しやすいです。三次元側で全部を書き切るより、情報面の管理がかなり軽くなります。</p>
+          <p class="en-copy">If you assume HTML-in-Canvas from the start, meaning layers built in Canvas2D or DOM can later be extended into WebGL textures, post-processing, and XR projection more easily. It is much lighter than forcing every information layer to be authored directly in 3D.</p>
           
         </section>
       
 
         <section class="detail-block">
-          <h2>試すならこれ</h2>
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
           <p>今日のサンプルは、複数の情報面を奥行きに置き、ポインタ上下で焦点面を移動させる最小構成です。読みやすさと演出を同じ素材で往復できるので、今後 WebGL 化して DOF 風処理へ伸ばす土台になります。</p>
+          <p class="en-copy">Today’s sample places multiple information surfaces in depth and moves the focal plane with vertical pointer motion. Because the same material can shift between readability and atmospheric staging, it is a good base for a future WebGL version with depth-of-field style processing.</p>
           
         </section>
       
         
               <section class="detail-block">
-                <h2>参考リンク</h2>
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
                 
     <ul class="link-list">
       
@@ -258,7 +282,7 @@
       </div>
 
       <aside class="preview">
-        <h2>サンプルプレビュー</h2>
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
         <iframe src="../outputs/2026-06-30_html_rack_focus_planes.html" loading="lazy" title="HTML Rack Focus Planes"></iframe>
       </aside>
     </section>

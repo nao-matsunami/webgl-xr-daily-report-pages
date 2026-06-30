@@ -65,6 +65,23 @@
       line-height: 1.7;
     }
 
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
     .date {
       margin: 0 0 10px;
       color: var(--accent2);
@@ -188,10 +205,12 @@
     <section class="hero">
       <p class="date">2026.06.25</p>
       <h1>Audio Signal Breakup</h1>
+      
       <p>音量と帯域に応じて、ノイズ、走査線、RGB ずれ、信号の乱れ方が変わる最小サンプルです。 低域で大域の揺れ、中域で走査線の歪み、高域でノイズと色ずれを強めます。</p>
+      
       <div class="actions">
-        <a class="primary" href="../outputs/2026-06-25_audio_signal_breakup.html">サンプルを開く</a>
-        <a class="secondary-link" href="../index.html">一覧へ戻る</a>
+        <a class="primary" href="../outputs/2026-06-25_audio_signal_breakup.html">サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
       </div>
     </section>
 
@@ -204,11 +223,16 @@
       <div class="stack">
         
       <section class="detail-block">
-        <h2>この日の情報</h2>
+        <h2><span class="heading-pair"><span class="heading-pair-primary">この日の情報</span><span class="heading-pair-secondary">About this day</span></span></h2>
         <p>
           この日のレポート本文はまだファイルとして保存されていません。
           現在はサンプル情報と概要のみを表示しています。
           今後は <code>reports/YYYY-MM-DD.json</code> を追加すると、この欄に日次レポートをそのまま載せられます。
+        </p>
+        <p>
+          The full daily report has not been saved as a file yet.
+          For now this page shows the sample and a short summary only.
+          Add <code>reports/YYYY-MM-DD.json</code> to publish the daily report here as well.
         </p>
       </section>
     
@@ -216,7 +240,7 @@
       </div>
 
       <aside class="preview">
-        <h2>サンプルプレビュー</h2>
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
         <iframe src="../outputs/2026-06-25_audio_signal_breakup.html" loading="lazy" title="Audio Signal Breakup"></iframe>
       </aside>
     </section>

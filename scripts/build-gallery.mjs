@@ -55,6 +55,12 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function renderBilingual(primary, secondary, primaryTag = "span", secondaryTag = "span", className = "bilingual") {
+  const primaryHtml = primary ? `<${primaryTag} class="${className}-primary">${escapeHtml(primary)}</${primaryTag}>` : "";
+  const secondaryHtml = secondary ? `<${secondaryTag} class="${className}-secondary">${escapeHtml(secondary)}</${secondaryTag}>` : "";
+  return `<span class="${className}">${primaryHtml}${secondaryHtml}</span>`;
+}
+
 function renderLinks(links) {
   if (!links?.length) return "";
   return `
@@ -74,11 +80,16 @@ function renderReportSections(report) {
   if (!report?.sections?.length) {
     return `
       <section class="detail-block">
-        <h2>この日の情報</h2>
+        <h2>${renderBilingual("この日の情報", "About this day", "span", "span", "heading-pair")}</h2>
         <p>
           この日のレポート本文はまだファイルとして保存されていません。
           現在はサンプル情報と概要のみを表示しています。
           今後は <code>reports/YYYY-MM-DD.json</code> を追加すると、この欄に日次レポートをそのまま載せられます。
+        </p>
+        <p>
+          The full daily report has not been saved as a file yet.
+          For now this page shows the sample and a short summary only.
+          Add <code>reports/YYYY-MM-DD.json</code> to publish the daily report here as well.
         </p>
       </section>
     `;
@@ -88,8 +99,9 @@ function renderReportSections(report) {
     .map(
       (section) => `
         <section class="detail-block">
-          <h2>${escapeHtml(section.title)}</h2>
+          <h2>${renderBilingual(section.title, section.titleEn, "span", "span", "heading-pair")}</h2>
           ${section.body ? `<p>${escapeHtml(section.body)}</p>` : ""}
+          ${section.bodyEn ? `<p class="en-copy">${escapeHtml(section.bodyEn)}</p>` : ""}
           ${renderLinks(section.links)}
         </section>
       `
@@ -118,14 +130,14 @@ function renderPagination(currentPage, totalPages, basePath) {
     <nav class="pager" aria-label="ページ送り">
       ${
         prevHref
-          ? `<a class="pager-nav" href="${prevHref}">前のページ</a>`
-          : `<span class="pager-nav is-disabled">前のページ</span>`
+          ? `<a class="pager-nav" href="${prevHref}">前のページ / Previous</a>`
+          : `<span class="pager-nav is-disabled">前のページ / Previous</span>`
       }
       <div class="pager-links">${links.join("")}</div>
       ${
         nextHref
-          ? `<a class="pager-nav" href="${nextHref}">次のページ</a>`
-          : `<span class="pager-nav is-disabled">次のページ</span>`
+          ? `<a class="pager-nav" href="${nextHref}">次のページ / Next</a>`
+          : `<span class="pager-nav is-disabled">次のページ / Next</span>`
       }
     </nav>
   `;
@@ -144,17 +156,27 @@ function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
             <div>
               <p class="date">${escapeHtml(formatDateLabel(item.date))}</p>
               <h2>${escapeHtml(item.report?.headline || item.title)}</h2>
+              ${
+                item.report?.headlineEn
+                  ? `<p class="card-subtitle">${escapeHtml(item.report.headlineEn)}</p>`
+                  : ""
+              }
             </div>
             <button class="like-button" type="button" data-slug="${escapeHtml(item.slug)}" aria-pressed="false">
               <span class="heart">♡</span>
-              <span class="label">好き</span>
+              <span class="label">好き / Like</span>
             </button>
           </div>
           <p class="description">${escapeHtml(item.report?.summary || item.description || "日次レポートから生成されたサンプルです。")}</p>
+          ${
+            item.report?.summaryEn
+              ? `<p class="description en-copy">${escapeHtml(item.report.summaryEn)}</p>`
+              : ""
+          }
           <div class="tags">${tags}</div>
           <div class="actions">
-            <a class="primary" href="${basePath}days/${escapeHtml(item.date)}.html">その日のページ</a>
-            <a class="secondary-link" href="${basePath}outputs/${encodeURIComponent(item.fileName)}">サンプル</a>
+            <a class="primary" href="${basePath}days/${escapeHtml(item.date)}.html">その日のページ / Day</a>
+            <a class="secondary-link" href="${basePath}outputs/${encodeURIComponent(item.fileName)}">サンプル / Sample</a>
           </div>
         </article>
       `;
@@ -220,6 +242,31 @@ function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
       max-width: 780px;
       color: var(--muted);
       line-height: 1.7;
+    }
+
+    .card-subtitle,
+    .en-copy,
+    .bilingual-secondary,
+    .heading-pair-secondary {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .card-subtitle,
+    .heading-pair-secondary {
+      font-size: 0.9rem;
+    }
+
+    .description.en-copy {
+      min-height: 0;
+      margin-top: -4px;
+      font-size: 0.92rem;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
     }
 
     .meta {
@@ -403,6 +450,9 @@ function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
         各日付のカードから、その日の内容ページへ進める構成に変えています。
         サンプル単体ではなく、日ごとのまとまりを見やすくし、件数が増えたらページ送りで辿れるようにしています。
       </p>
+      <p class="en-copy">
+        Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
+      </p>
       <div class="meta">
         <span>days: ${totalItems}</span>
         <span>page: ${currentPage} / ${totalPages}</span>
@@ -435,7 +485,7 @@ function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
         button.classList.toggle("is-liked", isLiked);
         button.setAttribute("aria-pressed", String(isLiked));
         button.querySelector(".heart").textContent = isLiked ? "♥" : "♡";
-        button.querySelector(".label").textContent = isLiked ? "好き済み" : "好き";
+        button.querySelector(".label").textContent = isLiked ? "好き済み / Liked" : "好き / Like";
       });
     }
 
@@ -460,7 +510,9 @@ function renderDetailPage(item, allItems, pageNumberMap) {
   const nextItem = currentIndex > 0 ? allItems[currentIndex - 1] : null;
   const listHref = pageNumberMap.get(item.slug) === 1 ? "../index.html" : `../pages/${pageNumberMap.get(item.slug)}.html`;
   const reportHeadline = item.report?.headline || item.title;
+  const reportHeadlineEn = item.report?.headlineEn || "";
   const reportSummary = item.report?.summary || item.description;
+  const reportSummaryEn = item.report?.summaryEn || "";
   const reportSections = renderReportSections(item.report);
   const extraLinks = [];
 
@@ -533,6 +585,23 @@ function renderDetailPage(item, allItems, pageNumberMap) {
     .detail-block li {
       color: var(--muted);
       line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
     }
 
     .date {
@@ -658,10 +727,12 @@ function renderDetailPage(item, allItems, pageNumberMap) {
     <section class="hero">
       <p class="date">${escapeHtml(formatDateLabel(item.date))}</p>
       <h1>${escapeHtml(reportHeadline)}</h1>
+      ${reportHeadlineEn ? `<p class="hero-subtitle">${escapeHtml(reportHeadlineEn)}</p>` : ""}
       <p>${escapeHtml(reportSummary)}</p>
+      ${reportSummaryEn ? `<p class="en-copy">${escapeHtml(reportSummaryEn)}</p>` : ""}
       <div class="actions">
-        <a class="primary" href="../outputs/${encodeURIComponent(item.fileName)}">サンプルを開く</a>
-        <a class="secondary-link" href="${listHref}">一覧へ戻る</a>
+        <a class="primary" href="../outputs/${encodeURIComponent(item.fileName)}">サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="${listHref}">一覧へ戻る / Back to archive</a>
       </div>
     </section>
 
@@ -669,12 +740,12 @@ function renderDetailPage(item, allItems, pageNumberMap) {
       ${
         prevItem
           ? `<a class="day-link" href="../days/${escapeHtml(prevItem.date)}.html">← ${escapeHtml(formatDateLabel(prevItem.date))}</a>`
-          : `<span class="day-link">最初の日</span>`
+          : `<span class="day-link">最初の日 / First day</span>`
       }
       ${
         nextItem
           ? `<a class="day-link" href="../days/${escapeHtml(nextItem.date)}.html">${escapeHtml(formatDateLabel(nextItem.date))} →</a>`
-          : `<span class="day-link">最新日</span>`
+          : `<span class="day-link">最新日 / Latest</span>`
       }
     </nav>
 
@@ -685,7 +756,7 @@ function renderDetailPage(item, allItems, pageNumberMap) {
           extraLinks.length
             ? `
               <section class="detail-block">
-                <h2>参考リンク</h2>
+                <h2>${renderBilingual("参考リンク", "Reference links", "span", "span", "heading-pair")}</h2>
                 ${renderLinks(extraLinks)}
               </section>
             `
@@ -694,7 +765,7 @@ function renderDetailPage(item, allItems, pageNumberMap) {
       </div>
 
       <aside class="preview">
-        <h2>サンプルプレビュー</h2>
+        <h2>${renderBilingual("サンプルプレビュー", "Sample preview", "span", "span", "heading-pair")}</h2>
         <iframe src="../outputs/${encodeURIComponent(item.fileName)}" loading="lazy" title="${escapeHtml(item.title)}"></iframe>
       </aside>
     </section>

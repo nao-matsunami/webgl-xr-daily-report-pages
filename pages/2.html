@@ -59,6 +59,31 @@
       line-height: 1.7;
     }
 
+    .card-subtitle,
+    .en-copy,
+    .bilingual-secondary,
+    .heading-pair-secondary {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .card-subtitle,
+    .heading-pair-secondary {
+      font-size: 0.9rem;
+    }
+
+    .description.en-copy {
+      min-height: 0;
+      margin-top: -4px;
+      font-size: 0.92rem;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
     .meta {
       display: flex;
       flex-wrap: wrap;
@@ -240,6 +265,9 @@
         各日付のカードから、その日の内容ページへ進める構成に変えています。
         サンプル単体ではなく、日ごとのまとまりを見やすくし、件数が増えたらページ送りで辿れるようにしています。
       </p>
+      <p class="en-copy">
+        Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
+      </p>
       <div class="meta">
         <span>days: 14</span>
         <span>page: 2 / 2</span>
@@ -249,7 +277,7 @@
 
     
     <nav class="pager" aria-label="ページ送り">
-      <a class="pager-nav" href="../index.html">前のページ</a>
+      <a class="pager-nav" href="../index.html">前のページ / Previous</a>
       <div class="pager-links">
       <a class="pager-link" href="../index.html">
         1
@@ -259,7 +287,7 @@
         2
       </a>
     </div>
-      <span class="pager-nav is-disabled">次のページ</span>
+      <span class="pager-nav is-disabled">次のページ / Next</span>
     </nav>
   
 
@@ -270,17 +298,19 @@
             <div>
               <p class="date">2026.06.18</p>
               <h2>Lipsync Guide Card Mock</h2>
+              
             </div>
             <button class="like-button" type="button" data-slug="2026-06-18_lipsync_guide_card" aria-pressed="false">
               <span class="heart">♡</span>
-              <span class="label">好き</span>
+              <span class="label">好き / Like</span>
             </button>
           </div>
           <p class="description">XR Blocks の lipsync 発想を、空間カード型ガイドへ寄せた最小モックです。 マイクが許可されれば音量に応じて口が動き、拒否された場合はデモ用の自動発話に切り替わります。</p>
+          
           <div class="tags"><span class="tag">xr</span><span class="tag">html-surface</span></div>
           <div class="actions">
-            <a class="primary" href="../days/2026-06-18.html">その日のページ</a>
-            <a class="secondary-link" href="../outputs/2026-06-18_lipsync_guide_card.html">サンプル</a>
+            <a class="primary" href="../days/2026-06-18.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-06-18_lipsync_guide_card.html">サンプル / Sample</a>
           </div>
         </article>
       
@@ -290,17 +320,19 @@
             <div>
               <p class="date">2026.06.17</p>
               <h2>Autoplacement Info Card Mock</h2>
+              
             </div>
             <button class="like-button" type="button" data-slug="2026-06-17_autoplacement_info_card" aria-pressed="false">
               <span class="heart">♡</span>
-              <span class="label">好き</span>
+              <span class="label">好き / Like</span>
             </button>
           </div>
           <p class="description">XR Blocks の placeOnHorizontalSurface を題材にした最小モックです。 実際の WebXR 面検出ではなく、机・棚・床の候補面から自然そうな場所を選ぶ挙動を 依存なしの HTML/JS で可視化しています。</p>
+          
           <div class="tags"><span class="tag">xr</span><span class="tag">html-surface</span></div>
           <div class="actions">
-            <a class="primary" href="../days/2026-06-17.html">その日のページ</a>
-            <a class="secondary-link" href="../outputs/2026-06-17_autoplacement_info_card.html">サンプル</a>
+            <a class="primary" href="../days/2026-06-17.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-06-17_autoplacement_info_card.html">サンプル / Sample</a>
           </div>
         </article>
       
@@ -308,7 +340,7 @@
 
     
     <nav class="pager" aria-label="ページ送り">
-      <a class="pager-nav" href="../index.html">前のページ</a>
+      <a class="pager-nav" href="../index.html">前のページ / Previous</a>
       <div class="pager-links">
       <a class="pager-link" href="../index.html">
         1
@@ -318,7 +350,7 @@
         2
       </a>
     </div>
-      <span class="pager-nav is-disabled">次のページ</span>
+      <span class="pager-nav is-disabled">次のページ / Next</span>
     </nav>
   
 
@@ -339,7 +371,7 @@
         button.classList.toggle("is-liked", isLiked);
         button.setAttribute("aria-pressed", String(isLiked));
         button.querySelector(".heart").textContent = isLiked ? "♥" : "♡";
-        button.querySelector(".label").textContent = isLiked ? "好き済み" : "好き";
+        button.querySelector(".label").textContent = isLiked ? "好き済み / Liked" : "好き / Like";
       });
     }
 
