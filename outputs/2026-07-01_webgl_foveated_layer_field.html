@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebGL Foveated Layer Field</title>
+  <style>
+    :root {
+      --bg: #050706;
+      --ink: #edf7ef;
+      --muted: #a8b8aa;
+      --line: rgba(237, 247, 239, 0.16);
+      --panel: rgba(5, 7, 6, 0.68);
+      --accent: #92f6bf;
+      --hot: #ffcf70;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #050706;
+      cursor: crosshair;
+    }
+
+    .chrome {
+      position: fixed;
+      inset: 18px;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: minmax(220px, 360px) 1fr;
+      align-items: start;
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border-radius: 8px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+
+    .readout {
+      display: grid;
+      gap: 7px;
+      margin-top: 13px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .readout b { color: var(--hot); font-weight: 700; }
+
+    .nav {
+      justify-self: end;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      pointer-events: auto;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--panel);
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 700;
+      backdrop-filter: blur(18px);
+    }
+
+    .nav a:hover { border-color: rgba(146, 246, 191, 0.38); }
+
+    .meter {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(237, 247, 239, 0.12);
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .meter span {
+      display: block;
+      width: 46%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--hot));
+      transform-origin: left;
+    }
+
+    @media (max-width: 760px) {
+      .chrome {
+        grid-template-columns: 1fr;
+        inset: 12px;
+      }
+
+      .nav {
+        justify-self: start;
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="chrome">
+    <section class="panel">
+      <h1>WebGL Foveated Layer Field</h1>
+      <p>
+        XR の fixed foveation と layer quality を、通常ブラウザで触れる最小シェーダーに置き換えた試作です。
+        ポインタ付近だけが細かく、周辺は粗いサンプリングと色ずれに落ちます。
+      </p>
+      <div class="readout">
+        <span><b>入力</b> ポインタ移動で中心視野を移動</span>
+        <span><b>変化</b> クリック中は高精細領域を拡大</span>
+        <span><b>発展</b> WebXR ProjectionLayer の fixedFoveation 値と同期</span>
+      </div>
+    </section>
+    <nav class="nav" aria-label="Sample navigation">
+      <a href="../days/2026-07-01.html">その日のページ / Day</a>
+      <a href="../index.html">トップ / Home</a>
+    </nav>
+  </div>
+  <div class="meter" aria-hidden="true"><span id="meterFill"></span></div>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const meterFill = document.getElementById("meterFill");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    if (!gl) {
+      document.body.innerHTML = "<p style='padding:24px'>WebGL is not available in this browser.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      varying vec2 vUv;
+      void main() {
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      varying vec2 vUv;
+      uniform vec2 resolution;
+      uniform vec2 focus;
+      uniform float time;
+      uniform float pressed;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float lineLayer(vec2 p, float seed) {
+        float wave = sin((p.x * (8.0 + seed * 2.0)) + time * (0.42 + seed * 0.07));
+        float stripe = abs(fract(p.y * (7.0 + seed) + wave * 0.11 + seed * 0.17) - 0.5);
+        float ridge = smoothstep(0.12, 0.0, stripe);
+        float gates = smoothstep(0.18, 0.98, hash(floor(p * vec2(16.0, 9.0)) + seed));
+        return ridge * (0.35 + gates * 0.65);
+      }
+
+      vec3 field(vec2 uv) {
+        vec2 p = (uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
+        float depthA = lineLayer(p + vec2(sin(time * 0.12), 0.0), 1.0);
+        float depthB = lineLayer(p * 1.37 + vec2(0.2, cos(time * 0.16) * 0.12), 3.0);
+        float depthC = lineLayer(p * 0.74 - vec2(0.35, 0.08), 6.0);
+        float grid = smoothstep(0.028, 0.0, abs(fract((p.x + p.y * 0.18) * 18.0) - 0.5));
+        float pulse = 0.5 + 0.5 * sin(time * 1.7 + p.x * 5.0 - p.y * 3.0);
+
+        vec3 color = vec3(0.01, 0.02, 0.015);
+        color += vec3(0.24, 0.84, 0.48) * depthA;
+        color += vec3(0.42, 0.72, 1.0) * depthB * 0.68;
+        color += vec3(1.0, 0.54, 0.18) * depthC * 0.55;
+        color += vec3(0.26, 0.36, 0.30) * grid * 0.24;
+        color += vec3(0.14, 0.34, 0.2) * pulse * smoothstep(0.9, 0.0, length(p));
+        return color;
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        vec2 aspectFocus = vec2(focus.x, 1.0 - focus.y);
+        vec2 d = (uv - aspectFocus) * vec2(resolution.x / resolution.y, 1.0);
+        float dist = length(d);
+        float fovea = 1.0 - smoothstep(0.12 + pressed * 0.08, 0.52, dist);
+        float block = mix(96.0, 680.0, fovea);
+
+        vec2 coarseUv = (floor(uv * block) + 0.5) / block;
+        float chroma = (1.0 - fovea) * 0.006;
+
+        vec3 sharp = field(uv);
+        vec3 coarse;
+        coarse.r = field(coarseUv + vec2(chroma, 0.0)).r;
+        coarse.g = field(coarseUv).g;
+        coarse.b = field(coarseUv - vec2(chroma, 0.0)).b;
+
+        vec3 color = mix(coarse, sharp, fovea);
+        color *= 0.42 + 0.58 * fovea;
+        color += vec3(0.7, 1.0, 0.76) * pow(fovea, 6.0) * 0.18;
+        color = pow(color, vec3(0.86));
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    gl.useProgram(program);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1,
+      -1, 1, 1, -1, 1, 1
+    ]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      focus: gl.getUniformLocation(program, "focus"),
+      time: gl.getUniformLocation(program, "time"),
+      pressed: gl.getUniformLocation(program, "pressed")
+    };
+
+    const pointer = { x: 0.5, y: 0.46, down: 0 };
+
+    function updatePointer(event) {
+      pointer.x = event.clientX / innerWidth;
+      pointer.y = event.clientY / innerHeight;
+    }
+
+    addEventListener("pointermove", updatePointer);
+    addEventListener("pointerdown", (event) => {
+      pointer.down = 1;
+      updatePointer(event);
+    });
+    addEventListener("pointerup", () => {
+      pointer.down = 0;
+    });
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const width = Math.floor(innerWidth * dpr);
+      const height = Math.floor(innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function render(now) {
+      resize();
+      const seconds = now * 0.001;
+      const autoX = 0.5 + Math.sin(seconds * 0.18) * 0.055;
+      const autoY = 0.46 + Math.cos(seconds * 0.15) * 0.035;
+      const fx = pointer.x * 0.86 + autoX * 0.14;
+      const fy = pointer.y * 0.86 + autoY * 0.14;
+
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.focus, fx, fy);
+      gl.uniform1f(uniforms.time, seconds);
+      gl.uniform1f(uniforms.pressed, pointer.down);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      meterFill.style.transform = `scaleX(${0.36 + pointer.down * 0.28 + Math.sin(seconds) * 0.03})`;
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

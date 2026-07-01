@@ -1,0 +1,91 @@
+{
+  "date": "2026-07-01",
+  "headline": "HTML面と奥行きゲート演出の接続",
+  "headlineEn": "Connecting HTML surfaces with depth-gate staging",
+  "summary": "今日は HTML-in-Canvas 系の流れを踏まえつつ、情報面そのものではなく、空間の節や通過点をどう見せるかに寄せました。サンプルは奥行き方向に並ぶゲートを通過する最小構成で、将来的に各面へ情報断片を貼る前段として使えます。",
+  "summaryEn": "Today extends the HTML-in-Canvas thread by shifting focus from the information surface itself to how spatial checkpoints and transitions are staged. The sample is a minimal tunnel of depth gates and works as a precursor to attaching readable information fragments to selected planes.",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.14.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.0",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.0"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "three.js r185 では HTMLTexture が新しい WICG HTML-in-Canvas API シグネチャに対応し、Babylon.js 9.14.0 では HtmlTexture と interaction manager が入り、PlayCanvas v2.20.0 では copyElementImageToTexture と stereo XR gsplat が揃っています。HTML/DOM 由来の面を 3D 側へ持ち込む足場は引き続き強いです。",
+      "bodyEn": "three.js r185 updates HTMLTexture for the new WICG HTML-in-Canvas API signatures, Babylon.js 9.14.0 adds HtmlTexture and an interaction manager, and PlayCanvas v2.20.0 brings copyElementImageToTexture plus stereo XR gsplat. The foundation for bringing HTML or DOM-derived surfaces into 3D remains strong.",
+      "links": [
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.14.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0"
+        },
+        {
+          "label": "PlayCanvas v2.20.0 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "直近数日で作ってきた '漂う面' や '焦点面' の流れに対して、今日は『通過する節』を追加する方向が面白いです。情報をただ浮かせるだけでなく、空間内の区切りや段階として見せると、物語の進行や視線誘導に使いやすくなります。",
+      "bodyEn": "Relative to the recent experiments with drifting surfaces and focal planes, today's more interesting extension is the idea of a spatial checkpoint. Instead of merely floating information, you can stage it as thresholds or phases in space, which is more useful for narrative progression and gaze guidance."
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "ゲートやリングのような節構造を空間に置き、通過時だけ一部の情報が開示される構成が有効です。常時読ませる UI ではなく、『近づくと読める』『通過すると切り替わる』表現にすることで、情報の重さを空間体験に変換できます。",
+      "bodyEn": "A useful direction is to place threshold structures such as gates or rings in space and reveal pieces of information only when the user approaches or passes through them. Instead of always-readable UI, the information becomes legible on approach or transition, turning content weight into a spatial experience."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "まずは Canvas2D で奥行き感と視差の設計を詰め、その後に WebGL の面やポスト処理へ移すのが効率的です。ゲートの節構造は、後から HTML texture、粒子、発光、被写界深度、音反応を足しやすい中立的な骨組みになります。",
+      "bodyEn": "It is efficient to first tune depth and parallax behavior in Canvas2D, then move the structure to WebGL surfaces and post-processing later. A gate-like checkpoint structure is a neutral backbone that can later absorb HTML textures, particles, glow, depth-of-field, or audio reactivity."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "HTML-in-Canvas の実運用例だけでなく、複数レイヤーや空間遷移を扱うデモを重点的に見ると良さそうです。単発の UI 機能より、情報面を空間遷移へ接続している事例を拾いたいです。",
+      "bodyEn": "Beyond raw HTML-in-Canvas features, the next useful things to watch are demos that handle multiple layers and spatial transitions. It is worth prioritizing examples where information surfaces are tied into movement through space, rather than treated as isolated UI widgets."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日のサンプルは、奥行き方向に並ぶゲートを通過するトンネル構成です。次に一枚だけ情報面を貼り、特定の奥行きでだけ読むことができるようにすると、昨日までの 'surface' 系の流れと自然につながります。",
+      "bodyEn": "Today's sample is a tunnel of gates arranged in depth. The natural next step is to attach a single information surface to one gate and make it readable only at a specific depth, connecting directly back to the recent surface-oriented studies."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集は継続、アイデア検討は 'surface' から 'transition' へ拡張、サンプル実装は today の gate tunnel、結果検証は公開サイトでの積み上げ確認という位置づけです。カード系は引き続きこのラインから外します。",
+      "bodyEn": "Research continues, ideation expands from 'surface' to 'transition', implementation becomes today's gate tunnel, and evaluation happens through accumulation on the published site. Card-oriented UI remains intentionally outside this line."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "ここ数日は audio-reactive から HTML surface、focus plane、ambient information へ軸が移り、その次の自然な一歩が spatial transition です。情報を見せるだけでなく、どの瞬間に、どの節で、どう開くかが次のテーマになっています。",
+      "bodyEn": "Over the past few days the arc has moved from audio-reactive work to HTML surfaces, focus planes, and ambient information. The next natural step is spatial transition: not just showing information, but deciding when, at which threshold, and how it opens."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用したのは Depth Gate Tunnel です。ポインタで消失点をずらしながら複数ゲートを通過させるだけの最小構成ですが、今後 HTML texture やラベル断片を差し込むための舞台として使えます。",
+      "bodyEn": "The chosen mini prototype is Depth Gate Tunnel. It is minimal — just a set of gates passing through a shifted vanishing point — but it works as a stage for later inserting HTML textures or label fragments."
+    }
+  ]
+}

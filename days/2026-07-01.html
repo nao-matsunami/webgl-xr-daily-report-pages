@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML面と奥行きゲート演出の接続 | 2026-07-01</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.01</p>
+      <h1>HTML面と奥行きゲート演出の接続</h1>
+      <p class="hero-subtitle">Connecting HTML surfaces with depth-gate staging</p>
+      <p>今日は HTML-in-Canvas 系の流れを踏まえつつ、情報面そのものではなく、空間の節や通過点をどう見せるかに寄せました。サンプルは奥行き方向に並ぶゲートを通過する最小構成で、将来的に各面へ情報断片を貼る前段として使えます。</p>
+      <p class="en-copy">Today extends the HTML-in-Canvas thread by shifting focus from the information surface itself to how spatial checkpoints and transitions are staged. The sample is a minimal tunnel of depth gates and works as a precursor to attaching readable information fragments to selected planes.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-01_depth_gate_tunnel.html">サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-06-30.html">← 2026.06.30</a>
+      <a class="day-link" href="../days/2026-07-01.html">2026.07.01 →</a>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>three.js r185 では HTMLTexture が新しい WICG HTML-in-Canvas API シグネチャに対応し、Babylon.js 9.14.0 では HtmlTexture と interaction manager が入り、PlayCanvas v2.20.0 では copyElementImageToTexture と stereo XR gsplat が揃っています。HTML/DOM 由来の面を 3D 側へ持ち込む足場は引き続き強いです。</p>
+          <p class="en-copy">three.js r185 updates HTMLTexture for the new WICG HTML-in-Canvas API signatures, Babylon.js 9.14.0 adds HtmlTexture and an interaction manager, and PlayCanvas v2.20.0 brings copyElementImageToTexture plus stereo XR gsplat. The foundation for bringing HTML or DOM-derived surfaces into 3D remains strong.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js 9.14.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.0" target="_blank" rel="noreferrer">PlayCanvas v2.20.0 release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>直近数日で作ってきた '漂う面' や '焦点面' の流れに対して、今日は『通過する節』を追加する方向が面白いです。情報をただ浮かせるだけでなく、空間内の区切りや段階として見せると、物語の進行や視線誘導に使いやすくなります。</p>
+          <p class="en-copy">Relative to the recent experiments with drifting surfaces and focal planes, today's more interesting extension is the idea of a spatial checkpoint. Instead of merely floating information, you can stage it as thresholds or phases in space, which is more useful for narrative progression and gaze guidance.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>ゲートやリングのような節構造を空間に置き、通過時だけ一部の情報が開示される構成が有効です。常時読ませる UI ではなく、『近づくと読める』『通過すると切り替わる』表現にすることで、情報の重さを空間体験に変換できます。</p>
+          <p class="en-copy">A useful direction is to place threshold structures such as gates or rings in space and reveal pieces of information only when the user approaches or passes through them. Instead of always-readable UI, the information becomes legible on approach or transition, turning content weight into a spatial experience.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>まずは Canvas2D で奥行き感と視差の設計を詰め、その後に WebGL の面やポスト処理へ移すのが効率的です。ゲートの節構造は、後から HTML texture、粒子、発光、被写界深度、音反応を足しやすい中立的な骨組みになります。</p>
+          <p class="en-copy">It is efficient to first tune depth and parallax behavior in Canvas2D, then move the structure to WebGL surfaces and post-processing later. A gate-like checkpoint structure is a neutral backbone that can later absorb HTML textures, particles, glow, depth-of-field, or audio reactivity.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>HTML-in-Canvas の実運用例だけでなく、複数レイヤーや空間遷移を扱うデモを重点的に見ると良さそうです。単発の UI 機能より、情報面を空間遷移へ接続している事例を拾いたいです。</p>
+          <p class="en-copy">Beyond raw HTML-in-Canvas features, the next useful things to watch are demos that handle multiple layers and spatial transitions. It is worth prioritizing examples where information surfaces are tied into movement through space, rather than treated as isolated UI widgets.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日のサンプルは、奥行き方向に並ぶゲートを通過するトンネル構成です。次に一枚だけ情報面を貼り、特定の奥行きでだけ読むことができるようにすると、昨日までの 'surface' 系の流れと自然につながります。</p>
+          <p class="en-copy">Today's sample is a tunnel of gates arranged in depth. The natural next step is to attach a single information surface to one gate and make it readable only at a specific depth, connecting directly back to the recent surface-oriented studies.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集は継続、アイデア検討は 'surface' から 'transition' へ拡張、サンプル実装は today の gate tunnel、結果検証は公開サイトでの積み上げ確認という位置づけです。カード系は引き続きこのラインから外します。</p>
+          <p class="en-copy">Research continues, ideation expands from 'surface' to 'transition', implementation becomes today's gate tunnel, and evaluation happens through accumulation on the published site. Card-oriented UI remains intentionally outside this line.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日は audio-reactive から HTML surface、focus plane、ambient information へ軸が移り、その次の自然な一歩が spatial transition です。情報を見せるだけでなく、どの瞬間に、どの節で、どう開くかが次のテーマになっています。</p>
+          <p class="en-copy">Over the past few days the arc has moved from audio-reactive work to HTML surfaces, focus planes, and ambient information. The next natural step is spatial transition: not just showing information, but deciding when, at which threshold, and how it opens.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用したのは Depth Gate Tunnel です。ポインタで消失点をずらしながら複数ゲートを通過させるだけの最小構成ですが、今後 HTML texture やラベル断片を差し込むための舞台として使えます。</p>
+          <p class="en-copy">The chosen mini prototype is Depth Gate Tunnel. It is minimal — just a set of gates passing through a shifted vanishing point — but it works as a stage for later inserting HTML textures or label fragments.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js 9.14.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.0</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-01_depth_gate_tunnel.html" loading="lazy" title="Depth Gate Tunnel"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
