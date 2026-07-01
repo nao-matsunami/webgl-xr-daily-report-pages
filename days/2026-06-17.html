@@ -165,6 +165,35 @@
       color: var(--accent);
     }
 
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
     .preview {
       padding: 18px;
       position: sticky;
@@ -209,7 +238,7 @@
       <p>XR Blocks の placeOnHorizontalSurface を題材にした最小モックです。 実際の WebXR 面検出ではなく、机・棚・床の候補面から自然そうな場所を選ぶ挙動を 依存なしの HTML/JS で可視化しています。</p>
       
       <div class="actions">
-        <a class="primary" href="../outputs/2026-06-17_autoplacement_info_card.html">サンプルを開く / Open sample</a>
+        <a class="primary" href="../outputs/2026-06-17_autoplacement_info_card.html">代表サンプルを開く / Open sample</a>
         <a class="secondary-link" href="../pages/2.html">一覧へ戻る / Back to archive</a>
       </div>
     </section>
@@ -221,6 +250,22 @@
 
     <section class="content">
       <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Autoplacement Info Card Mock</h3>
+              <p>XR Blocks の placeOnHorizontalSurface を題材にした最小モックです。 実際の WebXR 面検出ではなく、机・棚・床の候補面から自然そうな場所を選ぶ挙動を 依存なしの HTML/JS で可視化しています。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-06-17_autoplacement_info_card.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
         
       <section class="detail-block">
         <h2><span class="heading-pair"><span class="heading-pair-primary">この日の情報</span><span class="heading-pair-secondary">About this day</span></span></h2>

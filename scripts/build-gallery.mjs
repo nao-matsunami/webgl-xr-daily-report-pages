@@ -143,40 +143,42 @@ function renderPagination(currentPage, totalPages, basePath) {
   `;
 }
 
-function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
-  const cards = items
-    .map((item) => {
-      const tags = item.tags
+function renderListPage(days, currentPage, totalPages, basePath, totalItems) {
+  const cards = days
+    .map((day) => {
+      const primarySample = day.samples[0];
+      const tags = day.tags
         .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
         .join("");
 
       return `
-        <article class="card" data-slug="${escapeHtml(item.slug)}">
+        <article class="card" data-slug="${escapeHtml(day.date)}">
           <div class="card-top">
             <div>
-              <p class="date">${escapeHtml(formatDateLabel(item.date))}</p>
-              <h2>${escapeHtml(item.report?.headline || item.title)}</h2>
+              <p class="date">${escapeHtml(formatDateLabel(day.date))}</p>
+              <h2>${escapeHtml(day.report?.headline || primarySample.title)}</h2>
               ${
-                item.report?.headlineEn
-                  ? `<p class="card-subtitle">${escapeHtml(item.report.headlineEn)}</p>`
+                day.report?.headlineEn
+                  ? `<p class="card-subtitle">${escapeHtml(day.report.headlineEn)}</p>`
                   : ""
               }
             </div>
-            <button class="like-button" type="button" data-slug="${escapeHtml(item.slug)}" aria-pressed="false">
+            <button class="like-button" type="button" data-slug="${escapeHtml(day.date)}" aria-pressed="false">
               <span class="heart">♡</span>
               <span class="label">好き / Like</span>
             </button>
           </div>
-          <p class="description">${escapeHtml(item.report?.summary || item.description || "日次レポートから生成されたサンプルです。")}</p>
+          <p class="description">${escapeHtml(day.report?.summary || primarySample.description || "日次レポートから生成されたサンプルです。")}</p>
           ${
-            item.report?.summaryEn
-              ? `<p class="description en-copy">${escapeHtml(item.report.summaryEn)}</p>`
+            day.report?.summaryEn
+              ? `<p class="description en-copy">${escapeHtml(day.report.summaryEn)}</p>`
               : ""
           }
+          <p class="card-subtitle">samples: ${day.samples.length}</p>
           <div class="tags">${tags}</div>
           <div class="actions">
-            <a class="primary" href="${basePath}days/${escapeHtml(item.date)}.html">その日のページ / Day</a>
-            <a class="secondary-link" href="${basePath}outputs/${encodeURIComponent(item.fileName)}">サンプル / Sample</a>
+            <a class="primary" href="${basePath}days/${escapeHtml(day.date)}.html">その日のページ / Day</a>
+            <a class="secondary-link" href="${basePath}outputs/${encodeURIComponent(primarySample.fileName)}">代表サンプル / Sample</a>
           </div>
         </article>
       `;
@@ -504,28 +506,45 @@ function renderListPage(items, currentPage, totalPages, basePath, totalItems) {
 </html>`;
 }
 
-function renderDetailPage(item, allItems, pageNumberMap) {
-  const currentIndex = allItems.findIndex((entry) => entry.slug === item.slug);
-  const prevItem = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
-  const nextItem = currentIndex > 0 ? allItems[currentIndex - 1] : null;
-  const listHref = pageNumberMap.get(item.slug) === 1 ? "../index.html" : `../pages/${pageNumberMap.get(item.slug)}.html`;
-  const reportHeadline = item.report?.headline || item.title;
-  const reportHeadlineEn = item.report?.headlineEn || "";
-  const reportSummary = item.report?.summary || item.description;
-  const reportSummaryEn = item.report?.summaryEn || "";
-  const reportSections = renderReportSections(item.report);
+function renderDetailPage(day, allDays, pageNumberMap) {
+  const currentIndex = allDays.findIndex((entry) => entry.date === day.date);
+  const prevDay = currentIndex < allDays.length - 1 ? allDays[currentIndex + 1] : null;
+  const nextDay = currentIndex > 0 ? allDays[currentIndex - 1] : null;
+  const listHref = pageNumberMap.get(day.date) === 1 ? "../index.html" : `../pages/${pageNumberMap.get(day.date)}.html`;
+  const primarySample = day.samples[0];
+  const reportHeadline = day.report?.headline || primarySample.title;
+  const reportHeadlineEn = day.report?.headlineEn || "";
+  const reportSummary = day.report?.summary || primarySample.description;
+  const reportSummaryEn = day.report?.summaryEn || "";
+  const reportSections = renderReportSections(day.report);
   const extraLinks = [];
 
-  if (item.report?.links?.length) {
-    extraLinks.push(...item.report.links);
+  if (day.report?.links?.length) {
+    extraLinks.push(...day.report.links);
   }
+
+  const sampleList = day.samples
+    .map((sample) => {
+      return `
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>${escapeHtml(sample.title)}</h3>
+              <p>${escapeHtml(sample.description || "")}</p>
+            </div>
+            <a class="secondary-link" href="../outputs/${encodeURIComponent(sample.fileName)}">開く / Open</a>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(reportHeadline)} | ${escapeHtml(item.date)}</title>
+  <title>${escapeHtml(reportHeadline)} | ${escapeHtml(day.date)}</title>
   <style>
     :root {
       --bg0: #07111a;
@@ -687,6 +706,35 @@ function renderDetailPage(item, allItems, pageNumberMap) {
       color: var(--accent);
     }
 
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
     .preview {
       padding: 18px;
       position: sticky;
@@ -725,32 +773,38 @@ function renderDetailPage(item, allItems, pageNumberMap) {
 <body>
   <main class="shell">
     <section class="hero">
-      <p class="date">${escapeHtml(formatDateLabel(item.date))}</p>
+      <p class="date">${escapeHtml(formatDateLabel(day.date))}</p>
       <h1>${escapeHtml(reportHeadline)}</h1>
       ${reportHeadlineEn ? `<p class="hero-subtitle">${escapeHtml(reportHeadlineEn)}</p>` : ""}
       <p>${escapeHtml(reportSummary)}</p>
       ${reportSummaryEn ? `<p class="en-copy">${escapeHtml(reportSummaryEn)}</p>` : ""}
       <div class="actions">
-        <a class="primary" href="../outputs/${encodeURIComponent(item.fileName)}">サンプルを開く / Open sample</a>
+        <a class="primary" href="../outputs/${encodeURIComponent(primarySample.fileName)}">代表サンプルを開く / Open sample</a>
         <a class="secondary-link" href="${listHref}">一覧へ戻る / Back to archive</a>
       </div>
     </section>
 
     <nav class="day-nav" aria-label="日付移動">
       ${
-        prevItem
-          ? `<a class="day-link" href="../days/${escapeHtml(prevItem.date)}.html">← ${escapeHtml(formatDateLabel(prevItem.date))}</a>`
+        prevDay
+          ? `<a class="day-link" href="../days/${escapeHtml(prevDay.date)}.html">← ${escapeHtml(formatDateLabel(prevDay.date))}</a>`
           : `<span class="day-link">最初の日 / First day</span>`
       }
       ${
-        nextItem
-          ? `<a class="day-link" href="../days/${escapeHtml(nextItem.date)}.html">${escapeHtml(formatDateLabel(nextItem.date))} →</a>`
+        nextDay
+          ? `<a class="day-link" href="../days/${escapeHtml(nextDay.date)}.html">${escapeHtml(formatDateLabel(nextDay.date))} →</a>`
           : `<span class="day-link">最新日 / Latest</span>`
       }
     </nav>
 
     <section class="content">
       <div class="stack">
+        <section class="detail-block">
+          <h2>${renderBilingual("この日のサンプル", "Samples for this day", "span", "span", "heading-pair")}</h2>
+          <div class="sample-list">
+            ${sampleList}
+          </div>
+        </section>
         ${reportSections}
         ${
           extraLinks.length
@@ -766,7 +820,7 @@ function renderDetailPage(item, allItems, pageNumberMap) {
 
       <aside class="preview">
         <h2>${renderBilingual("サンプルプレビュー", "Sample preview", "span", "span", "heading-pair")}</h2>
-        <iframe src="../outputs/${encodeURIComponent(item.fileName)}" loading="lazy" title="${escapeHtml(item.title)}"></iframe>
+        <iframe src="../outputs/${encodeURIComponent(primarySample.fileName)}" loading="lazy" title="${escapeHtml(primarySample.title)}"></iframe>
       </aside>
     </section>
   </main>
@@ -824,28 +878,47 @@ async function main() {
     });
   }
 
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const dayMap = new Map();
+  for (const item of items) {
+    const existing = dayMap.get(item.date);
+    if (existing) {
+      existing.samples.push(item);
+      existing.tags = Array.from(new Set([...existing.tags, ...item.tags]));
+      if (!existing.report && item.report) existing.report = item.report;
+    } else {
+      dayMap.set(item.date, {
+        date: item.date,
+        report: item.report,
+        samples: [item],
+        tags: [...item.tags]
+      });
+    }
+  }
+
+  const days = Array.from(dayMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+  const totalPages = Math.max(1, Math.ceil(days.length / pageSize));
   const pageNumberMap = new Map();
 
   for (let page = 1; page <= totalPages; page += 1) {
-    const pageItems = items.slice((page - 1) * pageSize, page * pageSize);
-    for (const item of pageItems) pageNumberMap.set(item.slug, page);
+    const pageDays = days.slice((page - 1) * pageSize, page * pageSize);
+    for (const day of pageDays) pageNumberMap.set(day.date, page);
   }
 
   await ensureCleanDir(pagesDir);
   await ensureCleanDir(daysDir);
 
-  await fs.writeFile(indexPath, renderListPage(items.slice(0, pageSize), 1, totalPages, "", items.length), "utf8");
+  await fs.writeFile(indexPath, renderListPage(days.slice(0, pageSize), 1, totalPages, "", days.length), "utf8");
 
   for (let page = 2; page <= totalPages; page += 1) {
-    const pageItems = items.slice((page - 1) * pageSize, page * pageSize);
+    const pageItems = days.slice((page - 1) * pageSize, page * pageSize);
     const pagePath = path.join(pagesDir, `${page}.html`);
-    await fs.writeFile(pagePath, renderListPage(pageItems, page, totalPages, "../", items.length), "utf8");
+    await fs.writeFile(pagePath, renderListPage(pageItems, page, totalPages, "../", days.length), "utf8");
   }
 
-  for (const item of items) {
-    const dayPath = path.join(daysDir, `${item.date}.html`);
-    await fs.writeFile(dayPath, renderDetailPage(item, items, pageNumberMap), "utf8");
+  for (const day of days) {
+    const dayPath = path.join(daysDir, `${day.date}.html`);
+    await fs.writeFile(dayPath, renderDetailPage(day, days, pageNumberMap), "utf8");
   }
 }
 

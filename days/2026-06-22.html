@@ -165,6 +165,35 @@
       color: var(--accent);
     }
 
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
     .preview {
       padding: 18px;
       position: sticky;
@@ -209,7 +238,7 @@
       <p>低域・中域・高域を分けて反応させる最小サンプルです。 低域は大きな波紋、中域はグリッドの変形、高域は発光粒子として画面に出します。</p>
       
       <div class="actions">
-        <a class="primary" href="../outputs/2026-06-22_audio_band_reactor.html">サンプルを開く / Open sample</a>
+        <a class="primary" href="../outputs/2026-06-22_audio_band_reactor.html">代表サンプルを開く / Open sample</a>
         <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
       </div>
     </section>
@@ -221,6 +250,22 @@
 
     <section class="content">
       <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Audio Band Reactor</h3>
+              <p>低域・中域・高域を分けて反応させる最小サンプルです。 低域は大きな波紋、中域はグリッドの変形、高域は発光粒子として画面に出します。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-06-22_audio_band_reactor.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
         
       <section class="detail-block">
         <h2><span class="heading-pair"><span class="heading-pair-primary">この日の情報</span><span class="heading-pair-secondary">About this day</span></span></h2>

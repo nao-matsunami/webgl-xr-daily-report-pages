@@ -165,6 +165,35 @@
       color: var(--accent);
     }
 
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
     .preview {
       padding: 18px;
       position: sticky;
@@ -209,18 +238,44 @@
       <p>今日は HTML-in-Canvas 系の流れを踏まえつつ、情報面そのものではなく、空間の節や通過点をどう見せるかに寄せました。サンプルは奥行き方向に並ぶゲートを通過する最小構成で、将来的に各面へ情報断片を貼る前段として使えます。</p>
       <p class="en-copy">Today extends the HTML-in-Canvas thread by shifting focus from the information surface itself to how spatial checkpoints and transitions are staged. The sample is a minimal tunnel of depth gates and works as a precursor to attaching readable information fragments to selected planes.</p>
       <div class="actions">
-        <a class="primary" href="../outputs/2026-07-01_depth_gate_tunnel.html">サンプルを開く / Open sample</a>
+        <a class="primary" href="../outputs/2026-07-01_webgl_foveated_layer_field.html">代表サンプルを開く / Open sample</a>
         <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
       </div>
     </section>
 
     <nav class="day-nav" aria-label="日付移動">
       <a class="day-link" href="../days/2026-06-30.html">← 2026.06.30</a>
-      <a class="day-link" href="../days/2026-07-01.html">2026.07.01 →</a>
+      <span class="day-link">最新日 / Latest</span>
     </nav>
 
     <section class="content">
       <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>WebGL Foveated Layer Field</h3>
+              <p>XR の fixed foveation と layer quality を、通常ブラウザで触れる最小シェーダーに置き換えた試作です。 ポインタ付近だけが細かく、周辺は粗いサンプリングと色ずれに落ちます。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-01_webgl_foveated_layer_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Depth Gate Tunnel</h3>
+              <p>奥行き方向に並ぶゲートを順に通過していく最小サンプルです。 ポインタで消失点をずらし、各層が視差と色収差を伴って流れる構成にしています。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-01_depth_gate_tunnel.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
         
         <section class="detail-block">
           <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
@@ -323,7 +378,7 @@
 
       <aside class="preview">
         <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
-        <iframe src="../outputs/2026-07-01_depth_gate_tunnel.html" loading="lazy" title="Depth Gate Tunnel"></iframe>
+        <iframe src="../outputs/2026-07-01_webgl_foveated_layer_field.html" loading="lazy" title="WebGL Foveated Layer Field"></iframe>
       </aside>
     </section>
   </main>
