@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 15</span>
+        <span>days: 16</span>
         <span>page: 1 / 2</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -293,6 +293,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-02">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.02</p>
+              <h2>Gaussian LOD と HTML 面の品質制御</h2>
+              <p class="card-subtitle">Gaussian LOD and quality control for HTML surfaces</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-02" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">今日は、前回の foveated layer / 奥行きゲートの流れを、Gaussian Splatting の LOD と SDF/MSDF のエッジ品質へ接続しました。焦点周辺だけ高精細にし、周辺を粗く残す設計は、XR の視線中心、GSplat の lodRange、HTML-in-Canvas の情報面を同じ表現ルールで扱う足場になります。</p>
+          <p class="description en-copy">Today connects the previous foveated-layer and depth-gate thread to Gaussian Splatting LOD and SDF/MSDF edge quality. Keeping only the focus region sharp while leaving the periphery coarse gives one shared staging rule for XR gaze focus, GSplat lodRange, and HTML-in-Canvas information surfaces.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-02.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-02_gaussian_lod_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-01">
           <div class="card-top">
             <div>
@@ -542,29 +565,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-06-21.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-06-21_audio_reactive_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-06-20">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.06.20</p>
-              <h2>Audio Particle Field</h2>
-              
-            </div>
-            <button class="like-button" type="button" data-slug="2026-06-20" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">音量に応じて粒子の広がり、発光、速度が変化する最小サンプルです。 マイクが使えれば実入力、使えなければ自動デモ信号で動きます。</p>
-          
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">audio</span><span class="tag">particles</span><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-06-20.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-06-20_audio_particle_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       

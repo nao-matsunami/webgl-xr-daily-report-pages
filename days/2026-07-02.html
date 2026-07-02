@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gaussian LOD と HTML 面の品質制御 | 2026-07-02</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.02</p>
+      <h1>Gaussian LOD と HTML 面の品質制御</h1>
+      <p class="hero-subtitle">Gaussian LOD and quality control for HTML surfaces</p>
+      <p>今日は、前回の foveated layer / 奥行きゲートの流れを、Gaussian Splatting の LOD と SDF/MSDF のエッジ品質へ接続しました。焦点周辺だけ高精細にし、周辺を粗く残す設計は、XR の視線中心、GSplat の lodRange、HTML-in-Canvas の情報面を同じ表現ルールで扱う足場になります。</p>
+      <p class="en-copy">Today connects the previous foveated-layer and depth-gate thread to Gaussian Splatting LOD and SDF/MSDF edge quality. Keeping only the focus region sharp while leaving the periphery coarse gives one shared staging rule for XR gaze focus, GSplat lodRange, and HTML-in-Canvas information surfaces.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-02_gaussian_lod_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-01.html">← 2026.07.01</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Gaussian LOD Scope</h3>
+              <p>Gaussian Splatting の LOD と MSDF/SDF のエッジ品質を、単体 WebGL シェーダーで触れる形にした試作です。 ポインタ付近だけ輪郭と点群が細かく、周辺は大きなガウス粒と粗い輪郭へ落ちます。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-02_gaussian_lod_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js r185 は 2026-07-01 にタグ化され、前回見た HTMLTexture / HTML-in-Canvas 系の更新が次の実験候補として残っています。2. Babylon.js 9.14.0 は HtmlTexture、interaction managers、Gaussian Splatting GPU picking、GS streaming LOD を同じリリース内で扱っており、情報面と点群表現を別物にしない流れが見えます。3. PlayCanvas Engine v2.20.3 は MSDF のアンチエイリアスを UV magnification 起点に直し、v2.20.0 から続く GSplat AA / HTML-in-Canvas texture / XR gsplat の流れに細部品質の論点を足しています。4. SuperSplat はブラウザ上で 3D Gaussian Splats を検査・編集・最適化・公開できる公式ツールとして、制作ワークフロー側の入口になっています。</p>
+          <p class="en-copy">1. three.js r185 was tagged on 2026-07-01, keeping the HTMLTexture and HTML-in-Canvas thread active as a next experiment. 2. Babylon.js 9.14.0 combines HtmlTexture, interaction managers, Gaussian Splatting GPU picking, and GS streaming LOD in one release, suggesting that information surfaces and point-cloud-like rendering should be treated together. 3. PlayCanvas Engine v2.20.3 fixes MSDF anti-aliasing around UV magnification, adding a fine-detail quality topic to the v2.20.0 line of GSplat AA, HTML-in-Canvas textures, and XR gsplat. 4. SuperSplat remains the official browser-based entry point for inspecting, editing, optimizing, and publishing 3D Gaussian Splats.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 tag</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js 9.14.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.3" target="_blank" rel="noreferrer">PlayCanvas v2.20.3</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat" target="_blank" rel="noreferrer">SuperSplat</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Babylon.js 9.14.0 の HtmlTexture と GS streaming LOD、PlayCanvas の GSplat AA / lodRange 系、SuperSplat のブラウザ編集環境は、いずれも『高品質な面や点群を、どこまでリアルタイムに触れるか』という同じ問題に向かっています。面白いのは、フォトリアルな splat をそのまま見せるだけでなく、読みやすい HTML 面、SDF 的なシャープな記号、粗い周辺視の粒度を混ぜられる点です。つまり、現実スキャンの質感と情報デザインの輪郭を同じ空間の中で LOD 制御できるようになります。</p>
+          <p class="en-copy">Babylon.js HtmlTexture plus GS streaming LOD, PlayCanvas GSplat AA and lodRange work, and the SuperSplat browser editor all point to the same question: how far can high-quality surfaces and splats remain interactive in real time? The interesting part is not merely showing photoreal splats, but mixing them with readable HTML surfaces, sharp SDF-like symbols, and coarse peripheral grains. This makes it possible to control scanned texture and information-design edges with one spatial LOD rule.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js 9.14.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.0" target="_blank" rel="noreferrer">PlayCanvas v2.20.0 release notes</a></li>
+          
+            <li><a href="https://superspl.at/editor" target="_blank" rel="noreferrer">SuperSplat Editor</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は『スコープ型 LOD』です。ユーザーのポインタ、視線、手の位置の近くでは SDF 文字や輪郭を細くし、周辺ではガウス粒を大きくして曖昧に残します。中期案は、昨日の depth gate tunnel にこのスコープを重ね、ゲートを通過するたびに情報面だけがシャープになり、背景 splat は粗く流れる構成です。長期案は、SuperSplat で作ったスキャン空間に HTMLTexture / HtmlTexture を混ぜ、現実由来の場に『焦点を合わせたときだけ読める注釈』を置くことです。</p>
+          <p class="en-copy">The short-term idea is scope-based LOD: near the pointer, gaze, or hand position, SDF glyphs and outlines become thin and sharp, while the periphery remains as larger Gaussian grains. The mid-term idea is to layer this scope onto yesterday's depth-gate tunnel so that only information surfaces sharpen when passing through a gate while background splats smear coarsely. The long-term idea is to combine SuperSplat scans with HTMLTexture or HtmlTexture and place annotations in real-world spaces that become readable only on focus.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-02_gaussian_lod_scope.html" target="_blank" rel="noreferrer">Today's Gaussian LOD Scope sample</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas use cases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>SDF/MSDF の輪郭品質は fwidth だけでなく、実際に表示される UV 拡大率や距離に合わせて幅を変えると破綻が減ります。Gaussian Splatting 側は splat の個数だけでなく、ピッキング、LOD、ソート、ストリーミング、XR stereo 表示が制作上の詰まりどころです。HTML-in-Canvas 系は drawElementImage / texElementImage2D / copyElementImageToTexture のように『DOM を画像化して GPU 側へ渡す』発想なので、CSS の読みやすさと WebGL のポスト処理を両立できる一方、更新頻度とヒットテスト設計を最初から分けて考える必要があります。</p>
+          <p class="en-copy">For SDF/MSDF edges, adapting width to visible UV magnification and distance can reduce artifacts beyond a naive fwidth approach. For Gaussian Splatting, the production bottlenecks are not only splat count but also picking, LOD, sorting, streaming, and XR stereo rendering. HTML-in-Canvas APIs such as drawElementImage, texElementImage2D, and copyElementImageToTexture follow the pattern of snapshotting DOM into GPU-side textures, enabling readable CSS and WebGL post-processing together, but update frequency and hit testing should be designed separately from the start.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.3" target="_blank" rel="noreferrer">PlayCanvas v2.20.3 MSDF fix</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas proposal</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js GS streaming notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js r185 の具体的な変更一覧、Babylon.js の HtmlTexture 実例、PlayCanvas の GSplat AA / stereo XR / lodRange の実デモ、SuperSplat v2.28.x の更新内容を継続ウォッチします。特に『HTML 面を texture として貼る』だけでなく、点群・粒子・SDF 記号と同じ品質制御に入れている事例を拾いたいです。</p>
+          <p class="en-copy">Continue watching the detailed three.js r185 changes, Babylon.js HtmlTexture examples, PlayCanvas GSplat AA / stereo XR / lodRange demos, and SuperSplat v2.28.x updates. The priority is not merely cases that paste HTML as a texture, but examples that put HTML surfaces, splats, particles, and SDF symbols under the same quality-control model.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas engine releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases" target="_blank" rel="noreferrer">SuperSplat releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実 GSplat を読む前に『ガウス粒の粗密』と『SDF 輪郭のシャープさ』を同じパラメータで動かすことです。今回のサンプルはその最小形で、ポインタ付近だけ高精細、クリック中は半径拡張という入力を入れました。次に足すなら、昨日の gate tunnel の奥行き値でスコープ半径を変えるか、Web Audio のピークで周辺粒子を粗く弾ませるのが良いです。</p>
+          <p class="en-copy">If trying one thing today, drive Gaussian grain density and SDF edge sharpness with the same parameter before loading real GSplat assets. The sample is the minimal version: only the pointer region becomes high resolution, and pressing expands the scope. The next useful additions are changing scope radius from yesterday's gate-tunnel depth value or using Web Audio peaks to make peripheral grains pulse coarsely.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-02_gaussian_lod_scope.html" target="_blank" rel="noreferrer">Gaussian LOD Scope sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r185、Babylon.js 9.14.0、PlayCanvas v2.20.3、SuperSplat、WICG HTML-in-Canvas を確認。アイデア検討: 前回の foveated layer と depth gate を、Gaussian LOD / SDF edge quality へ接続。サンプル実装: Gaussian LOD Scope を追加し、ポインタ入力で品質領域を移動できるようにした。結果の検証: ローカル単体 HTML とギャラリー再生成で確認し、publish は外部 Pages リポジトリ側の権限に依存する。短期で試すものは SDF/ガウス粒の品質同期、中長期で育てるものは scan 空間 + HTML 注釈 + XR 視線中心の統合です。</p>
+          <p class="en-copy">Research: checked three.js r185, Babylon.js 9.14.0, PlayCanvas v2.20.3, SuperSplat, and WICG HTML-in-Canvas. Ideation: connected the previous foveated-layer and depth-gate thread to Gaussian LOD and SDF edge quality. Prototype: added Gaussian LOD Scope with pointer-controlled quality focus. Evaluation: verify through the standalone local HTML and rebuilt gallery; publishing depends on permissions for the external Pages repository. The short-term experiment is synchronized SDF/Gaussian quality, while the mid-to-long-term theme is scan spaces plus HTML annotations plus XR gaze focus.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-01_webgl_foveated_layer_field.html" target="_blank" rel="noreferrer">Previous sample thread</a></li>
+          
+            <li><a href="../outputs/2026-07-02_gaussian_lod_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、HTML/DOM を 3D に貼る話と、Gaussian Splatting をリアルタイム制作に入れる話が近づいていることです。組み合わせ候補としては、1. HTMLTexture + foveated shader、2. SuperSplat scan + SDF 注釈、3. GSplat LOD + Web Audio、4. depth gate + XR stereo splat が有望です。育てる価値が高いテーマは『情報の読みやすさを常時最大にしない』設計で、見る・近づく・通過する・音が立つときだけ解像度が上がる表現です。</p>
+          <p class="en-copy">The recent trend is convergence between rendering HTML/DOM into 3D and bringing Gaussian Splatting into real-time production. Promising combinations are: HTMLTexture plus foveated shaders, SuperSplat scans plus SDF annotations, GSplat LOD plus Web Audio, and depth gates plus XR stereo splats. The high-value theme is avoiding always-maximal readability: resolution rises only when looking, approaching, passing through, or when sound events occur.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat" target="_blank" rel="noreferrer">SuperSplat repository</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Gaussian LOD Scope です。ファイルは outputs/2026-07-02_gaussian_lod_scope.html。WebGL フラグメントシェーダーだけで、画面全体にガウス粒の場と SDF 記号を描き、ポインタ付近だけ細かい粒と細い輪郭に変わります。次に発展させるなら、実際の splat asset を読み込む前段として、奥行きゲート、音反応、視線入力のどれかを同じ LOD パラメータに接続します。</p>
+          <p class="en-copy">The chosen prototype is Gaussian LOD Scope. The file is outputs/2026-07-02_gaussian_lod_scope.html. It uses only a WebGL fragment shader to draw a full-screen Gaussian field and SDF symbol, making the pointer region sharper with finer grains and thinner edges. The next step is to connect the same LOD parameter to depth gates, audio reactivity, or gaze input before loading real splat assets.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-02_gaussian_lod_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.14.0" target="_blank" rel="noreferrer">Babylon.js 9.14.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.3" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.3 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat" target="_blank" rel="noreferrer">SuperSplat Editor repository</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas proposal</a></li>
+          
+            <li><a href="../outputs/2026-07-02_gaussian_lod_scope.html" target="_blank" rel="noreferrer">Today's sample: Gaussian LOD Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-02_gaussian_lod_scope.html" loading="lazy" title="Gaussian LOD Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
