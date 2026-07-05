@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSDF AA と HTML texture を可変解像度の情報膜へつなぐ | 2026-07-05</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.05</p>
+      <h1>MSDF AA と HTML texture を可変解像度の情報膜へつなぐ</h1>
+      <p class="hero-subtitle">Connecting MSDF AA and HTML textures to adaptive-resolution information membranes</p>
+      <p>今日は、three.js r185 の HTMLTexture/TSL 更新、Babylon.js 9.15.0 の WebGPU sRGB と tree-shaking 修正、PlayCanvas v2.20 系の HTML-in-Canvas/GSplat/MSDF 周辺、WICG HTML-in-Canvas、WebXR Layers を、前回までの焦点膜に接続しました。短期試作は、ポインタ近傍だけ疑似 MSDF 文字と粒子グリッドの解像度が上がる WebGL シェーダーです。</p>
+      <p class="en-copy">Today connects three.js r185 HTMLTexture/TSL updates, Babylon.js 9.15.0 WebGPU sRGB and tree-shaking fixes, PlayCanvas v2.20 work around HTML-in-Canvas, GSplat, and MSDF, WICG HTML-in-Canvas, and WebXR Layers to the recent focus-membrane thread. The short prototype is a WebGL shader where pseudo-MSDF letters and particle-grid resolution sharpen only near the pointer.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-05_adaptive_msdf_grain_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-04.html">← 2026.07.04</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Adaptive MSDF Grain Field</h3>
+              <p>ポインタ周辺だけ疑似 MSDF 文字と粒子グリッドの解像度が上がります。押している間は焦点領域が広がり、低解像度の膜から読める層へ変化します。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-05_adaptive_msdf_grain_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. 2026-07-05 時点で three.js の最新 release は r185 で、HTMLTexture が WICG HTML-in-Canvas の新しい API signature に追従し、TSL では storageTexture3D や textureGather 系も含まれます。2. Babylon.js 9.15.0 は WebGPU の WGSL exact sRGB conversion、OpenPBR fuzz、tree-shaking 後の side-effect 登録、geospatial/camera 操作の修正が中心です。3. PlayCanvas Engine v2.20.5 は GSplat octree asset unload と canvas getBoundingClientRect 不在時 crash の修正で、v2.20 系全体では HTML-in-Canvas texture upload、stereo XR 対応、foveated contribution culling、MSDF anti-aliasing 修正がつながっています。4. WICG HTML-in-Canvas は DOM/HTML を drawElementImage、texElementImage2D、copyElementImageToTexture で canvas/WebGL/WebGPU 側へ渡す提案として継続更新中です。5. WebXR Layers は WebGL/media layers を WebXR に露出する仕様で、HTML texture や焦点膜を XR 表示面へ分ける時の基礎になります。</p>
+          <p class="en-copy">1. As of 2026-07-05, the latest three.js release observed is r185; HTMLTexture follows newer WICG HTML-in-Canvas API signatures, and TSL includes items such as storageTexture3D and textureGather support. 2. Babylon.js 9.15.0 focuses on WebGPU WGSL exact sRGB conversion, OpenPBR fuzz, side-effect registration after tree shaking, and geospatial/camera-control fixes. 3. PlayCanvas Engine v2.20.5 fixes a GSplat octree asset unload crash and a canvas getBoundingClientRect crash; the broader v2.20 line connects HTML-in-Canvas texture upload, stereo XR, foveated contribution culling, and MSDF anti-aliasing fixes. 4. WICG HTML-in-Canvas continues as a proposal for sending DOM/HTML into canvas, WebGL, and WebGPU through drawElementImage, texElementImage2D, and copyElementImageToTexture. 5. WebXR Layers exposes WebGL and media layers for WebXR, which is foundational when separating HTML textures or focus membranes into XR display layers.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日面白いのは、PlayCanvas v2.20 系に HTML-in-Canvas texture upload、GSplat の foveated culling/stereo XR、MSDF anti-aliasing 修正が同じ流れとして見える点です。これは『読める文字』『重い splat 空間』『視線に近い場所だけ高品質化する描画』が別々ではなく、同じ品質配分問題として扱えることを示しています。three.js r185 の HTMLTexture と TSL storageTexture3D は、情報面を 2D の板ではなく、時間や奥行き方向に層を持つ素材へ拡張する入口になります。</p>
+          <p class="en-copy">The notable pattern today is that PlayCanvas v2.20 places HTML-in-Canvas texture upload, GSplat foveated culling/stereo XR, and MSDF anti-aliasing fixes in the same broader stream. This suggests readable text, heavy splat spaces, and gaze-near quality allocation can be treated as one quality-distribution problem rather than separate features. three.js r185 HTMLTexture and TSL storageTexture3D open the door to treating information surfaces not as flat 2D panels but as layered materials across time or depth.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.0" target="_blank" rel="noreferrer">PlayCanvas v2.20.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.3" target="_blank" rel="noreferrer">PlayCanvas v2.20.3 MSDF AA fix</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期では、前回の SDF Focus Splat Membrane を『可変 AA の文字膜』へ寄せるのが良いです。焦点近傍では文字の edge AA、粒子 cell size、scanline 密度を上げ、焦点外では情報を読めない質感に落とします。中期では、HTMLTexture 由来の注釈、MSDF 文字、GSplat の LOD/foveated culling を同じ focus field で結び、視線や手が近い場所だけ情報と空間の品質が同時に立ち上がる演出にできます。長期では、WebXR Layers で背景空間、情報膜、メディア面を分け、読みやすさと没入感をレイヤーごとに最適化する方向が育てられます。</p>
+          <p class="en-copy">In the short term, extend the previous SDF Focus Splat Membrane toward a variable-AA text membrane. Near focus, raise edge AA quality, particle cell density, and scanline density; outside focus, let the information fall back into an unreadable material texture. In the mid term, bind HTMLTexture annotations, MSDF text, and GSplat LOD/foveated culling through the same focus field so information and spatial quality rise together near gaze or hands. In the long term, WebXR Layers could separate background space, information membranes, and media planes, optimizing readability and immersion per layer.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-04_sdf_focus_splat_membrane.html" target="_blank" rel="noreferrer">Previous SDF focus sample</a></li>
+          
+            <li><a href="../outputs/2026-07-03_html_texture_refraction_surface.html" target="_blank" rel="noreferrer">Previous HTML texture sample</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers specification repo</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では focus を 0..1 の scalar field として持ち、文字の smoothstep 幅、粒子グリッドの cell size、texture mip/LOD、sRGB/linear 変換後の発色、post-process 強度へ配ると扱いやすいです。MSDF/SDF 文字は UV magnification と field gradient のどちらを AA 基準にするかで見え方が変わるため、焦点外の blur と焦点内の edge を別パラメータに分けておくと調整しやすいです。HTML-in-Canvas を使う場合は、DOM snapshot の paint/requestPaint、texElementImage2D/copyElementImageToTexture の転送頻度、DOM hit testing と描画位置同期を、描画品質とは別に測る必要があります。</p>
+          <p class="en-copy">Implementation-wise, keep focus as a 0..1 scalar field and distribute it to text smoothstep width, particle-grid cell size, texture mip/LOD, post-sRGB/linear color response, and post-process intensity. For MSDF/SDF text, the look changes depending on whether AA is driven by UV magnification or field gradient, so keep out-of-focus blur and in-focus edge sharpness as separate parameters. With HTML-in-Canvas, measure DOM snapshot paint/requestPaint behavior, texElementImage2D/copyElementImageToTexture transfer frequency, and synchronization between DOM hit testing and drawn placement separately from visual quality.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas explainer</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.3" target="_blank" rel="noreferrer">PlayCanvas v2.20.3 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0 release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件は three.js HTMLTexture/TSL、Babylon.js WebGPU sRGB/OpenPBR/tree-shaking、PlayCanvas GSplat/HTML-in-Canvas/MSDF、WICG HTML-in-Canvas、WebXR Layers です。新規案件としては、MSDF や文字 texture を XR Layers に載せた時の edge quality と depth composition を追いたいです。寝かせる案件は、通常のカード UI と重い XR アプリ雛形です。このプロジェクトでは、カードではなく shader、粒子、情報膜、焦点制御、音反応、GSplat/scan 表現に寄せます。</p>
+          <p class="en-copy">Continue watching three.js HTMLTexture/TSL, Babylon.js WebGPU sRGB/OpenPBR/tree-shaking, PlayCanvas GSplat/HTML-in-Canvas/MSDF, WICG HTML-in-Canvas, and WebXR Layers. A new watch item is edge quality and depth composition when MSDF or text textures are placed on XR Layers. Put ordinary card UI and heavy XR app scaffolds aside; this project should stay focused on shaders, particles, information membranes, focus control, audio reactivity, and GSplat/scan expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas engine releases</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">Immersive Web Layers</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、focus 値で文字 AA と粒子解像度を同時に変えることです。今回のサンプルは outputs/2026-07-05_adaptive_msdf_grain_field.html で、ポインタ周辺だけ疑似 MSDF 文字が読みやすくなり、粒子グリッドも細かくなります。押している間は焦点半径が広がるため、可読領域が層として展開します。次に足すなら、2026-07-03 の canvas texture を文字部分に流し込み、実 HTML/Canvas 情報面の AA と粒度を同じ focus で制御します。</p>
+          <p class="en-copy">If trying one thing today, drive text AA and particle resolution with the same focus value. Today's sample is outputs/2026-07-05_adaptive_msdf_grain_field.html: pseudo-MSDF letters become readable near the pointer while the particle grid becomes finer. Holding the pointer expands the focus radius, unfolding the readable region as a layer. The next step is to feed the 2026-07-03 canvas texture into the text region and control real HTML/canvas information AA and grain with the same focus.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-05_adaptive_msdf_grain_field.html" target="_blank" rel="noreferrer">Open today's sample</a></li>
+          
+            <li><a href="../outputs/2026-07-03_html_texture_refraction_surface.html" target="_blank" rel="noreferrer">Canvas texture refraction sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r185、Babylon.js 9.15.0、PlayCanvas v2.20.0-2.20.5、WICG HTML-in-Canvas、WebXR Layers を確認。アイデア検討: 2026-07-03 の HTML texture refraction と 2026-07-04 の SDF focus splat membrane を、可変 AA/可変解像度の情報膜として整理。サンプル実装: 単体 WebGL/GLSL で疑似 MSDF 文字、adaptive grain、焦点リング、押下時の焦点拡張を実装。結果の検証: JSON 保存後、gallery build と publish を実行する。短期で試すものは focus field による可読性配分、中長期で育てるものは実 HTMLTexture + GSplat LOD + XR Layers の分離表示です。</p>
+          <p class="en-copy">Research: checked three.js r185, Babylon.js 9.15.0, PlayCanvas v2.20.0-2.20.5, WICG HTML-in-Canvas, and WebXR Layers. Ideation: reframed the 2026-07-03 HTML texture refraction and 2026-07-04 SDF focus splat membrane samples as an adaptive-AA/adaptive-resolution information membrane. Prototype: implemented pseudo-MSDF letters, adaptive grain, focus ring, and press-to-expand focus in standalone WebGL/GLSL. Evaluation: after saving JSON, run gallery build and publish. The short-term experiment is readability allocation through a focus field; the mid-to-long-term theme is real HTMLTexture plus GSplat LOD plus separated XR Layers display.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-05_adaptive_msdf_grain_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="../outputs/2026-07-04_sdf_focus_splat_membrane.html" target="_blank" rel="noreferrer">Previous focus membrane</a></li>
+          
+            <li><a href="../outputs/2026-07-03_html_texture_refraction_surface.html" target="_blank" rel="noreferrer">Previous HTML texture surface</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は『情報を GPU 素材にする』から一段進んで、『限られた解像度と視線近傍の品質をどう配分するか』へ移っています。HTML-in-Canvas は素材化、Babylon.js の sRGB 修正は色の信頼性、PlayCanvas の GSplat/foveated/MSDF 修正は空間と文字の品質配分、WebXR Layers は表示面の分離に効きます。組み合わせ候補は、1. HTMLTexture + 可変 AA、2. MSDF text + focus field、3. GSplat foveated culling + readable membrane、4. WebXR Layers + 情報膜、5. 音反応 + 焦点半径。育てる価値が高いテーマは『読める品質を常時出さず、注意が向いた時だけ立ち上げる』ことです。</p>
+          <p class="en-copy">The recent trend is moving from turning information into GPU material toward deciding how limited resolution and near-gaze quality should be allocated. HTML-in-Canvas materializes information; Babylon.js sRGB fixes support color reliability; PlayCanvas GSplat/foveated/MSDF work supports quality allocation across space and text; WebXR Layers helps separate display surfaces. Promising combinations are: HTMLTexture plus variable AA, MSDF text plus focus fields, GSplat foveated culling plus readable membranes, WebXR Layers plus information membranes, and audio reactivity plus focus radius. The high-value theme is not rendering readable quality all the time, but raising it only when attention arrives.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.0" target="_blank" rel="noreferrer">PlayCanvas v2.20.0</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Adaptive MSDF Grain Field です。ファイルは outputs/2026-07-05_adaptive_msdf_grain_field.html。WebGL fragment shader だけで、疑似 MSDF 文字、粒子グリッド、scanline、焦点リングを描き、ポインタ周辺だけ文字の smoothstep 幅と粒子 cell size を細かくしています。次に発展させるなら、1. 2D canvas/HTML texture を実 texture として読み込む、2. Web Audio の peak で focus 半径を変える、3. GSplat/scan asset の LOD と同じ focus 値を共有する、4. XR Layers で情報膜と背景を分ける、の順が良いです。</p>
+          <p class="en-copy">The selected mini prototype is Adaptive MSDF Grain Field. The file is outputs/2026-07-05_adaptive_msdf_grain_field.html. A single WebGL fragment shader draws pseudo-MSDF letters, a particle grid, scanlines, and a focus ring, narrowing text smoothstep width and particle cell size only near the pointer. Next steps: load a 2D canvas/HTML texture as a real texture, modulate focus radius with Web Audio peaks, share the same focus value with GSplat/scan asset LOD, then separate the information membrane and background through XR Layers.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-05_adaptive_msdf_grain_field.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.5" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.5 release</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas proposal</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers repository</a></li>
+          
+            <li><a href="../outputs/2026-07-05_adaptive_msdf_grain_field.html" target="_blank" rel="noreferrer">Today's sample: Adaptive MSDF Grain Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-05_adaptive_msdf_grain_field.html" loading="lazy" title="Adaptive MSDF Grain Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

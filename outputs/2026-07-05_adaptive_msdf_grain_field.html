@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adaptive MSDF Grain Field</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #07090d;
+      color: #edf7f4;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: min(560px, calc(100vw - 36px));
+      pointer-events: none;
+      text-shadow: 0 1px 18px rgba(0, 0, 0, 0.58);
+    }
+
+    .hud h1 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .hud p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.55;
+      color: rgba(220, 236, 230, 0.82);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div class="hud">
+    <h1>Adaptive MSDF Grain Field</h1>
+    <p>ポインタ周辺だけ疑似 MSDF 文字と粒子グリッドの解像度が上がります。押している間は焦点領域が広がり、低解像度の膜から読める層へ変化します。</p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("view");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    if (!gl) {
+      document.body.innerHTML = "<p>WebGL is not available.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexShaderSource = `
+      attribute vec2 position;
+      varying vec2 vUv;
+
+      void main() {
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentShaderSource = `
+      precision highp float;
+
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pressed;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(127.1, 311.7));
+        p += dot(p, p + 19.19);
+        return fract(p.x * p.y);
+      }
+
+      float sdBox(vec2 p, vec2 b) {
+        vec2 d = abs(p) - b;
+        return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+      }
+
+      float stroke(vec2 p, vec2 a, vec2 b, float w, float aa) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        float d = length(pa - ba * h);
+        return 1.0 - smoothstep(w, w + aa, d);
+      }
+
+      float ring(vec2 p, float r, float w, float aa) {
+        return 1.0 - smoothstep(w, w + aa, abs(length(p) - r));
+      }
+
+      float glyphs(vec2 p, float aa) {
+        float g = 0.0;
+
+        vec2 a = p + vec2(0.55, 0.0);
+        g += stroke(a, vec2(-0.10, -0.18), vec2(0.00, 0.24), 0.017, aa);
+        g += stroke(a, vec2(0.10, -0.18), vec2(0.00, 0.24), 0.017, aa);
+        g += stroke(a, vec2(-0.055, -0.005), vec2(0.055, -0.005), 0.013, aa);
+
+        vec2 d = p + vec2(0.19, 0.0);
+        g += ring(d - vec2(0.00, 0.02), 0.15, 0.018, aa);
+        g *= 1.0 - 0.58 * (1.0 - smoothstep(0.03, 0.08, d.x));
+
+        vec2 p2 = p - vec2(0.19, 0.0);
+        g += stroke(p2, vec2(-0.08, -0.18), vec2(-0.08, 0.22), 0.017, aa);
+        g += stroke(p2, vec2(-0.08, 0.20), vec2(0.10, 0.20), 0.016, aa);
+        g += stroke(p2, vec2(0.10, 0.20), vec2(0.10, 0.03), 0.016, aa);
+        g += stroke(p2, vec2(-0.08, 0.03), vec2(0.10, 0.03), 0.016, aa);
+
+        vec2 t = p - vec2(0.55, 0.0);
+        g += stroke(t, vec2(-0.13, 0.22), vec2(0.13, 0.22), 0.017, aa);
+        g += stroke(t, vec2(0.00, 0.22), vec2(0.00, -0.18), 0.017, aa);
+
+        return clamp(g, 0.0, 1.0);
+      }
+
+      float adaptiveGrain(vec2 p, float focus) {
+        float cell = mix(0.105, 0.026, focus);
+        vec2 q = p / cell;
+        vec2 id = floor(q);
+        vec2 gv = fract(q) - 0.5;
+        float seed = hash(id);
+        vec2 drift = 0.18 * vec2(sin(time * 0.8 + seed * 9.0), cos(time * 0.7 + seed * 7.0));
+        float r = mix(0.045, 0.020, focus) * mix(0.65, 1.35, seed);
+        float d = length(gv - drift * focus);
+        return exp(-d * d / max(r * r, 0.0007));
+      }
+
+      void main() {
+        vec2 p = (vUv * 2.0 - 1.0) * vec2(resolution.x / resolution.y, 1.0);
+        vec2 m = (pointer * 2.0 - 1.0) * vec2(resolution.x / resolution.y, 1.0);
+
+        float focusRadius = mix(0.30, 0.54, pressed);
+        float focus = 1.0 - smoothstep(focusRadius, focusRadius + 0.30, distance(p, m));
+        float pulse = 0.5 + 0.5 * sin(time * 2.2);
+
+        vec2 warped = p;
+        warped.x += 0.05 * sin(p.y * 8.0 + time) * (1.0 - focus);
+        warped.y += 0.035 * cos(p.x * 7.0 - time * 0.8) * (1.0 - focus);
+
+        float localAa = mix(0.035, 0.0045, focus);
+        float text = glyphs(warped, localAa);
+        float textShadow = glyphs(warped + vec2(0.012, -0.014), localAa * 1.6);
+        float frame = 1.0 - smoothstep(0.010, 0.045, abs(sdBox(warped, vec2(0.86, 0.42))));
+        float scan = 0.5 + 0.5 * sin((warped.y + time * 0.045) * 94.0);
+        float grainA = adaptiveGrain(p + vec2(time * 0.018, 0.0), focus);
+        float grainB = adaptiveGrain(p * 1.65 - vec2(0.0, time * 0.026), focus * 0.85);
+        float iso = smoothstep(0.965, 1.0, sin((warped.x - warped.y) * mix(32.0, 116.0, focus)));
+
+        vec3 color = vec3(0.024, 0.030, 0.040);
+        color += vec3(0.04, 0.16, 0.18) * frame;
+        color += vec3(0.02, 0.07, 0.08) * scan * frame * (0.4 + focus);
+        color += vec3(0.12, 0.72, 0.76) * grainA * 0.23;
+        color += vec3(0.96, 0.52, 0.25) * grainB * 0.13;
+        color += vec3(0.12, 0.48, 0.42) * iso * focus;
+        color += vec3(0.00, 0.03, 0.04) * textShadow * (1.0 - focus);
+        color += mix(vec3(0.13, 0.30, 0.30), vec3(0.92, 0.98, 0.88), focus) * text;
+
+        float halo = exp(-distance(p, m) * distance(p, m) / 0.11);
+        float lens = ring(p - m, focusRadius + 0.015 * pulse, 0.004, 0.005);
+        color += vec3(0.08, 0.24, 0.23) * halo;
+        color += vec3(0.95, 0.72, 0.26) * lens;
+
+        float vignette = smoothstep(1.42, 0.22, length(p));
+        color *= 0.62 + 0.56 * vignette;
+        color = pow(color, vec3(0.92));
+
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexShaderSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentShaderSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    const resolution = gl.getUniformLocation(program, "resolution");
+    const pointer = gl.getUniformLocation(program, "pointer");
+    const time = gl.getUniformLocation(program, "time");
+    const pressed = gl.getUniformLocation(program, "pressed");
+
+    const state = {
+      pointerX: 0.52,
+      pointerY: 0.52,
+      targetX: 0.52,
+      targetY: 0.52,
+      pressed: 0
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(window.innerWidth * dpr);
+      const height = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function updatePointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.targetX = (event.clientX - rect.left) / rect.width;
+      state.targetY = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", updatePointer);
+    window.addEventListener("pointerdown", (event) => {
+      updatePointer(event);
+      state.pressed = 1;
+    });
+    window.addEventListener("pointerup", () => {
+      state.pressed = 0;
+    });
+    window.addEventListener("pointercancel", () => {
+      state.pressed = 0;
+    });
+
+    function render(now) {
+      resize();
+      state.pointerX += (state.targetX - state.pointerX) * 0.12;
+      state.pointerY += (state.targetY - state.pointerY) * 0.12;
+
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(resolution, canvas.width, canvas.height);
+      gl.uniform2f(pointer, state.pointerX, state.pointerY);
+      gl.uniform1f(time, now * 0.001);
+      gl.uniform1f(pressed, state.pressed);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+{
+  "date": "2026-07-05",
+  "headline": "MSDF AA と HTML texture を可変解像度の情報膜へつなぐ",
+  "headlineEn": "Connecting MSDF AA and HTML textures to adaptive-resolution information membranes",
+  "summary": "今日は、three.js r185 の HTMLTexture/TSL 更新、Babylon.js 9.15.0 の WebGPU sRGB と tree-shaking 修正、PlayCanvas v2.20 系の HTML-in-Canvas/GSplat/MSDF 周辺、WICG HTML-in-Canvas、WebXR Layers を、前回までの焦点膜に接続しました。短期試作は、ポインタ近傍だけ疑似 MSDF 文字と粒子グリッドの解像度が上がる WebGL シェーダーです。",
+  "summaryEn": "Today connects three.js r185 HTMLTexture/TSL updates, Babylon.js 9.15.0 WebGPU sRGB and tree-shaking fixes, PlayCanvas v2.20 work around HTML-in-Canvas, GSplat, and MSDF, WICG HTML-in-Canvas, and WebXR Layers to the recent focus-membrane thread. The short prototype is a WebGL shader where pseudo-MSDF letters and particle-grid resolution sharpen only near the pointer.",
+  "links": [
+    {
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.15.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.5 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.5"
+    },
+    {
+      "label": "WICG HTML-in-Canvas proposal",
+      "url": "https://github.com/WICG/html-in-canvas"
+    },
+    {
+      "label": "WebXR Layers repository",
+      "url": "https://github.com/immersive-web/layers"
+    },
+    {
+      "label": "Today's sample: Adaptive MSDF Grain Field",
+      "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. 2026-07-05 時点で three.js の最新 release は r185 で、HTMLTexture が WICG HTML-in-Canvas の新しい API signature に追従し、TSL では storageTexture3D や textureGather 系も含まれます。2. Babylon.js 9.15.0 は WebGPU の WGSL exact sRGB conversion、OpenPBR fuzz、tree-shaking 後の side-effect 登録、geospatial/camera 操作の修正が中心です。3. PlayCanvas Engine v2.20.5 は GSplat octree asset unload と canvas getBoundingClientRect 不在時 crash の修正で、v2.20 系全体では HTML-in-Canvas texture upload、stereo XR 対応、foveated contribution culling、MSDF anti-aliasing 修正がつながっています。4. WICG HTML-in-Canvas は DOM/HTML を drawElementImage、texElementImage2D、copyElementImageToTexture で canvas/WebGL/WebGPU 側へ渡す提案として継続更新中です。5. WebXR Layers は WebGL/media layers を WebXR に露出する仕様で、HTML texture や焦点膜を XR 表示面へ分ける時の基礎になります。",
+      "bodyEn": "1. As of 2026-07-05, the latest three.js release observed is r185; HTMLTexture follows newer WICG HTML-in-Canvas API signatures, and TSL includes items such as storageTexture3D and textureGather support. 2. Babylon.js 9.15.0 focuses on WebGPU WGSL exact sRGB conversion, OpenPBR fuzz, side-effect registration after tree shaking, and geospatial/camera-control fixes. 3. PlayCanvas Engine v2.20.5 fixes a GSplat octree asset unload crash and a canvas getBoundingClientRect crash; the broader v2.20 line connects HTML-in-Canvas texture upload, stereo XR, foveated contribution culling, and MSDF anti-aliasing fixes. 4. WICG HTML-in-Canvas continues as a proposal for sending DOM/HTML into canvas, WebGL, and WebGPU through drawElementImage, texElementImage2D, and copyElementImageToTexture. 5. WebXR Layers exposes WebGL and media layers for WebXR, which is foundational when separating HTML textures or focus membranes into XR display layers.",
+      "links": [
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.15.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "WebXR Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日面白いのは、PlayCanvas v2.20 系に HTML-in-Canvas texture upload、GSplat の foveated culling/stereo XR、MSDF anti-aliasing 修正が同じ流れとして見える点です。これは『読める文字』『重い splat 空間』『視線に近い場所だけ高品質化する描画』が別々ではなく、同じ品質配分問題として扱えることを示しています。three.js r185 の HTMLTexture と TSL storageTexture3D は、情報面を 2D の板ではなく、時間や奥行き方向に層を持つ素材へ拡張する入口になります。",
+      "bodyEn": "The notable pattern today is that PlayCanvas v2.20 places HTML-in-Canvas texture upload, GSplat foveated culling/stereo XR, and MSDF anti-aliasing fixes in the same broader stream. This suggests readable text, heavy splat spaces, and gaze-near quality allocation can be treated as one quality-distribution problem rather than separate features. three.js r185 HTMLTexture and TSL storageTexture3D open the door to treating information surfaces not as flat 2D panels but as layered materials across time or depth.",
+      "links": [
+        {
+          "label": "PlayCanvas v2.20.0 release notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.0"
+        },
+        {
+          "label": "PlayCanvas v2.20.3 MSDF AA fix",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.3"
+        },
+        {
+          "label": "three.js r185 release notes",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期では、前回の SDF Focus Splat Membrane を『可変 AA の文字膜』へ寄せるのが良いです。焦点近傍では文字の edge AA、粒子 cell size、scanline 密度を上げ、焦点外では情報を読めない質感に落とします。中期では、HTMLTexture 由来の注釈、MSDF 文字、GSplat の LOD/foveated culling を同じ focus field で結び、視線や手が近い場所だけ情報と空間の品質が同時に立ち上がる演出にできます。長期では、WebXR Layers で背景空間、情報膜、メディア面を分け、読みやすさと没入感をレイヤーごとに最適化する方向が育てられます。",
+      "bodyEn": "In the short term, extend the previous SDF Focus Splat Membrane toward a variable-AA text membrane. Near focus, raise edge AA quality, particle cell density, and scanline density; outside focus, let the information fall back into an unreadable material texture. In the mid term, bind HTMLTexture annotations, MSDF text, and GSplat LOD/foveated culling through the same focus field so information and spatial quality rise together near gaze or hands. In the long term, WebXR Layers could separate background space, information membranes, and media planes, optimizing readability and immersion per layer.",
+      "links": [
+        {
+          "label": "Previous SDF focus sample",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        },
+        {
+          "label": "Previous HTML texture sample",
+          "url": "../outputs/2026-07-03_html_texture_refraction_surface.html"
+        },
+        {
+          "label": "WebXR Layers specification repo",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では focus を 0..1 の scalar field として持ち、文字の smoothstep 幅、粒子グリッドの cell size、texture mip/LOD、sRGB/linear 変換後の発色、post-process 強度へ配ると扱いやすいです。MSDF/SDF 文字は UV magnification と field gradient のどちらを AA 基準にするかで見え方が変わるため、焦点外の blur と焦点内の edge を別パラメータに分けておくと調整しやすいです。HTML-in-Canvas を使う場合は、DOM snapshot の paint/requestPaint、texElementImage2D/copyElementImageToTexture の転送頻度、DOM hit testing と描画位置同期を、描画品質とは別に測る必要があります。",
+      "bodyEn": "Implementation-wise, keep focus as a 0..1 scalar field and distribute it to text smoothstep width, particle-grid cell size, texture mip/LOD, post-sRGB/linear color response, and post-process intensity. For MSDF/SDF text, the look changes depending on whether AA is driven by UV magnification or field gradient, so keep out-of-focus blur and in-focus edge sharpness as separate parameters. With HTML-in-Canvas, measure DOM snapshot paint/requestPaint behavior, texElementImage2D/copyElementImageToTexture transfer frequency, and synchronization between DOM hit testing and drawn placement separately from visual quality.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas explainer",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "PlayCanvas v2.20.3 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.3"
+        },
+        {
+          "label": "Babylon.js 9.15.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は three.js HTMLTexture/TSL、Babylon.js WebGPU sRGB/OpenPBR/tree-shaking、PlayCanvas GSplat/HTML-in-Canvas/MSDF、WICG HTML-in-Canvas、WebXR Layers です。新規案件としては、MSDF や文字 texture を XR Layers に載せた時の edge quality と depth composition を追いたいです。寝かせる案件は、通常のカード UI と重い XR アプリ雛形です。このプロジェクトでは、カードではなく shader、粒子、情報膜、焦点制御、音反応、GSplat/scan 表現に寄せます。",
+      "bodyEn": "Continue watching three.js HTMLTexture/TSL, Babylon.js WebGPU sRGB/OpenPBR/tree-shaking, PlayCanvas GSplat/HTML-in-Canvas/MSDF, WICG HTML-in-Canvas, and WebXR Layers. A new watch item is edge quality and depth composition when MSDF or text textures are placed on XR Layers. Put ordinary card UI and heavy XR app scaffolds aside; this project should stay focused on shaders, particles, information membranes, focus control, audio reactivity, and GSplat/scan expression.",
+      "links": [
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Immersive Web Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、focus 値で文字 AA と粒子解像度を同時に変えることです。今回のサンプルは outputs/2026-07-05_adaptive_msdf_grain_field.html で、ポインタ周辺だけ疑似 MSDF 文字が読みやすくなり、粒子グリッドも細かくなります。押している間は焦点半径が広がるため、可読領域が層として展開します。次に足すなら、2026-07-03 の canvas texture を文字部分に流し込み、実 HTML/Canvas 情報面の AA と粒度を同じ focus で制御します。",
+      "bodyEn": "If trying one thing today, drive text AA and particle resolution with the same focus value. Today's sample is outputs/2026-07-05_adaptive_msdf_grain_field.html: pseudo-MSDF letters become readable near the pointer while the particle grid becomes finer. Holding the pointer expands the focus radius, unfolding the readable region as a layer. The next step is to feed the 2026-07-03 canvas texture into the text region and control real HTML/canvas information AA and grain with the same focus.",
+      "links": [
+        {
+          "label": "Open today's sample",
+          "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+        },
+        {
+          "label": "Canvas texture refraction sample",
+          "url": "../outputs/2026-07-03_html_texture_refraction_surface.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r185、Babylon.js 9.15.0、PlayCanvas v2.20.0-2.20.5、WICG HTML-in-Canvas、WebXR Layers を確認。アイデア検討: 2026-07-03 の HTML texture refraction と 2026-07-04 の SDF focus splat membrane を、可変 AA/可変解像度の情報膜として整理。サンプル実装: 単体 WebGL/GLSL で疑似 MSDF 文字、adaptive grain、焦点リング、押下時の焦点拡張を実装。結果の検証: JSON 保存後、gallery build と publish を実行する。短期で試すものは focus field による可読性配分、中長期で育てるものは実 HTMLTexture + GSplat LOD + XR Layers の分離表示です。",
+      "bodyEn": "Research: checked three.js r185, Babylon.js 9.15.0, PlayCanvas v2.20.0-2.20.5, WICG HTML-in-Canvas, and WebXR Layers. Ideation: reframed the 2026-07-03 HTML texture refraction and 2026-07-04 SDF focus splat membrane samples as an adaptive-AA/adaptive-resolution information membrane. Prototype: implemented pseudo-MSDF letters, adaptive grain, focus ring, and press-to-expand focus in standalone WebGL/GLSL. Evaluation: after saving JSON, run gallery build and publish. The short-term experiment is readability allocation through a focus field; the mid-to-long-term theme is real HTMLTexture plus GSplat LOD plus separated XR Layers display.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+        },
+        {
+          "label": "Previous focus membrane",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        },
+        {
+          "label": "Previous HTML texture surface",
+          "url": "../outputs/2026-07-03_html_texture_refraction_surface.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は『情報を GPU 素材にする』から一段進んで、『限られた解像度と視線近傍の品質をどう配分するか』へ移っています。HTML-in-Canvas は素材化、Babylon.js の sRGB 修正は色の信頼性、PlayCanvas の GSplat/foveated/MSDF 修正は空間と文字の品質配分、WebXR Layers は表示面の分離に効きます。組み合わせ候補は、1. HTMLTexture + 可変 AA、2. MSDF text + focus field、3. GSplat foveated culling + readable membrane、4. WebXR Layers + 情報膜、5. 音反応 + 焦点半径。育てる価値が高いテーマは『読める品質を常時出さず、注意が向いた時だけ立ち上げる』ことです。",
+      "bodyEn": "The recent trend is moving from turning information into GPU material toward deciding how limited resolution and near-gaze quality should be allocated. HTML-in-Canvas materializes information; Babylon.js sRGB fixes support color reliability; PlayCanvas GSplat/foveated/MSDF work supports quality allocation across space and text; WebXR Layers helps separate display surfaces. Promising combinations are: HTMLTexture plus variable AA, MSDF text plus focus fields, GSplat foveated culling plus readable membranes, WebXR Layers plus information membranes, and audio reactivity plus focus radius. The high-value theme is not rendering readable quality all the time, but raising it only when attention arrives.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "PlayCanvas v2.20.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.0"
+        },
+        {
+          "label": "WebXR Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Adaptive MSDF Grain Field です。ファイルは outputs/2026-07-05_adaptive_msdf_grain_field.html。WebGL fragment shader だけで、疑似 MSDF 文字、粒子グリッド、scanline、焦点リングを描き、ポインタ周辺だけ文字の smoothstep 幅と粒子 cell size を細かくしています。次に発展させるなら、1. 2D canvas/HTML texture を実 texture として読み込む、2. Web Audio の peak で focus 半径を変える、3. GSplat/scan asset の LOD と同じ focus 値を共有する、4. XR Layers で情報膜と背景を分ける、の順が良いです。",
+      "bodyEn": "The selected mini prototype is Adaptive MSDF Grain Field. The file is outputs/2026-07-05_adaptive_msdf_grain_field.html. A single WebGL fragment shader draws pseudo-MSDF letters, a particle grid, scanlines, and a focus ring, narrowing text smoothstep width and particle cell size only near the pointer. Next steps: load a 2D canvas/HTML texture as a real texture, modulate focus radius with Web Audio peaks, share the same focus value with GSplat/scan asset LOD, then separate the information membrane and background through XR Layers.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+        }
+      ]
+    }
+  ]
+}
