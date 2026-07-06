@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Splat Diagnostic Lens</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #061018;
+      color: #e9f8ff;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      bottom: 16px;
+      max-width: min(520px, calc(100vw - 36px));
+      padding: 0;
+      pointer-events: none;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.75);
+    }
+
+    .hud h1 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .hud p {
+      margin: 0;
+      color: rgba(225, 242, 255, 0.78);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <h1>Splat Diagnostic Lens</h1>
+    <p>Move the pointer to reveal coverage rings, blur scores, and needle-like artifacts. Hold/click to widen the inspection field.</p>
+  </div>
+
+  <script type="x-shader/x-vertex" id="vertexShader">
+    attribute vec2 position;
+    varying vec2 vUv;
+
+    void main() {
+      vUv = position * 0.5 + 0.5;
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script type="x-shader/x-fragment" id="fragmentShader">
+    precision highp float;
+
+    uniform vec2 uResolution;
+    uniform vec2 uPointer;
+    uniform float uTime;
+    uniform float uPress;
+    varying vec2 vUv;
+
+    float hash21(vec2 p) {
+      p = fract(p * vec2(123.34, 456.21));
+      p += dot(p, p + 45.32);
+      return fract(p.x * p.y);
+    }
+
+    vec2 hash22(vec2 p) {
+      return vec2(hash21(p), hash21(p + 17.23));
+    }
+
+    float gaussian(vec2 p, vec2 c, vec2 axis, float scale, float needle) {
+      vec2 q = p - c;
+      float a = atan(axis.y, axis.x);
+      float ca = cos(a);
+      float sa = sin(a);
+      vec2 r = mat2(ca, -sa, sa, ca) * q;
+      vec2 e = vec2(scale * mix(0.35, 0.11, needle), scale * mix(0.36, 1.25, needle));
+      return exp(-dot(r / e, r / e));
+    }
+
+    float ring(vec2 p, vec2 c, float radius, float width) {
+      float d = abs(length(p - c) - radius);
+      return 1.0 - smoothstep(width * 0.4, width, d);
+    }
+
+    void main() {
+      vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
+      vec2 pointer = (uPointer * uResolution - 0.5 * uResolution) / uResolution.y;
+      float t = uTime;
+
+      vec3 col = vec3(0.015, 0.045, 0.068);
+      col += 0.035 * vec3(0.1, 0.45, 0.7) * (uv.y + 0.8);
+
+      float lensRadius = mix(0.18, 0.34, uPress);
+      float distToPointer = length(uv - pointer);
+      float lens = 1.0 - smoothstep(lensRadius, lensRadius + 0.18, distToPointer);
+      float inner = 1.0 - smoothstep(lensRadius * 0.48, lensRadius, distToPointer);
+
+      float coverage = 0.0;
+      float artifact = 0.0;
+      float visibleEnergy = 0.0;
+
+      for (int y = -8; y <= 8; y++) {
+        for (int x = -13; x <= 13; x++) {
+          vec2 cell = vec2(float(x), float(y));
+          vec2 rnd = hash22(cell);
+          vec2 c = cell * vec2(0.095, 0.092);
+          c += (rnd - 0.5) * 0.06;
+          c.x += 0.06 * sin(t * 0.35 + c.y * 7.0);
+          c.y += 0.035 * cos(t * 0.28 + c.x * 8.0);
+
+          float local = hash21(cell + 3.1);
+          float needle = smoothstep(0.72, 0.97, local + 0.18 * sin(t + local * 9.0));
+          float blur = smoothstep(0.2, 0.92, hash21(cell + 41.0));
+          float scale = mix(0.027, 0.052, blur);
+          vec2 axis = normalize(vec2(rnd.x - 0.5, rnd.y - 0.5) + vec2(0.001, 0.01));
+
+          float g = gaussian(uv, c, axis, scale, needle);
+          float pDist = length(c - pointer);
+          float selected = 1.0 - smoothstep(lensRadius * 0.82, lensRadius * 1.25, pDist);
+          float baseAlpha = mix(0.08, 0.58, lens * selected);
+
+          vec3 base = mix(vec3(0.17, 0.36, 0.48), vec3(0.85, 0.36, 0.22), needle);
+          base = mix(base, vec3(0.94, 0.78, 0.34), blur * selected * lens);
+          col += base * g * baseAlpha;
+
+          float halo = gaussian(uv, c, axis, scale * 1.9, needle);
+          col += vec3(0.15, 0.62, 0.92) * halo * selected * lens * 0.08;
+
+          coverage += selected * smoothstep(0.08, 0.75, 1.0 - pDist / max(lensRadius, 0.001));
+          artifact += selected * (needle * 0.65 + blur * 0.35);
+          visibleEnergy += selected;
+        }
+      }
+
+      float cov = coverage / max(visibleEnergy, 1.0);
+      float art = artifact / max(visibleEnergy, 1.0);
+
+      vec2 gridUv = uv * vec2(7.0, 5.0);
+      vec2 grid = abs(fract(gridUv) - 0.5);
+      float gridLine = 1.0 - smoothstep(0.012, 0.02, min(grid.x, grid.y));
+      col += vec3(0.08, 0.34, 0.48) * gridLine * (0.12 + lens * 0.22);
+
+      float scan = sin((uv.y + 0.13 * sin(uv.x * 4.0)) * 110.0 - t * 4.0);
+      col += vec3(0.02, 0.18, 0.24) * smoothstep(0.86, 1.0, scan) * (0.35 + lens);
+
+      float lensEdge = ring(uv, pointer, lensRadius, 0.012);
+      float lensMid = ring(uv, pointer, lensRadius * 0.55, 0.008);
+      float lensInner = ring(uv, pointer, lensRadius * 0.25, 0.006);
+      col += vec3(0.35, 0.88, 1.0) * lensEdge * 0.85;
+      col += vec3(0.95, 0.75, 0.28) * lensMid * (0.32 + cov);
+      col += vec3(1.0, 0.28, 0.18) * lensInner * art;
+
+      float barX = smoothstep(-0.62, -0.60, uv.x) * (1.0 - smoothstep(-0.28, -0.26, uv.x));
+      float covBar = barX * smoothstep(-0.78, -0.76, uv.y) * (1.0 - smoothstep(-0.78 + cov * 0.34, -0.76 + cov * 0.34, uv.y));
+      float artBar = barX * smoothstep(-0.78, -0.76, uv.y) * (1.0 - smoothstep(-0.78 + art * 0.34, -0.76 + art * 0.34, uv.y));
+      col += vec3(0.18, 0.78, 1.0) * covBar * lens;
+      col += vec3(1.0, 0.32, 0.18) * artBar * lens * 0.85;
+
+      col = mix(col, col + vec3(0.08, 0.03, 0.0), inner * art * 0.55);
+      col *= 0.92 + 0.16 * smoothstep(0.95, -0.15, length(uv));
+      col = pow(col, vec3(0.92));
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true });
+    const pointer = { x: 0.52, y: 0.54, pressed: 0 };
+
+    if (!gl) {
+      document.body.innerHTML = "WebGL is not available in this browser.";
+      throw new Error("WebGL unavailable");
+    }
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, document.getElementById("vertexShader").textContent));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, document.getElementById("fragmentShader").textContent));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1,
+      -1, 1, 1, -1, 1, 1
+    ]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "uResolution"),
+      pointer: gl.getUniformLocation(program, "uPointer"),
+      time: gl.getUniformLocation(program, "uTime"),
+      press: gl.getUniformLocation(program, "uPress")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(window.innerWidth * dpr);
+      const h = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function updatePointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = (event.clientX - rect.left) / rect.width;
+      pointer.y = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("pointermove", updatePointer);
+    window.addEventListener("pointerdown", (event) => {
+      updatePointer(event);
+      pointer.pressed = 1;
+    });
+    window.addEventListener("pointerup", () => {
+      pointer.pressed = 0;
+    });
+    window.addEventListener("resize", resize);
+
+    const start = performance.now();
+    function frame(now) {
+      resize();
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, (now - start) * 0.001);
+      gl.uniform1f(uniforms.press, pointer.pressed);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
