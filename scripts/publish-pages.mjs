@@ -129,11 +129,15 @@ async function main() {
   await run("git", ["commit", "-m", `Publish daily update ${stamp}`], targetDir);
   const token = await runCapture("gh", ["auth", "token"], targetDir);
   const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
-  await run(
-    "git",
-    ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`, "push", "origin", "main"],
-    targetDir
-  );
+  const gitPushArgs = ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`];
+
+  try {
+    await run("git", [...gitPushArgs, "push", "origin", "main"], targetDir);
+  } catch (error) {
+    await run("git", [...gitPushArgs, "fetch", "origin", "main"], targetDir);
+    await run("git", ["rebase", "origin/main"], targetDir);
+    await run("git", [...gitPushArgs, "push", "origin", "main"], targetDir);
+  }
 }
 
 main().catch((error) => {
