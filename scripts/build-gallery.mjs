@@ -190,7 +190,7 @@ function renderListPage(days, currentPage, totalPages, basePath, totalItems) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebGL / XR Daily Samples</title>
+  <title>WebGL / Shader Daily Samples</title>
   <style>
     :root {
       --bg0: #07111a;
@@ -447,7 +447,7 @@ function renderListPage(days, currentPage, totalPages, basePath, totalItems) {
 <body>
   <main class="shell">
     <section class="hero">
-      <h1>WebGL / XR Daily Samples</h1>
+      <h1>WebGL / Shader Daily Samples</h1>
       <p>
         各日付のカードから、その日の内容ページへ進める構成に変えています。
         サンプル単体ではなく、日ごとのまとまりを見やすくし、件数が増えたらページ送りで辿れるようにしています。

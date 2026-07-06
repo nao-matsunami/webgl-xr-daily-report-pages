@@ -19,6 +19,24 @@ async function ensureDir(targetPath) {
   await fs.mkdir(targetPath, { recursive: true });
 }
 
+async function copyRecursive(from, to) {
+  const stat = await fs.lstat(from);
+
+  if (stat.isDirectory()) {
+    await ensureDir(to);
+    const entries = await fs.readdir(from, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === ".git") continue;
+      if (entry.name === "node_modules") continue;
+      await copyRecursive(path.join(from, entry.name), path.join(to, entry.name));
+    }
+    return;
+  }
+
+  await ensureDir(path.dirname(to));
+  await fs.copyFile(from, to);
+}
+
 async function emptyTargetDir(targetPath) {
   const entries = await fs.readdir(targetPath, { withFileTypes: true });
   for (const entry of entries) {
@@ -39,11 +57,7 @@ async function copyProject() {
     const from = path.join(sourceDir, entry.name);
     const to = path.join(targetDir, entry.name);
 
-    if (entry.isDirectory()) {
-      await fs.cp(from, to, { recursive: true });
-    } else {
-      await fs.copyFile(from, to);
-    }
+    await copyRecursive(from, to);
   }
 }
 

@@ -1,6 +1,6 @@
-# WebGL / XR Daily Samples
+# WebGL / Shader Daily Samples
 
-毎日の WebGL / GLSL / three.js / PlayCanvas / Babylon.js / XR / AR / VR リサーチから生成したサンプルを蓄積し、GitHub Pages で公開するための最小構成です。
+毎日の WebGL / GLSL / three.js / PlayCanvas / Babylon.js リサーチから生成したサンプルを蓄積し、GitHub Pages で公開するための最小構成です。役割は `シェーダー / WebGL / 視覚表現` 寄りのデイリー実験集です。
 
 ## 含まれるもの
 
