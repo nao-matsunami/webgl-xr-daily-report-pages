@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スプラット診断から視点予測ストリーミングへ | 2026-07-07</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.07</p>
+      <h1>スプラット診断から視点予測ストリーミングへ</h1>
+      <p class="hero-subtitle">From splat diagnostics to viewport-predicted streaming</p>
+      <p>今日は、three.js r185、Babylon.js 9.15.0、PlayCanvas Engine v2.20.5、SuperSplat v2.28.1、WICG HTML-in-Canvas、WebXR Layers に加え、WebGPU 3DGS 系の Visionary / WebSplatter / GSStream を確認しました。昨日の splat diagnostic lens を、視点予測と品質配分の演出へつなぎ、単体 WebGL サンプルを追加しました。</p>
+      <p class="en-copy">Today checks three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.5, SuperSplat v2.28.1, WICG HTML-in-Canvas, WebXR Layers, and WebGPU 3DGS work including Visionary, WebSplatter, and GSStream. It extends yesterday's splat diagnostic lens toward viewport prediction and quality allocation, with a new standalone WebGL sample.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-07_viewport_splat_stream_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-06.html">← 2026.07.06</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Viewport Splat Stream Field</h3>
+              <p>ポインタ周辺を「将来の視点」と見なし、近い領域ほど高ビットレートの splat、外側ほど粗い stream chunk として描き分けます。押している間は予測半径が広がります。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-07_viewport_splat_stream_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は 2026-07-07 時点でも r185 が最新として表示され、HTMLTexture は WICG HTML-in-Canvas の新しい signature 追従、TSL/WebGPU 側では storageTexture3D、textureGather、WebXR support などが制作上の注目点です。2. Babylon.js 9.15.0 は WebGPU の exact sRGB 変換、OpenPBR Fuzz、tree-shaking 後の PostProcess/loader/material side-effect 登録修正が中心で、色・材質・ビルド最適化後の破綻を減らす方向です。3. PlayCanvas Engine v2.20.5 は canvas の getBoundingClientRect 不在時クラッシュ修正と、gsplat octree streaming world の unload 周りの修正が入り、v2.20 系の GSplat stereo XR / foveated culling / HTML-in-Canvas texture upload / MSDF AA の流れが継続しています。4. SuperSplat v2.28.1 は wheel zoom 判定、ライブ言語切替、HTML/SOG export の修正で、編集・書き出し導線が実制作寄りに固まっています。5. Visionary、WebSplatter、GSStream は、Web 上の 3DGS が単なる viewer から、GPU sorting、opacity-aware culling、viewport prediction、per-frame generation/inference を含む配信・生成基盤へ広がっていることを示しています。</p>
+          <p class="en-copy">1. As of 2026-07-07, three.js r185 is still shown as the latest release; HTMLTexture follows newer WICG HTML-in-Canvas signatures, while TSL/WebGPU additions such as storageTexture3D, textureGather, and WebXR support matter for production experiments. 2. Babylon.js 9.15.0 focuses on exact sRGB conversion in WebGPU, OpenPBR Fuzz fixes, and side-effect registration fixes after tree shaking for post processes, loaders, and materials. 3. PlayCanvas Engine v2.20.5 fixes crashes around missing canvas getBoundingClientRect and gsplat octree unloading in the streaming world, continuing the v2.20 line of GSplat stereo XR, foveated culling, HTML-in-Canvas texture upload, and MSDF AA work. 4. SuperSplat v2.28.1 improves wheel zoom classification, live language switching, and HTML/SOG export, tightening the edit/export path. 5. Visionary, WebSplatter, and GSStream show that web 3DGS is moving from viewers toward delivery and generation platforms with GPU sorting, opacity-aware culling, viewport prediction, and per-frame generation/inference.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.5" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.5</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.28.1" target="_blank" rel="noreferrer">SuperSplat v2.28.1</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2512.08478" target="_blank" rel="noreferrer">Visionary</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2602.03207" target="_blank" rel="noreferrer">WebSplatter</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は GSStream と PlayCanvas の gsplat streaming world 修正の接続です。前者は volumetric scene の視点履歴や協調的な viewport prediction を使って配信品質を変える発想、後者は実エンジン側で octree asset の unload と instance 管理のような足回りを詰めています。表現として面白いのは、ネットワーク都合や LOD を見えない最適化にせず、観客が向かいそうな場所だけ粒子が濃く、周縁は粗い chunk として残る演出にできる点です。昨日の診断レンズが artifact の理由を見せるものなら、今日の方向は『これから見られる場所に空間が先回りして固まる』演出です。</p>
+          <p class="en-copy">The notable connection today is between GSStream and PlayCanvas fixes around the gsplat streaming world. GSStream varies delivery quality from volumetric-scene viewport histories and collaborative viewport prediction, while PlayCanvas is tightening engine-level details such as octree asset unloading and instance management. The expressive point is to stop treating network and LOD behavior as invisible optimization: the area a viewer is likely to approach can become dense, while peripheral space remains visible as coarse chunks. If yesterday's diagnostic lens revealed why artifacts happen, today's direction makes space solidify in advance where attention is likely to arrive.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.5" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.5</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期では、ポインタや視線を future viewport と見なし、その周辺だけ高密度 splat、細かい grid、scanline を出す。押下時は予測半径が広がり、空間が先に読み込まれるように見せる。中期では、WebSplatter 的な opacity-aware culling を演出値に変え、透明度が低い粒子や見込みの薄い chunk をあえて薄い輪郭で残す。長期では、Visionary の Gaussian Generator 的な考え方を使い、音や入力から毎フレーム splat を生成・更新し、HTMLTexture 注釈は HTML-in-Canvas 経由で『読めるレイヤー』として重ねる。</p>
+          <p class="en-copy">Short term: treat pointer or gaze as a future viewport, and render dense splats, fine grids, and scanlines only around it. While pressed, expand the prediction radius so the space seems to preload ahead of attention. Mid term: turn WebSplatter-like opacity-aware culling into an expressive value, leaving low-opacity particles or unlikely chunks as faint outlines instead of discarding them entirely. Long term: use a Visionary-style Gaussian Generator idea to generate or update splats every frame from audio or input, while HTMLTexture annotations become readable layers through HTML-in-Canvas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://arxiv.org/abs/2602.03207" target="_blank" rel="noreferrer">WebSplatter</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2512.08478" target="_blank" rel="noreferrer">Visionary</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装上は、focus field に加えて prediction field を 0..1 scalar として持つと扱いやすいです。prediction は pointer/gaze の現在位置だけでなく、速度ベクトルから少し先を中心にし、そこへ bitrate、splat density、attribute texture lookup 頻度、HTMLTexture 更新頻度を寄せます。WebGL の最小試作なら fragment shader 内で priority = 1 - smoothstep(inner, outer, distanceToPredictedView) とし、priority で粒子の量子化幅、halo、grid 密度を変えるだけで挙動が見えます。実データでは octree node 単位に priority と age を持たせると、GSStream 的な配信と SuperSplat 的な編集状態を同じ UI で扱えます。</p>
+          <p class="en-copy">Implementation-wise, add a prediction field scalar alongside the focus field. Compute prediction not only from pointer/gaze position but also from a velocity-projected point, then bias bitrate, splat density, attribute texture lookup frequency, and HTMLTexture update frequency toward that area. In a minimal WebGL prototype, use priority = 1 - smoothstep(inner, outer, distanceToPredictedView) in the fragment shader and drive particle quantization width, halos, and grid density from that priority. With real data, attach priority and age to octree nodes so GSStream-like delivery and SuperSplat-like edit state can share one UI.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-07_viewport_splat_stream_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat" target="_blank" rel="noreferrer">SuperSplat</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件は three.js HTMLTexture/WebGPU/WebXR、Babylon.js WebGPU color/material、PlayCanvas GSplat streaming/foveated/MSDF、SuperSplat の編集・書き出し、WICG HTML-in-Canvas、WebXR Layers です。新規案件は WebGPU 3DGS の GPU sorting、opacity-aware culling、viewport prediction、per-frame Gaussian generation です。寝かせる案件はカード UI、通常の管理画面、重い XR アプリ雛形、完全な 3DGS loader 実装です。明日は、prediction field と昨日の diagnostic field を重ね、『予測された場所だけ artifact 診断が先に浮く』方向を試す価値があります。</p>
+          <p class="en-copy">Continue watching three.js HTMLTexture/WebGPU/WebXR, Babylon.js WebGPU color/material work, PlayCanvas GSplat streaming/foveated/MSDF updates, SuperSplat editing/export, WICG HTML-in-Canvas, and WebXR Layers. New watch items are WebGPU 3DGS GPU sorting, opacity-aware culling, viewport prediction, and per-frame Gaussian generation. Put card UI, ordinary admin screens, heavy XR scaffolds, and a full 3DGS loader aside. Tomorrow, it is worth combining the prediction field with yesterday's diagnostic field so artifact diagnostics appear early only where attention is predicted to move.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、視点予測をローディング UI ではなく shader の表現パラメータにすることです。追加した outputs/2026-07-07_viewport_splat_stream_field.html は、ポインタ周辺を future viewport として扱い、近い領域ほど splat が細かく、遠い領域ほど粗い stream chunk と grid になります。押している間は予測半径が広がります。次に足すなら、ポインタ速度から半径中心を少し先へずらし、音量ピークで chunk age をリセットすると、視線・移動・音が同じ品質配分に乗ります。</p>
+          <p class="en-copy">If trying one thing today, make viewport prediction a shader expression parameter instead of a loading UI. The added outputs/2026-07-07_viewport_splat_stream_field.html treats the pointer neighborhood as a future viewport: nearby areas become finer splats, while distant areas become coarse stream chunks and grids. Holding/clicking expands the prediction radius. Next, shift the radius center ahead using pointer velocity, and reset chunk age on audio peaks so gaze, movement, and sound ride the same quality allocation.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-07_viewport_splat_stream_field.html" target="_blank" rel="noreferrer">Open today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r185、Babylon.js 9.15.0、PlayCanvas v2.20.5、SuperSplat v2.28.1、WICG HTML-in-Canvas、WebXR Layers、Visionary、WebSplatter、GSStream を確認。アイデア検討: 2026-07-04 の SDF focus、2026-07-05 の adaptive MSDF、2026-07-06 の splat diagnostic lens を、視点予測と streaming priority に接続。サンプル実装: 単体 WebGL/GLSL で predicted viewport、coarse/fine chunk、splat density、押下時の prediction radius 拡張を実装。結果の検証: JSON 保存後に upsert/build/publish を実行。短期で試すものは prediction field shader、中長期で育てるものは実 GSplat octree priority + HTMLTexture 注釈 + XR Layers 分離表示です。</p>
+          <p class="en-copy">Research: checked three.js r185, Babylon.js 9.15.0, PlayCanvas v2.20.5, SuperSplat v2.28.1, WICG HTML-in-Canvas, WebXR Layers, Visionary, WebSplatter, and GSStream. Ideation: connected the July 4 SDF focus, July 5 adaptive MSDF, and July 6 splat diagnostic lens to viewport prediction and streaming priority. Prototype: implemented predicted viewport, coarse/fine chunks, splat density, and press-expanded prediction radius in standalone WebGL/GLSL. Evaluation: after saving JSON, run upsert/build/publish. The short-term experiment is a prediction-field shader; the mid-to-long-term theme is real GSplat octree priority plus HTMLTexture annotations plus separated XR Layers display.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-07_viewport_splat_stream_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="../outputs/2026-07-06_splat_diagnostic_lens.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、1. DOM/HTML を GPU texture として扱う、2. focus/foveation で品質を局所化する、3. splat artifact を診断対象にする、4. viewport prediction で未来の視点へ配信を寄せる、という順でつながっています。組み合わせ候補は、prediction field + diagnostic lens、HTML-in-Canvas annotation + splat attribute texture、opacity-aware culling + 音反応、WebXR Layers + foveated GSplat、SuperSplat edit history + shader time trail です。育てる価値が高いテーマは『空間が視線より少し先に生成・修復・注釈される』表現で、これは WebGL の小さな shader でも検証できます。</p>
+          <p class="en-copy">The recent trend connects in this order: using DOM/HTML as GPU textures, localizing quality with focus/foveation, treating splat artifacts as diagnostic material, and using viewport prediction to bias delivery toward future attention. Promising combinations are prediction field plus diagnostic lens, HTML-in-Canvas annotations plus splat attribute textures, opacity-aware culling plus audio reactivity, WebXR Layers plus foveated GSplat, and SuperSplat edit history plus shader time trails. The theme worth growing is space being generated, repaired, and annotated slightly ahead of the viewer's gaze, which can already be tested with small WebGL shaders.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Viewport Splat Stream Field です。ファイルは outputs/2026-07-07_viewport_splat_stream_field.html。WebGL fragment shader だけで疑似 Gaussian splat field を描き、ポインタ周辺を予測視点として高密度化し、外側を粗い stream chunk として見せます。押下中は予測半径が広がります。次に発展させるなら、1. ポインタ速度から予測中心を先読み、2. Web Audio peak で chunk pulse を同期、3. 実 SuperSplat/PLY の octree node priority に置き換え、4. HTMLTexture 注釈を prediction field 内だけ更新、の順が良いです。</p>
+          <p class="en-copy">The selected mini prototype is Viewport Splat Stream Field. The file is outputs/2026-07-07_viewport_splat_stream_field.html. A single WebGL fragment shader draws a pseudo Gaussian splat field, increases density around the pointer as a predicted viewport, and leaves the periphery as coarse stream chunks. Holding/clicking expands the prediction radius. Next steps: predict the center from pointer velocity, sync chunk pulses to Web Audio peaks, replace the pseudo field with real SuperSplat/PLY octree node priority, and update HTMLTexture annotations only inside the prediction field.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-07_viewport_splat_stream_field.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.5" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.5</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.28.1" target="_blank" rel="noreferrer">SuperSplat v2.28.1</a></li>
+          
+            <li><a href="https://github.com/WICG/html-in-canvas" target="_blank" rel="noreferrer">WICG HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/immersive-web/layers" target="_blank" rel="noreferrer">WebXR Layers</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2512.08478" target="_blank" rel="noreferrer">Visionary: WebGPU Gaussian Splatting Platform</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2602.03207" target="_blank" rel="noreferrer">WebSplatter</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+            <li><a href="../outputs/2026-07-07_viewport_splat_stream_field.html" target="_blank" rel="noreferrer">Today's sample: Viewport Splat Stream Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-07_viewport_splat_stream_field.html" loading="lazy" title="Viewport Splat Stream Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
