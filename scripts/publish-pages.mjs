@@ -2,9 +2,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { Buffer } from "node:buffer";
+import { fileURLToPath } from "node:url";
 
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(scriptDir, "..");
 const sourceDir = "/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report";
 const targetDir = "/Users/nao/Documents/Codex/webgl-xr-daily-report-pages";
+const pagesRepoName = "webgl-xr-daily-report-pages";
 
 async function pathExists(targetPath) {
   try {
@@ -100,7 +104,64 @@ function runCapture(command, args, cwd) {
   });
 }
 
+async function isGitRepo(dir) {
+  return pathExists(path.join(dir, ".git"));
+}
+
+async function isPagesRepo(dir) {
+  if (!(await isGitRepo(dir))) return false;
+
+  try {
+    const remote = await runCapture("git", ["remote", "get-url", "origin"], dir);
+    return remote.includes(pagesRepoName);
+  } catch {
+    return false;
+  }
+}
+
+async function hasStagedChanges(dir) {
+  try {
+    await run("git", ["diff", "--cached", "--quiet"], dir);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+async function pushWithGhToken(dir) {
+  const token = await runCapture("gh", ["auth", "token"], dir);
+  const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
+  const gitPushArgs = ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`];
+
+  try {
+    await run("git", [...gitPushArgs, "push", "origin", "main"], dir);
+  } catch (error) {
+    await run("git", [...gitPushArgs, "fetch", "origin", "main"], dir);
+    await run("git", ["rebase", "origin/main"], dir);
+    await run("git", [...gitPushArgs, "push", "origin", "main"], dir);
+  }
+}
+
+async function publishCurrentPagesRepo() {
+  await run("node", ["scripts/build-gallery.mjs"], rootDir);
+  await run("git", ["add", "."], rootDir);
+
+  if (!(await hasStagedChanges(rootDir))) {
+    console.log("No changes to publish.");
+    return;
+  }
+
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  await run("git", ["commit", "-m", `Publish daily update ${stamp}`], rootDir);
+  await pushWithGhToken(rootDir);
+}
+
 async function main() {
+  if (await isPagesRepo(rootDir)) {
+    await publishCurrentPagesRepo();
+    return;
+  }
+
   const hasGit = await pathExists(path.join(targetDir, ".git"));
   if (!hasGit) {
     throw new Error(
@@ -112,32 +173,14 @@ async function main() {
   await copyProject();
   await run("git", ["add", "."], targetDir);
 
-  let hasChanges = true;
-  try {
-    await run("git", ["diff", "--cached", "--quiet"], targetDir);
-    hasChanges = false;
-  } catch {
-    hasChanges = true;
-  }
-
-  if (!hasChanges) {
+  if (!(await hasStagedChanges(targetDir))) {
     console.log("No changes to publish.");
     return;
   }
 
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
   await run("git", ["commit", "-m", `Publish daily update ${stamp}`], targetDir);
-  const token = await runCapture("gh", ["auth", "token"], targetDir);
-  const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
-  const gitPushArgs = ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`];
-
-  try {
-    await run("git", [...gitPushArgs, "push", "origin", "main"], targetDir);
-  } catch (error) {
-    await run("git", [...gitPushArgs, "fetch", "origin", "main"], targetDir);
-    await run("git", ["rebase", "origin/main"], targetDir);
-    await run("git", [...gitPushArgs, "push", "origin", "main"], targetDir);
-  }
+  await pushWithGhToken(targetDir);
 }
 
 main().catch((error) => {

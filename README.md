@@ -39,8 +39,12 @@ GitHub Pages 公開用リポジトリへ反映する場合:
 npm run publish:pages
 ```
 
-このコマンドは、親ディレクトリの `webgl-xr-daily-report-pages` リポジトリへ内容を同期し、
-差分があれば commit / push します。
+このコマンドは次のどちらかで動きます。
+
+- `webgl-xr-daily-report-pages` の clone 内で実行した場合、その場で `npm run build:gallery` 相当の再生成を行い、差分があれば commit / push します。
+- 旧来の作業元ディレクトリで実行した場合、親ディレクトリの `webgl-xr-daily-report-pages` リポジトリへ内容を同期し、差分があれば commit / push します。
+
+Codex の sandbox が `/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report` に書き込めない場合は、Pages repo の clone を更新対象にしてください。
 
 ## 毎朝の自動レポートをサイトへ反映する
 
