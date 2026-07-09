@@ -6,9 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptDir, "..");
-const sourceDir = "/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report";
-const targetDir = "/Users/nao/Documents/Codex/webgl-xr-daily-report-pages";
-const pagesRepoName = "webgl-xr-daily-report-pages";
+const configPath = path.join(rootDir, "pages.config.json");
 
 async function pathExists(targetPath) {
   try {
@@ -21,48 +19,6 @@ async function pathExists(targetPath) {
 
 async function ensureDir(targetPath) {
   await fs.mkdir(targetPath, { recursive: true });
-}
-
-async function copyRecursive(from, to) {
-  const stat = await fs.lstat(from);
-
-  if (stat.isDirectory()) {
-    await ensureDir(to);
-    const entries = await fs.readdir(from, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name === ".git") continue;
-      if (entry.name === "node_modules") continue;
-      await copyRecursive(path.join(from, entry.name), path.join(to, entry.name));
-    }
-    return;
-  }
-
-  await ensureDir(path.dirname(to));
-  await fs.copyFile(from, to);
-}
-
-async function emptyTargetDir(targetPath) {
-  const entries = await fs.readdir(targetPath, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.name === ".git") continue;
-    await fs.rm(path.join(targetPath, entry.name), { recursive: true, force: true });
-  }
-}
-
-async function copyProject() {
-  await ensureDir(targetDir);
-  await emptyTargetDir(targetDir);
-
-  const entries = await fs.readdir(sourceDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.name === ".git") continue;
-    if (entry.name === "node_modules") continue;
-
-    const from = path.join(sourceDir, entry.name);
-    const to = path.join(targetDir, entry.name);
-
-    await copyRecursive(from, to);
-  }
 }
 
 function run(command, args, cwd) {
@@ -104,83 +60,135 @@ function runCapture(command, args, cwd) {
   });
 }
 
-async function isGitRepo(dir) {
-  return pathExists(path.join(dir, ".git"));
+async function loadConfig() {
+  const raw = JSON.parse(await fs.readFile(configPath, "utf8"));
+
+  if (typeof raw.pagesRepoUrl !== "string" || !raw.pagesRepoUrl.trim()) {
+    throw new Error(`Invalid pagesRepoUrl in ${configPath}`);
+  }
+
+  return {
+    pagesRepoUrl: raw.pagesRepoUrl,
+    pagesCloneDir:
+      typeof raw.pagesCloneDir === "string" && raw.pagesCloneDir.trim()
+        ? raw.pagesCloneDir
+        : ".pages-repo"
+  };
 }
 
-async function isPagesRepo(dir) {
-  if (!(await isGitRepo(dir))) return false;
+function normalizeGitUrl(url) {
+  return String(url || "")
+    .trim()
+    .replace(/\.git$/, "")
+    .replace(/^git@github\.com:/, "https://github.com/")
+    .replace(/^http:\/\//, "https://");
+}
 
+async function getOriginUrl(cwd) {
   try {
-    const remote = await runCapture("git", ["remote", "get-url", "origin"], dir);
-    return remote.includes(pagesRepoName);
+    return await runCapture("git", ["config", "--get", "remote.origin.url"], cwd);
   } catch {
-    return false;
+    return "";
   }
 }
 
-async function hasStagedChanges(dir) {
-  try {
-    await run("git", ["diff", "--cached", "--quiet"], dir);
-    return false;
-  } catch {
-    return true;
+async function copyRecursive(from, to, skipNames) {
+  const stat = await fs.lstat(from);
+
+  if (stat.isDirectory()) {
+    await ensureDir(to);
+    const entries = await fs.readdir(from, { withFileTypes: true });
+    for (const entry of entries) {
+      if (skipNames.has(entry.name)) continue;
+      await copyRecursive(path.join(from, entry.name), path.join(to, entry.name), skipNames);
+    }
+    return;
+  }
+
+  await ensureDir(path.dirname(to));
+  await fs.copyFile(from, to);
+}
+
+async function emptyTargetDir(targetPath, skipNames) {
+  const entries = await fs.readdir(targetPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (skipNames.has(entry.name)) continue;
+    await fs.rm(path.join(targetPath, entry.name), { recursive: true, force: true });
   }
 }
 
-async function pushWithGhToken(dir) {
-  const token = await runCapture("gh", ["auth", "token"], dir);
+async function ensurePagesClone(targetDir, repoUrl) {
+  const hasGit = await pathExists(path.join(targetDir, ".git"));
+  if (hasGit) return;
+
+  await ensureDir(path.dirname(targetDir));
+  await run("git", ["clone", repoUrl, targetDir], rootDir);
+}
+
+async function copyProject(sourceDir, targetDir) {
+  const skipSourceNames = new Set([".git", "node_modules", ".pages-repo"]);
+  const skipTargetNames = new Set([".git"]);
+
+  await ensureDir(targetDir);
+  await emptyTargetDir(targetDir, skipTargetNames);
+
+  const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (skipSourceNames.has(entry.name)) continue;
+
+    const from = path.join(sourceDir, entry.name);
+    const to = path.join(targetDir, entry.name);
+
+    await copyRecursive(from, to, skipSourceNames);
+  }
+}
+
+async function publishInPlace(repoDir) {
+  await run("node", ["scripts/build-gallery.mjs"], repoDir);
+  await run("git", ["add", "."], repoDir);
+
+  let hasChanges = true;
+  try {
+    await run("git", ["diff", "--cached", "--quiet"], repoDir);
+    hasChanges = false;
+  } catch {
+    hasChanges = true;
+  }
+
+  if (!hasChanges) {
+    console.log("No changes to publish.");
+    return;
+  }
+
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  await run("git", ["commit", "-m", `Publish daily update ${stamp}`], repoDir);
+  const token = await runCapture("gh", ["auth", "token"], repoDir);
   const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
   const gitPushArgs = ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`];
 
   try {
-    await run("git", [...gitPushArgs, "push", "origin", "main"], dir);
-  } catch (error) {
-    await run("git", [...gitPushArgs, "fetch", "origin", "main"], dir);
-    await run("git", ["rebase", "origin/main"], dir);
-    await run("git", [...gitPushArgs, "push", "origin", "main"], dir);
+    await run("git", [...gitPushArgs, "push", "origin", "main"], repoDir);
+  } catch {
+    await run("git", [...gitPushArgs, "fetch", "origin", "main"], repoDir);
+    await run("git", ["rebase", "origin/main"], repoDir);
+    await run("git", [...gitPushArgs, "push", "origin", "main"], repoDir);
   }
-}
-
-async function publishCurrentPagesRepo() {
-  await run("node", ["scripts/build-gallery.mjs"], rootDir);
-  await run("git", ["add", "."], rootDir);
-
-  if (!(await hasStagedChanges(rootDir))) {
-    console.log("No changes to publish.");
-    return;
-  }
-
-  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-  await run("git", ["commit", "-m", `Publish daily update ${stamp}`], rootDir);
-  await pushWithGhToken(rootDir);
 }
 
 async function main() {
-  if (await isPagesRepo(rootDir)) {
-    await publishCurrentPagesRepo();
+  const { pagesRepoUrl, pagesCloneDir } = await loadConfig();
+  const currentOriginUrl = normalizeGitUrl(await getOriginUrl(rootDir));
+  const configuredOriginUrl = normalizeGitUrl(pagesRepoUrl);
+
+  if (currentOriginUrl && currentOriginUrl === configuredOriginUrl) {
+    await publishInPlace(rootDir);
     return;
   }
 
-  const hasGit = await pathExists(path.join(targetDir, ".git"));
-  if (!hasGit) {
-    throw new Error(
-      `Publish target is not a git repository: ${targetDir}\n` +
-      "Create or clone the GitHub Pages repo there first."
-    );
-  }
-
-  await copyProject();
-  await run("git", ["add", "."], targetDir);
-
-  if (!(await hasStagedChanges(targetDir))) {
-    console.log("No changes to publish.");
-    return;
-  }
-
-  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-  await run("git", ["commit", "-m", `Publish daily update ${stamp}`], targetDir);
-  await pushWithGhToken(targetDir);
+  const targetDir = path.resolve(rootDir, pagesCloneDir);
+  await ensurePagesClone(targetDir, pagesRepoUrl);
+  await copyProject(rootDir, targetDir);
+  await publishInPlace(targetDir);
 }
 
 main().catch((error) => {

@@ -39,12 +39,16 @@ GitHub Pages 公開用リポジトリへ反映する場合:
 npm run publish:pages
 ```
 
-このコマンドは次のどちらかで動きます。
+このコマンドは `pages.config.json` を参照し、`writable workspace` 内の Pages repo clone を更新対象として扱います。
 
-- `webgl-xr-daily-report-pages` の clone 内で実行した場合、その場で `npm run build:gallery` 相当の再生成を行い、差分があれば commit / push します。
-- 旧来の作業元ディレクトリで実行した場合、親ディレクトリの `webgl-xr-daily-report-pages` リポジトリへ内容を同期し、差分があれば commit / push します。
+- source repo 側で実行した場合
+  - `pagesCloneDir` に Pages repo clone が無ければ自動で clone
+  - source repo の内容を clone 側へ同期
+  - clone 側で `build:gallery`、`git add`、`commit`、`push`
+- Pages repo clone 側で実行した場合
+  - その場で `build:gallery`、`git add`、`commit`、`push`
 
-Codex の sandbox が `/Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report` に書き込めない場合は、Pages repo の clone を更新対象にしてください。
+hardcoded な外部パスへのコピーには依存しません。
 
 ## 毎朝の自動レポートをサイトへ反映する
 
@@ -67,6 +71,27 @@ cat /tmp/report.json | node scripts/upsert-report.mjs --stdin --publish
 3. GitHub Pages 公開用リポジトリへ push
 
 日次 automation 側でこの形式の JSON を出せるようにしておけば、毎朝のレポート公開まで一気通しで進められます。
+
+## Pages repo clone の設定
+
+公開先 repo は `pages.config.json` で指定します。
+
+```json
+{
+  "pagesRepoUrl": "https://github.com/nao-matsunami/webgl-xr-daily-report-pages.git",
+  "pagesCloneDir": ".pages-repo"
+}
+```
+
+標準では、source repo の直下に `.pages-repo/` を作り、そこを publish 対象として使います。
+
+初回 clone だけ先に明示したい場合:
+
+```bash
+git clone https://github.com/nao-matsunami/webgl-xr-daily-report-pages.git .pages-repo
+```
+
+source repo が sandbox 制約で書き込みづらい場合は、`.pages-repo/` 側へ直接 `reports/YYYY-MM-DD.json` と `outputs/YYYY-MM-DD_*.html` を追加し、そのディレクトリで `npm run publish:pages` を実行してください。
 
 ## サイト構成
 
@@ -100,29 +125,9 @@ cat /tmp/report.json | node scripts/upsert-report.mjs --stdin --publish
 }
 ```
 
-## GitHub Pages で公開する手順
+## GitHub Pages で公開する前提
 
-この実行環境では `.git` の新規作成権限がないため、ローカルで Git 初期化までは行っていません。
-GitHub で始める場合は、手元でこのフォルダを Git リポジトリに取り込み、GitHub に push してください。
-
-例:
-
-```bash
-cd /Users/nao/Documents/Codex/2026-06-10/webgl-xr-daily-report
-git init -b main
-git add .
-git commit -m "Initial gallery site"
-git remote add origin <YOUR_GITHUB_REPO_URL>
-git push -u origin main
-```
-
-その後 GitHub 側で:
-
-1. リポジトリの `Settings`
-2. `Pages`
-3. `Build and deployment` の `Source` を `GitHub Actions` に設定
-
-これで `.github/workflows/deploy-pages.yml` が使われ、push ごとに Pages が更新されます。
+公開用 repo には GitHub Pages workflow が入っている前提です。publish 後は Pages repo 側の `push` を起点にデプロイされます。
 
 ## 好きボタンについて
 
