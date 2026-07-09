@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 21</span>
+        <span>days: 23</span>
         <span>page: 1 / 2</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -293,6 +293,52 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-09">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.09</p>
+              <h2>SOG streaming cache と linear palette の安定化</h2>
+              <p class="card-subtitle">Stabilizing SOG streaming caches and linear palettes</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-09" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-09 時点で three.js は r185、Babylon.js は 9.15.0、PlayCanvas Engine は v2.20.6、SuperSplat は v2.29.0 が GitHub Releases 上の最新として確認できました。今日は PlayCanvas Engine v2.20.6 の SOG unload/cache、gsplat picking、linear palette 修正を中心に、streaming asset の lifecycle を見える表現へ変換しました。</p>
+          <p class="description en-copy">As of 2026-07-09, GitHub Releases show three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 as the latest releases. Today's focus is PlayCanvas Engine v2.20.6: SOG unload/cache handling, gsplat picking, and linear palette fixes, translated into a visible streaming asset lifecycle.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-09.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-09_linear_palette_sog_cache.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
+        <article class="card" data-slug="2026-07-08">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.08</p>
+              <h2>SuperSplat v2.29.0 と編集タイムラインの視錐台化</h2>
+              <p class="card-subtitle">SuperSplat v2.29.0 and frustum-shaped edit timelines</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-08" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">SuperSplat v2.29.0 の 360 equirectangular export、SPZ export、timeline loop、camera info overlay、frustum-aware selection を中心に、splat 編集を単なるビューア操作ではなく、視錐台に沿う時間編集として扱う方向へ整理しました。単体 WebGL サンプルとして SOG Timeline Frustum Field を追加しました。</p>
+          <p class="description en-copy">This entry focuses on SuperSplat v2.29.0: 360 equirectangular export, SPZ export, timeline loop controls, camera info overlays, and frustum-aware selection. It reframes splat editing as time-based work along the camera frustum, and adds the standalone WebGL sample SOG Timeline Frustum Field.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-08.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-08_sog_timeline_frustum_field.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-07">
           <div class="card-top">
             <div>
@@ -519,52 +565,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-06-28.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-06-28_audio_ribbon_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-06-27">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.06.27</p>
-              <h2>Audio Interference Scope</h2>
-              
-            </div>
-            <button class="like-button" type="button" data-slug="2026-06-27" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">音入力から複数の波形レイヤーを作り、位相差と周波数差で干渉させる最小サンプルです。 低域で大きな揺れ、中域で分裂、高域で干渉ノイズと発光を強めます。</p>
-          
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">audio</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-06-27.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-06-27_audio_interference_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-06-26">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.06.26</p>
-              <h2>Audio Scope Breakup</h2>
-              
-            </div>
-            <button class="like-button" type="button" data-slug="2026-06-26" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">音入力でオシロスコープ風の波形線が崩れる最小サンプルです。 低域で大きな揺れ、中域で線の分裂、高域でノイズと RGB ずれを強めます。</p>
-          
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">audio</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-06-26.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-06-26_audio_scope_breakup.html">代表サンプル / Sample</a>
           </div>
         </article>
       

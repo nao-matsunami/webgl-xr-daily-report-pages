@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOG streaming cache と linear palette の安定化 | 2026-07-09</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.09</p>
+      <h1>SOG streaming cache と linear palette の安定化</h1>
+      <p class="hero-subtitle">Stabilizing SOG streaming caches and linear palettes</p>
+      <p>2026-07-09 時点で three.js は r185、Babylon.js は 9.15.0、PlayCanvas Engine は v2.20.6、SuperSplat は v2.29.0 が GitHub Releases 上の最新として確認できました。今日は PlayCanvas Engine v2.20.6 の SOG unload/cache、gsplat picking、linear palette 修正を中心に、streaming asset の lifecycle を見える表現へ変換しました。</p>
+      <p class="en-copy">As of 2026-07-09, GitHub Releases show three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 as the latest releases. Today's focus is PlayCanvas Engine v2.20.6: SOG unload/cache handling, gsplat picking, and linear palette fixes, translated into a visible streaming asset lifecycle.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-09_linear_palette_sog_cache.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-08.html">← 2026.07.08</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Linear Palette SOG Cache</h3>
+              <p>PlayCanvas Engine v2.20.6 の linear palette、SOG unload/cache 修正、gsplat picking 安定化を、破棄済み texture が戻らない cache heatmap として描く単体 WebGL サンプルです。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-09_linear_palette_sog_cache.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>PlayCanvas Engine v2.20.6 は、gsplat component detach 時の crash、Windows/NVIDIA での gsplat picking による GPU device hang、unified world が参照している SOG asset unload、SOG bundle の mid-load unload、destroyed texture が loader cache から戻る問題などを修正しています。加えて markup text color を linear space の vertex palette として保持する修正が入り、色空間と asset lifecycle の両方が安定化しています。</p>
+          <p class="en-copy">PlayCanvas Engine v2.20.6 fixes crashes around gsplat component detach, GPU device hangs when picking gsplats on Windows/NVIDIA, SOG asset unloads while still referenced by the unified world, mid-load unload behavior in SOG bundle parsing, and destroyed textures returning from the loader cache. It also stores markup text colors as linear-space vertex palettes, tightening both color handling and asset lifecycle behavior.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6 release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>今日の面白さは、cache の不正な再利用や unload 中 asset の扱いを、単なるバグ修正ではなく visual state として見られる点です。streaming された SOG/GSplat は、読み込み済み、選択中、破棄待ち、再ロード中、stale などの状態を持ちます。これを shader 側で heatmap、scanline、border、stale red として描くと、デバッグ UI と作品表現の境目が近づきます。</p>
+          <p class="en-copy">The interesting point is that cache reuse and unloading behavior can become visual state, not just bug-fix territory. A streamed SOG/GSplat asset can be loaded, selected, pending disposal, reloading, or stale. Mapping those states to shader heatmaps, scanlines, borders, and stale red highlights brings debugging UI closer to visual expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-09_linear_palette_sog_cache.html" target="_blank" rel="noreferrer">Open today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では、asset cache key と GPU texture handle の lifecycle を分けて考えるのが重要です。node cache は再利用できても、texture が destroyed なら render path へ戻してはいけません。表現側では、cache slot ごとに active、age、stale、reloadPulse を持ち、linear palette で色を作ると WebGPU/WebGL 間の見え方を揃えやすくなります。</p>
+          <p class="en-copy">Implementation-wise, separate the asset cache key lifecycle from the GPU texture handle lifecycle. A node cache entry may be reusable, but a destroyed texture must not re-enter the render path. For expression, keep active, age, stale, and reloadPulse per cache slot, and derive color through a linear palette to keep WebGPU/WebGL appearance more consistent.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-09_linear_palette_sog_cache.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>次に見る対象は PlayCanvas の SOG/GSplat unified world、SuperSplat の SPZ/SOG export、three.js r185 の HTMLTexture と WebGPU/TSL、Babylon.js 9.15.0 の WebGPU exact sRGB と OpenPBR Fuzz です。特に、HTML-in-Canvas annotation と GSplat cache state を重ね、読める UI レイヤーが streaming state に応じて更新頻度を変える方向が有望です。</p>
+          <p class="en-copy">Next watch items are PlayCanvas SOG/GSplat unified world work, SuperSplat SPZ/SOG export, three.js r185 HTMLTexture and WebGPU/TSL, and Babylon.js 9.15.0 WebGPU exact sRGB plus OpenPBR Fuzz. A promising direction is to layer HTML-in-Canvas annotations over GSplat cache state, letting readable UI layers change update frequency based on streaming state.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases" target="_blank" rel="noreferrer">SuperSplat releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Linear Palette SOG Cache です。ファイルは outputs/2026-07-09_linear_palette_sog_cache.html。cache slot、stream lane、picking focus、stale texture の状態を単体 WebGL shader で表現します。次に発展させるなら、実 SOG bundle の node id と loader state を texture 化して同じ shader に渡します。</p>
+          <p class="en-copy">The selected mini prototype is Linear Palette SOG Cache, stored at outputs/2026-07-09_linear_palette_sog_cache.html. It expresses cache slots, stream lanes, picking focus, and stale texture state in a standalone WebGL shader. Next, encode real SOG bundle node IDs and loader state into textures and feed them into the same shader.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-09_linear_palette_sog_cache.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0" target="_blank" rel="noreferrer">Babylon.js 9.15.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0 release</a></li>
+          
+            <li><a href="../outputs/2026-07-09_linear_palette_sog_cache.html" target="_blank" rel="noreferrer">Today's sample: Linear Palette SOG Cache</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-09_linear_palette_sog_cache.html" loading="lazy" title="Linear Palette SOG Cache"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

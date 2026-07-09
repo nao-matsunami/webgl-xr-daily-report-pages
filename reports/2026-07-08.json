@@ -1,0 +1,87 @@
+{
+  "date": "2026-07-08",
+  "headline": "SuperSplat v2.29.0 と編集タイムラインの視錐台化",
+  "headlineEn": "SuperSplat v2.29.0 and frustum-shaped edit timelines",
+  "summary": "SuperSplat v2.29.0 の 360 equirectangular export、SPZ export、timeline loop、camera info overlay、frustum-aware selection を中心に、splat 編集を単なるビューア操作ではなく、視錐台に沿う時間編集として扱う方向へ整理しました。単体 WebGL サンプルとして SOG Timeline Frustum Field を追加しました。",
+  "summaryEn": "This entry focuses on SuperSplat v2.29.0: 360 equirectangular export, SPZ export, timeline loop controls, camera info overlays, and frustum-aware selection. It reframes splat editing as time-based work along the camera frustum, and adds the standalone WebGL sample SOG Timeline Frustum Field.",
+  "links": [
+    {
+      "label": "SuperSplat v2.29.0 release",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "Today's sample: SOG Timeline Frustum Field",
+      "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "SuperSplat v2.29.0 は、360 equirectangular video/image export、SPZ export、timeline loop、camera info overlay、timeline key の上書き、FOV auto-dolly の扱い、selection shader の修正など、編集と書き出しの両側を強く更新しています。特に volume select が camera frustum 外の splat を無視する修正は、選択範囲を画面上の矩形ではなく、カメラから伸びる編集ボリュームとして捉え直すきっかけになります。",
+      "bodyEn": "SuperSplat v2.29.0 strengthens both editing and export: 360 equirectangular video/image export, SPZ export, timeline looping, camera information overlays, timeline key overwrite actions, FOV handling, and selection shader fixes. The volume selection fix that ignores splats outside the camera frustum is especially useful as a creative cue: selection can be treated as an editing volume extending from the camera instead of a flat screen rectangle.",
+      "links": [
+        {
+          "label": "SuperSplat v2.29.0 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "今日の試作では、カメラ位置からターゲットへ伸びる視錐台の中だけ splat が鮮明になり、外側は編集履歴の ghost として残るようにしました。timeline の scrub は splat の age として使い、keyframe が通過した場所だけ粒子密度が上がる演出にしています。360 書き出しの文脈では、画面中央だけを高品質にするのではなく、次に公開される全天球フレームの視線誘導を事前に描く使い方ができます。",
+      "bodyEn": "The prototype makes splats sharpen only inside the frustum running from camera to target, while out-of-frustum splats remain as edit-history ghosts. Timeline scrubbing becomes splat age, increasing particle density where keyframes pass. In a 360 export context, this suggests a way to paint attention cues for the next published equirectangular frame instead of simply improving the center of the current screen.",
+      "links": [
+        {
+          "label": "Open today's sample",
+          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では、selection、camera path、export frame を同じ frustum field で扱うと整理しやすいです。各 splat または octree node に inFrustum、selectionWeight、timelineAge を持たせ、render、edit、export の優先順位を共有します。WebGL の小さな試作なら、fragment shader 内で camera point、target point、frustum direction を作り、dot と横方向距離だけで frustum mask を作れます。",
+      "bodyEn": "A practical structure is to drive selection, camera path, and export frames from one frustum field. Store inFrustum, selectionWeight, and timelineAge on each splat or octree node so rendering, editing, and export share priority. In a small WebGL sketch, a camera point, target point, dot products, and lateral distance are enough to build a convincing frustum mask in the fragment shader.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続して見る対象は SuperSplat の SPZ/SOG export、PlayCanvas Engine の gsplat streaming と SOG asset lifecycle、three.js HTMLTexture/WebGPU、Babylon.js WebGPU color/material 周りです。次は、編集タイムラインの frustum field と PlayCanvas 側の streaming cache 修正をつなぎ、破棄済み texture や unload 中 asset が表現上どう見えるべきかを試します。",
+      "bodyEn": "Continue watching SuperSplat SPZ/SOG export, PlayCanvas Engine gsplat streaming and SOG asset lifecycles, three.js HTMLTexture/WebGPU, and Babylon.js WebGPU color/material work. Next, connect the frustum-field editing timeline to PlayCanvas streaming cache fixes and test how destroyed textures or unloading assets should appear as visual states.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は SOG Timeline Frustum Field です。ファイルは outputs/2026-07-08_sog_timeline_frustum_field.html。視錐台、timeline scrub、selection ring、ghost splat を WebGL fragment shader だけで描きます。次の発展は、実 camera key の配列を渡して frustum を複数重ねることです。",
+      "bodyEn": "The selected mini prototype is SOG Timeline Frustum Field, stored at outputs/2026-07-08_sog_timeline_frustum_field.html. It draws a frustum, timeline scrub, selection ring, and ghost splats with a single WebGL fragment shader. The next step is to pass real camera-key arrays and layer multiple frustums.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+        }
+      ]
+    }
+  ]
+}

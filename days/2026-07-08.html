@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperSplat v2.29.0 と編集タイムラインの視錐台化 | 2026-07-08</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.08</p>
+      <h1>SuperSplat v2.29.0 と編集タイムラインの視錐台化</h1>
+      <p class="hero-subtitle">SuperSplat v2.29.0 and frustum-shaped edit timelines</p>
+      <p>SuperSplat v2.29.0 の 360 equirectangular export、SPZ export、timeline loop、camera info overlay、frustum-aware selection を中心に、splat 編集を単なるビューア操作ではなく、視錐台に沿う時間編集として扱う方向へ整理しました。単体 WebGL サンプルとして SOG Timeline Frustum Field を追加しました。</p>
+      <p class="en-copy">This entry focuses on SuperSplat v2.29.0: 360 equirectangular export, SPZ export, timeline loop controls, camera info overlays, and frustum-aware selection. It reframes splat editing as time-based work along the camera frustum, and adds the standalone WebGL sample SOG Timeline Frustum Field.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-08_sog_timeline_frustum_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-07.html">← 2026.07.07</a>
+      <a class="day-link" href="../days/2026-07-09.html">2026.07.09 →</a>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>SOG Timeline Frustum Field</h3>
+              <p>SuperSplat v2.29.0 のタイムライン、360 書き出し、SPZ export、frustum-aware selection を、視錐台に沿って splat が編集履歴として残る WebGL スケッチに変換しました。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-08_sog_timeline_frustum_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>SuperSplat v2.29.0 は、360 equirectangular video/image export、SPZ export、timeline loop、camera info overlay、timeline key の上書き、FOV auto-dolly の扱い、selection shader の修正など、編集と書き出しの両側を強く更新しています。特に volume select が camera frustum 外の splat を無視する修正は、選択範囲を画面上の矩形ではなく、カメラから伸びる編集ボリュームとして捉え直すきっかけになります。</p>
+          <p class="en-copy">SuperSplat v2.29.0 strengthens both editing and export: 360 equirectangular video/image export, SPZ export, timeline looping, camera information overlays, timeline key overwrite actions, FOV handling, and selection shader fixes. The volume selection fix that ignores splats outside the camera frustum is especially useful as a creative cue: selection can be treated as an editing volume extending from the camera instead of a flat screen rectangle.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0 release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>今日の試作では、カメラ位置からターゲットへ伸びる視錐台の中だけ splat が鮮明になり、外側は編集履歴の ghost として残るようにしました。timeline の scrub は splat の age として使い、keyframe が通過した場所だけ粒子密度が上がる演出にしています。360 書き出しの文脈では、画面中央だけを高品質にするのではなく、次に公開される全天球フレームの視線誘導を事前に描く使い方ができます。</p>
+          <p class="en-copy">The prototype makes splats sharpen only inside the frustum running from camera to target, while out-of-frustum splats remain as edit-history ghosts. Timeline scrubbing becomes splat age, increasing particle density where keyframes pass. In a 360 export context, this suggests a way to paint attention cues for the next published equirectangular frame instead of simply improving the center of the current screen.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-08_sog_timeline_frustum_field.html" target="_blank" rel="noreferrer">Open today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では、selection、camera path、export frame を同じ frustum field で扱うと整理しやすいです。各 splat または octree node に inFrustum、selectionWeight、timelineAge を持たせ、render、edit、export の優先順位を共有します。WebGL の小さな試作なら、fragment shader 内で camera point、target point、frustum direction を作り、dot と横方向距離だけで frustum mask を作れます。</p>
+          <p class="en-copy">A practical structure is to drive selection, camera path, and export frames from one frustum field. Store inFrustum, selectionWeight, and timelineAge on each splat or octree node so rendering, editing, and export share priority. In a small WebGL sketch, a camera point, target point, dot products, and lateral distance are enough to build a convincing frustum mask in the fragment shader.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-08_sog_timeline_frustum_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続して見る対象は SuperSplat の SPZ/SOG export、PlayCanvas Engine の gsplat streaming と SOG asset lifecycle、three.js HTMLTexture/WebGPU、Babylon.js WebGPU color/material 周りです。次は、編集タイムラインの frustum field と PlayCanvas 側の streaming cache 修正をつなぎ、破棄済み texture や unload 中 asset が表現上どう見えるべきかを試します。</p>
+          <p class="en-copy">Continue watching SuperSplat SPZ/SOG export, PlayCanvas Engine gsplat streaming and SOG asset lifecycles, three.js HTMLTexture/WebGPU, and Babylon.js WebGPU color/material work. Next, connect the frustum-field editing timeline to PlayCanvas streaming cache fixes and test how destroyed textures or unloading assets should appear as visual states.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は SOG Timeline Frustum Field です。ファイルは outputs/2026-07-08_sog_timeline_frustum_field.html。視錐台、timeline scrub、selection ring、ghost splat を WebGL fragment shader だけで描きます。次の発展は、実 camera key の配列を渡して frustum を複数重ねることです。</p>
+          <p class="en-copy">The selected mini prototype is SOG Timeline Frustum Field, stored at outputs/2026-07-08_sog_timeline_frustum_field.html. It draws a frustum, timeline scrub, selection ring, and ghost splats with a single WebGL fragment shader. The next step is to pass real camera-key arrays and layer multiple frustums.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-08_sog_timeline_frustum_field.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0 release</a></li>
+          
+            <li><a href="../outputs/2026-07-08_sog_timeline_frustum_field.html" target="_blank" rel="noreferrer">Today's sample: SOG Timeline Frustum Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-08_sog_timeline_frustum_field.html" loading="lazy" title="SOG Timeline Frustum Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

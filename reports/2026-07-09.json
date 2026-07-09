@@ -1,0 +1,99 @@
+{
+  "date": "2026-07-09",
+  "headline": "SOG streaming cache と linear palette の安定化",
+  "headlineEn": "Stabilizing SOG streaming caches and linear palettes",
+  "summary": "2026-07-09 時点で three.js は r185、Babylon.js は 9.15.0、PlayCanvas Engine は v2.20.6、SuperSplat は v2.29.0 が GitHub Releases 上の最新として確認できました。今日は PlayCanvas Engine v2.20.6 の SOG unload/cache、gsplat picking、linear palette 修正を中心に、streaming asset の lifecycle を見える表現へ変換しました。",
+  "summaryEn": "As of 2026-07-09, GitHub Releases show three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 as the latest releases. Today's focus is PlayCanvas Engine v2.20.6: SOG unload/cache handling, gsplat picking, and linear palette fixes, translated into a visible streaming asset lifecycle.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.20.6 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.15.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+    },
+    {
+      "label": "SuperSplat v2.29.0 release",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "Today's sample: Linear Palette SOG Cache",
+      "url": "../outputs/2026-07-09_linear_palette_sog_cache.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "PlayCanvas Engine v2.20.6 は、gsplat component detach 時の crash、Windows/NVIDIA での gsplat picking による GPU device hang、unified world が参照している SOG asset unload、SOG bundle の mid-load unload、destroyed texture が loader cache から戻る問題などを修正しています。加えて markup text color を linear space の vertex palette として保持する修正が入り、色空間と asset lifecycle の両方が安定化しています。",
+      "bodyEn": "PlayCanvas Engine v2.20.6 fixes crashes around gsplat component detach, GPU device hangs when picking gsplats on Windows/NVIDIA, SOG asset unloads while still referenced by the unified world, mid-load unload behavior in SOG bundle parsing, and destroyed textures returning from the loader cache. It also stores markup text colors as linear-space vertex palettes, tightening both color handling and asset lifecycle behavior.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.20.6 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "今日の面白さは、cache の不正な再利用や unload 中 asset の扱いを、単なるバグ修正ではなく visual state として見られる点です。streaming された SOG/GSplat は、読み込み済み、選択中、破棄待ち、再ロード中、stale などの状態を持ちます。これを shader 側で heatmap、scanline、border、stale red として描くと、デバッグ UI と作品表現の境目が近づきます。",
+      "bodyEn": "The interesting point is that cache reuse and unloading behavior can become visual state, not just bug-fix territory. A streamed SOG/GSplat asset can be loaded, selected, pending disposal, reloading, or stale. Mapping those states to shader heatmaps, scanlines, borders, and stale red highlights brings debugging UI closer to visual expression.",
+      "links": [
+        {
+          "label": "Open today's sample",
+          "url": "../outputs/2026-07-09_linear_palette_sog_cache.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では、asset cache key と GPU texture handle の lifecycle を分けて考えるのが重要です。node cache は再利用できても、texture が destroyed なら render path へ戻してはいけません。表現側では、cache slot ごとに active、age、stale、reloadPulse を持ち、linear palette で色を作ると WebGPU/WebGL 間の見え方を揃えやすくなります。",
+      "bodyEn": "Implementation-wise, separate the asset cache key lifecycle from the GPU texture handle lifecycle. A node cache entry may be reusable, but a destroyed texture must not re-enter the render path. For expression, keep active, age, stale, and reloadPulse per cache slot, and derive color through a linear palette to keep WebGPU/WebGL appearance more consistent.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-09_linear_palette_sog_cache.html"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "次に見る対象は PlayCanvas の SOG/GSplat unified world、SuperSplat の SPZ/SOG export、three.js r185 の HTMLTexture と WebGPU/TSL、Babylon.js 9.15.0 の WebGPU exact sRGB と OpenPBR Fuzz です。特に、HTML-in-Canvas annotation と GSplat cache state を重ね、読める UI レイヤーが streaming state に応じて更新頻度を変える方向が有望です。",
+      "bodyEn": "Next watch items are PlayCanvas SOG/GSplat unified world work, SuperSplat SPZ/SOG export, three.js r185 HTMLTexture and WebGPU/TSL, and Babylon.js 9.15.0 WebGPU exact sRGB plus OpenPBR Fuzz. A promising direction is to layer HTML-in-Canvas annotations over GSplat cache state, letting readable UI layers change update frequency based on streaming state.",
+      "links": [
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Linear Palette SOG Cache です。ファイルは outputs/2026-07-09_linear_palette_sog_cache.html。cache slot、stream lane、picking focus、stale texture の状態を単体 WebGL shader で表現します。次に発展させるなら、実 SOG bundle の node id と loader state を texture 化して同じ shader に渡します。",
+      "bodyEn": "The selected mini prototype is Linear Palette SOG Cache, stored at outputs/2026-07-09_linear_palette_sog_cache.html. It expresses cache slots, stream lanes, picking focus, and stale texture state in a standalone WebGL shader. Next, encode real SOG bundle node IDs and loader state into textures and feed them into the same shader.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-09_linear_palette_sog_cache.html"
+        }
+      ]
+    }
+  ]
+}

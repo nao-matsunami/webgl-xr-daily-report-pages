@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Linear Palette SOG Cache</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #060708;
+      color: #f3f6f1;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: min(440px, calc(100vw - 36px));
+      pointer-events: none;
+    }
+    .hud h1 { margin: 0 0 8px; font-size: 15px; letter-spacing: 0; }
+    .hud p { margin: 0; color: #bdc8c2; font-size: 12px; line-height: 1.55; }
+    .cache {
+      position: fixed;
+      right: 18px;
+      top: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, 18px);
+      gap: 6px;
+      pointer-events: none;
+    }
+    .cache span {
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: linear-gradient(135deg, #61ddb2, #f0d463 55%, #ff645f);
+      animation: slot 2.8s ease-in-out infinite;
+    }
+    .cache span:nth-child(2n) { animation-delay: -.7s; }
+    .cache span:nth-child(3n) { animation-delay: -1.4s; }
+    @keyframes slot {
+      0%, 100% { opacity: .28; transform: scale(.82); }
+      45% { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>Linear Palette SOG Cache</h1>
+  <p>PlayCanvas Engine v2.20.6 の linear palette、SOG unload/cache 修正、gsplat picking 安定化を、破棄済み texture が戻らない cache heatmap として描く単体 WebGL サンプルです。</p>
+</div>
+<div class="cache" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<script>
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+const vertexSource = `attribute vec2 position; void main(){ gl_Position = vec4(position,0.0,1.0); }`;
+const fragmentSource = `
+precision highp float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453123); }
+float noise(vec2 p){
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+float capsule(vec2 p, vec2 a, vec2 b, float r){
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return smoothstep(r, 0.0, length(pa - ba * h));
+}
+vec3 linearPalette(float t){
+  vec3 a = vec3(0.018,0.022,0.025);
+  vec3 b = vec3(0.10,0.34,0.30);
+  vec3 c = vec3(0.78,0.70,0.30);
+  vec3 d = vec3(1.00,0.28,0.24);
+  t = clamp(t, 0.0, 1.0);
+  return mix(mix(a, b, smoothstep(0.0,0.48,t)), mix(c, d, smoothstep(0.52,1.0,t)), smoothstep(0.42,0.9,t));
+}
+void main(){
+  vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 m = (pointer * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 grid = floor((uv + 1.6) * vec2(7.0, 5.0));
+  vec2 cell = fract((uv + 1.6) * vec2(7.0, 5.0)) - 0.5;
+  float id = hash(grid);
+  float reload = fract(id + time * (0.06 + 0.16 * hash(grid + 5.0)));
+  float age = smoothstep(0.0, 0.8, reload);
+  float active = 1.0 - smoothstep(0.13, 0.48, length(uv - m));
+  float stale = smoothstep(0.62, 0.92, age) * (1.0 - active);
+  float cacheSlot = smoothstep(0.48, 0.38, max(abs(cell.x), abs(cell.y)));
+  float border = smoothstep(0.025, 0.0, abs(max(abs(cell.x), abs(cell.y)) - 0.46));
+  float stream = 0.0;
+  float pick = 0.0;
+  for(int i=0;i<28;i++){
+    float fi = float(i);
+    vec2 seed = vec2(hash(vec2(fi,8.0)), hash(vec2(fi,17.0)));
+    vec2 a = seed * 2.7 - 1.35;
+    vec2 b = a + 0.42 * vec2(cos(fi * 1.7 + time * 0.16), sin(fi * 2.1 - time * 0.11));
+    float lane = capsule(uv, a, b, 0.012 + 0.018 * hash(seed));
+    float local = 1.0 - smoothstep(0.08, 0.55, length((a + b) * 0.5 - m));
+    stream += lane * (0.18 + local);
+    pick += lane * local;
+  }
+  float cacheNoise = noise(uv * 7.0 + time * 0.12);
+  float heat = cacheSlot * (0.22 + active * 0.72 + (1.0 - stale) * 0.18 + cacheNoise * 0.12);
+  vec3 color = linearPalette(heat + stream * 0.55);
+  color += vec3(0.12,0.24,0.24) * border;
+  color += vec3(1.0,0.34,0.28) * stale * cacheSlot * 0.45;
+  color += vec3(0.46,1.0,0.76) * pick * 0.9;
+  color += vec3(0.96,0.76,0.24) * smoothstep(0.018, 0.0, abs(length(uv - m) - 0.34));
+  float scan = smoothstep(0.018, 0.0, abs(fract((uv.y + time * 0.18) * 18.0) - 0.5));
+  color += vec3(0.20,0.55,0.48) * scan * active * 0.18;
+  color *= smoothstep(1.48, 0.18, length(uv));
+  gl_FragColor = vec4(color, 1.0);
+}`;
+function compile(type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+  return shader;
+}
+const program = gl.createProgram();
+gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+gl.linkProgram(program);
+if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+gl.useProgram(program);
+const buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+const position = gl.getAttribLocation(program, "position");
+gl.enableVertexAttribArray(position);
+gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+const uniforms = {
+  resolution: gl.getUniformLocation(program, "resolution"),
+  pointer: gl.getUniformLocation(program, "pointer"),
+  time: gl.getUniformLocation(program, "time")
+};
+const state = { pointer: [window.innerWidth * 0.5, window.innerHeight * 0.5] };
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(window.innerWidth * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+function setPointer(event){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  state.pointer[0] = event.clientX * dpr;
+  state.pointer[1] = (window.innerHeight - event.clientY) * dpr;
+}
+window.addEventListener("resize", resize);
+window.addEventListener("pointermove", setPointer);
+resize();
+function frame(now){
+  gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+  gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+  gl.uniform1f(uniforms.time, now * 0.001);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
