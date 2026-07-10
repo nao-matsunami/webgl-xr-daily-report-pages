@@ -5,11 +5,26 @@
   "summary": "7/10 現在のシェーダー本流を整理し、SDF focus、splat diagnostic、stream prediction、audio impulse/postfx を1画面の shader atlas として比較するサンプルを追加しました。three.js r185、Babylon.js 9.16.0、PlayCanvas v2.20.6、SuperSplat v2.29.0 の一次情報を踏まえ、XR/VR/AR は応用先、シェーダーは表現エンジンとして分けて継続します。",
   "summaryEn": "As of July 10, the shader track is organized into a single shader atlas comparing SDF focus, splat diagnostics, stream prediction, and audio impulse/postfx. Based on primary sources for three.js r185, Babylon.js 9.16.0, PlayCanvas v2.20.6, and SuperSplat v2.29.0, XR/VR/AR are treated as application contexts while shaders remain the expression engine.",
   "links": [
-    { "label": "three.js r185", "url": "https://github.com/mrdoob/three.js/releases/tag/r185" },
-    { "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" },
-    { "label": "PlayCanvas Engine v2.20.6", "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6" },
-    { "label": "SuperSplat v2.29.0", "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" },
-    { "label": "Today's sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.16.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.29.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html"
+    }
   ],
   "sections": [
     {
@@ -18,10 +33,22 @@
       "body": "1. 7/10 時点のシェーダー本流は、focus、prediction、history、impulse の4つの scalar field として整理できます。2. three.js r185 は HTMLTexture、TSL、textureGather、storageTexture3D、WebGPU/WebXR support が継続して土台です。3. Babylon.js 9.16.0 は WebGPU-XR、GPUParticleSystem、AudioV2、KHR_gaussian_splatting がまとまり、今回の impulse / particle / splat の接続に効きます。4. PlayCanvas v2.20.6 は GSplat/SOG の unload、streaming re-load、picking hang を修正し、実データへ寄せる時の安全性を上げています。5. SuperSplat v2.29.0 は timeline、360 export、SPZ export、camera overlay で、shader 実験を編集・書き出しへ渡す足場になります。",
       "bodyEn": "1. As of July 10, the shader track can be organized as four scalar fields: focus, prediction, history, and impulse. 2. three.js r185 remains the base through HTMLTexture, TSL, textureGather, storageTexture3D, and WebGPU/WebXR support. 3. Babylon.js 9.16.0 combines WebGPU-XR, GPUParticleSystem, AudioV2, and KHR_gaussian_splatting, supporting today's impulse / particle / splat connection. 4. PlayCanvas v2.20.6 fixes GSplat/SOG unload, streaming re-load, and picking hangs, improving safety for real data. 5. SuperSplat v2.29.0 adds timeline, 360 export, SPZ export, and camera overlays, providing a bridge from shader experiments to editing and publishing.",
       "links": [
-        { "label": "three.js r185", "url": "https://github.com/mrdoob/three.js/releases/tag/r185" },
-        { "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" },
-        { "label": "PlayCanvas v2.20.6", "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6" },
-        { "label": "SuperSplat v2.29.0", "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" }
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.16.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+        },
+        {
+          "label": "PlayCanvas v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "SuperSplat v2.29.0",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        }
       ]
     },
     {
@@ -53,7 +80,12 @@
       "titleEn": "If you try one thing",
       "body": "試すなら shader atlas で4つの品質配分を同時に見ることです。追加サンプル outputs/2026-07-10_shader_atlas_quality_mixer.html は、SDF focus、splat diagnostic、stream prediction、audio impulse を4象限に並べ、ポインタで全体の品質配分を変えます。",
       "bodyEn": "Try viewing four quality-allocation modes simultaneously in a shader atlas. The added sample outputs/2026-07-10_shader_atlas_quality_mixer.html places SDF focus, splat diagnostics, stream prediction, and audio impulse into four quadrants and reallocates quality with the pointer.",
-      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }]
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html"
+        }
+      ]
     },
     {
       "title": "進行マップ",
@@ -72,7 +104,12 @@
       "titleEn": "Today's mini prototype candidate",
       "body": "採用した候補は Shader Atlas Quality Mixer。ファイルは outputs/2026-07-10_shader_atlas_quality_mixer.html。次は、各象限を別サンプルの実装から module 化する、または WebGL2 の framebuffer で history cell だけ本物の前フレーム texture を持たせると発展します。",
       "bodyEn": "The selected mini prototype is Shader Atlas Quality Mixer at outputs/2026-07-10_shader_atlas_quality_mixer.html. Next, modularize each quadrant from previous samples, or use WebGL2 framebuffers so the history cell holds a real previous-frame texture.",
-      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }]
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html"
+        }
+      ]
     }
   ]
 }
