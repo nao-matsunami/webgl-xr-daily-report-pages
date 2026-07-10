@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shader Atlas Quality Mixer</title>
+  <style>
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#050b10; color:#eefaff; font-family:system-ui,sans-serif; }
+    canvas { width:100%; height:100%; display:block; cursor:crosshair; }
+    .hud { position:fixed; left:18px; bottom:16px; max-width:590px; pointer-events:none; text-shadow:0 2px 18px #000; }
+    h1 { margin:0 0 8px; font-size:15px; }
+    p { margin:0; color:rgba(235,247,255,.76); font-size:12px; line-height:1.55; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>Shader Atlas Quality Mixer</h1>
+  <p>Four cells compare the current shader tracks: SDF focus, splat diagnostics, stream prediction, and impulse postfx. Move the pointer to reallocate quality.</p>
+</div>
+<script id="vs" type="x-shader/x-vertex">attribute vec2 p;varying vec2 vUv;void main(){vUv=p*.5+.5;gl_Position=vec4(p,0.,1.);}</script>
+<script id="fs" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 uRes; uniform vec2 uPointer; uniform float uTime; uniform float uPress;
+varying vec2 vUv;
+float hash(vec2 p){p=fract(p*vec2(118.3,327.1));p+=dot(p,p+41.4);return fract(p.x*p.y);}
+float ring(vec2 p,vec2 c,float r,float w){return 1.-smoothstep(w*.4,w,abs(length(p-c)-r));}
+float box(vec2 p,vec2 b){vec2 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,d.y),0.);}
+vec3 pal(float x){return .55+.45*cos(6.28318*(vec3(.02,.34,.68)+x));}
+void main(){
+ vec2 uv=gl_FragCoord.xy/uRes;
+ vec2 p=(uv-.5)*vec2(uRes.x/uRes.y,1.);
+ vec2 mp=(uPointer-.5)*vec2(uRes.x/uRes.y,1.);
+ float t=uTime;
+ vec2 cell=floor(uv*2.);
+ vec2 local=fract(uv*2.);
+ vec2 q=(local-.5);
+ q.x*=uRes.x/uRes.y;
+ float cellId=cell.x+cell.y*2.;
+ float dist=length(p-mp);
+ float focus=1.-smoothstep(.15,.45+uPress*.16,dist);
+ vec3 col=vec3(.018,.03,.04);
+ vec2 grid=abs(fract(q*vec2(8.,6.))-.5);
+ col+=vec3(.04,.13,.17)*(1.-smoothstep(.014,.022,min(grid.x,grid.y)));
+
+ if(cellId<.5){
+   float d=box(q+vec2(.04*sin(t),0.),vec2(.19,.055));
+   float edge=smoothstep(.035,.0,abs(d));
+   float aa=mix(.04,.008,focus);
+   float glyph=smoothstep(aa,0.,abs(d));
+   col+=vec3(.25,.9,1.)*glyph+vec3(.95,.68,.22)*edge*.35;
+   col+=vec3(.18,.42,.58)*ring(q,vec2(0.),.25,.008);
+ } else if(cellId<1.5){
+   for(int i=0;i<42;i++){
+     float fi=float(i);
+     vec2 c=vec2(hash(vec2(fi,1.)),hash(vec2(fi,7.)))-.5;
+     c.x*=uRes.x/uRes.y*.9;
+     float art=smoothstep(.72,1.,hash(vec2(fi,13.)));
+     float g=exp(-dot(q-c,q-c)/(.0008+.002*art*focus));
+     col+=mix(vec3(.1,.35,.5),vec3(1.,.28,.12),art)*g*(.08+.36*focus);
+   }
+   col+=vec3(1.,.62,.12)*ring(q,vec2(0.),.23,.01)*focus;
+ } else if(cellId<2.5){
+   vec2 pred=vec2(.14*sin(t*.7),.1*cos(t*.5));
+   float pr=1.-smoothstep(.10,.38,length(q-pred));
+   float chunk=floor((q.x+1.)*8.)+floor((q.y+1.)*6.)*8.;
+   float age=hash(vec2(chunk,2.));
+   float density=mix(.06,.018,pr+focus*.55);
+   float dots=1.-smoothstep(.0,density,length(fract(q/density)-.5)*density);
+   col+=pal(age+t*.02)*dots*(.1+.6*pr);
+   col+=vec3(.28,.85,1.)*ring(q,pred,.19,.009);
+ } else {
+   float impulse=pow(.5+.5*sin(t*3.3),3.)+uPress*.6;
+   float wave=smoothstep(.92,1.,sin(length(q)*48.-t*9.));
+   col+=vec3(.12,.32,.44)*(1.-smoothstep(.32,.55,length(q)));
+   col+=vec3(.98,.33,.16)*wave*impulse;
+   col+=vec3(.22,.82,1.)*ring(q,vec2(0.),.13+.12*impulse,.012);
+ }
+ float border=max(smoothstep(.492,.5,abs(local.x-.5)),smoothstep(.492,.5,abs(local.y-.5)));
+ col=mix(col,vec3(.72,.9,1.),border*.16);
+ col+=vec3(.18,.72,1.)*ring(p,mp,.18+.12*uPress,.006);
+ col=pow(col,vec3(.92));
+ gl_FragColor=vec4(col,1.);
+}
+</script>
+<script>
+const canvas=document.getElementById("gl"),gl=canvas.getContext("webgl");
+const pointer={x:.55,y:.56,down:0};
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
+const prg=gl.createProgram();gl.attachShader(prg,sh(gl.VERTEX_SHADER,vs.textContent));gl.attachShader(prg,sh(gl.FRAGMENT_SHADER,fs.textContent));gl.linkProgram(prg);gl.useProgram(prg);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(prg,"p");gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+const u={res:gl.getUniformLocation(prg,"uRes"),ptr:gl.getUniformLocation(prg,"uPointer"),time:gl.getUniformLocation(prg,"uTime"),press:gl.getUniformLocation(prg,"uPress")};
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;gl.viewport(0,0,canvas.width,canvas.height)}
+function move(e){const r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width;pointer.y=1-(e.clientY-r.top)/r.height}
+addEventListener("resize",resize);addEventListener("pointermove",move);addEventListener("pointerdown",e=>{move(e);pointer.down=1});addEventListener("pointerup",()=>pointer.down=0);
+const start=performance.now();
+function frame(now){resize();gl.uniform2f(u.res,canvas.width,canvas.height);gl.uniform2f(u.ptr,pointer.x,pointer.y);gl.uniform1f(u.time,(now-start)/1000);gl.uniform1f(u.press,pointer.down);gl.drawArrays(gl.TRIANGLES,0,6);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

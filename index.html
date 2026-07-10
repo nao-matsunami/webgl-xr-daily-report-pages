@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 23</span>
+        <span>days: 24</span>
         <span>page: 1 / 2</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -293,25 +293,48 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-10">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.10</p>
+              <h2>シェーダー本流を atlas 化して品質配分を見比べる</h2>
+              <p class="card-subtitle">Turning the shader track into an atlas for comparing quality allocation</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-10" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">7/10 現在のシェーダー本流を整理し、SDF focus、splat diagnostic、stream prediction、audio impulse/postfx を1画面の shader atlas として比較するサンプルを追加しました。three.js r185、Babylon.js 9.16.0、PlayCanvas v2.20.6、SuperSplat v2.29.0 の一次情報を踏まえ、XR/VR/AR は応用先、シェーダーは表現エンジンとして分けて継続します。</p>
+          <p class="description en-copy">As of July 10, the shader track is organized into a single shader atlas comparing SDF focus, splat diagnostics, stream prediction, and audio impulse/postfx. Based on primary sources for three.js r185, Babylon.js 9.16.0, PlayCanvas v2.20.6, and SuperSplat v2.29.0, XR/VR/AR are treated as application contexts while shaders remain the expression engine.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">shader</span><span class="tag">html-surface</span><span class="tag">focus</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-10.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-10_shader_atlas_quality_mixer.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-09">
           <div class="card-top">
             <div>
               <p class="date">2026.07.09</p>
-              <h2>SOG streaming cache と linear palette の安定化</h2>
-              <p class="card-subtitle">Stabilizing SOG streaming caches and linear palettes</p>
+              <h2>音とクリックの impulse で splat 品質配分を揺らす</h2>
+              <p class="card-subtitle">Modulating splat quality allocation with audio and click impulses</p>
             </div>
             <button class="like-button" type="button" data-slug="2026-07-09" aria-pressed="false">
               <span class="heart">♡</span>
               <span class="label">好き / Like</span>
             </button>
           </div>
-          <p class="description">2026-07-09 時点で three.js は r185、Babylon.js は 9.15.0、PlayCanvas Engine は v2.20.6、SuperSplat は v2.29.0 が GitHub Releases 上の最新として確認できました。今日は PlayCanvas Engine v2.20.6 の SOG unload/cache、gsplat picking、linear palette 修正を中心に、streaming asset の lifecycle を見える表現へ変換しました。</p>
-          <p class="description en-copy">As of 2026-07-09, GitHub Releases show three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 as the latest releases. Today's focus is PlayCanvas Engine v2.20.6: SOG unload/cache handling, gsplat picking, and linear palette fixes, translated into a visible streaming asset lifecycle.</p>
+          <p class="description">7/8 の temporal reprojection を受けて、今日は focus field に impulse を足しました。Babylon.js 9.16.0 は 2026-07-09 に公開され、GPUParticleSystem の emitRateControl、AudioV2 修正、WebGPU-XR / XRGPUBinding、KHR_gaussian_splatting glTF extension が入っています。シェーダー側では、音量ピークやクリックを品質配分、粒子密度、色収差、splat halo の一時的な増幅に使う方向へ進めました。</p>
+          <p class="description en-copy">Following July 8 temporal reprojection, today's shader track adds impulses to the focus field. Babylon.js 9.16.0 was released on 2026-07-09 with GPUParticleSystem emitRateControl, AudioV2 fixes, WebGPU-XR / XRGPUBinding, and KHR_gaussian_splatting glTF extension work. On the shader side, audio peaks or clicks drive temporary boosts in quality allocation, particle density, chroma breakup, and splat halos.</p>
           <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="tags"><span class="tag">audio</span><span class="tag">field</span><span class="tag">html-surface</span><span class="tag">focus</span></div>
           <div class="actions">
             <a class="primary" href="days/2026-07-09.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-07-09_linear_palette_sog_cache.html">代表サンプル / Sample</a>
+            <a class="secondary-link" href="outputs/2026-07-09_audio_impulse_splat_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       
@@ -320,21 +343,21 @@
           <div class="card-top">
             <div>
               <p class="date">2026.07.08</p>
-              <h2>SuperSplat v2.29.0 と編集タイムラインの視錐台化</h2>
-              <p class="card-subtitle">SuperSplat v2.29.0 and frustum-shaped edit timelines</p>
+              <h2>視点予測を temporal reprojection の残像へ接続する</h2>
+              <p class="card-subtitle">Connecting viewport prediction to temporal reprojection trails</p>
             </div>
             <button class="like-button" type="button" data-slug="2026-07-08" aria-pressed="false">
               <span class="heart">♡</span>
               <span class="label">好き / Like</span>
             </button>
           </div>
-          <p class="description">SuperSplat v2.29.0 の 360 equirectangular export、SPZ export、timeline loop、camera info overlay、frustum-aware selection を中心に、splat 編集を単なるビューア操作ではなく、視錐台に沿う時間編集として扱う方向へ整理しました。単体 WebGL サンプルとして SOG Timeline Frustum Field を追加しました。</p>
-          <p class="description en-copy">This entry focuses on SuperSplat v2.29.0: 360 equirectangular export, SPZ export, timeline loop controls, camera info overlays, and frustum-aware selection. It reframes splat editing as time-based work along the camera frustum, and adds the standalone WebGL sample SOG Timeline Frustum Field.</p>
+          <p class="description">7/7 の viewport prediction / splat streaming field を受けて、今日はシェーダー本流を temporal reprojection に寄せました。three.js r185 の TSL / WebGPU / shader 周辺、PlayCanvas v2.20.6 の GSplat streaming 修正、SuperSplat v2.29.0 の timeline / 360 書き出し、WebGPU 3DGS 系の sorting / culling を参照し、現在焦点と履歴焦点のズレを見える化する WebGL サンプルを追加しました。</p>
+          <p class="description en-copy">Following the July 7 viewport prediction / splat streaming field, today's shader track moves toward temporal reprojection. It references three.js r185 TSL / WebGPU / shader work, PlayCanvas v2.20.6 GSplat streaming fixes, SuperSplat v2.29.0 timeline and 360 export updates, and WebGPU 3DGS sorting / culling research. The added WebGL sample visualizes the gap between current focus and reprojected focus history.</p>
           <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
+          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span><span class="tag">focus</span></div>
           <div class="actions">
             <a class="primary" href="days/2026-07-08.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-07-08_sog_timeline_frustum_field.html">代表サンプル / Sample</a>
+            <a class="secondary-link" href="outputs/2026-07-08_temporal_reprojection_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       
@@ -542,29 +565,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-06-29.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-06-29_html_surface_drift_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-06-28">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.06.28</p>
-              <h2>Audio Ribbon Field</h2>
-              
-            </div>
-            <button class="like-button" type="button" data-slug="2026-06-28" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">波形線を面状のリボンへ広げ、複数レイヤーが干渉しながら揺れる最小サンプルです。 低域で大きな波、中域でリボンのねじれ、高域で発光ノイズを強めます。</p>
-          
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">audio</span><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-06-28.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-06-28_audio_ribbon_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       

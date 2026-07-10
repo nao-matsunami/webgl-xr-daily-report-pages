@@ -1,0 +1,78 @@
+{
+  "date": "2026-07-10",
+  "headline": "シェーダー本流を atlas 化して品質配分を見比べる",
+  "headlineEn": "Turning the shader track into an atlas for comparing quality allocation",
+  "summary": "7/10 現在のシェーダー本流を整理し、SDF focus、splat diagnostic、stream prediction、audio impulse/postfx を1画面の shader atlas として比較するサンプルを追加しました。three.js r185、Babylon.js 9.16.0、PlayCanvas v2.20.6、SuperSplat v2.29.0 の一次情報を踏まえ、XR/VR/AR は応用先、シェーダーは表現エンジンとして分けて継続します。",
+  "summaryEn": "As of July 10, the shader track is organized into a single shader atlas comparing SDF focus, splat diagnostics, stream prediction, and audio impulse/postfx. Based on primary sources for three.js r185, Babylon.js 9.16.0, PlayCanvas v2.20.6, and SuperSplat v2.29.0, XR/VR/AR are treated as application contexts while shaders remain the expression engine.",
+  "links": [
+    { "label": "three.js r185", "url": "https://github.com/mrdoob/three.js/releases/tag/r185" },
+    { "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" },
+    { "label": "PlayCanvas Engine v2.20.6", "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6" },
+    { "label": "SuperSplat v2.29.0", "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" },
+    { "label": "Today's sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. 7/10 時点のシェーダー本流は、focus、prediction、history、impulse の4つの scalar field として整理できます。2. three.js r185 は HTMLTexture、TSL、textureGather、storageTexture3D、WebGPU/WebXR support が継続して土台です。3. Babylon.js 9.16.0 は WebGPU-XR、GPUParticleSystem、AudioV2、KHR_gaussian_splatting がまとまり、今回の impulse / particle / splat の接続に効きます。4. PlayCanvas v2.20.6 は GSplat/SOG の unload、streaming re-load、picking hang を修正し、実データへ寄せる時の安全性を上げています。5. SuperSplat v2.29.0 は timeline、360 export、SPZ export、camera overlay で、shader 実験を編集・書き出しへ渡す足場になります。",
+      "bodyEn": "1. As of July 10, the shader track can be organized as four scalar fields: focus, prediction, history, and impulse. 2. three.js r185 remains the base through HTMLTexture, TSL, textureGather, storageTexture3D, and WebGPU/WebXR support. 3. Babylon.js 9.16.0 combines WebGPU-XR, GPUParticleSystem, AudioV2, and KHR_gaussian_splatting, supporting today's impulse / particle / splat connection. 4. PlayCanvas v2.20.6 fixes GSplat/SOG unload, streaming re-load, and picking hangs, improving safety for real data. 5. SuperSplat v2.29.0 adds timeline, 360 export, SPZ export, and camera overlays, providing a bridge from shader experiments to editing and publishing.",
+      "links": [
+        { "label": "three.js r185", "url": "https://github.com/mrdoob/three.js/releases/tag/r185" },
+        { "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" },
+        { "label": "PlayCanvas v2.20.6", "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6" },
+        { "label": "SuperSplat v2.29.0", "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は単一ニュースではなく、ここ数日の試作を atlas として並べると設計が見える点です。SDF focus は可読性、splat diagnostic は欠陥の可視化、stream prediction は未来への先回り、audio impulse は瞬間的な更新タイミングを担当します。4つを同じ画面で見ると、シェーダー表現の制御ノブがかなりはっきりします。",
+      "bodyEn": "Today's notable point is not one news item but the design clarity that appears when recent prototypes are arranged as an atlas. SDF focus handles readability, splat diagnostics reveals defects, stream prediction looks ahead, and audio impulse controls momentary update timing. Seen together, these become clear control knobs for shader expression."
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "1画面を4象限に分け、左下を SDF focus、右下を splat diagnostic、左上を stream prediction、右上を audio impulse/postfx にします。ポインタ位置で全セルの品質配分が変わるため、同じ focus field が表現ごとにどう変換されるかを比較できます。これは制作時の shader sketchbook として便利です。",
+      "bodyEn": "Divide the screen into four quadrants: SDF focus, splat diagnostics, stream prediction, and audio impulse/postfx. Pointer position reallocates quality across all cells, making it easy to compare how the same focus field transforms across expressions. This is useful as a shader sketchbook for production."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "shader atlas は実装の比較装置として使えます。各セルに同じ uniform、同じ pointer、同じ time を渡し、変換関数だけを変える。次の段階では各セルの metric を保存し、focus/prediction/history/impulse のどれが可読性、密度、負荷、印象に効いたかをログ化するとよいです。",
+      "bodyEn": "A shader atlas can act as a comparison device. Send the same uniforms, pointer, and time to each cell, changing only the transform function. Next, save metrics per cell and log which of focus, prediction, history, or impulse affected readability, density, cost, and impression."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は three.js TSL/WebGPU、Babylon.js WebGPU-XR/KHR_gaussian_splatting、PlayCanvas GSplat/SOG streaming、SuperSplat timeline/export、WebGPU 3DGS research です。明日以降は atlas の各セルを実 asset に置き換えるか、audio analyser と pointer velocity を本当に入れるかを選ぶ段階です。",
+      "bodyEn": "Continue watching three.js TSL/WebGPU, Babylon.js WebGPU-XR/KHR_gaussian_splatting, PlayCanvas GSplat/SOG streaming, SuperSplat timeline/export, and WebGPU 3DGS research. Next, choose whether to replace atlas cells with real assets or add real audio analyser and pointer velocity."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "試すなら shader atlas で4つの品質配分を同時に見ることです。追加サンプル outputs/2026-07-10_shader_atlas_quality_mixer.html は、SDF focus、splat diagnostic、stream prediction、audio impulse を4象限に並べ、ポインタで全体の品質配分を変えます。",
+      "bodyEn": "Try viewing four quality-allocation modes simultaneously in a shader atlas. The added sample outputs/2026-07-10_shader_atlas_quality_mixer.html places SDF focus, splat diagnostics, stream prediction, and audio impulse into four quadrants and reallocates quality with the pointer.",
+      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 7/8-7/10 の一次情報を確認。アイデア検討: XR/VR/AR とシェーダーを分け、シェーダー本流を focus/prediction/history/impulse として整理。サンプル実装: shader atlas を単体 WebGL で実装。結果の検証: 3日分の JSON とサンプルを build/publish で反映します。",
+      "bodyEn": "Research: checked primary sources for July 8-10. Ideation: separated XR/VR/AR from shaders and organized the shader track as focus/prediction/history/impulse. Prototype: implemented a shader atlas in standalone WebGL. Evaluation: publish three days of JSON and samples through build/publish."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "整理後の見取り図は、Shader Core / XR応用 / Splat研究 / HTMLTexture情報面 / Audio/PostFX です。今の中心は Shader Core で、XR は焦点やレイヤーの使い道、Splat は素材、HTMLTexture は情報面、Audio/PostFX は時間的な揺らぎとして接続します。",
+      "bodyEn": "After cleanup, the map is Shader Core / XR applications / Splat research / HTMLTexture information surfaces / Audio/PostFX. The center is Shader Core; XR supplies use cases for focus and layers, splats are material, HTMLTexture is information surface, and Audio/PostFX provides temporal disturbance."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Shader Atlas Quality Mixer。ファイルは outputs/2026-07-10_shader_atlas_quality_mixer.html。次は、各象限を別サンプルの実装から module 化する、または WebGL2 の framebuffer で history cell だけ本物の前フレーム texture を持たせると発展します。",
+      "bodyEn": "The selected mini prototype is Shader Atlas Quality Mixer at outputs/2026-07-10_shader_atlas_quality_mixer.html. Next, modularize each quadrant from previous samples, or use WebGL2 framebuffers so the history cell holds a real previous-frame texture.",
+      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-10_shader_atlas_quality_mixer.html" }]
+    }
+  ]
+}

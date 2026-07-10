@@ -1,85 +1,109 @@
 {
   "date": "2026-07-08",
-  "headline": "SuperSplat v2.29.0 と編集タイムラインの視錐台化",
-  "headlineEn": "SuperSplat v2.29.0 and frustum-shaped edit timelines",
-  "summary": "SuperSplat v2.29.0 の 360 equirectangular export、SPZ export、timeline loop、camera info overlay、frustum-aware selection を中心に、splat 編集を単なるビューア操作ではなく、視錐台に沿う時間編集として扱う方向へ整理しました。単体 WebGL サンプルとして SOG Timeline Frustum Field を追加しました。",
-  "summaryEn": "This entry focuses on SuperSplat v2.29.0: 360 equirectangular export, SPZ export, timeline loop controls, camera info overlays, and frustum-aware selection. It reframes splat editing as time-based work along the camera frustum, and adds the standalone WebGL sample SOG Timeline Frustum Field.",
+  "headline": "視点予測を temporal reprojection の残像へ接続する",
+  "headlineEn": "Connecting viewport prediction to temporal reprojection trails",
+  "summary": "7/7 の viewport prediction / splat streaming field を受けて、今日はシェーダー本流を temporal reprojection に寄せました。three.js r185 の TSL / WebGPU / shader 周辺、PlayCanvas v2.20.6 の GSplat streaming 修正、SuperSplat v2.29.0 の timeline / 360 書き出し、WebGPU 3DGS 系の sorting / culling を参照し、現在焦点と履歴焦点のズレを見える化する WebGL サンプルを追加しました。",
+  "summaryEn": "Following the July 7 viewport prediction / splat streaming field, today's shader track moves toward temporal reprojection. It references three.js r185 TSL / WebGPU / shader work, PlayCanvas v2.20.6 GSplat streaming fixes, SuperSplat v2.29.0 timeline and 360 export updates, and WebGPU 3DGS sorting / culling research. The added WebGL sample visualizes the gap between current focus and reprojected focus history.",
   "links": [
     {
-      "label": "SuperSplat v2.29.0 release",
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.29.0",
       "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
     },
     {
-      "label": "Today's sample: SOG Timeline Frustum Field",
-      "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+      "label": "WebSplatter paper",
+      "url": "https://arxiv.org/abs/2602.03207"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-08_temporal_reprojection_field.html"
     }
   ],
   "sections": [
     {
       "title": "今日の重要トピック",
       "titleEn": "Key topics today",
-      "body": "SuperSplat v2.29.0 は、360 equirectangular video/image export、SPZ export、timeline loop、camera info overlay、timeline key の上書き、FOV auto-dolly の扱い、selection shader の修正など、編集と書き出しの両側を強く更新しています。特に volume select が camera frustum 外の splat を無視する修正は、選択範囲を画面上の矩形ではなく、カメラから伸びる編集ボリュームとして捉え直すきっかけになります。",
-      "bodyEn": "SuperSplat v2.29.0 strengthens both editing and export: 360 equirectangular video/image export, SPZ export, timeline looping, camera information overlays, timeline key overwrite actions, FOV handling, and selection shader fixes. The volume selection fix that ignores splats outside the camera frustum is especially useful as a creative cue: selection can be treated as an editing volume extending from the camera instead of a flat screen rectangle.",
+      "body": "1. three.js r185 は最新 release として継続し、TSL の storageTexture3D、textureGather、WebGPU/WebGL shader まわりの修正が、履歴 buffer や attribute texture を使う設計の土台になります。2. PlayCanvas v2.20.6 は 2026-07-06 公開で、gsplat detach crash、SOG unload、streaming re-load、picking 時の GPU device hang など、splat を動的に扱う時の安定性修正が入りました。3. SuperSplat v2.29.0 は 2026-07-08 公開で、timeline、360 equirectangular video/image export、SPZ export、camera info overlay が入り、splat 空間を時間方向に編集・書き出す導線が強くなっています。4. WebSplatter / GSStream 系の話題は、GPU sorting、opacity-aware culling、viewport prediction を Web 上の表現パラメータとして扱えることを示しています。",
+      "bodyEn": "1. three.js r185 remains the latest release and its TSL storageTexture3D, textureGather, and WebGPU/WebGL shader fixes are relevant foundations for history buffers and attribute textures. 2. PlayCanvas v2.20.6, released on 2026-07-06, fixes gsplat detach crashes, SOG unload, streaming re-load, and GPU device hangs during picking, all important for dynamic splat handling. 3. SuperSplat v2.29.0, released on 2026-07-08, adds timeline, 360 equirectangular video/image export, SPZ export, and camera info overlays, strengthening time-based splat editing and publishing. 4. WebSplatter / GSStream-style work shows GPU sorting, opacity-aware culling, and viewport prediction can become expression parameters on the web.",
       "links": [
         {
-          "label": "SuperSplat v2.29.0 release",
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "PlayCanvas v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "SuperSplat v2.29.0",
           "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
         }
       ]
     },
     {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "SuperSplat v2.29.0 の timeline / 360 export は、splat 空間を静止したスキャンではなく、カメラ履歴と書き出しのある素材として扱う方向です。7/7 の viewport prediction は『未来の視点へ先回りして密度を配る』話でしたが、今日はその逆側として『過去の視点がまだ残っている』ことを shader で見せるのが面白いです。",
+      "bodyEn": "SuperSplat v2.29.0 timeline and 360 export features push splat spaces away from static scans and toward materials with camera history and publishing paths. July 7 was about sending density ahead of a future viewport; today explores the opposite side by making past focus still visible through shader trails."
+    },
+    {
       "title": "表現・インタラクションのアイデア",
       "titleEn": "Expression and interaction ideas",
-      "body": "今日の試作では、カメラ位置からターゲットへ伸びる視錐台の中だけ splat が鮮明になり、外側は編集履歴の ghost として残るようにしました。timeline の scrub は splat の age として使い、keyframe が通過した場所だけ粒子密度が上がる演出にしています。360 書き出しの文脈では、画面中央だけを高品質にするのではなく、次に公開される全天球フレームの視線誘導を事前に描く使い方ができます。",
-      "bodyEn": "The prototype makes splats sharpen only inside the frustum running from camera to target, while out-of-frustum splats remain as edit-history ghosts. Timeline scrubbing becomes splat age, increasing particle density where keyframes pass. In a 360 export context, this suggests a way to paint attention cues for the next published equirectangular frame instead of simply improving the center of the current screen.",
-      "links": [
-        {
-          "label": "Open today's sample",
-          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
-        }
-      ]
+      "body": "焦点を現在値だけでなく、低速追従する history 値として持ちます。現在焦点は青く高精細、履歴焦点は琥珀色の ghost として残し、その差が大きいほど reprojection error として発光させます。XR 応用では視線や手の遅延を欠点として隠すのではなく、空間があとから追いついてくる感覚にできます。",
+      "bodyEn": "Keep focus not only as a current value but also as a slowly-following history value. Current focus appears sharp and blue; historical focus remains as an amber ghost, and the gap glows as reprojection error. In XR, gaze or hand latency can become a feeling of space catching up rather than a flaw to hide."
     },
     {
       "title": "制作に使えそうな技術メモ",
       "titleEn": "Production notes",
-      "body": "実装では、selection、camera path、export frame を同じ frustum field で扱うと整理しやすいです。各 splat または octree node に inFrustum、selectionWeight、timelineAge を持たせ、render、edit、export の優先順位を共有します。WebGL の小さな試作なら、fragment shader 内で camera point、target point、frustum direction を作り、dot と横方向距離だけで frustum mask を作れます。",
-      "bodyEn": "A practical structure is to drive selection, camera path, and export frames from one frustum field. Store inFrustum, selectionWeight, and timelineAge on each splat or octree node so rendering, editing, and export share priority. In a small WebGL sketch, a camera point, target point, dot products, and lateral distance are enough to build a convincing frustum mask in the fragment shader.",
-      "links": [
-        {
-          "label": "Today's sample",
-          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
-        }
-      ]
+      "body": "実装は currentFocus と historyFocus の2点だけでも成立します。fragment shader 側では、current 周辺で粒度を細かくし、history 周辺では少し大きい gaussian / trail を描く。実プロダクションでは history buffer、velocity buffer、depth buffer を分けるとよいですが、最小試作なら JS 側で pointer を lerp するだけで reprojection 的な見え方を検証できます。",
+      "bodyEn": "The implementation works with just currentFocus and historyFocus. In the fragment shader, make the current area finer and draw larger gaussian trails around the historical area. Production versions should separate history, velocity, and depth buffers, but a minimal prototype can test the reprojection feel by lerping the pointer in JavaScript."
     },
     {
       "title": "明日以降ウォッチする対象",
       "titleEn": "Watch next",
-      "body": "継続して見る対象は SuperSplat の SPZ/SOG export、PlayCanvas Engine の gsplat streaming と SOG asset lifecycle、three.js HTMLTexture/WebGPU、Babylon.js WebGPU color/material 周りです。次は、編集タイムラインの frustum field と PlayCanvas 側の streaming cache 修正をつなぎ、破棄済み texture や unload 中 asset が表現上どう見えるべきかを試します。",
-      "bodyEn": "Continue watching SuperSplat SPZ/SOG export, PlayCanvas Engine gsplat streaming and SOG asset lifecycles, three.js HTMLTexture/WebGPU, and Babylon.js WebGPU color/material work. Next, connect the frustum-field editing timeline to PlayCanvas streaming cache fixes and test how destroyed textures or unloading assets should appear as visual states.",
+      "body": "継続案件は three.js TSL/WebGPU、PlayCanvas GSplat/SOG streaming、SuperSplat timeline/export、WebGPU 3DGS sorting/culling です。新規に見る対象は temporal AA、motion vector、history rejection、depth-aware reprojection。寝かせる案件はフル 3DGS loader と重い XR 雛形です。",
+      "bodyEn": "Continue watching three.js TSL/WebGPU, PlayCanvas GSplat/SOG streaming, SuperSplat timeline/export, and WebGPU 3DGS sorting/culling. New watch items are temporal AA, motion vectors, history rejection, and depth-aware reprojection. Put full 3DGS loaders and heavy XR scaffolds aside."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "試すなら current focus と history focus の差を可視化することです。追加サンプル outputs/2026-07-08_temporal_reprojection_field.html は、ポインタの現在位置を青、遅れて追従する履歴を琥珀色の残像として描きます。押下中は安定窓が広がります。",
+      "bodyEn": "Try visualizing the difference between current focus and history focus. The added sample outputs/2026-07-08_temporal_reprojection_field.html draws the current pointer area in blue and the delayed history as amber trails. Holding/clicking widens the stability window.",
       "links": [
         {
-          "label": "PlayCanvas Engine releases",
-          "url": "https://github.com/playcanvas/engine/releases"
-        },
-        {
-          "label": "three.js releases",
-          "url": "https://github.com/mrdoob/three.js/releases"
-        },
-        {
-          "label": "Babylon.js releases",
-          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+          "label": "Open sample",
+          "url": "../outputs/2026-07-08_temporal_reprojection_field.html"
         }
       ]
     },
     {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r185、PlayCanvas v2.20.6、SuperSplat v2.29.0、WebSplatter を確認。アイデア検討: 7/7 の prediction field を、未来だけでなく過去の履歴へ拡張。サンプル実装: 単体 WebGL で current/history focus、reprojection ghost、drift ray を実装。結果の検証: gallery build と公開後 URL で確認予定。",
+      "bodyEn": "Research: checked three.js r185, PlayCanvas v2.20.6, SuperSplat v2.29.0, and WebSplatter. Ideation: extended July 7 prediction fields from future attention into past history. Prototype: implemented current/history focus, reprojection ghosts, and drift rays in standalone WebGL. Evaluation: verify after gallery build and publishing."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の線は focus、prediction、diagnostic に history が加わりました。品質配分は『どこを見るか』だけでなく『どこを見ていたか』にも依存します。組み合わせ候補は prediction + reprojection、splat diagnostic + history rejection、HTMLTexture annotation + temporal fade です。",
+      "bodyEn": "The recent line now adds history to focus, prediction, and diagnostics. Quality allocation depends not only on where the viewer looks, but where they were looking. Promising combinations are prediction plus reprojection, splat diagnostics plus history rejection, and HTMLTexture annotations plus temporal fade."
+    },
+    {
       "title": "今日のミニ試作候補",
       "titleEn": "Today's mini prototype candidate",
-      "body": "採用した候補は SOG Timeline Frustum Field です。ファイルは outputs/2026-07-08_sog_timeline_frustum_field.html。視錐台、timeline scrub、selection ring、ghost splat を WebGL fragment shader だけで描きます。次の発展は、実 camera key の配列を渡して frustum を複数重ねることです。",
-      "bodyEn": "The selected mini prototype is SOG Timeline Frustum Field, stored at outputs/2026-07-08_sog_timeline_frustum_field.html. It draws a frustum, timeline scrub, selection ring, and ghost splats with a single WebGL fragment shader. The next step is to pass real camera-key arrays and layer multiple frustums.",
+      "body": "採用した候補は Temporal Reprojection Field。ファイルは outputs/2026-07-08_temporal_reprojection_field.html。次に足すなら、履歴値を pointer ではなく depth gate や splat attribute texture に接続し、過去フレームで問題があった場所だけ残像として残します。",
+      "bodyEn": "The selected mini prototype is Temporal Reprojection Field at outputs/2026-07-08_temporal_reprojection_field.html. Next, connect history not to the pointer but to depth gates or splat attribute textures, leaving trails only where previous frames were problematic.",
       "links": [
         {
           "label": "Open sample",
-          "url": "../outputs/2026-07-08_sog_timeline_frustum_field.html"
+          "url": "../outputs/2026-07-08_temporal_reprojection_field.html"
         }
       ]
     }

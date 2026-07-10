@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audio Impulse Splat Field</title>
+  <style>
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#070d12; color:#f2fbff; font-family:system-ui,sans-serif; }
+    canvas { display:block; width:100%; height:100%; cursor:pointer; }
+    .hud { position:fixed; left:18px; bottom:16px; max-width:560px; pointer-events:none; text-shadow:0 2px 18px #000; }
+    h1 { margin:0 0 8px; font-size:15px; }
+    p { margin:0; color:rgba(238,248,255,.75); font-size:12px; line-height:1.55; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>Audio Impulse Splat Field</h1>
+  <p>Click or tap to inject an impulse. The synthetic beat modulates splat density, chroma breakup, and focus radius.</p>
+</div>
+<script id="vs" type="x-shader/x-vertex">attribute vec2 p;varying vec2 vUv;void main(){vUv=p*.5+.5;gl_Position=vec4(p,0.,1.);}</script>
+<script id="fs" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 uRes; uniform vec2 uPointer; uniform float uTime; uniform float uImpulse;
+varying vec2 vUv;
+float hash(vec2 p){p=fract(p*vec2(234.3,435.7));p+=dot(p,p+21.2);return fract(p.x*p.y);}
+float band(float x,float a,float b){return smoothstep(a,a+.015,x)*(1.-smoothstep(b,b+.015,x));}
+vec3 pal(float x){return .55+.45*cos(6.28318*(vec3(.08,.38,.68)+x));}
+void main(){
+ vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+ vec2 ptr=(uPointer*uRes-.5*uRes)/uRes.y;
+ float t=uTime;
+ float beat=pow(.5+.5*sin(t*3.1)+.22*sin(t*7.0),3.0);
+ float impulse=max(beat,uImpulse);
+ float focus=1.-smoothstep(.16+.13*impulse,.40+.18*impulse,length(uv-ptr));
+ vec3 col=vec3(.018,.032,.04)+vec3(.03,.035,.045)*(uv.y+.8);
+ float energy=0.;
+ for(int y=-9;y<=9;y++){
+  for(int x=-13;x<=13;x++){
+   vec2 id=vec2(float(x),float(y));
+   float rnd=hash(id);
+   vec2 c=id*vec2(.096,.087)+(vec2(hash(id+1.7),hash(id+8.4))-.5)*.048;
+   c+=.025*vec2(sin(t*.7+rnd*9.),cos(t*.55+rnd*11.))*impulse;
+   float d=length(uv-c);
+   float near=1.-smoothstep(.0,.33,length(c-ptr));
+   float pulse=impulse*(.35+.65*near);
+   float g=exp(-d*d/(.00045+.0025*pulse));
+   float shard=exp(-abs(uv.x-c.x)*80.)*exp(-abs(uv.y-c.y)*14.)*smoothstep(.72,1.,rnd+pulse*.25);
+   col+=pal(rnd+t*.035)*g*(.045+.36*pulse+.18*focus);
+   col+=vec3(1.,.27,.12)*shard*.045*pulse;
+   energy+=g*near;
+  }
+ }
+ float ring=1.-smoothstep(.014,.027,abs(length(uv-ptr)-(.18+.18*impulse)));
+ col+=vec3(.25,.85,1.)*ring*(.45+.7*impulse);
+ float wave=sin(length(uv-ptr)*52.-t*8.);
+ col+=vec3(.95,.28,.12)*smoothstep(.88,1.,wave)*focus*impulse*.35;
+ float bars=band(vUv.x,.055,.065)*(step(vUv.y,.16+.46*impulse));
+ bars+=band(vUv.x,.075,.085)*(step(vUv.y,.12+.26*beat));
+ col+=vec3(.22,.82,1.)*bars*.7;
+ float chroma=sin((uv.x+uv.y)*90.+t*12.);
+ col.r+=smoothstep(.92,1.,chroma)*impulse*.09;
+ col.b+=smoothstep(.92,1.,-chroma)*impulse*.08;
+ col=pow(col,vec3(.9));
+ gl_FragColor=vec4(col,1.);
+}
+</script>
+<script>
+const canvas=document.getElementById("gl"), gl=canvas.getContext("webgl");
+const pointer={x:.5,y:.55,impulse:0};
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s}
+const prg=gl.createProgram();gl.attachShader(prg,sh(gl.VERTEX_SHADER,vs.textContent));gl.attachShader(prg,sh(gl.FRAGMENT_SHADER,fs.textContent));gl.linkProgram(prg);gl.useProgram(prg);
+const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(prg,"p");gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+const u={res:gl.getUniformLocation(prg,"uRes"),ptr:gl.getUniformLocation(prg,"uPointer"),time:gl.getUniformLocation(prg,"uTime"),imp:gl.getUniformLocation(prg,"uImpulse")};
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;gl.viewport(0,0,canvas.width,canvas.height)}
+function move(e){const r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width;pointer.y=1-(e.clientY-r.top)/r.height}
+addEventListener("resize",resize);addEventListener("pointermove",move);addEventListener("pointerdown",e=>{move(e);pointer.impulse=1});
+const start=performance.now();
+function frame(now){resize();pointer.impulse*=.91;gl.uniform2f(u.res,canvas.width,canvas.height);gl.uniform2f(u.ptr,pointer.x,pointer.y);gl.uniform1f(u.time,(now-start)/1000);gl.uniform1f(u.imp,pointer.impulse);gl.drawArrays(gl.TRIANGLES,0,6);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

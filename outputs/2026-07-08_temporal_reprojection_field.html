@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Temporal Reprojection Field</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #061016; color: #eaf8ff; font-family: system-ui, sans-serif; }
+    canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .hud { position: fixed; left: 18px; bottom: 16px; max-width: 560px; pointer-events: none; text-shadow: 0 2px 18px #000; }
+    h1 { margin: 0 0 8px; font-size: 15px; letter-spacing: 0; }
+    p { margin: 0; color: rgba(232,246,255,.75); font-size: 12px; line-height: 1.55; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>Temporal Reprojection Field</h1>
+  <p>Move the pointer. The bright field is current focus; amber shadows are reprojected history. Hold to widen the stability window.</p>
+</div>
+<script id="vs" type="x-shader/x-vertex">
+attribute vec2 p;
+varying vec2 vUv;
+void main(){ vUv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }
+</script>
+<script id="fs" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 uRes;
+uniform vec2 uPointer;
+uniform vec2 uHistory;
+uniform float uTime;
+uniform float uPress;
+varying vec2 vUv;
+
+float hash(vec2 p){ p=fract(p*vec2(127.1,311.7)); p+=dot(p,p+34.7); return fract(p.x*p.y); }
+float sdBox(vec2 p, vec2 b){ vec2 d=abs(p)-b; return length(max(d,0.))+min(max(d.x,d.y),0.); }
+float ring(vec2 p, vec2 c, float r, float w){ return 1.-smoothstep(w*.4,w,abs(length(p-c)-r)); }
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+  vec2 cur=(uPointer*uRes-.5*uRes)/uRes.y;
+  vec2 hist=(uHistory*uRes-.5*uRes)/uRes.y;
+  float t=uTime;
+  vec3 col=vec3(.018,.045,.058)+vec3(.02,.035,.05)*(uv.y+.7);
+
+  float radius=mix(.16,.31,uPress);
+  float curF=1.-smoothstep(radius,radius+.17,length(uv-cur));
+  float histF=1.-smoothstep(radius*.8,radius+.24,length(uv-hist));
+  vec2 drift=cur-hist;
+  float driftLen=length(drift);
+  vec2 dir=normalize(drift+vec2(.0001,.0002));
+
+  for(int y=-8;y<=8;y++){
+    for(int x=-12;x<=12;x++){
+      vec2 id=vec2(float(x),float(y));
+      vec2 base=id*vec2(.105,.095)+(vec2(hash(id),hash(id+9.))-0.5)*.05;
+      float age=hash(id+21.);
+      vec2 repro=base-dir*driftLen*(.35+age*.85);
+      float d0=length(uv-base);
+      float d1=length(uv-repro);
+      float fine=exp(-d0*d0/(.00055+curF*.0009));
+      float ghost=exp(-d1*d1/(.0009+histF*.0018));
+      float stable=1.-smoothstep(.05,.22,abs(curF-histF)+driftLen*.45);
+      vec3 splat=mix(vec3(.11,.35,.52),vec3(.28,.84,1.),curF);
+      col+=splat*fine*(.06+.48*curF);
+      col+=vec3(1.,.55,.18)*ghost*(.04+.34*histF)*(1.-stable*.45);
+    }
+  }
+
+  float line=ring(uv,cur,radius,.01)+ring(uv,hist,radius*.82,.008)*.65;
+  col+=vec3(.32,.86,1.)*line;
+  col+=vec3(1.,.55,.12)*ring(uv,hist,radius*.55,.009)*(1.+driftLen*2.);
+  float ray=max(0.,1.-abs(dot(uv-hist,vec2(-dir.y,dir.x)))/.012)*smoothstep(.55,0.,length(uv-(hist+cur)*.5));
+  col+=vec3(.95,.44,.12)*ray*.35;
+
+  vec2 grid=abs(fract(uv*vec2(8.,5.)+sin(t*.2)*.05)-.5);
+  col+=vec3(.06,.22,.28)*(1.-smoothstep(.01,.018,min(grid.x,grid.y)))*(.2+curF*.4);
+  float scan=smoothstep(.93,1.,sin((uv.y+t*.05)*130.));
+  col+=vec3(.02,.16,.20)*scan;
+  col=pow(col,vec3(.92));
+  gl_FragColor=vec4(col,1.);
+}
+</script>
+<script>
+const canvas=document.getElementById("gl");
+const gl=canvas.getContext("webgl");
+const pointer={x:.52,y:.55,px:.48,py:.52,down:0};
+function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+const prg=gl.createProgram();
+gl.attachShader(prg,shader(gl.VERTEX_SHADER,vs.textContent));
+gl.attachShader(prg,shader(gl.FRAGMENT_SHADER,fs.textContent));
+gl.linkProgram(prg); gl.useProgram(prg);
+const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+const loc=gl.getAttribLocation(prg,"p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+const u={res:gl.getUniformLocation(prg,"uRes"),ptr:gl.getUniformLocation(prg,"uPointer"),his:gl.getUniformLocation(prg,"uHistory"),time:gl.getUniformLocation(prg,"uTime"),press:gl.getUniformLocation(prg,"uPress")};
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;gl.viewport(0,0,canvas.width,canvas.height);}
+function move(e){const r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width;pointer.y=1-(e.clientY-r.top)/r.height;}
+addEventListener("resize",resize); addEventListener("pointermove",move); addEventListener("pointerdown",e=>{move(e);pointer.down=1}); addEventListener("pointerup",()=>pointer.down=0);
+const start=performance.now();
+function frame(now){resize(); pointer.px+=(pointer.x-pointer.px)*.055; pointer.py+=(pointer.y-pointer.py)*.055; gl.uniform2f(u.res,canvas.width,canvas.height); gl.uniform2f(u.ptr,pointer.x,pointer.y); gl.uniform2f(u.his,pointer.px,pointer.py); gl.uniform1f(u.time,(now-start)/1000); gl.uniform1f(u.press,pointer.down); gl.drawArrays(gl.TRIANGLES,0,6); requestAnimationFrame(frame);}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
