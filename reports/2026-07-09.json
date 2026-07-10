@@ -5,10 +5,22 @@
   "summary": "7/8 の temporal reprojection を受けて、今日は focus field に impulse を足しました。Babylon.js 9.16.0 は 2026-07-09 に公開され、GPUParticleSystem の emitRateControl、AudioV2 修正、WebGPU-XR / XRGPUBinding、KHR_gaussian_splatting glTF extension が入っています。シェーダー側では、音量ピークやクリックを品質配分、粒子密度、色収差、splat halo の一時的な増幅に使う方向へ進めました。",
   "summaryEn": "Following July 8 temporal reprojection, today's shader track adds impulses to the focus field. Babylon.js 9.16.0 was released on 2026-07-09 with GPUParticleSystem emitRateControl, AudioV2 fixes, WebGPU-XR / XRGPUBinding, and KHR_gaussian_splatting glTF extension work. On the shader side, audio peaks or clicks drive temporary boosts in quality allocation, particle density, chroma breakup, and splat halos.",
   "links": [
-    { "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" },
-    { "label": "PlayCanvas Engine v2.20.6", "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6" },
-    { "label": "SuperSplat v2.29.0", "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" },
-    { "label": "Today's sample", "url": "../outputs/2026-07-09_audio_impulse_splat_field.html" }
+    {
+      "label": "Babylon.js 9.16.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.29.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-09_audio_impulse_splat_field.html"
+    }
   ],
   "sections": [
     {
@@ -16,7 +28,12 @@
       "titleEn": "Key topics today",
       "body": "1. Babylon.js 9.16.0 は 2026-07-09 公開で、GPUParticleSystem に emitRateControl setter、AudioV2 の loopStart/loopEnd 修正、WebGPU projection layer と render target provider、WebGPU-compatible XR session / XRGPUBinding、KHR_gaussian_splatting glTF extension が入りました。2. PlayCanvas v2.20.6 の GSplat/SOG streaming 修正は、昨日までの prediction / reprojection を実 asset に寄せる時の安定性に効きます。3. SuperSplat v2.29.0 の 360 video/export と timeline は、音や拍に合わせてカメラと splat の状態を編集する入口になります。4. シェーダー側では impulse を 0..1 の scalar として focus 半径、粒度、色収差、scanline、halo に配るのが扱いやすいです。",
       "bodyEn": "1. Babylon.js 9.16.0 was released on 2026-07-09 with a GPUParticleSystem emitRateControl setter, AudioV2 loopStart/loopEnd fixes, WebGPU projection layer and render target provider, WebGPU-compatible XR session / XRGPUBinding, and KHR_gaussian_splatting glTF extension work. 2. PlayCanvas v2.20.6 GSplat/SOG streaming fixes matter when moving prediction / reprojection toward real assets. 3. SuperSplat v2.29.0 360 video/export and timeline features open a path for beat-synchronized camera and splat states. 4. On the shader side, keeping impulse as a 0..1 scalar and distributing it to focus radius, grain, chroma, scanlines, and halos is convenient.",
-      "links": [{ "label": "Babylon.js 9.16.0", "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" }]
+      "links": [
+        {
+          "label": "Babylon.js 9.16.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+        }
+      ]
     },
     {
       "title": "注目事例と何が面白いか",
@@ -47,7 +64,12 @@
       "titleEn": "If you try one thing",
       "body": "試すなら impulse を focus 半径だけでなく、粒子密度と色収差にも配ることです。追加サンプル outputs/2026-07-09_audio_impulse_splat_field.html は、合成 beat とクリックで splat field が膨らみ、色が割れ、リングが広がります。",
       "bodyEn": "Try distributing impulse not only to focus radius but also to particle density and chromatic breakup. The added sample outputs/2026-07-09_audio_impulse_splat_field.html uses a synthetic beat and clicks to expand the splat field, split color, and widen rings.",
-      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-09_audio_impulse_splat_field.html" }]
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-09_audio_impulse_splat_field.html"
+        }
+      ]
     },
     {
       "title": "進行マップ",
@@ -66,7 +88,12 @@
       "titleEn": "Today's mini prototype candidate",
       "body": "採用した候補は Audio Impulse Splat Field。ファイルは outputs/2026-07-09_audio_impulse_splat_field.html。次は実 Web Audio analyser をつなぎ、peak で prediction radius、RMS で grain density、spectral centroid で chromatic direction を変えるとよいです。",
       "bodyEn": "The selected mini prototype is Audio Impulse Splat Field at outputs/2026-07-09_audio_impulse_splat_field.html. Next, connect a real Web Audio analyser: use peak for prediction radius, RMS for grain density, and spectral centroid for chromatic direction.",
-      "links": [{ "label": "Open sample", "url": "../outputs/2026-07-09_audio_impulse_splat_field.html" }]
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-09_audio_impulse_splat_field.html"
+        }
+      ]
     }
   ]
 }
