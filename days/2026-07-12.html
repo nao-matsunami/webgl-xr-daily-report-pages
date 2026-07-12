@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>360度splatの次は、緯度ごとの品質配分を見える化する | 2026-07-12</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.12</p>
+      <h1>360度splatの次は、緯度ごとの品質配分を見える化する</h1>
+      <p class="hero-subtitle">After 360 splats, visualize latitude-based quality allocation</p>
+      <p>2026-07-12 は、three.js r185、Babylon.js 9.16.0、PlayCanvas Engine v2.20.6、SuperSplat v2.29.0 を再確認し、前日の equirectangular splat 診断を「緯度ごとの面積差と品質配分」へ進めました。新しい単体 WebGL サンプルでは、極付近で無駄になりやすい splat 密度、SPZ 風の緯度量子化、seam risk、ポインタ周辺の retained detail を同時に表示します。</p>
+      <p class="en-copy">For 2026-07-12, I rechecked three.js r185, Babylon.js 9.16.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0, then advanced yesterday's equirectangular splat diagnostic toward latitude-based area and quality allocation. The new standalone WebGL sample visualizes wasted density near the poles, SPZ-like latitude quantization, seam risk, and retained detail near the pointer.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-12_latitude_equalized_splat_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-11.html">← 2026.07.11</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Latitude Equalized Splat Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-12_latitude_equalized_splat_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js の最新リリースは引き続き r185。HTMLTexture の HTML-in-Canvas API signature 対応、WebGLRenderer shader の normal transform 整理、TSL/WebGPU 周辺の textureGather や storageTexture3D は、DOM/情報面と shader 診断を接続する基盤として継続ウォッチです。2. Babylon.js 9.16.0 は GPUParticleSystem の emitRateControl、AudioV2 loop 修正、WebGPU projection layer、WebGPU-XR の API 分離、KHR_gaussian_splatting glTF extension が同時に進んでいます。3. PlayCanvas v2.20.6 は GSplat detaches、Windows/NVIDIA picking hang、SOG unload/reload cache の修正が中心で、実 asset をストリーミングしながら触る前提が強くなっています。4. SuperSplat v2.29.0 は 360 equirectangular video/image export、SPZ export、camera info overlay、timeline loop/keys を追加し、splat を編集から公開まで運ぶ導線がさらに具体化しました。5. SuperSplat Explore では建築、車両、食品、フラクタル形状など、点群/写真計測を作品や展示物として見せる例が並んでおり、単なる技術デモよりも「どこに注目させるか」の編集が重要になっています。</p>
+          <p class="en-copy">1. The latest three.js release remains r185. HTMLTexture support for HTML-in-Canvas API signatures, WebGLRenderer shader normal transform cleanup, and TSL/WebGPU work around textureGather and storageTexture3D remain important foundations for connecting DOM/information surfaces with shader diagnostics. 2. Babylon.js 9.16.0 advances GPUParticleSystem emitRateControl, AudioV2 loop fixes, WebGPU projection layers, WebGPU-XR API separation, and the KHR_gaussian_splatting glTF extension together. 3. PlayCanvas v2.20.6 focuses on GSplat detaches, Windows/NVIDIA picking hangs, and SOG unload/reload cache fixes, strengthening assumptions for interacting with streamed real assets. 4. SuperSplat v2.29.0 adds 360 equirectangular video/image export, SPZ export, camera info overlays, and timeline loop/key improvements, making the edit-to-publish path more concrete. 5. SuperSplat Explore shows architecture, vehicles, food, fractal forms, and other scanned or procedural subjects as publishable exhibits, where directing attention matters more than simply demonstrating the technology.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0 release</a></li>
+          
+            <li><a href="https://superspl.at/" target="_blank" rel="noreferrer">SuperSplat Explore</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>SuperSplat Explore の一覧は、Amity Street Apartment、Garage、Mont Saint Michel、MandelTorus、Underwater Plane Wreck など、生活空間・文化財・抽象形状・水中物といった異なる題材を同じ viewer で見せています。ここで面白いのは、題材の違いよりも「視線誘導の必要性」です。360 書き出しや SPZ 圧縮が使えるようになると、どの緯度帯にディテールを残すか、極や seam に無駄な密度を置いていないか、viewer の初期カメラが本当に見せたい場所を指しているかを、制作中に可視化する価値が高くなります。</p>
+          <p class="en-copy">SuperSplat Explore lists subjects such as Amity Street Apartment, Garage, Mont Saint Michel, MandelTorus, and Underwater Plane Wreck in the same viewer, spanning interiors, heritage-like scans, abstract forms, and underwater objects. The interesting point is less the subject variety itself and more the need for attention direction. Once 360 export and SPZ compression are available, it becomes valuable to visualize which latitude bands retain detail, whether poles and seams waste density, and whether the initial camera really points at the intended subject.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://superspl.at/" target="_blank" rel="noreferrer">SuperSplat Explore</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>昨日の equirectangular splat projection scope は、全天球 UV 上で選択・圧縮・stream risk を見るものでした。今日はそこに「緯度補正」を足します。equirectangular は画面上では上下も同じ面積に見えますが、球面では極に近いほど実面積が小さくなります。そこで、ポインタ周辺は cyan で retained detail、極付近や左右端は magenta で waste/risk、緯度ごとの量子化は amber で表示します。鑑賞者には抽象的な全天球地図、制作者には quality budget の配分表として機能します。</p>
+          <p class="en-copy">Yesterday's equirectangular splat projection scope visualized selection, compression, and stream risk on spherical UVs. Today adds latitude correction. In equirectangular maps, top and bottom areas look equal on screen, but on the sphere, real area shrinks near the poles. The interaction marks retained detail near the pointer in cyan, pole/seam waste and risk in magenta, and latitude quantization in amber. For viewers it reads as an abstract spherical map; for creators it works as a quality-budget allocation display.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-12_latitude_equalized_splat_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="../outputs/2026-07-11_equirect_splat_projection_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では、fragment shader 内で equirectangular UV から方向ベクトルを作り、cos(latitude) を equal-area weight として使いました。この値で疑似 splat の列数・行数・サイズ・明るさを変えると、極付近で密度が過剰に見える問題を視覚化できます。実 SuperSplat export に重ねる場合は、1. 360 WebP/動画を書き出す、2. 同じ UV に latitude weight texture を重ねる、3. PlayCanvas SOG の unload/reload/picking event を risk texture に加える、4. Babylon.js の KHR_gaussian_splatting 読み込みでも同じ色規約を使う、という順番が扱いやすいです。</p>
+          <p class="en-copy">The implementation reconstructs a direction vector from equirectangular UVs in the fragment shader and uses cos(latitude) as an equal-area weight. Driving pseudo-splat columns, rows, size, and brightness with that value makes over-dense pole regions visible. To overlay this on real SuperSplat exports, a practical path is: 1. export a 360 WebP/video, 2. overlay a latitude weight texture on the same UVs, 3. add PlayCanvas SOG unload/reload/picking events as a risk texture, and 4. reuse the same color convention when loading KHR_gaussian_splatting assets in Babylon.js.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js r185 の HTMLTexture/TSL、Babylon.js の KHR_gaussian_splatting、PlayCanvas の SOG/GSplat streaming、SuperSplat の 360/SPZ/timeline。新規案件: 360 書き出しを最終成果物ではなく quality budget map として使うこと。寝かせる案件: XR/VR/AR 固有の UI やカード UI は別トラックに置き、このプロジェクトでは shader、投影、圧縮、音反応、粒子、postprocess を優先します。</p>
+          <p class="en-copy">Continue: three.js r185 HTMLTexture/TSL, Babylon.js KHR_gaussian_splatting, PlayCanvas SOG/GSplat streaming, and SuperSplat 360/SPZ/timeline. New: treat 360 export as a quality budget map rather than only a final deliverable. Park: XR/VR/AR-specific UI and card UI remain separate tracks; this project prioritizes shaders, projection, compression, audio response, particles, and postprocess.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、outputs/2026-07-12_latitude_equalized_splat_scope.html を開き、ポインタを上下へ動かして緯度による密度差を見ます。押下すると equal-area correction が強くなり、極付近の magenta waste/risk と amber の量子化帯が見えやすくなります。短期で足すなら、SuperSplat の 360 WebP を background texture として読み込み、その上にこの診断レイヤーを additive で重ねます。</p>
+          <p class="en-copy">If you try one thing today, open outputs/2026-07-12_latitude_equalized_splat_scope.html and move the pointer vertically to inspect latitude-based density changes. Holding the pointer strengthens equal-area correction, making magenta pole waste/risk and amber quantization bands easier to see. A short-term next step is loading a SuperSplat 360 WebP as a background texture and compositing this diagnostic layer additively over it.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-12_latitude_equalized_splat_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: 公式リリースと SuperSplat Explore を確認。アイデア検討: 7/11 の equirectangular 診断に、球面の実面積差を加える方針に決定。サンプル実装: 単体 WebGL/GLSL で Latitude Equalized Splat Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: 360 WebP 背景への診断レイヤー合成。中長期で育てるもの: SuperSplat export、PlayCanvas SOG event、Babylon KHR_gaussian_splatting loader を同じ quality budget 可視化に接続する制作ツール。</p>
+          <p class="en-copy">Research: checked official releases and SuperSplat Explore. Ideation: decided to extend the 2026-07-11 equirectangular diagnostic with true spherical area differences. Prototype: added Latitude Equalized Splat Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: composite the diagnostic layer over a 360 WebP background. Mid/long term: connect SuperSplat export, PlayCanvas SOG events, and the Babylon KHR_gaussian_splatting loader into one quality-budget visualization tool.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、splat を単なる photoreal 表示から、編集・圧縮・投影・streaming を持つ制作媒体として扱う方向に寄っています。7/8 の temporal reprojection、7/9 の audio impulse、7/10 の shader atlas、7/11 の equirect projection、今日の latitude equalization は、すべて「品質をどこに残すか」を見せるための部品です。組み合わせ候補としては、音ピークで retained detail の半径を広げ、timeline key ごとに quality budget map を切り替えると、展示や音楽演出にも使いやすくなります。</p>
+          <p class="en-copy">The recent direction is to treat splats not merely as photoreal displays but as production media with editing, compression, projection, and streaming behavior. The 2026-07-08 temporal reprojection, 2026-07-09 audio impulse, 2026-07-10 shader atlas, 2026-07-11 equirect projection, and today's latitude equalization are all parts for showing where quality is retained. A promising combination is expanding the retained-detail radius on audio peaks and switching quality-budget maps per timeline key, which would suit installations and music-driven visuals.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Latitude Equalized Splat Scope。ファイルは outputs/2026-07-12_latitude_equalized_splat_scope.html。実際に動く内容は、全天球 UV 上の疑似 splat を緯度ごとの equal-area weight で変化させ、ポインタ周辺の retained detail、緯度量子化、極/seam risk を同時に描くものです。次に足すなら、実際の SuperSplat 360 export を texture として読み込み、診断色の強度を GUI か音反応で調整します。</p>
+          <p class="en-copy">The selected prototype is Latitude Equalized Splat Scope at outputs/2026-07-12_latitude_equalized_splat_scope.html. It changes pseudo splats on spherical UVs with a latitude-based equal-area weight and draws retained detail, latitude quantization, and pole/seam risk together. Next, load a real SuperSplat 360 export as a texture and control diagnostic intensity with a GUI or audio response.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-12_latitude_equalized_splat_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0</a></li>
+          
+            <li><a href="https://superspl.at/" target="_blank" rel="noreferrer">SuperSplat Explore</a></li>
+          
+            <li><a href="../outputs/2026-07-12_latitude_equalized_splat_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-12_latitude_equalized_splat_scope.html" loading="lazy" title="Latitude Equalized Splat Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
