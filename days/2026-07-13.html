@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>splat品質診断を、意味選択と有効マスクへつなぐ | 2026-07-13</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.13</p>
+      <h1>splat品質診断を、意味選択と有効マスクへつなぐ</h1>
+      <p class="hero-subtitle">Connect splat quality diagnostics to semantic selection and active masks</p>
+      <p>2026-07-13 は、three.js r185、Babylon.js 9.16.0、PlayCanvas Engine v2.20.6、SuperSplat v2.29.0 が継続して最新であることを確認しつつ、前日の latitude equalized splat scope を「意味で選ぶ splat」「動的シーンで有効な splat」「streaming/picking で壊れやすい splat」を同じ画面で見る方向へ進めました。新しい単体 WebGL サンプルでは、semantic region、active mask boundary、stale/uncertain splat、ポインタの選択レンズを fragment shader だけで可視化します。</p>
+      <p class="en-copy">For 2026-07-13, I confirmed that three.js r185, Babylon.js 9.16.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 remain the latest relevant releases, then advanced yesterday's latitude-equalized splat scope toward a shared view of semantically selected splats, active splats in dynamic scenes, and splats at risk during streaming or picking. The new standalone WebGL sample visualizes semantic regions, active-mask boundaries, stale or uncertain splats, and a pointer selection lens in a fragment shader.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-13_semantic_splat_mask_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-12.html">← 2026.07.12</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Semantic Splat Mask Scope - 2026-07-13</h3>
+              <p>Move pointer: semantic lens. Hold: amplify active mask and stream-risk contours.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-13_semantic_splat_mask_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は r185 が継続して最新。HTMLTexture と TSL/WebGPU 周辺は、DOM 的な情報レイヤーや shader 診断を texture として重ねる基盤として引き続き重要です。2. Babylon.js 9.16.0 は KHR_gaussian_splatting glTF extension と WebGPU/XR projection layer 周辺が継続ウォッチ対象で、splat を標準 asset として読み込む流れが強まっています。3. PlayCanvas Engine v2.20.6 は GSplat detach、Windows/NVIDIA での picking hang、SOG unload/reload/cache の修正が並び、実 asset を触る段階で必要になる安全装置が見えています。4. SuperSplat v2.29.0 は 360 equirectangular export、SPZ export、camera info overlay、timeline loop を備え、編集・圧縮・公開の導線が固まりつつあります。5. LangFlash は sparse unposed images から言語特徴付き Gaussian primitive を feed-forward で作る方向を示しており、splat を見た目だけでなく「選択可能な意味単位」として扱う発想に接続できます。</p>
+          <p class="en-copy">1. three.js r185 remains the latest release. HTMLTexture and TSL/WebGPU remain important foundations for compositing DOM-like information layers and shader diagnostics as textures. 2. Babylon.js 9.16.0 keeps KHR_gaussian_splatting glTF extension and WebGPU/XR projection layers on the watch list, strengthening the path toward loading splats as standard assets. 3. PlayCanvas Engine v2.20.6 fixes GSplat detaches, Windows/NVIDIA picking hangs, and SOG unload/reload/cache behavior, highlighting the safeguards needed before interacting with real assets. 4. SuperSplat v2.29.0 adds 360 equirectangular export, SPZ export, camera info overlays, and timeline looping, making the edit-compress-publish path more concrete. 5. LangFlash shows a feed-forward path from sparse unposed images to Gaussian primitives with language-aligned features, connecting splats to selectable semantic units rather than only visual primitives.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0 release</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2605.23287" target="_blank" rel="noreferrer">LangFlash</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>LangFlash が面白いのは、Gaussian splat に language-aligned semantic feature を持たせ、低遅延で geometry と semantics を同時に予測する点です。SuperSplat 側では polygon/volume select、360 export、timeline、camera overlay が制作機能として整ってきています。両者を制作視点でつなぐと、splat viewer は単なる鑑賞画面ではなく、「この語に反応する領域だけ残す」「timeline key ごとに意味レイヤーの強度を変える」「streaming で無効化された splat を意味領域ごとに警告する」編集面になります。</p>
+          <p class="en-copy">LangFlash matters because it attaches language-aligned semantic features to Gaussian splats and predicts geometry and semantics together with low latency. On the SuperSplat side, polygon and volume selection, 360 export, timeline controls, and camera overlays are becoming production features. Connecting the two from a production perspective turns a splat viewer from a passive view into an editing surface: keep only the region responding to a word, vary semantic-layer strength per timeline key, or warn when streamed-out splats intersect a semantic region.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://liylo.github.io/langflash.github.io/" target="_blank" rel="noreferrer">LangFlash demo</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>7/11 は equirectangular 投影、7/12 は緯度ごとの quality budget を見ました。今日はそれを意味選択に寄せます。画面上の cyan はポインタで選ばれた/残すべき splat、amber は有効マスクの境界、magenta は stale あるいは semantic confidence が低い splat として扱います。鑑賞者には、言葉で風景をなぞるような抽象的インタラクションに見せられます。制作者には、選択範囲、圧縮、streaming、picking の不安定部分を一画面で見る診断 overlay になります。</p>
+          <p class="en-copy">On 2026-07-11 we looked at equirectangular projection; on 2026-07-12 we looked at latitude-based quality budgets. Today shifts that toward semantic selection. Cyan means splats picked or worth retaining, amber means the active-mask boundary, and magenta means stale splats or low semantic confidence. For viewers, it can read as tracing a landscape with language. For creators, it becomes one diagnostic overlay for selection ranges, compression, streaming, and picking instability.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-13_semantic_splat_mask_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="../outputs/2026-07-12_latitude_equalized_splat_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では、fragment shader 内で疑似 semantic field、valid mask、stale mask、Gaussian splat 群を作り、ポインタ距離で picked/kept detail を強調しました。実 asset に進める場合は、1. SuperSplat の selection/volume 情報を mask texture として書き出す、2. PlayCanvas SOG の unload/reload/picking event を magenta の risk channel に入れる、3. LangFlash/LangSplat 系の semantic score を cyan の keep channel に入れる、4. Babylon.js KHR_gaussian_splatting 読み込みでも同じ RGBA 規約を使う、という順で最小ツール化できます。</p>
+          <p class="en-copy">The sample builds a pseudo semantic field, valid mask, stale mask, and Gaussian splat set in the fragment shader, then emphasizes picked or kept detail by pointer distance. To move toward real assets, a minimal tool path is: 1. export SuperSplat selection or volume information as a mask texture, 2. write PlayCanvas SOG unload/reload/picking events into a magenta risk channel, 3. write LangFlash/LangSplat-style semantic scores into a cyan keep channel, and 4. reuse the same RGBA convention when loading KHR_gaussian_splatting assets in Babylon.js.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2605.23287" target="_blank" rel="noreferrer">LangFlash paper</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js HTMLTexture/TSL、Babylon.js KHR_gaussian_splatting、PlayCanvas SOG/GSplat streaming、SuperSplat 360/SPZ/timeline。新規案件: LangFlash の semantic primitive を、shader overlay の選択チャンネルとして扱うこと。寝かせる案件: カード UI、XR/VR/AR 固有 UI、重い学習パイプライン。短期は静的な mask texture、長期は semantic query と streaming event を同じ visual budget map に乗せる制作ツールを育てます。</p>
+          <p class="en-copy">Continue: three.js HTMLTexture/TSL, Babylon.js KHR_gaussian_splatting, PlayCanvas SOG/GSplat streaming, and SuperSplat 360/SPZ/timeline. New: treat LangFlash semantic primitives as selection channels for shader overlays. Park: card UI, XR/VR/AR-specific UI, and heavy training pipelines. Short term, use static mask textures; long term, grow a production tool that places semantic queries and streaming events on the same visual budget map.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、outputs/2026-07-13_semantic_splat_mask_scope.html を開き、ポインタを動かして cyan の semantic lens と amber の active mask boundary を見ます。押下すると magenta の stream-risk/uncertain splat が強く出ます。短期で足すなら、前日の latitude equalization を risk channel に掛け合わせ、極や seam に近い semantic selection ほど警告を強くします。</p>
+          <p class="en-copy">If you try one thing today, open outputs/2026-07-13_semantic_splat_mask_scope.html and move the pointer to inspect the cyan semantic lens and amber active-mask boundary. Holding the pointer amplifies magenta stream-risk and uncertain splats. A short next step is multiplying yesterday's latitude equalization into the risk channel so semantic selections near poles and seams warn more strongly.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-13_semantic_splat_mask_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: 公式リリースと LangFlash の論文/デモを確認。アイデア検討: 7/11-7/12 の投影/緯度診断を、意味選択と有効マスク診断へ接続。サンプル実装: 単体 WebGL/GLSL で Semantic Splat Mask Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: mask texture と latitude risk の合成。中長期で育てるもの: semantic query、selection volume、SOG streaming event、timeline key を一枚の診断 overlay にまとめる制作支援ツール。</p>
+          <p class="en-copy">Research: checked official releases and the LangFlash paper/demo. Ideation: connected the 2026-07-11 and 2026-07-12 projection/latitude diagnostics to semantic selection and active-mask diagnostics. Prototype: added Semantic Splat Mask Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: composite mask textures with latitude risk. Mid/long term: build a production aid that unifies semantic queries, selection volumes, SOG streaming events, and timeline keys into one diagnostic overlay.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、splat を photoreal 表示の終点ではなく、編集可能な visual database として扱う方向です。7/8 の temporal history、7/9 の audio impulse、7/10 の shader atlas、7/11 の projection、7/12 の latitude budget、今日の semantic mask はすべて「何を残し、何を粗くし、何を警告するか」を見る部品です。組み合わせる価値が高いのは、semantic query で選んだ領域だけ音ピーク時に retained detail を広げ、timeline key ごとに mask/risk の色規約を変える演出です。</p>
+          <p class="en-copy">The recent trend is to treat splats not as the endpoint of photoreal display but as an editable visual database. The 2026-07-08 temporal history, 2026-07-09 audio impulse, 2026-07-10 shader atlas, 2026-07-11 projection, 2026-07-12 latitude budget, and today's semantic mask are all parts for deciding what to keep, what to simplify, and what to warn about. A high-value combination is expanding retained detail only inside semantically queried regions on audio peaks, while changing mask/risk color conventions per timeline key.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Semantic Splat Mask Scope。ファイルは outputs/2026-07-13_semantic_splat_mask_scope.html。実際に動く内容は、疑似 semantic field、active mask boundary、stale/uncertain splat、ポインタ選択レンズを WebGL fragment shader だけで描く最小プログラムです。次に足すなら、実 SuperSplat selection を 2D mask texture として読み込み、PlayCanvas SOG の unload/reload/picking event を magenta channel に重ねます。</p>
+          <p class="en-copy">The selected prototype is Semantic Splat Mask Scope at outputs/2026-07-13_semantic_splat_mask_scope.html. It is a minimal WebGL fragment-shader program that draws a pseudo semantic field, active-mask boundaries, stale or uncertain splats, and a pointer selection lens. Next, load a real SuperSplat selection as a 2D mask texture and overlay PlayCanvas SOG unload/reload/picking events into the magenta channel.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-13_semantic_splat_mask_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0" target="_blank" rel="noreferrer">Babylon.js 9.16.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.29.0" target="_blank" rel="noreferrer">SuperSplat v2.29.0</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2605.23287" target="_blank" rel="noreferrer">LangFlash paper</a></li>
+          
+            <li><a href="https://liylo.github.io/langflash.github.io/" target="_blank" rel="noreferrer">LangFlash demo</a></li>
+          
+            <li><a href="../outputs/2026-07-13_semantic_splat_mask_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-13_semantic_splat_mask_scope.html" loading="lazy" title="Semantic Splat Mask Scope - 2026-07-13"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

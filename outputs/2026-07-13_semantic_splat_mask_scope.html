@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semantic Splat Mask Scope - 2026-07-13</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #08090d;
+      color: #e8eef6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: min(560px, calc(100vw - 36px));
+      pointer-events: none;
+      text-shadow: 0 1px 10px #000;
+    }
+
+    .hud h1 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .hud p {
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #b8c7d9;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <h1>Semantic Splat Mask Scope</h1>
+    <p>Move pointer: semantic lens. Hold: amplify active mask and stream-risk contours.</p>
+    <p>Cyan = picked/kept detail, amber = valid mask boundary, magenta = stale or uncertain splats.</p>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float press;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float ring(float d, float radius, float width) {
+        return 1.0 - smoothstep(width, width * 2.8, abs(d - radius));
+      }
+
+      float semanticRegion(vec2 uv) {
+        float a = sin(uv.x * 7.0 + time * 0.35) + cos(uv.y * 6.0 - time * 0.22);
+        float b = sin((uv.x + uv.y) * 5.5 + time * 0.18);
+        return smoothstep(-0.08, 0.18, a * 0.55 + b * 0.45);
+      }
+
+      float splat(vec2 p, vec2 c, float r, float anisotropy) {
+        vec2 q = p - c;
+        q.x *= mix(0.65, 1.55, anisotropy);
+        q.y *= mix(1.45, 0.75, anisotropy);
+        return exp(-dot(q, q) / max(0.0001, r * r));
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / resolution.y;
+        vec2 m = (pointer * 2.0 - resolution.xy) / resolution.y;
+        m.y *= -1.0;
+
+        vec2 mapUv = uv;
+        mapUv.x += 0.035 * sin(uv.y * 9.0 + time * 0.35);
+        mapUv.y += 0.025 * sin(uv.x * 8.0 - time * 0.28);
+
+        float semantic = semanticRegion(mapUv);
+        float maskWave = noise(mapUv * 5.0 + time * 0.08);
+        float validMask = smoothstep(0.28, 0.62, semantic * 0.78 + maskWave * 0.35);
+        float staleMask = smoothstep(0.54, 0.86, noise(mapUv * 9.0 - time * 0.05));
+
+        float lens = smoothstep(0.46 + press * 0.22, 0.05, distance(p, m));
+        float lensRing = ring(distance(p, m), 0.28 + press * 0.16, 0.008);
+
+        vec3 color = vec3(0.018, 0.026, 0.038);
+        color += vec3(0.03, 0.045, 0.065) * (0.4 + 0.6 * uv.y);
+
+        float field = 0.0;
+        float keepField = 0.0;
+        float uncertainField = 0.0;
+        for (int i = 0; i < 54; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(hash(vec2(fi, 2.1)), hash(vec2(8.4, fi)));
+          vec2 c = (seed * 2.0 - 1.0) * vec2(1.62, 0.86);
+          c += 0.06 * vec2(sin(time * 0.31 + fi), cos(time * 0.27 + fi * 1.37));
+          float localSemantic = semanticRegion(c * 0.35 + 0.5);
+          float localMask = smoothstep(0.35, 0.72, localSemantic + hash(seed + 4.0) * 0.35);
+          float s = splat(p, c, 0.028 + 0.035 * hash(seed + 2.0), hash(seed + 9.0));
+          float picked = smoothstep(0.42, 0.0, distance(c, m));
+          float kept = max(localMask, picked * (0.65 + 0.35 * press));
+          float stale = (1.0 - localMask) * smoothstep(0.55, 0.9, hash(seed + floor(time * 0.7)));
+          field += s * (0.18 + 0.82 * localSemantic);
+          keepField += s * kept;
+          uncertainField += s * stale;
+        }
+
+        float boundary = fwidth(validMask) * 22.0 + ring(validMask, 0.5, 0.02);
+        float streamRisk = max(staleMask * (1.0 - validMask), uncertainField * 0.85);
+        float contour = ring(noise(mapUv * 12.0 + time * 0.05), 0.48, 0.018);
+
+        color += field * vec3(0.12, 0.17, 0.22);
+        color = mix(color, vec3(0.07, 0.17, 0.22), validMask * 0.32);
+        color += keepField * vec3(0.08, 0.72, 0.92) * (0.9 + lens * 1.2);
+        color += boundary * vec3(0.95, 0.62, 0.18) * (0.55 + press * 0.45);
+        color += streamRisk * vec3(0.86, 0.12, 0.52) * (0.65 + press * 0.8);
+        color += contour * streamRisk * vec3(1.0, 0.22, 0.7);
+        color += lensRing * vec3(0.05, 0.95, 1.0);
+
+        vec2 grid = abs(fract(mapUv * vec2(18.0, 10.0)) - 0.5);
+        float gridLine = 1.0 - smoothstep(0.0, 0.015, min(grid.x, grid.y));
+        color += gridLine * vec3(0.08, 0.11, 0.15);
+
+        color = pow(color, vec3(0.92));
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      press: gl.getUniformLocation(program, "press")
+    };
+
+    const state = {
+      pointerX: window.innerWidth * 0.55,
+      pointerY: window.innerHeight * 0.48,
+      press: 0
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(window.innerWidth * dpr);
+      const height = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    window.addEventListener("pointermove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      state.pointerX = (event.clientX - rect.left) * dpr;
+      state.pointerY = (event.clientY - rect.top) * dpr;
+    });
+    window.addEventListener("pointerdown", () => { state.press = 1; });
+    window.addEventListener("pointerup", () => { state.press = 0; });
+    window.addEventListener("pointercancel", () => { state.press = 0; });
+
+    function frame(now) {
+      resize();
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointerX, canvas.height - state.pointerY);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.press, state.press);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
