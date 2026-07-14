@@ -97,9 +97,10 @@
       }
 
       float lineGrid(vec2 p, float scale, float width) {
-        vec2 g = abs(fract(p * scale - 0.5) - 0.5) / fwidth(p * scale);
-        float l = min(g.x, g.y);
-        return 1.0 - smoothstep(width, width + 1.0, l);
+        vec2 cell = abs(fract(p * scale) - 0.5);
+        float l = min(cell.x, cell.y);
+        float px = width / scale;
+        return 1.0 - smoothstep(px, px * 1.85, l);
       }
 
       vec3 palette(float x) {
@@ -194,7 +195,12 @@
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        throw new Error(gl.getShaderInfoLog(shader));
+        const message = gl.getShaderInfoLog(shader) || "Shader compile failed";
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          `<div style="position:fixed;right:16px;bottom:16px;max-width:min(420px,calc(100vw - 32px));padding:12px 14px;border:1px solid rgba(255,91,188,.45);background:rgba(10,4,12,.82);color:#ffd9f0;font:12px/1.45 monospace;z-index:10;white-space:pre-wrap;">WebGL shader error\n${message.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</div>`
+        );
+        throw new Error(message);
       }
       return shader;
     }
