@@ -223,7 +223,9 @@
     };
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const isCompact = Math.min(innerWidth, innerHeight) < 560;
+      const dprLimit = isCompact ? 1.35 : 2;
+      const dpr = Math.min(window.devicePixelRatio || 1, dprLimit);
       const width = Math.floor(innerWidth * dpr);
       const height = Math.floor(innerHeight * dpr);
       if (canvas.width !== width || canvas.height !== height) {
