@@ -6,23 +6,26 @@
   <title>Semantic Latency Residue Scope</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; overflow: hidden; background: #071014; color: #eafcff; font-family: "Avenir Next", system-ui, sans-serif; }
-    canvas { display: block; width: 100vw; height: 100vh; }
+    html, body { margin: 0; min-height: 100%; overflow: hidden; background: #03070b; color: #eafcff; font-family: "Avenir Next", system-ui, sans-serif; }
+    canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
     .hud {
       position: fixed;
-      left: 18px;
-      top: 16px;
-      width: min(420px, calc(100vw - 36px));
-      padding: 14px 16px;
-      border: 1px solid rgba(133, 234, 255, 0.22);
-      background: rgba(4, 13, 18, 0.66);
-      backdrop-filter: blur(12px);
+      left: 20px;
+      top: 18px;
+      width: min(430px, calc(100vw - 40px));
+      padding: 15px 17px;
+      border: 1px solid rgba(124, 232, 255, 0.28);
+      background:
+        linear-gradient(135deg, rgba(8, 18, 29, 0.78), rgba(4, 8, 14, 0.58)),
+        radial-gradient(circle at 10% 0%, rgba(78, 226, 255, 0.16), transparent 42%);
+      backdrop-filter: blur(18px) saturate(1.25);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
-    h1 { margin: 0 0 8px; font-size: 17px; letter-spacing: 0; }
-    p { margin: 0; color: #acc9d3; font-size: 13px; line-height: 1.55; }
+    h1 { margin: 0 0 8px; font-size: 17px; letter-spacing: 0; font-weight: 650; }
+    p { margin: 0; color: #a8cbd7; font-size: 13px; line-height: 1.55; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .chip { display: inline-flex; align-items: center; gap: 6px; color: #dff8ff; font-size: 12px; }
-    .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 14px currentColor; }
   </style>
 </head>
 <body>
@@ -93,56 +96,96 @@
         return 1.0 - smoothstep(w, w * 2.3, abs(d - r));
       }
 
+      float lineGrid(vec2 p, float scale, float width) {
+        vec2 g = abs(fract(p * scale - 0.5) - 0.5) / fwidth(p * scale);
+        float l = min(g.x, g.y);
+        return 1.0 - smoothstep(width, width + 1.0, l);
+      }
+
+      vec3 palette(float x) {
+        vec3 a = vec3(0.02, 0.05, 0.09);
+        vec3 b = vec3(0.04, 0.22, 0.30);
+        vec3 c = vec3(0.16, 0.80, 1.00);
+        vec3 d = vec3(1.00, 0.18, 0.72);
+        return mix(mix(a, b, smoothstep(0.0, 0.62, x)), mix(c, d, smoothstep(0.55, 1.0, x)), smoothstep(0.68, 1.0, x));
+      }
+
       void main() {
         vec2 uv = gl_FragCoord.xy / resolution.xy;
         vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
         vec2 m = vec2(pointer.x, 1.0 - pointer.y);
         vec2 mp = (m * resolution.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
 
-        float flow = fbm(p * 1.6 + vec2(time * 0.05, -time * 0.03));
-        float semantic = smoothstep(0.38, 0.78, fbm(p * 2.2 + vec2(0.0, time * 0.025)));
-        float delayed = smoothstep(0.36, 0.80, fbm(p * 2.2 + vec2(-0.22, time * 0.025 - 0.28)));
+        vec2 warp = vec2(
+          fbm(p * 1.35 + vec2(time * 0.045, -0.2)),
+          fbm(p * 1.18 + vec2(-0.35, time * 0.035))
+        ) - 0.5;
+        vec2 q = p + warp * 0.22;
+        float flow = fbm(q * 1.7 + vec2(time * 0.055, -time * 0.035));
+        float semantic = smoothstep(0.39, 0.78, fbm(q * 2.18 + vec2(0.0, time * 0.026)));
+        float delayed = smoothstep(0.37, 0.80, fbm((q + vec2(-0.18, 0.07)) * 2.18 + vec2(-0.22, time * 0.026 - 0.33)));
         float residue = abs(semantic - delayed);
-        float boundary = ring(residue, 0.19, 0.012);
+        float boundary = ring(residue, 0.18, 0.014);
 
-        vec3 color = mix(vec3(0.02, 0.06, 0.07), vec3(0.03, 0.14, 0.16), flow);
-        color += vec3(0.03, 0.21, 0.26) * semantic;
+        float vignette = smoothstep(1.46, 0.18, length(p));
+        float horizon = smoothstep(-0.72, 0.86, p.y);
+        vec3 color = mix(vec3(0.005, 0.010, 0.020), vec3(0.012, 0.055, 0.080), flow);
+        color += palette(semantic) * vec3(0.22, 0.30, 0.36) * horizon;
+
+        float gridA = lineGrid(vec2(q.x + time * 0.018, q.y * 0.58 + 0.34 / (abs(q.y + 1.12) + 0.22)), 7.0, 0.52);
+        float gridB = lineGrid(vec2(q.x * 0.72 - time * 0.012, q.y * 0.42), 16.0, 0.34);
+        color += vec3(0.05, 0.54, 0.80) * gridA * 0.10 * vignette;
+        color += vec3(0.92, 0.22, 0.78) * gridB * 0.035 * (0.45 + residue);
 
         float live = 0.0;
         float stale = 0.0;
         float confidence = 0.0;
-        for (int i = 0; i < 30; i++) {
+        float micro = 0.0;
+        for (int i = 0; i < 42; i++) {
           float fi = float(i);
           vec2 seed = vec2(fi * 17.13, fi * 9.41);
           vec2 c = vec2(
-            -0.88 + 1.76 * hash(seed),
-            -0.62 + 1.24 * hash(seed + 4.7)
+            -0.96 + 1.92 * hash(seed),
+            -0.66 + 1.32 * hash(seed + 4.7)
           );
-          c += 0.08 * vec2(sin(time * 0.35 + fi), cos(time * 0.27 + fi * 1.9));
+          c += 0.055 * vec2(sin(time * 0.32 + fi), cos(time * 0.25 + fi * 1.9));
           float age = hash(seed + 11.0);
-          float g = gaussian(p, c, vec2(0.032 + age * 0.035, 0.012 + hash(seed + 2.0) * 0.024), fi);
+          float g = gaussian(p, c, vec2(0.025 + age * 0.040, 0.008 + hash(seed + 2.0) * 0.020), fi);
+          float core = gaussian(p, c, vec2(0.006 + age * 0.007, 0.004 + hash(seed + 8.0) * 0.004), fi);
           float lens = smoothstep(0.52, 0.02, length(c - mp));
           float semFit = smoothstep(0.28, 0.78, fbm(c * 2.2 + vec2(0.0, time * 0.025)));
           float staleFlag = smoothstep(0.48, 0.86, age + residue * 0.8 + down * 0.22);
-          live += g * semFit * (0.5 + lens);
-          stale += g * staleFlag * (0.75 + down + lens);
-          confidence += g * (1.0 - staleFlag) * (0.35 + lens);
+          live += g * semFit * (0.48 + lens * 1.25) + core * semFit * 0.82;
+          stale += g * staleFlag * (0.70 + down + lens) + core * staleFlag * 1.6;
+          confidence += g * (1.0 - staleFlag) * (0.32 + lens);
+          micro += core * (0.7 + 0.5 * sin(time * 1.7 + fi));
         }
 
-        float lensRing = ring(length(p - mp), 0.35 + down * 0.12, 0.012);
-        float scan = smoothstep(0.98, 1.0, sin((uv.y + time * 0.08) * 210.0) * 0.5 + 0.5);
+        float dlens = length(p - mp);
+        float lensRing = ring(dlens, 0.35 + down * 0.12, 0.010);
+        float lensGlass = smoothstep(0.38 + down * 0.10, 0.0, dlens) * (0.35 + 0.65 * residue);
+        float innerRing = ring(dlens, 0.17 + down * 0.05, 0.006);
+        float scan = smoothstep(0.982, 1.0, sin((uv.y + time * 0.08) * 235.0) * 0.5 + 0.5);
         float seamRisk = smoothstep(0.75, 0.98, abs(p.x)) * (0.25 + 0.75 * residue);
+        float chromaEdge = ring(dlens, 0.36 + down * 0.12, 0.032);
 
-        color += vec3(0.16, 0.92, 1.0) * live * 0.85;
-        color += vec3(1.0, 0.76, 0.25) * boundary * 0.65;
-        color += vec3(1.0, 0.12, 0.72) * stale * 0.92;
-        color += vec3(0.45, 0.95, 0.72) * confidence * 0.25;
-        color += vec3(1.0, 0.28, 0.84) * seamRisk * 0.35;
-        color += vec3(0.55, 0.94, 1.0) * lensRing;
-        color += scan * vec3(0.015, 0.035, 0.04);
+        color += vec3(0.10, 0.88, 1.00) * live * 0.68;
+        color += vec3(1.00, 0.66, 0.18) * boundary * 0.82;
+        color += vec3(1.00, 0.08, 0.72) * stale * 0.88;
+        color += vec3(0.42, 1.00, 0.78) * confidence * 0.20;
+        color += vec3(1.00, 0.20, 0.86) * seamRisk * 0.42;
+        color += vec3(0.52, 0.95, 1.00) * lensRing * 1.35;
+        color += vec3(0.12, 0.55, 0.72) * lensGlass;
+        color += vec3(1.00, 0.22, 0.74) * innerRing * (0.48 + down * 0.45);
+        color += vec3(0.10, 0.95, 1.00) * chromaEdge * 0.18;
+        color += vec3(1.00, 0.22, 0.82) * micro * 0.28;
+        color += scan * vec3(0.018, 0.040, 0.052);
 
-        color *= 0.82 + 0.18 * smoothstep(1.25, 0.25, length(p));
-        gl_FragColor = vec4(pow(color, vec3(0.92)), 1.0);
+        color *= 0.62 + 0.58 * vignette;
+        color = color / (1.0 + color * 0.42);
+        color = pow(color, vec3(0.82));
+        color += (hash(gl_FragCoord.xy + time) - 0.5) * 0.018;
+        gl_FragColor = vec4(color, 1.0);
       }
     `;
 
