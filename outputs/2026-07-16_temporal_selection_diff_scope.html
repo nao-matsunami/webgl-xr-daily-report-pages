@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Temporal Selection Diff Scope</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05070a;
+      color: #dcecff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: 390px;
+      padding: 12px 14px;
+      border: 1px solid rgba(150, 205, 255, 0.24);
+      background: rgba(5, 10, 16, 0.72);
+      backdrop-filter: blur(10px);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(220, 236, 255, 0.76);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <h1>Temporal Selection Diff Scope</h1>
+    <p>Move the pointer to scrub the live selection lens. Hold to amplify stale residue and stream risk. Cyan=current keep, amber=previous keep, violet=diff residue, red=cut risk.</p>
+  </div>
+
+  <script type="x-shader/x-vertex" id="vertex-shader">
+    attribute vec2 position;
+
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script type="x-shader/x-fragment" id="fragment-shader">
+    precision highp float;
+
+    uniform vec2 resolution;
+    uniform vec2 pointer;
+    uniform float time;
+    uniform float press;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 34.23);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      float a = hash(i);
+      float b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0));
+      float d = hash(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    }
+
+    float field(vec2 p) {
+      float n = noise(p * 2.7 + time * 0.05);
+      n += 0.5 * noise(p * 5.6 - time * 0.08);
+      n += 0.25 * noise(p * 11.0 + vec2(time * 0.11, -time * 0.03));
+      return n / 1.75;
+    }
+
+    float ring(vec2 p, vec2 c, float r, float w) {
+      return 1.0 - smoothstep(w, w * 2.0, abs(length(p - c) - r));
+    }
+
+    float lens(vec2 p, vec2 c, float r) {
+      float d = length(p - c);
+      return smoothstep(r, r * 0.45, d);
+    }
+
+    float splat(vec2 p, vec2 c, vec2 axis, float rot) {
+      float s = sin(rot);
+      float co = cos(rot);
+      mat2 m = mat2(co, -s, s, co);
+      vec2 q = m * (p - c);
+      return exp(-dot(q / axis, q / axis));
+    }
+
+    float glyphBars(vec2 p, float y, float phase) {
+      vec2 q = p - vec2(0.0, y);
+      float line = 0.0;
+      for (int i = 0; i < 7; i++) {
+        float x = -0.72 + float(i) * 0.24;
+        float h = 0.06 + 0.08 * sin(phase + float(i) * 1.7);
+        vec2 b = abs(q - vec2(x, 0.0)) - vec2(0.045, h);
+        float box = length(max(b, 0.0)) + min(max(b.x, b.y), 0.0);
+        line += 1.0 - smoothstep(0.0, 0.012, box);
+      }
+      return clamp(line, 0.0, 1.0);
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / resolution.xy;
+      vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+      vec2 mp = (pointer * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+      mp.y *= -1.0;
+
+      float base = field(p);
+      float semantic = smoothstep(0.43, 0.76, base);
+      float stale = smoothstep(0.52, 0.88, field(p + vec2(-0.18, 0.12) + 0.08 * sin(time)));
+
+      vec2 previousCenter = vec2(0.46 * sin(time * 0.31), 0.35 * cos(time * 0.23));
+      float currentKeep = lens(p, mp, 0.46 + 0.08 * press);
+      float previousKeep = lens(p, previousCenter, 0.38);
+      float diffResidue = abs(currentKeep - previousKeep) * (0.45 + 0.55 * stale);
+
+      float cutBand = smoothstep(0.035, 0.0, abs(p.y + 0.18 * sin(p.x * 2.1 + time * 0.4)));
+      cutBand *= smoothstep(-0.95, -0.05, p.x) * smoothstep(1.0, 0.1, p.x);
+
+      float splats = 0.0;
+      for (int i = 0; i < 36; i++) {
+        float fi = float(i);
+        vec2 cell = vec2(mod(fi, 6.0), floor(fi / 6.0));
+        vec2 c = (cell - 2.5) * 0.34;
+        c += 0.065 * vec2(sin(time * 0.29 + fi * 2.1), cos(time * 0.21 + fi * 1.3));
+        float gate = 0.45 + 0.55 * hash(cell + 3.0);
+        splats += splat(p, c, vec2(0.075 + 0.045 * gate, 0.025 + 0.035 * semantic), fi + time * 0.1);
+      }
+      splats = clamp(splats, 0.0, 1.8);
+
+      float streamRisk = smoothstep(0.32, 0.82, stale * diffResidue + cutBand * 0.7);
+      float currentRing = ring(p, mp, 0.46 + 0.08 * press, 0.012);
+      float previousRing = ring(p, previousCenter, 0.38, 0.01);
+      float textGate = glyphBars(p, -0.74, time * 2.0) * smoothstep(0.2, 0.95, semantic + currentKeep);
+      float scan = 0.08 * sin((uv.y + time * 0.05) * 280.0);
+
+      vec3 bg = mix(vec3(0.015, 0.025, 0.035), vec3(0.035, 0.055, 0.072), uv.y);
+      vec3 color = bg + splats * vec3(0.08, 0.11, 0.13);
+      color += semantic * vec3(0.02, 0.08, 0.055);
+      color += currentKeep * splats * vec3(0.02, 0.72, 0.95);
+      color += previousKeep * splats * vec3(0.95, 0.54, 0.14) * 0.7;
+      color += diffResidue * vec3(0.62, 0.18, 1.0);
+      color += cutBand * (0.45 + 0.55 * press) * vec3(1.0, 0.14, 0.08);
+      color += streamRisk * vec3(0.9, 0.05, 0.18);
+      color += currentRing * vec3(0.5, 0.96, 1.0);
+      color += previousRing * vec3(1.0, 0.76, 0.25);
+      color += textGate * vec3(1.0, 0.93, 0.42);
+      color += scan;
+      color = pow(max(color, 0.0), vec3(0.92));
+
+      gl_FragColor = vec4(color, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false });
+    const pointer = { x: window.innerWidth * 0.62, y: window.innerHeight * 0.44, down: 0 };
+
+    if (!gl) {
+      document.body.innerHTML = "<p>WebGL is not available in this browser.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const vertex = compile(gl.VERTEX_SHADER, document.getElementById("vertex-shader").textContent);
+    const fragment = compile(gl.FRAGMENT_SHADER, document.getElementById("fragment-shader").textContent);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      press: gl.getUniformLocation(program, "press")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(window.innerWidth * dpr);
+      const h = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      const touch = event.touches && event.touches[0];
+      const point = touch || event;
+      pointer.x = point.clientX;
+      pointer.y = point.clientY;
+    }
+
+    window.addEventListener("pointermove", setPointer);
+    window.addEventListener("pointerdown", (event) => {
+      pointer.down = 1;
+      setPointer(event);
+    });
+    window.addEventListener("pointerup", () => {
+      pointer.down = 0;
+    });
+    window.addEventListener("touchmove", setPointer, { passive: true });
+    window.addEventListener("resize", resize);
+
+    function frame(now) {
+      resize();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x * dpr, pointer.y * dpr);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.press, pointer.down);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

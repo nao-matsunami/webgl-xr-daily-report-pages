@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>selection boolean を時間差分と stream risk の scope に進める | 2026-07-16</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.16</p>
+      <h1>selection boolean を時間差分と stream risk の scope に進める</h1>
+      <p class="hero-subtitle">Move selection booleans into temporal diff and stream-risk scopes</p>
+      <p>2026-07-16 は、SuperSplat v2.30.0 の selection operation、PlayCanvas Engine v2.20.6 の SOG/gsplat 安定化、Babylon.js 9.16.2 の MSDF depth 書き込み、three.js r185 の HTMLTexture/TSL 更新を継続確認し、前日の selection boolean residue を「現在選択・前回選択・差分残像・stream risk」を同時に見る時間差分 scope へ進めました。単体 WebGL サンプルでは、cyan の current keep、amber の previous keep、violet の diff residue、red の cut/stream risk、yellow の depth annotation gate を GLSL だけで描きます。</p>
+      <p class="en-copy">For 2026-07-16, I rechecked SuperSplat v2.30.0 selection operations, PlayCanvas Engine v2.20.6 SOG/gsplat stability work, Babylon.js 9.16.2 MSDF depth writing, and three.js r185 HTMLTexture/TSL updates. The previous selection-boolean residue track now becomes a temporal-diff scope showing current selection, previous selection, diff afterimage, and stream risk at once. The standalone WebGL sample draws cyan current keep, amber previous keep, violet diff residue, red cut/stream risk, and yellow depth annotation gates in GLSL only.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-16_temporal_selection_diff_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-15.html">← 2026.07.15</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Temporal Selection Diff Scope</h3>
+              <p>Move the pointer to scrub the live selection lens. Hold to amplify stale residue and stream risk. Cyan=current keep, amber=previous keep, violet=diff residue, red=cut risk.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-16_temporal_selection_diff_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は r185 が最新で、HTMLTexture の新しい HTML-in-Canvas API signature 対応、TSL / WebGPU 周辺、render bundle や texture gather 系の整理が継続的な基盤です。2. Babylon.js は 9.16.2 が最新で、MSDF TextRenderer の writeToDepthBuffer option が、ラベルや文字を depth-aware annotation として splat / particle / postprocess の中へ入れる足場になります。3. PlayCanvas Engine は v2.20.6 が最新で、gsplat picking の GPU hang、SOG unload/reload/cache、gsplat detach crash 修正が、streaming diagnostic overlay の信頼性に直結します。4. SuperSplat は v2.30.0 が最新で、intersect modifier、cursor 上の active operation 表示、sphere/box selection volume の numeric position、LOD dialog、PNG/JPEG image render export が入り、選択を作品表現と制作検証の両方に使いやすくなっています。5. WebSplatter / S2GS / GSStream は、Web 上の splat 表現が「高速表示」だけでなく、viewport prediction、semantic update、bitrate / validity / stale state を持つ方向へ向かうことを示しています。</p>
+          <p class="en-copy">1. three.js r185 remains the latest release, with HTMLTexture support for new HTML-in-Canvas API signatures, TSL/WebGPU work, render bundles, and texture-gather cleanup forming a continuing base. 2. Babylon.js 9.16.2 remains latest, and the MSDF TextRenderer writeToDepthBuffer option is a foothold for bringing labels and text into splat / particle / postprocess scenes as depth-aware annotations. 3. PlayCanvas Engine v2.20.6 remains latest, with fixes for gsplat picking GPU hangs, SOG unload/reload/cache behavior, and gsplat detach crashes directly affecting the reliability of streaming diagnostic overlays. 4. SuperSplat v2.30.0 remains latest, adding an intersect modifier, cursor-level active operation feedback, numeric sphere/box selection-volume positioning, LOD dialog work, and PNG/JPEG image-render export, making selection useful as both expression and production validation. 5. WebSplatter, S2GS, and GSStream show that web splat work is moving beyond fast display toward viewport prediction, semantic updates, bitrate, validity, and stale-state channels.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2" target="_blank" rel="noreferrer">Babylon.js 9.16.2 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.30.0" target="_blank" rel="noreferrer">SuperSplat v2.30.0 release</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は、SuperSplat の selection operation と PlayCanvas の SOG 安定化を同じ表現面で見ることです。前回は add / subtract / intersect を静的な boolean として扱いましたが、制作では選択は一回で終わらず、前の選択、今の選択、差分、取り消し、streaming 中の欠落が重なります。ここに GSStream の viewport prediction、S2GS の semantic memory、WebSplatter の overdraw / culling の考えを足すと、選択 UI は単なる編集機能ではなく「どの粒子を維持し、どの粒子を捨て、どこに残像として警告を出すか」を見せる表現になります。Iakov Sumygin の PlayCanvas / Gaussian splat FPS 事例も、splat を見た目だけでなく collision / navmesh / gameplay へ接続する例として、同じ流れに置けます。</p>
+          <p class="en-copy">The notable angle today is reading SuperSplat selection operations and PlayCanvas SOG stabilization on the same expressive surface. Yesterday treated add / subtract / intersect as static booleans, but in production selection is not a one-shot action: previous selection, current selection, differences, undo traces, and streaming gaps overlap. Combining that with GSStream viewport prediction, S2GS semantic memory, and WebSplatter overdraw/culling turns selection UI into an expressive layer that shows which particles are retained, discarded, or left as warning afterimages. Iakov Sumygin's PlayCanvas / Gaussian splat FPS also fits this line because it connects splats from appearance into collision, navmesh, and gameplay.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.30.0" target="_blank" rel="noreferrer">SuperSplat v2.30.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://www.tomshardware.com/software/programming/developer-creates-a-basic-first-person-shooter-game-using-gaussian-splats-and-you-can-play-it-for-free-in-your-browser" target="_blank" rel="noreferrer">Tom's Hardware: Gaussian splat FPS</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>今日の中心案は「Temporal Selection Diff Scope」です。cyan は今の keep lens、amber は前回または予測された keep lens、violet は両者の差分 residue、red は cut / stream risk、yellow は depth annotation gate。ポインタを動かすと現在選択が追従し、押下中は stale residue と risk が強くなります。作品としては、鑑賞者の視線や手の動きが、空間に青い現在形と琥珀色の過去形を残し、その差分だけが紫に燃える。制作ツールとしては、selection operation、semantic confidence、SOG validity、latency residue を同じ画面で見られるため、splat scene の編集ログをビジュアルに検証できます。</p>
+          <p class="en-copy">The core idea is Temporal Selection Diff Scope. Cyan is the current keep lens, amber is the previous or predicted keep lens, violet is the diff residue between them, red is cut / stream risk, and yellow is the depth annotation gate. Moving the pointer updates the live selection; holding amplifies stale residue and risk. As an artwork, the viewer's gaze or hand motion leaves a blue present and an amber past in space, with only the difference burning violet. As a production tool, selection operation, semantic confidence, SOG validity, and latency residue become visible on the same surface, making the edit log of a splat scene visually inspectable.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-16_temporal_selection_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>試作は依存なしの HTML + WebGL + GLSL です。fragment shader 内で procedural noise から semantic / stale field を作り、現在 lens と過去 lens の差分を abs(current - previous) として residue に変換しています。実制作では、R=selection keep、G=semantic confidence、B=latency/residue、A=stream validity の継続規約に加え、operation mode(add/subtract/intersect)と frame age を別 texture か packed channel に持たせるのが良いです。PlayCanvas 側では SOG unload/reload/cache event を A または age channel へ、SuperSplat 側では active selection operation と numeric volume を R/operation channel へ、Babylon/three.js 側では MSDF/HTMLTexture annotation を depth gate として重ねる構成が現実的です。</p>
+          <p class="en-copy">The prototype is dependency-free HTML + WebGL + GLSL. The fragment shader generates semantic and stale fields from procedural noise, then converts the difference between current and previous lenses into residue via abs(current - previous). In production, keep the running convention R = selection keep, G = semantic confidence, B = latency/residue, A = stream validity, and add operation mode (add/subtract/intersect) plus frame age as either another texture or packed channels. A practical setup is: PlayCanvas SOG unload/reload/cache events feed A or age, SuperSplat active operation and numeric volume feed R/operation, and Babylon/three.js MSDF/HTMLTexture annotation becomes the depth gate.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-16_temporal_selection_diff_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2" target="_blank" rel="noreferrer">Babylon.js 9.16.2</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: SuperSplat selection operation / LOD dialog / image render export、PlayCanvas SOG streaming / picking / reload stability、Babylon.js MSDF depth と Viewer lite、three.js HTMLTexture / TSL。新規案件: selection history を texture 化し、前回との差分を shader overlay として出す。寝かせる案件: カード UI、重い学習 pipeline、XR 固有導線、完成度の高いゲーム化。短期は current/previous/diff の 2D mask を作ること。中長期は、semantic selection、stream risk、viewport prediction、depth annotation、audio impulse を同じ temporal visual budget map で扱う小さな制作環境です。</p>
+          <p class="en-copy">Continue watching: SuperSplat selection operations, LOD dialog, image render export; PlayCanvas SOG streaming, picking, reload stability; Babylon.js MSDF depth and Viewer lite; three.js HTMLTexture and TSL. New item: texture selection history and expose diffs from the previous state as a shader overlay. Park: card UI, heavy training pipelines, XR-specific flows, and turning this into a polished game. Short term: make current/previous/diff 2D masks. Mid/long term: build a small authoring environment where semantic selection, stream risk, viewport prediction, depth annotation, and audio impulse share one temporal visual budget map.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら outputs/2026-07-16_temporal_selection_diff_scope.html を開き、ポインタを動かして cyan の current keep と amber の previous keep のずれを見ます。紫は差分 residue、赤は cut / stream risk です。押下中は stale と risk が増幅されます。次に足すなら、昨日の selection boolean sample の add/subtract/intersect を operation channel として読み込み、今日の previous/current lens と比較して、選択操作の履歴がどこに残るかを見ます。</p>
+          <p class="en-copy">If you try one thing today, open outputs/2026-07-16_temporal_selection_diff_scope.html and move the pointer to inspect the gap between cyan current keep and amber previous keep. Violet is diff residue, and red is cut / stream risk. Holding amplifies stale state and risk. Next, load yesterday's add/subtract/intersect selection boolean sample as an operation channel and compare it with today's previous/current lenses to see where selection history remains.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-16_temporal_selection_diff_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: 公式 release と WebSplatter / S2GS / GSStream、Gaussian splat FPS 事例を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue、7/15 selection boolean を、current/previous/diff の時間軸へ接続。サンプル実装: 単体 WebGL/GLSL で Temporal Selection Diff Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: selection history mask と diff residue。中長期で育てるもの: 編集履歴、stream validity、semantic confidence、depth annotation を同じ shader scope で扱う制作診断レイヤー。</p>
+          <p class="en-copy">Research: checked official releases plus WebSplatter, S2GS, GSStream, and a Gaussian splat FPS example. Ideation: connected the 2026-07-13 semantic mask, 2026-07-14 latency residue, and 2026-07-15 selection boolean into a current/previous/diff timeline. Prototype: added Temporal Selection Diff Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: selection history masks and diff residue. Mid/long term: a production diagnostic layer that handles edit history, stream validity, semantic confidence, and depth annotation in one shader scope.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、splat / shader 表現が「見える」から「編集状態を持つ」へ移っています。7/11 は equirect projection、7/12 は latitude budget、7/13 は semantic mask、7/14 は latency residue、7/15 は selection boolean、今日は temporal diff です。この系列は、WebGL の見た目だけでなく、制作中に何が変わり、何が古く、何が危険かをそのまま演出に変える方向です。組み合わせ候補としては、SuperSplat selection を current mask、GSStream viewport prediction を previous/predicted mask、PlayCanvas SOG event を validity、Babylon/three.js text/HTMLTexture を depth annotation に割り当てる構成が育てる価値が高いです。</p>
+          <p class="en-copy">The recent trend is that splat / shader expression is moving from merely visible to carrying edit state. 2026-07-11 was equirect projection, 07-12 latitude budget, 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, and today temporal diff. This sequence turns not only WebGL appearance but also what changed, what is stale, and what is risky during production into the visual performance itself. A strong combination is to map SuperSplat selection to current masks, GSStream viewport prediction to previous/predicted masks, PlayCanvas SOG events to validity, and Babylon/three.js text/HTMLTexture to depth annotations.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Temporal Selection Diff Scope。ファイルは outputs/2026-07-16_temporal_selection_diff_scope.html。実際に動く内容は、current keep、previous keep、diff residue、cut/stream risk、depth annotation gate を WebGL fragment shader だけで描く最小プログラムです。次に足すなら、実 SuperSplat selection export かスクリーン座標 mask を current/previous texture として読み込み、差分 residue を実データで出すことです。その次に PlayCanvas SOG unload/reload event を A channel に入れると、stream risk の検証に進めます。</p>
+          <p class="en-copy">The selected prototype is Temporal Selection Diff Scope at outputs/2026-07-16_temporal_selection_diff_scope.html. It is a minimal WebGL fragment-shader program that draws current keep, previous keep, diff residue, cut/stream risk, and a depth annotation gate. Next, load a real SuperSplat selection export or screen-space mask as current/previous textures and generate diff residue from real data. After that, feed PlayCanvas SOG unload/reload events into the A channel to validate stream risk.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-16_temporal_selection_diff_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.30.0" target="_blank" rel="noreferrer">SuperSplat v2.30.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2" target="_blank" rel="noreferrer">Babylon.js 9.16.2</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2602.03207" target="_blank" rel="noreferrer">WebSplatter</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.14232" target="_blank" rel="noreferrer">S2GS</a></li>
+          
+            <li><a href="https://arxiv.org/abs/2603.09718" target="_blank" rel="noreferrer">GSStream</a></li>
+          
+            <li><a href="../outputs/2026-07-16_temporal_selection_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-16_temporal_selection_diff_scope.html" loading="lazy" title="Temporal Selection Diff Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
