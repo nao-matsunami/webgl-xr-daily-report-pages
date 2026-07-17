@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 30</span>
+        <span>days: 31</span>
         <span>page: 1 / 3</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -297,6 +297,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-17">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.17</p>
+              <h2>Streamed SOG の retry/cooldown を selection diff の次の診断軸にする</h2>
+              <p class="card-subtitle">Use Streamed SOG retry and cooldown as the next diagnostic axis after selection diff</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-17" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-17 は、SuperSplat v2.31.1 の Streamed SOG folder drag-and-drop 修正、Babylon.js 9.17.0 の GaussianSplattingStream LOD switch retry と safe-orbit camera limits、PlayCanvas Engine v2.20.6 / API docs の SOG streaming 安定化を確認し、前日の temporal selection diff を「LOD budget、retry cooldown、stream validity、stale diff」を同時に見る scope へ進めました。単体 WebGL サンプルでは、green の valid LOD tile、amber の retry cooldown、magenta の stale diff、red の failed stream risk、blue の current budget lens を GLSL だけで描きます。</p>
+          <p class="description en-copy">For 2026-07-17, I checked SuperSplat v2.31.1's streamed SOG folder drag-and-drop fix, Babylon.js 9.17.0's GaussianSplattingStream LOD switch retry and safe-orbit camera limits, and PlayCanvas Engine v2.20.6 / API docs around SOG streaming stability. Yesterday's temporal selection diff now becomes a scope for viewing LOD budget, retry cooldown, stream validity, and stale diff together. The standalone WebGL sample draws green valid LOD tiles, amber retry cooldown, magenta stale diff, red failed stream risk, and a blue current budget lens in GLSL only.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-17.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-17_sog_retry_budget_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-16">
           <div class="card-top">
             <div>
@@ -546,29 +569,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-07-06.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-07-06_splat_diagnostic_lens.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-05">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.05</p>
-              <h2>MSDF AA と HTML texture を可変解像度の情報膜へつなぐ</h2>
-              <p class="card-subtitle">Connecting MSDF AA and HTML textures to adaptive-resolution information membranes</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-05" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、three.js r185 の HTMLTexture/TSL 更新、Babylon.js 9.15.0 の WebGPU sRGB と tree-shaking 修正、PlayCanvas v2.20 系の HTML-in-Canvas/GSplat/MSDF 周辺、WICG HTML-in-Canvas、WebXR Layers を、前回までの焦点膜に接続しました。短期試作は、ポインタ近傍だけ疑似 MSDF 文字と粒子グリッドの解像度が上がる WebGL シェーダーです。</p>
-          <p class="description en-copy">Today connects three.js r185 HTMLTexture/TSL updates, Babylon.js 9.15.0 WebGPU sRGB and tree-shaking fixes, PlayCanvas v2.20 work around HTML-in-Canvas, GSplat, and MSDF, WICG HTML-in-Canvas, and WebXR Layers to the recent focus-membrane thread. The short prototype is a WebGL shader where pseudo-MSDF letters and particle-grid resolution sharpen only near the pointer.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-07-05.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-07-05_adaptive_msdf_grain_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       

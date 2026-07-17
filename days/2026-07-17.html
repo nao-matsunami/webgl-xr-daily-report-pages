@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Streamed SOG の retry/cooldown を selection diff の次の診断軸にする | 2026-07-17</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.17</p>
+      <h1>Streamed SOG の retry/cooldown を selection diff の次の診断軸にする</h1>
+      <p class="hero-subtitle">Use Streamed SOG retry and cooldown as the next diagnostic axis after selection diff</p>
+      <p>2026-07-17 は、SuperSplat v2.31.1 の Streamed SOG folder drag-and-drop 修正、Babylon.js 9.17.0 の GaussianSplattingStream LOD switch retry と safe-orbit camera limits、PlayCanvas Engine v2.20.6 / API docs の SOG streaming 安定化を確認し、前日の temporal selection diff を「LOD budget、retry cooldown、stream validity、stale diff」を同時に見る scope へ進めました。単体 WebGL サンプルでは、green の valid LOD tile、amber の retry cooldown、magenta の stale diff、red の failed stream risk、blue の current budget lens を GLSL だけで描きます。</p>
+      <p class="en-copy">For 2026-07-17, I checked SuperSplat v2.31.1's streamed SOG folder drag-and-drop fix, Babylon.js 9.17.0's GaussianSplattingStream LOD switch retry and safe-orbit camera limits, and PlayCanvas Engine v2.20.6 / API docs around SOG streaming stability. Yesterday's temporal selection diff now becomes a scope for viewing LOD budget, retry cooldown, stream validity, and stale diff together. The standalone WebGL sample draws green valid LOD tiles, amber retry cooldown, magenta stale diff, red failed stream risk, and a blue current budget lens in GLSL only.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-17_sog_retry_budget_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-16.html">← 2026.07.16</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>SOG Streaming Retry Budget Scope</h3>
+              <p>Move the pointer to allocate detail budget. Hold to simulate drag/drop reload pressure. Green=valid LOD, amber=cooldown retry, magenta=stale diff, red=failed stream risk.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-17_sog_retry_budget_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. SuperSplat v2.31.1 は 2026-07-16 に公開され、Streamed SOG folder drag-and-drop の修正が入りました。昨日の selection diff から見ると、これは単なる入力修正ではなく、複数 chunk / LOD folder を「正しく読み始められるか」を検証する入口です。2. Babylon.js 9.17.0 は 2026-07-16 に公開され、Gaussian Splatting meshes の safe-orbit camera limits と、GaussianSplattingStream の deferred LOD switch retry が入りました。stream が一度保留されたあと、cooldown 後に再試行される挙動は、可視化すべき状態です。3. PlayCanvas Engine v2.20.6 と API docs は、SOG unload/reload/cache、gsplat picking、Streaming SOG / Splat Transform v3.0.0 を中心に、大きな splat を budget 管理する実運用の足場になっています。4. three.js r185 は HTMLTexture / TSL / WebGPU 周辺の更新が続き、streaming scene 上に depth-aware annotation を重ねる候補として引き続き有効です。5. Gaussian Point Splatting の SIGGRAPH 2026 文脈は、巨大数の Gaussian を point sampling / culling / temporal reprojection で扱う方向を示しており、Web 側の SOG budget 診断とも接続できます。</p>
+          <p class="en-copy">1. SuperSplat v2.31.1 was released on 2026-07-16 with a fix for streamed SOG folder drag-and-drop. Seen from yesterday's selection diff, this is not only an input fix but the entry point for validating whether multi-chunk / LOD folders start loading correctly. 2. Babylon.js 9.17.0 was released on 2026-07-16 with safe-orbit camera limits for Gaussian Splatting meshes and a retry path for deferred GaussianSplattingStream LOD switches. A stream that is deferred once and retried after cooldown is a state worth visualizing. 3. PlayCanvas Engine v2.20.6 and API docs provide practical grounding around SOG unload/reload/cache, gsplat picking, Streamed SOG, and Splat Transform v3.0.0 for managing large splats under a budget. 4. three.js r185 remains relevant through HTMLTexture / TSL / WebGPU updates as a candidate for depth-aware annotations over streaming scenes. 5. Gaussian Point Splatting in the SIGGRAPH 2026 context points toward handling huge Gaussian counts with point sampling, culling, and temporal reprojection, which connects directly to web-side SOG budget diagnostics.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.31.1" target="_blank" rel="noreferrer">SuperSplat v2.31.1 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0 release</a></li>
+          
+            <li><a href="https://api.playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas API Reference</a></li>
+          
+            <li><a href="https://momentsingraphics.de/Siggraph2026.html" target="_blank" rel="noreferrer">Gaussian Point Splatting</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>注目は PlayCanvas / SuperSplat の Streamed SOG 説明です。大きな splat は 1M Gaussians 以上で LOD bundle 化され、低い LOD から near-instant に表示し、desktop / mobile / XR ごとの Gaussian budget に合わせて detail を上げ下げします。ここで面白いのは、LOD が作品の裏側ではなく、表現の時間軸になることです。近づくと detail が上がるだけでなく、retry 中の tile、cooldown 中の tile、validity が落ちた tile、前フレームの予測とずれた tile を見せれば、巨大な記憶空間が「読み込まれながら存在する」演出になります。</p>
+          <p class="en-copy">The notable example is PlayCanvas / SuperSplat's Streamed SOG documentation. Large splats become LOD bundles at and above 1M Gaussians, display quickly from a low LOD, then raise or lower detail under desktop / mobile / XR Gaussian budgets. The interesting point is that LOD is not just an implementation detail; it can become an expressive timeline. If the scene shows tiles that are retrying, cooling down, losing validity, or diverging from previous prediction, a huge memory space can appear as something that exists while being loaded.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/unified-rendering/lod-streaming/" target="_blank" rel="noreferrer">PlayCanvas Streamed SOG</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/supersplat/streaming/" target="_blank" rel="noreferrer">SuperSplat Streaming &amp; Performance</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>今日の中心案は「SOG Streaming Retry Budget Scope」です。ポインタ位置を current budget lens、時間で動く円を predicted budget lens とし、その差分を magenta の stale diff にします。grid tile は仮想 SOG chunk、green は valid / high LOD、amber は cooldown retry、red は failed stream risk。押下中は drag/drop reload pressure として retry と failed risk が増えます。作品としては、観客が空間へ手を伸ばすと、記憶の粒子が green に精細化し、追いつかない部分だけ amber / red に発熱する。制作ツールとしては、selection history と LOD retry を同じ目で見られます。</p>
+          <p class="en-copy">The core idea is SOG Streaming Retry Budget Scope. The pointer is the current budget lens; the moving time-based circle is the predicted budget lens; their difference becomes magenta stale diff. Grid tiles act as virtual SOG chunks: green is valid / high LOD, amber is cooldown retry, and red is failed stream risk. Holding the pointer simulates drag/drop reload pressure and increases retry plus failure risk. As an artwork, reaching into the space sharpens memory particles in green while lagging areas heat up amber or red. As a tool, selection history and LOD retry can be inspected through one visual vocabulary.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-17_sog_retry_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>試作は依存なしの HTML + WebGL + GLSL です。実データでは、R=selection/current keep、G=semantic confidence または LOD quality、B=latency / stale diff、A=stream validity という前回までの channel 規約を維持しつつ、tile ごとの retryCooldown と lastSuccessfulLOD を別 texture に持たせると扱いやすいです。Babylon.js 9.17.0 の deferred LOD switch retry は B または cooldown texture、safe-orbit limits は current lens の移動可能範囲、PlayCanvas SOG unload/reload/cache event は A channel、SuperSplat folder D&amp;D は reloadPressure へ接続できます。three.js / Babylon の depth-aware MSDF/HTMLTexture は、どの tile が高 LOD に達しているかをラベル表示する gate に向きます。</p>
+          <p class="en-copy">The prototype is dependency-free HTML + WebGL + GLSL. With real data, keep the channel convention from previous reports: R = selection/current keep, G = semantic confidence or LOD quality, B = latency / stale diff, A = stream validity. Add retryCooldown and lastSuccessfulLOD per tile as another texture. Babylon.js 9.17.0's deferred LOD switch retry maps to B or a cooldown texture; safe-orbit limits map to the allowed movement range of the current lens; PlayCanvas SOG unload/reload/cache events map to A; SuperSplat folder drag-and-drop maps to reloadPressure. three.js / Babylon depth-aware MSDF or HTMLTexture is a good gate for labeling which tiles actually reached high LOD.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-17_sog_retry_budget_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: SuperSplat selection operation / Streamed SOG D&amp;D、PlayCanvas SOG streaming / Splat Transform v3.0.0 / global splat budget、Babylon.js GaussianSplattingStream retry、three.js HTMLTexture / TSL。新規案件: SOG chunk の retryCooldown / lastSuccessfulLOD / validity を shader texture として記録する。寝かせる案件: カード UI、XR 固有導線、重い学習 pipeline、ゲーム化。短期は procedural tile から実 mask texture へ置き換えること。中長期は、selection diff、semantic mask、LOD budget、audio impulse を同じ timeline texture で扱う「streaming scene scope」です。</p>
+          <p class="en-copy">Continue watching: SuperSplat selection operations and Streamed SOG drag-and-drop, PlayCanvas SOG streaming / Splat Transform v3.0.0 / global splat budget, Babylon.js GaussianSplattingStream retry, and three.js HTMLTexture / TSL. New item: record retryCooldown, lastSuccessfulLOD, and validity for SOG chunks as shader textures. Park: card UI, XR-specific flows, heavy training pipelines, and game polish. Short term: replace procedural tiles with real mask textures. Mid/long term: a streaming scene scope where selection diff, semantic mask, LOD budget, and audio impulse share one timeline texture.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら outputs/2026-07-17_sog_retry_budget_scope.html を開き、ポインタを動かして blue の current budget lens が green の valid tile を増やす様子を見ます。amber は retry cooldown、magenta は predicted lens との差分、red は failed stream risk です。押下中は drag/drop reload pressure の仮想状態になり、retry と risk が強くなります。次に足すなら、7/16 の current/previous selection mask をこの sample の focus/predicted に接続し、selection history が SOG budget にどう影響するかを見るのが最短です。</p>
+          <p class="en-copy">If you try one thing today, open outputs/2026-07-17_sog_retry_budget_scope.html and move the pointer to see the blue current budget lens increase green valid tiles. Amber is retry cooldown, magenta is the difference from the predicted lens, and red is failed stream risk. Holding simulates drag/drop reload pressure and strengthens retry plus risk. Next, connect the 2026-07-16 current/previous selection masks to this sample's focus/predicted fields to see how selection history affects the SOG budget.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-17_sog_retry_budget_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: 公式 release、PlayCanvas / SuperSplat docs、Gaussian Point Splatting を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal selection diff を、7/17 は SOG retry/cooldown と LOD budget に接続。サンプル実装: 単体 WebGL/GLSL で SOG Streaming Retry Budget Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: procedural tile を実 SOG event texture に置換。中長期で育てるもの: stream validity と編集履歴を同時に見る制作診断レイヤー。</p>
+          <p class="en-copy">Research: checked official releases, PlayCanvas / SuperSplat docs, and Gaussian Point Splatting. Ideation: connected the 2026-07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, and 07-16 temporal selection diff to SOG retry/cooldown and LOD budget on 07-17. Prototype: added SOG Streaming Retry Budget Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: replace procedural tiles with real SOG event textures. Mid/long term: a production diagnostic layer that views stream validity and edit history together.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日の流れは、splat を美しく見せる段階から「状態のある空間」として扱う段階へ進んでいます。7/11 equirect projection、7/12 latitude budget、7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget。組み合わせ候補としては、SuperSplat selection を current mask、Babylon retry/cooldown を temporal risk、PlayCanvas SOG budget を quality map、three.js HTMLTexture を depth annotation にする構成が強いです。育てる価値が高いテーマは、読み込み・選択・遅延・注釈を別々の UI ではなく、1枚の shader scope に統合することです。</p>
+          <p class="en-copy">The recent flow is moving from making splats look beautiful to treating them as spaces with state. 07-11 equirect projection, 07-12 latitude budget, 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, and 07-17 SOG retry budget. A strong combination is SuperSplat selection as the current mask, Babylon retry/cooldown as temporal risk, PlayCanvas SOG budget as the quality map, and three.js HTMLTexture as depth annotation. The theme worth growing is integrating loading, selection, latency, and annotation into one shader scope instead of separate UI panels.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は SOG Streaming Retry Budget Scope。ファイルは outputs/2026-07-17_sog_retry_budget_scope.html。実際に動く内容は、current budget lens、predicted lens、LOD tile、retry cooldown、failed stream risk、depth label gate を WebGL fragment shader だけで描く最小プログラムです。次に足すなら、PlayCanvas SOG の unload/reload/cache event を JSON または texture として流し込み、A=validity、B=cooldown、G=LOD quality として実データ表示にすることです。その後、7/16 の selection diff と重ねて、編集操作が stream budget に残す影響を検証します。</p>
+          <p class="en-copy">The selected prototype is SOG Streaming Retry Budget Scope at outputs/2026-07-17_sog_retry_budget_scope.html. It is a minimal WebGL fragment-shader program that draws a current budget lens, predicted lens, LOD tiles, retry cooldown, failed stream risk, and a depth label gate. Next, feed PlayCanvas SOG unload/reload/cache events as JSON or textures, mapping A = validity, B = cooldown, and G = LOD quality. After that, overlay the 2026-07-16 selection diff and validate how edit operations affect the stream budget.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-17_sog_retry_budget_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.31.1" target="_blank" rel="noreferrer">SuperSplat v2.31.1</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/unified-rendering/lod-streaming/" target="_blank" rel="noreferrer">PlayCanvas Streamed SOG guide</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/supersplat/streaming/" target="_blank" rel="noreferrer">SuperSplat Streaming &amp; Performance</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://momentsingraphics.de/Siggraph2026.html" target="_blank" rel="noreferrer">Gaussian Point Splatting</a></li>
+          
+            <li><a href="../outputs/2026-07-17_sog_retry_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-17_sog_retry_budget_scope.html" loading="lazy" title="SOG Streaming Retry Budget Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
