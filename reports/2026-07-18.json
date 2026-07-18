@@ -1,0 +1,191 @@
+{
+  "date": "2026-07-18",
+  "headline": "SOG/LOD 診断をフォグと音反応の表現レイヤーへ拡張する",
+  "headlineEn": "Extend SOG/LOD diagnostics into fog and audio-reactive expression layers",
+  "summary": "2026-07-18 は、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、SuperSplat v2.31.1 の最新状態を確認しつつ、Codrops の Trionn 事例と Sleepers 事例から、WebGL/Three.js/Web Audio/軽量フォグを一つの状態駆動表現として見る方向を取り込みました。昨日の SOG retry budget scope を、今日の試作では fogged retry、audio impulse、stale prediction residue、depth annotation scan を同時に見る scope へ進めています。",
+  "summaryEn": "For 2026-07-18, I checked the current latest states of three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.31.1, then folded in the Trionn and Sleepers Codrops case studies as a way to treat WebGL, Three.js, Web Audio, and lightweight fog as one state-driven expression system. Yesterday's SOG retry budget scope is extended into a scope for fogged retry, audio impulse, stale prediction residue, and depth annotation scanning.",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.17.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.31.1",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.31.1"
+    },
+    {
+      "label": "SuperSplat Streaming & Performance",
+      "url": "https://developer.playcanvas.com/user-manual/supersplat/streaming/"
+    },
+    {
+      "label": "Trionn architecture case study",
+      "url": "https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/"
+    },
+    {
+      "label": "The Sleepers WebGL case study",
+      "url": "https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/"
+    },
+    {
+      "label": "Spark 2.0 technical deep dive",
+      "url": "https://www.worldlabs.ai/blog/spark-2.0"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-18_lod_fog_audio_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の最新 release list は r185 が Latest で、HTMLTexture の WICG HTML-in-Canvas API signatures 対応、TSL の textureGather / storageTexture3D / WebGPU 周辺、InstancedMesh と render bundles の改善が確認できます。これは 7/17 までの depth-aware annotation を、DOM/HTML 由来の情報面として重ねる流れに直結します。2. Babylon.js は 9.17.0 が Latest で、7/17 に扱った GaussianSplattingStream retry / safe-orbit limits の文脈を継続できます。3. PlayCanvas Engine は v2.20.6 が Latest、SuperSplat は v2.31.1 が Latest で、SOG / Streamed SOG / folder drag-and-drop / Gaussian budget の実運用側がまだ主軸です。4. Codrops の Trionn 事例は、GSAP、Three.js、Lenis、Web Audio を単一状態で同期させる設計を公開しており、音を単なる BGM ではなく WebGL 状態を動かす impulse として扱うヒントになります。5. The Sleepers 事例は、ノイズテクスチャと world position で軽量フォグを作る考え方を示しており、SOG の retry/cooldown や stale residue を『霧として読ませる』表現に転用できます。",
+      "bodyEn": "1. The three.js release list still shows r185 as Latest, with HTMLTexture support for WICG HTML-in-Canvas API signatures, TSL textureGather / storageTexture3D / WebGPU work, and InstancedMesh/render-bundle improvements. This connects directly to depth-aware annotations as DOM/HTML-derived information surfaces. 2. Babylon.js still shows 9.17.0 as Latest, keeping the GaussianSplattingStream retry and safe-orbit camera context from 07-17 relevant. 3. PlayCanvas Engine v2.20.6 and SuperSplat v2.31.1 remain the latest visible versions, so SOG / Streamed SOG / folder drag-and-drop / Gaussian budget remain the operational axis. 4. Codrops' Trionn case study exposes a design where GSAP, Three.js, Lenis, and Web Audio are synchronized through shared state, suggesting audio as an impulse that drives WebGL state rather than only background sound. 5. The Sleepers case study demonstrates lightweight fog via noise texture and world position, which can be repurposed to make SOG retry/cooldown and stale residue readable as fog.",
+      "links": [
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        },
+        {
+          "label": "Trionn case study",
+          "url": "https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/"
+        },
+        {
+          "label": "The Sleepers case study",
+          "url": "https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "注目は Trionn と Sleepers の組み合わせです。Trionn は hover、hold、scroll、audio を別々の演出としてではなく、同じ explodeAmt や progress 値へ集約して Three.js シーンを動かしています。Sleepers は大掛かりな volumetric pass ではなく、world position、noise、smoothstep を使ってフォグと奥行きを作ります。この 2 つを 7/17 の SOG retry budget に接続すると、LOD の状態を UI 表示ではなく空間の気配として見せられます。green の valid tile、amber の cooldown、magenta の stale diff、blue の scan が、音やポインタで揺れる『読める霧』になります。",
+      "bodyEn": "The notable combination is Trionn plus Sleepers. Trionn gathers hover, hold, scroll, and audio into shared values such as explodeAmt and progress that drive the Three.js scene. Sleepers creates fog and depth with world position, noise, and smoothstep rather than a heavy volumetric pass. Connected to the 07-17 SOG retry budget idea, LOD state can become atmosphere instead of UI. Green valid tiles, amber cooldown, magenta stale diff, and blue scan become readable fog that reacts to pointer and audio impulse.",
+      "links": [
+        {
+          "label": "Trionn architecture case study",
+          "url": "https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/"
+        },
+        {
+          "label": "The Sleepers WebGL case study",
+          "url": "https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "今日の中心案は『LOD Fog Audio Scope』です。7/17 の current budget lens / predicted lens / retry cooldown / failed risk を残しつつ、retry を霧、stale prediction を残光、音反応を瞬間的な visibility impulse として扱います。ポインタを動かすと budget lens が tile を精細化し、押下すると Web Audio 的な impulse が stale residue と fog density を一時的に増幅します。短期では音声入力なしの synthetic impulse で十分です。中長期では実 Web Audio analyser の low/mid/high band を、A=stream validity、B=latency/cooldown、G=LOD quality、R=selection keep に掛け合わせます。",
+      "bodyEn": "The core idea is LOD Fog Audio Scope. It keeps the 07-17 current budget lens, predicted lens, retry cooldown, and failed risk, but treats retry as fog, stale prediction as afterglow, and audio response as a visibility impulse. Moving the pointer sharpens tiles through the budget lens; pressing injects a Web-Audio-like impulse that temporarily amplifies stale residue and fog density. In the short term, a synthetic impulse is enough. In the mid/long term, real Web Audio analyser low/mid/high bands can modulate A = stream validity, B = latency/cooldown, G = LOD quality, and R = selection keep.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-18_lod_fog_audio_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装メモとしては、重い postprocess ではなく fragment shader 内で tile state、fog、scan ring をまとめて描くのが速いです。実データへ進める場合、SOG chunk ごとの状態 texture を RGBA で持ち、R=selection/current keep、G=LOD quality、B=retry cooldown または latency、A=validity にします。PlayCanvas / SuperSplat の Streamed SOG は 1M Gaussians 以上で LOD bundle 化され、lowest LOD から表示し、device ごとの Gaussian budget に収める設計なので、shader 側では『現在見せている精細度』と『本当は見せたい精細度』の差を可視化すると価値があります。three.js r185 の HTMLTexture は annotation source、Babylon の GaussianSplattingStream retry は cooldown source、Trionn 型の Web Audio は impulse source として接続できます。",
+      "bodyEn": "Implementation note: keep it lightweight by drawing tile state, fog, and scan rings in one fragment shader instead of using heavy post-processing. With real data, store per-SOG-chunk state in RGBA: R = selection/current keep, G = LOD quality, B = retry cooldown or latency, A = validity. PlayCanvas / SuperSplat Streamed SOG turns splats above 1M Gaussians into LOD bundles, displays from the lowest LOD, and stays within device-dependent Gaussian budgets, so the useful shader signal is the difference between the detail currently shown and the detail desired. three.js r185 HTMLTexture can be the annotation source, Babylon GaussianSplattingStream retry can be the cooldown source, and Trionn-style Web Audio can be the impulse source.",
+      "links": [
+        {
+          "label": "SuperSplat Streaming & Performance",
+          "url": "https://developer.playcanvas.com/user-manual/supersplat/streaming/"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.17.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+        },
+        {
+          "label": "Trionn architecture case study",
+          "url": "https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: SuperSplat Streamed SOG / selection operations、PlayCanvas SOG budget / Splat Transform、Babylon GaussianSplattingStream retry、three.js HTMLTexture / TSL。新規案件: Codrops 系の Web Audio + Three.js 状態同期、軽量フォグ / outline / infinite world の production pattern。寝かせる案件: カード UI、XR 固有導線、重い学習 pipeline、完全なゲーム化。短期で見る対象は、SOG event texture と音反応の接続。中長期では Spark 2.0 のような巨大 3DGS streaming / virtual memory / shader graph 的加工を、WebGL2 でどこまで作品表現へ寄せられるかを追います。",
+      "bodyEn": "Continue watching: SuperSplat Streamed SOG / selection operations, PlayCanvas SOG budget / Splat Transform, Babylon GaussianSplattingStream retry, and three.js HTMLTexture / TSL. New items: Codrops-style Web Audio plus Three.js state synchronization, and lightweight fog / outline / infinite-world production patterns. Park: card UI, XR-specific flows, heavy training pipelines, and full game production. Short term: connect SOG event textures with audio response. Mid/long term: track how Spark 2.0-style large 3DGS streaming, virtual memory, and shader-graph processing can become expressive WebGL2 work.",
+      "links": [
+        {
+          "label": "Spark 2.0 technical deep dive",
+          "url": "https://www.worldlabs.ai/blog/spark-2.0"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら outputs/2026-07-18_lod_fog_audio_scope.html を開きます。ポインタ移動で blue の budget lens が tile を精細化し、amber の retry fog と magenta の stale residue が切り替わります。押下すると synthetic audio impulse が入り、stale/fog が一瞬強くなります。次に足すなら、Web Audio API の analyser を接続し、kick を retry fog、snare を scan ring、high band を depth annotation flicker に割り当てるのが最短です。",
+      "bodyEn": "If you try one thing today, open outputs/2026-07-18_lod_fog_audio_scope.html. Moving the pointer sharpens tiles through the blue budget lens while amber retry fog and magenta stale residue shift around it. Pressing injects a synthetic audio impulse that briefly strengthens stale/fog. Next, connect a Web Audio API analyser: map kick to retry fog, snare to scan ring, and high band to depth annotation flicker.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-18_lod_fog_audio_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 公式 release と PlayCanvas / SuperSplat docs、Codrops の Trionn / Sleepers、World Labs Spark 2.0 を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal selection diff、7/17 SOG retry budget を、7/18 は fog / audio impulse / scan annotation に接続。サンプル実装: 単体 WebGL/GLSL で LOD Fog Audio Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: synthetic impulse を Web Audio analyser へ置換。中長期で育てるもの: stream validity、編集履歴、音、注釈を 1 枚の shader scope へ統合する制作診断レイヤー。",
+      "bodyEn": "Research: checked official releases, PlayCanvas / SuperSplat docs, Codrops Trionn / Sleepers, and World Labs Spark 2.0. Ideation: connected 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal selection diff, and 07-17 SOG retry budget to fog, audio impulse, and scan annotation on 07-18. Prototype: added LOD Fog Audio Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: replace synthetic impulse with a Web Audio analyser. Mid/long term: integrate stream validity, edit history, audio, and annotation into one shader scope.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-18_lod_fog_audio_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、splat / shader を見た目の技法ではなく『状態を持つ空間の読み取り装置』として扱う方向です。7/11 equirect projection、7/12 latitude budget、7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope まで来ました。組み合わせ候補は、SuperSplat selection = R channel、PlayCanvas LOD quality = G channel、Babylon retry/cooldown = B channel、stream validity = A channel、Web Audio = temporal gain、HTMLTexture = depth label。育てる価値が高いテーマは、観客が触る・音が鳴る・読み込みが追いつく/追いつかない、という時間差を一枚の shader で見せることです。",
+      "bodyEn": "The recent trend is treating splat/shader work not as a look but as an instrument for reading stateful space. The chain is 07-11 equirect projection, 07-12 latitude budget, 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, and 07-18 fog/audio scope. A strong channel mapping is SuperSplat selection = R, PlayCanvas LOD quality = G, Babylon retry/cooldown = B, stream validity = A, Web Audio = temporal gain, and HTMLTexture = depth label. The theme worth growing is showing the time lag between touch, sound, loading, and failure through one shader.",
+      "links": [
+        {
+          "label": "Spark 2.0 technical deep dive",
+          "url": "https://www.worldlabs.ai/blog/spark-2.0"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は LOD Fog Audio Scope。ファイルは outputs/2026-07-18_lod_fog_audio_scope.html。実際に動く内容は、current budget lens、predicted lens、valid high LOD、fogged retry cooldown、stale prediction residue、failed stream risk、scan / depth annotation を WebGL fragment shader だけで描く最小プログラムです。ポインタで lens を動かし、押下で audio impulse を注入できます。次に足すなら、まず Web Audio analyser を入れて impulse を実音に置換し、その次に PlayCanvas/SuperSplat の SOG chunk event を JSON texture として流し込みます。",
+      "bodyEn": "The selected prototype is LOD Fog Audio Scope at outputs/2026-07-18_lod_fog_audio_scope.html. It is a minimal WebGL fragment-shader program that draws a current budget lens, predicted lens, valid high LOD, fogged retry cooldown, stale prediction residue, failed stream risk, and scan/depth annotation. The pointer moves the lens, and pressing injects an audio impulse. Next, replace the synthetic impulse with a Web Audio analyser, then feed PlayCanvas/SuperSplat SOG chunk events as a JSON texture.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-18_lod_fog_audio_scope.html"
+        }
+      ]
+    }
+  ]
+}
