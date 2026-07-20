@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>更新待ちと操作履歴を時間差のある shader scope として読む | 2026-07-20</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.20</p>
+      <h1>更新待ちと操作履歴を時間差のある shader scope として読む</h1>
+      <p class="hero-subtitle">Read pending updates and interaction history as a temporal shader scope</p>
+      <p>2026-07-20 は、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、SuperSplat v2.31.1 の公式状況を再確認し、Codrops の Trionn / ZERO / The Sleepers 事例を、7/19 の adaptive upload gesture scope に接続しました。今日の焦点は、現在の入力値、遅れて追従する履歴値、SOG/texture upload queue、Web Audio impulse を同じ GLSL 上で可視化し、読み込み・減衰・復帰の時間差を演出素材にすることです。</p>
+      <p class="en-copy">For 2026-07-20, I rechecked official status for three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.31.1, then connected the Codrops Trionn / ZERO / The Sleepers case studies to the 07-19 adaptive upload gesture scope. Today's focus is visualizing current input, lagged history, SOG/texture upload queue, and Web Audio impulse in one GLSL layer so loading, decay, and recovery become expressive material.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-19.html">← 2026.07.19</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Temporal Hysteresis State Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は r185 が最新です。HTMLTexture の HTML-in-Canvas API signature 対応、TSL の textureGather / storageTexture3D、Renderer の compileAsync / render bundle 周辺の修正は、DOM 情報面や状態 texture を shader 表現へ持ち込む流れとして継続案件です。2. Babylon.js 9.17.0 は GaussianSplattingStream の LOD switch retry cooldown と safe-orbit camera limits が重要です。昨日の upload pressure と組み合わせると、寄りすぎたカメラや LOD 復帰待ちを、赤や青の状態チャンネルとして見せられます。3. PlayCanvas Engine v2.20.6 は gsplat picking、SOG unload、mid-load unload、destroyed texture cache など、ストリーミング時の壊れやすい境界が集中的に修正されています。4. SuperSplat Streaming &amp; Performance は、1M Gaussians 以上で Streamed SOG bundle / lod-meta.json / per-LOD chunks へ進む設計と、device dependent Gaussian budget を明示しています。5. Codrops の Trionn は、GSAP / Three.js / Lenis / Web Audio を一つの共有状態で同期し、hover、hold、scroll、sound を減衰値として扱う実装思想が今日の試作と相性が良いです。</p>
+          <p class="en-copy">1. three.js r185 remains the latest. HTMLTexture support for HTML-in-Canvas API signatures, TSL textureGather / storageTexture3D, and Renderer compileAsync / render-bundle fixes continue the thread of bringing DOM surfaces and state textures into shader expression. 2. Babylon.js 9.17.0 matters for GaussianSplattingStream LOD-switch retry cooldown and safe-orbit camera limits. Combined with yesterday's upload pressure, camera proximity and LOD recovery can be shown as red/blue state channels. 3. PlayCanvas Engine v2.20.6 focuses on fragile streaming boundaries: gsplat picking, SOG unload, mid-load unload, and destroyed texture cache. 4. SuperSplat Streaming &amp; Performance documents the 1M+ Gaussian path into Streamed SOG bundles, lod-meta.json, per-LOD chunks, and device-dependent Gaussian budgets. 5. The Trionn case study is relevant because it synchronizes GSAP, Three.js, Lenis, and Web Audio through shared state, treating hover, hold, scroll, and sound as decaying values.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/supersplat/streaming/" target="_blank" rel="noreferrer">SuperSplat Streaming &amp; Performance</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/" target="_blank" rel="noreferrer">Trionn case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は Trionn です。面白いのは、WebGL の hero symbol、DOM text、scroll、hover、hold-to-blast、Web Audio を別々の演出として作らず、共有された状態量と減衰でつないでいる点です。7/19 の ZERO は texture upload と adaptive quality を作品設計に入れる例でしたが、Trionn はさらに『操作が終わった後も値が残り、ゆっくり戻る』構造を強く示しています。The Sleepers の軽量 fog / outline / infinite world と合わせると、状態値の遅延を霧、輪郭、粒度、音の残響として可視化する方向が見えます。</p>
+          <p class="en-copy">Today's notable example is Trionn. The interesting part is that the WebGL hero symbol, DOM text, scroll, hover, hold-to-blast, and Web Audio are not isolated effects; they are connected through shared state and decay. 07-19 ZERO showed how texture upload and adaptive quality can be part of experience design, while Trionn emphasizes values that linger and return after interaction ends. Combined with The Sleepers' lightweight fog, outlines, and infinite-world techniques, delayed state can become fog, contour, grain, and audio residue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/" target="_blank" rel="noreferrer">Trionn case study</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/" target="_blank" rel="noreferrer">ZERO case study</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/" target="_blank" rel="noreferrer">The Sleepers case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>中心案は『Temporal Hysteresis State Scope』です。ポインタの現在位置を current、ゆっくり追従する位置を history とし、その差分を lag / stale / retry の可視化に使います。押下中は retry pressure が増え、Space で synthetic upload spike が入り、queue が増えるほど画面粒度が粗くなります。短期では 1 枚の fragment shader で十分です。中長期では、PlayCanvas / SuperSplat の SOG chunk event、Babylon の retry cooldown、three.js の texture prewarm、Web Audio analyser を同じ timeline に入れ、操作後に残る時間差を作品の呼吸として設計します。</p>
+          <p class="en-copy">The core idea is Temporal Hysteresis State Scope. Pointer position is current, a slowly following position is history, and their difference drives lag / stale / retry visualization. Holding increases retry pressure, Space injects a synthetic upload spike, and higher queue values coarsen screen grain. Short term, one fragment shader is enough. Mid/long term, PlayCanvas / SuperSplat SOG chunk events, Babylon retry cooldown, three.js texture prewarming, and a Web Audio analyser should share one timeline so post-interaction delay becomes the experience's breathing.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>状態 texture の設計は昨日の RGBA 案を継続します。R=stale hitch residue、G=warmed / uploaded quality、B=retry cooldown、A=validity とし、別 uniform で current pointer、history pointer、queue length、audio impulse、quality tier を持ちます。実装では history を shader 内で積分するより、JS 側で指数減衰として管理して uniform に渡すほうが WebGL1/2 で最小に保てます。requestIdleCallback は本物の GPU upload を直接保証しませんが、prewarm や軽い texture 生成のキュー長を表示するには十分です。次に実運用へ寄せるなら、renderer.initTexture() 相当のイベント、SOG lod-meta / chunk fetch、audio analyser の low/mid/high band を同じ state bus に流します。</p>
+          <p class="en-copy">Continue yesterday's RGBA state texture idea: R = stale hitch residue, G = warmed / uploaded quality, B = retry cooldown, A = validity, with separate uniforms for current pointer, history pointer, queue length, audio impulse, and quality tier. For implementation, keep history integration in JS as exponential decay and pass it as uniforms; this stays minimal across WebGL1/2. requestIdleCallback does not guarantee actual GPU upload timing, but it is useful for exposing prewarm or lightweight texture-generation queue length. To move toward production, feed renderer.initTexture-style events, SOG lod-meta / chunk fetches, and low/mid/high Web Audio analyser bands into one state bus.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/supersplat/streaming/" target="_blank" rel="noreferrer">SuperSplat Streaming &amp; Performance</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: SuperSplat Streamed SOG、PlayCanvas SOG unload/reload/cache、Babylon GaussianSplattingStream retry、three.js HTMLTexture / TSL / texture prewarm。新規案件: Trionn 型の shared state / decay / Web Audio interaction、DOM text と WebGL の重ね方、状態遅延を減衰値として演出に残す設計。寝かせる案件: カード UI、重い学習 pipeline、完全 XR 専用体験、物理ベースの大規模ゲーム化。短期ウォッチは、今日の history/current 差分に SOG chunk event の実ログを接続すること。中長期ウォッチは、操作・音・読み込み・品質低下・復帰を同じ状態機械で管理する creative runtime の形です。</p>
+          <p class="en-copy">Continue watching: SuperSplat Streamed SOG, PlayCanvas SOG unload/reload/cache, Babylon GaussianSplattingStream retry, and three.js HTMLTexture / TSL / texture prewarming. New watch: Trionn-style shared state, decay, Web Audio interaction, DOM-over-WebGL composition, and leaving delayed state as expressive decay. Park: card UI, heavy training pipelines, XR-only experiences, and large physics-heavy games. Short-term watch: connect real SOG chunk event logs to today's history/current difference. Mid/long-term watch: a creative runtime that manages operation, audio, loading, quality drops, and recovery as one state machine.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら outputs/2026-07-20_temporal_hysteresis_state_scope.html を開きます。ポインタ移動で現在値、遅れて追従する履歴値、両者を結ぶ amber path が変化します。押下で retry / queue pressure が上がり、Space で synthetic upload spike が入ります。queue が高いほど画面が粗くなり、quality tier が high / mid / low と変わります。次に足すなら、まず requestIdleCallback で本当に小さな canvas texture を順番に作り、その queue length を uniform にするのが最短です。</p>
+          <p class="en-copy">If you try one thing today, open outputs/2026-07-20_temporal_hysteresis_state_scope.html. Pointer movement changes the current value, lagged history value, and amber path between them. Holding increases retry / queue pressure, and Space injects a synthetic upload spike. Higher queue values coarsen the screen and shift the quality tier between high / mid / low. Next, create tiny canvas textures sequentially with requestIdleCallback and pass the queue length as a uniform.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: 公式 release、SuperSplat streaming docs、Codrops の Trionn / ZERO / The Sleepers を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope、7/19 adaptive upload gesture を、今日は shared state と hysteresis へ接続。サンプル実装: 単体 WebGL/GLSL で Temporal Hysteresis State Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: requestIdleCallback queue と tiny texture prewarm。中長期で育てるもの: stream validity、編集履歴、音、gesture、upload timing、DOM/deferred text を 1 枚の状態 shader へ統合する制作診断レイヤー。</p>
+          <p class="en-copy">Research: checked official releases, SuperSplat streaming docs, and Codrops Trionn / ZERO / The Sleepers. Ideation: connected 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, 07-18 fog/audio scope, and 07-19 adaptive upload gesture to shared state and hysteresis. Prototype: added Temporal Hysteresis State Scope as standalone WebGL/GLSL. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: requestIdleCallback queue plus tiny texture prewarm. Mid/long term: one diagnostic state shader for stream validity, edit history, audio, gesture, upload timing, and DOM/deferred text.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、splat / shader を『綺麗に見せる膜』から『状態と時間差を読む計器』へ寄せていることです。7/11 equirect projection、7/12 latitude budget、7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope、7/19 adaptive upload gesture、7/20 temporal hysteresis と、徐々に状態機械化しています。組み合わせ候補は、SuperSplat selection = R、PlayCanvas LOD quality = G、Babylon retry/cooldown = B、stream validity = A、Web Audio = temporal gain、gesture = seed、texture upload = pressure、history pointer = hysteresis、HTMLTexture/deferred text = depth label。育てる価値が高いテーマは、ユーザーが触った後に残る遅れ、読み込みの詰まり、音の余韻、品質の復帰を同じ可視言語で扱うことです。</p>
+          <p class="en-copy">The recent trend is moving splat/shader work from a beautiful surface to an instrument for reading state and time lag. The sequence is 07-11 equirect projection, 07-12 latitude budget, 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, 07-18 fog/audio scope, 07-19 adaptive upload gesture, and 07-20 temporal hysteresis. A strong mapping is SuperSplat selection = R, PlayCanvas LOD quality = G, Babylon retry/cooldown = B, stream validity = A, Web Audio = temporal gain, gesture = seed, texture upload = pressure, history pointer = hysteresis, and HTMLTexture/deferred text = depth label. The theme worth growing is a shared visual language for post-touch delay, loading stalls, audio residue, and quality recovery.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/" target="_blank" rel="noreferrer">Trionn case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した候補は Temporal Hysteresis State Scope。ファイルは outputs/2026-07-20_temporal_hysteresis_state_scope.html。実際に動く内容は、current pointer、history pointer、upload queue、synthetic audio impulse、retry pressure、coarse quality tier、stale residue を WebGL fragment shader だけで描く最小プログラムです。ポインタで現在値を動かし、履歴値が遅れて追従し、差分が amber path と stale tile として見えます。押下で retry pressure、Space で upload spike が入ります。次に足すなら、SOG chunk event JSON、Web Audio analyser、three.js texture prewarm event、HTMLTexture/deferred text label の順で接続します。</p>
+          <p class="en-copy">The selected prototype is Temporal Hysteresis State Scope at outputs/2026-07-20_temporal_hysteresis_state_scope.html. It is a minimal WebGL fragment-shader program showing current pointer, history pointer, upload queue, synthetic audio impulse, retry pressure, coarse quality tier, and stale residue. The pointer moves current state, history follows with delay, and the difference appears as an amber path and stale tiles. Holding adds retry pressure; Space injects an upload spike. Next, connect SOG chunk event JSON, a Web Audio analyser, three.js texture-prewarm events, and HTMLTexture/deferred text labels in that order.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" target="_blank" rel="noreferrer">Open sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0" target="_blank" rel="noreferrer">Babylon.js 9.17.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.20.6" target="_blank" rel="noreferrer">PlayCanvas Engine v2.20.6</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.31.1" target="_blank" rel="noreferrer">SuperSplat v2.31.1</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/supersplat/streaming/" target="_blank" rel="noreferrer">SuperSplat Streaming &amp; Performance</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/" target="_blank" rel="noreferrer">Trionn case study</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/" target="_blank" rel="noreferrer">ZERO case study</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/" target="_blank" rel="noreferrer">The Sleepers case study</a></li>
+          
+            <li><a href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-20_temporal_hysteresis_state_scope.html" loading="lazy" title="Temporal Hysteresis State Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
