@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Export Preflight Plane Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background: #0c1011;
+      color: #eef4e8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      display: grid;
+      gap: 7px;
+      max-width: min(560px, calc(100vw - 36px));
+      pointer-events: none;
+      text-shadow: 0 1px 16px rgba(0, 0, 0, 0.52);
+    }
+
+    .title {
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: #fff1bf;
+    }
+
+    .readout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #dce9db;
+    }
+
+    .readout span {
+      padding: 3px 7px;
+      border: 1px solid rgba(238, 244, 232, 0.18);
+      background: rgba(10, 14, 15, 0.5);
+      border-radius: 4px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: rgba(238, 244, 232, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div class="title">Export Preflight Plane Scope</div>
+    <div class="readout">
+      <span id="capability">capability 0.00</span>
+      <span id="queue">queue 0.00</span>
+      <span id="plane">plane XZ</span>
+      <span id="risk">risk 0.00</span>
+    </div>
+    <div class="hint">Move pointer: pivot/current. Hold: encode pressure. Space: capability spike. P: switch grid plane.</div>
+  </div>
+  <script type="module">
+    const canvas = document.querySelector("#gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    if (!gl) throw new Error("WebGL is not available");
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      uniform vec2 uResolution;
+      uniform vec2 uPointer;
+      uniform vec2 uHistory;
+      uniform float uTime;
+      uniform float uDown;
+      uniform float uQueue;
+      uniform float uCapability;
+      uniform float uPlane;
+      uniform float uRisk;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(127.1, 311.7));
+        p += dot(p, p + 19.19);
+        return fract(p.x * p.y);
+      }
+
+      float lineSegment(vec2 p, vec2 a, vec2 b, float w) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
+        return 1.0 - smoothstep(w, w + 0.006, length(pa - ba * h));
+      }
+
+      float ring(vec2 p, vec2 c, float r, float w) {
+        return 1.0 - smoothstep(w, w + 0.012, abs(length(p - c) - r));
+      }
+
+      float gridLine(vec2 q, float scale, float width) {
+        vec2 g = abs(fract(q * scale - 0.5) - 0.5) / fwidth(q * scale);
+        return 1.0 - smoothstep(width, width + 1.0, min(g.x, g.y));
+      }
+
+      mat2 rot(float a) {
+        float s = sin(a);
+        float c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / uResolution.xy;
+        vec2 p = (gl_FragCoord.xy * 2.0 - uResolution.xy) / min(uResolution.x, uResolution.y);
+        vec2 aspect = vec2(uResolution.x / min(uResolution.x, uResolution.y), 1.0);
+        vec2 pointer = (uPointer * 2.0 - 1.0) * aspect;
+        vec2 history = (uHistory * 2.0 - 1.0) * aspect;
+
+        float planeAngle = mix(-0.42, 0.54, step(0.5, uPlane)) + step(1.5, uPlane) * 0.75;
+        vec2 gp = rot(planeAngle) * (p - history * 0.18);
+        gp.y *= mix(0.62, 1.3, step(1.5, uPlane));
+        float grid = gridLine(gp + vec2(uTime * 0.012, 0.0), 8.0, 0.8);
+        float subGrid = gridLine(gp + vec2(0.0, uTime * 0.006), 24.0, 0.55) * 0.35;
+
+        vec2 tileId = floor((uv + vec2(uTime * 0.01, 0.0)) * vec2(16.0, 9.0));
+        vec2 tileUv = fract((uv + vec2(uTime * 0.01, 0.0)) * vec2(16.0, 9.0)) - 0.5;
+        float tileBox = smoothstep(0.48, 0.2, max(abs(tileUv.x), abs(tileUv.y)));
+        float tileHash = hash(tileId);
+        float encodeLoad = smoothstep(0.1, 0.94, sin(tileId.x * 0.9 + tileId.y * 1.7 + uTime * (1.1 + uQueue)) * 0.5 + 0.5);
+        float fail = smoothstep(0.78, 1.0, tileHash + uRisk * 0.35 + uDown * 0.16 - uCapability * 0.22);
+        float pass = smoothstep(0.22, 0.9, uCapability + encodeLoad * 0.35 - uQueue * 0.18);
+        float waiting = smoothstep(0.18, 0.95, uQueue + tileHash * 0.32) * (1.0 - pass * 0.45);
+
+        vec3 color = vec3(0.03, 0.043, 0.044);
+        color += vec3(0.06, 0.16, 0.13) * grid;
+        color += vec3(0.09, 0.11, 0.08) * subGrid;
+        color += tileBox * pass * vec3(0.30, 0.86, 0.62) * 0.34;
+        color += tileBox * waiting * vec3(1.0, 0.66, 0.24) * 0.32;
+        color += tileBox * fail * vec3(1.0, 0.20, 0.24) * (0.24 + uRisk * 0.32);
+
+        float pivot = ring(p, pointer, 0.18 + uDown * 0.13, 0.014);
+        float oldPivot = ring(p, history, 0.33 + uQueue * 0.12, 0.017);
+        float drift = lineSegment(p, history, pointer, 0.01 + uRisk * 0.014);
+        color += pivot * vec3(1.0, 0.93, 0.65);
+        color += oldPivot * vec3(0.36, 0.72, 0.95) * 0.75;
+        color += drift * vec3(1.0, 0.58, 0.18) * (0.34 + uRisk);
+
+        float capBand = smoothstep(0.018, 0.0, abs(uv.y - (0.13 + uCapability * 0.74)));
+        float riskBand = smoothstep(0.014, 0.0, abs(uv.x - (0.12 + uRisk * 0.76)));
+        color += capBand * vec3(0.32, 0.92, 0.62) * 0.7;
+        color += riskBand * vec3(1.0, 0.24, 0.28) * 0.55;
+
+        float scan = smoothstep(0.022, 0.0, abs(fract(uv.y * 42.0 + uTime * 0.42 + uQueue) - 0.5));
+        float grain = hash(floor(gl_FragCoord.xy / mix(1.0, 4.0, clamp(uQueue + uRisk, 0.0, 1.0))) + uTime);
+        color += scan * vec3(0.04, 0.06, 0.04) * (0.8 + uRisk);
+        color = mix(color, color * (0.72 + grain * 0.58), 0.22 + uRisk * 0.28);
+
+        float vignette = smoothstep(1.65, 0.22, length(p * vec2(0.72, 1.0)));
+        color *= 0.5 + vignette * 0.82;
+        gl_FragColor = vec4(pow(color, vec3(0.86)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader) || "Shader compile failed");
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program) || "Program link failed");
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+    const locPosition = gl.getAttribLocation(program, "position");
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "uResolution"),
+      pointer: gl.getUniformLocation(program, "uPointer"),
+      history: gl.getUniformLocation(program, "uHistory"),
+      time: gl.getUniformLocation(program, "uTime"),
+      down: gl.getUniformLocation(program, "uDown"),
+      queue: gl.getUniformLocation(program, "uQueue"),
+      capability: gl.getUniformLocation(program, "uCapability"),
+      plane: gl.getUniformLocation(program, "uPlane"),
+      risk: gl.getUniformLocation(program, "uRisk")
+    };
+
+    const state = {
+      pointer: [0.54, 0.52],
+      history: [0.54, 0.52],
+      down: 0,
+      queue: 0.28,
+      capability: 0.72,
+      spike: 0,
+      plane: 0,
+      last: performance.now()
+    };
+
+    const labels = {
+      capability: document.querySelector("#capability"),
+      queue: document.querySelector("#queue"),
+      plane: document.querySelector("#plane"),
+      risk: document.querySelector("#risk")
+    };
+    const planeNames = ["XZ", "XY", "YZ"];
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = (event.clientX - rect.left) / rect.width;
+      state.pointer[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("pointermove", setPointer);
+    window.addEventListener("pointerdown", (event) => {
+      setPointer(event);
+      state.down = 1;
+    });
+    window.addEventListener("pointerup", () => {
+      state.down = 0;
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        state.spike = 1;
+      }
+      if (event.key.toLowerCase() === "p") {
+        state.plane = (state.plane + 1) % 3;
+      }
+    });
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(canvas.clientWidth * dpr);
+      const height = Math.floor(canvas.clientHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function frame(now) {
+      resize();
+      const dt = Math.min((now - state.last) / 1000, 0.05);
+      state.last = now;
+      state.history[0] += (state.pointer[0] - state.history[0]) * (1 - Math.pow(0.05, dt));
+      state.history[1] += (state.pointer[1] - state.history[1]) * (1 - Math.pow(0.05, dt));
+      state.queue += (state.down * 0.9 + state.spike * 0.85 - state.queue) * (1 - Math.pow(0.16, dt));
+      state.capability += (0.78 + state.spike * 0.16 - state.queue * 0.22 - state.capability) * (1 - Math.pow(0.2, dt));
+      state.spike *= Math.pow(0.03, dt);
+
+      const dx = state.pointer[0] - state.history[0];
+      const dy = state.pointer[1] - state.history[1];
+      const risk = Math.min(1, Math.hypot(dx, dy) * 3.1 + state.queue * 0.42 + (1 - state.capability) * 0.42);
+
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(locPosition);
+      gl.vertexAttribPointer(locPosition, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform2f(uniforms.history, state.history[0], state.history[1]);
+      gl.uniform1f(uniforms.time, now / 1000);
+      gl.uniform1f(uniforms.down, state.down);
+      gl.uniform1f(uniforms.queue, state.queue);
+      gl.uniform1f(uniforms.capability, state.capability);
+      gl.uniform1f(uniforms.plane, state.plane);
+      gl.uniform1f(uniforms.risk, risk);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      labels.capability.textContent = `capability ${state.capability.toFixed(2)}`;
+      labels.queue.textContent = `queue ${state.queue.toFixed(2)}`;
+      labels.plane.textContent = `plane ${planeNames[state.plane]}`;
+      labels.risk.textContent = `risk ${risk.toFixed(2)}`;
+
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
