@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPZ/SOG の形式差を shader の圧力場として読む | 2026-07-23</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.23</p>
+      <h1>SPZ/SOG の形式差を shader の圧力場として読む</h1>
+      <p class="hero-subtitle">Read SPZ/SOG format differences as a shader pressure field</p>
+      <p>2026-07-23 は、7/22 の 8K export / glTF Gaussian scope を、PlayCanvas Developer Site の SPZ/SOG/Web Components/Procedural Splats ドキュメント、Babylon.js Gaussian Splatting の streaming/picking、three.js r185 の HTMLTexture/TSL/compileAsync へ接続しました。今日の焦点は、新規リリース待ちではなく、標準化される glTF Gaussian、配送向きの SOG、Niantic 系 SPZ、深度 picking を RGBA の状態 texture として分けて扱うことです。</p>
+      <p class="en-copy">For 2026-07-23, the 07-22 8K export / glTF Gaussian scope is connected to PlayCanvas Developer Site documentation for SPZ, SOG, Web Components, and Procedural Splats, Babylon.js Gaussian Splatting streaming/picking, and three.js r185 HTMLTexture/TSL/compileAsync. The focus is not another release chase but splitting standardized glTF Gaussian, delivery-oriented SOG, Niantic SPZ, and depth picking into an RGBA state texture.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-22.html">← 2026.07.22</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>SPZ SOG Format Pressure Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Engine の最新は v2.21.0 で、KHR_gaussian_splatting、SPZ support、volumetric fog、instanced wide line、WebGL2 view uniform buffer が引き続き今日の基準点です。2. SuperSplat の最新は v2.32.2 で、8K render resolution と video muxer finalize 待ちが 7/22 の export scope から継続です。3. PlayCanvas Developer Site の SPZ docs は、SPZ が ZSTD compressed streams と shader dequantize を前提にし、web delivery では SOG を推奨する、と明確に書いています。4. PlayCanvas SOG docs は means/scales/quats/sh0/shN を画像群として持つ形式を示しており、shader 側では texture channel として読む発想に直結します。5. Babylon.js Gaussian Splatting docs は SPZ/SOG/SOGS、GPU picking、large-scene LOD streaming を一つのページで扱っており、format support と interaction support を分離して設計する必要が見えます。</p>
+          <p class="en-copy">1. PlayCanvas Engine v2.21.0 remains the current reference point with KHR_gaussian_splatting, SPZ support, volumetric fog, instanced wide lines, and WebGL2 view uniform buffers. 2. SuperSplat v2.32.2 remains current, carrying forward 8K render resolution and video muxer finalization waits from the 07-22 export scope. 3. PlayCanvas SPZ documentation states the ZSTD-compressed stream and shader dequantization path, while recommending SOG for web delivery. 4. PlayCanvas SOG documentation describes the format as image sets for means, scales, quaternions, base color/opacity, and optional SH data, which maps directly to shader texture-channel thinking. 5. Babylon.js Gaussian Splatting documentation covers SPZ/SOG/SOGS, GPU picking, and large-scene LOD streaming on one page, showing that format support and interaction support should be designed separately.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.32.2" target="_blank" rel="noreferrer">SuperSplat v2.32.2</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/spz/" target="_blank" rel="noreferrer">SPZ format</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/sog/" target="_blank" rel="noreferrer">SOG format</a></li>
+          
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/mesh/gaussianSplatting" target="_blank" rel="noreferrer">Babylon Gaussian Splatting</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は PlayCanvas の SPZ/SOG ドキュメント群です。SPZ は Scaniverse/Niantic 系の持ち込み形式として扱いやすい一方、PlayCanvas docs は web delivery では SOG がより強いと明示します。SOG は画像ファイル群と metadata で構成されるため、表現面では『asset format の中身そのものが texture atlas』として見えます。これを単なるロード方式の違いで終わらせず、SPZ quantization、SOG LOD、glTF compatibility、GPU picking depth を色・fog・line・粒子密度に変換すると、編集ツールや鑑賞体験の中で形式の差が見えるようになります。</p>
+          <p class="en-copy">The notable source today is PlayCanvas' SPZ/SOG documentation set. SPZ is useful as a Scaniverse/Niantic ecosystem import format, while the PlayCanvas docs explicitly position SOG as stronger for web delivery. Because SOG is made from metadata plus image files, its internals already look like a texture atlas from an expression standpoint. Instead of treating this only as a loader difference, SPZ quantization, SOG LOD, glTF compatibility, and GPU-picking depth can become color, fog, line, and particle density inside authoring or viewing experiences.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/spz/" target="_blank" rel="noreferrer">SPZ format docs</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/sog/" target="_blank" rel="noreferrer">SOG format docs</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>中心案は『Format Pressure Scope』です。R は SPZ quantization / unsupported version risk、G は glTF/KHR compatibility、B は SOG LOD stream readiness、A は GPU picking depth confidence と置きます。ポインタは decode lens、長押しは streaming pressure、Space は 8K capture spike、F は format gate の切り替えです。7/22 の export resolution scope と合わせると、読み込み、編集、書き出しの各段階で同じ RGBA state を使えるようになります。短期では procedural tile shader で十分ですが、中長期では SOG の meta.json と image set、SPZ parser result、KHR_gaussian_splatting loader result を実データとして流し込みます。</p>
+          <p class="en-copy">The central idea is Format Pressure Scope. R represents SPZ quantization or unsupported-version risk, G represents glTF/KHR compatibility, B represents SOG LOD stream readiness, and A represents GPU-picking depth confidence. Pointer movement is the decode lens, holding adds streaming pressure, Space injects an 8K capture spike, and F toggles the format gate. Combined with the 07-22 export resolution scope, loading, editing, and exporting can share one RGBA state vocabulary. Short term, a procedural tile shader is enough. Mid/long term, SOG meta.json and image sets, SPZ parser results, and KHR_gaussian_splatting loader results should feed real data into the same visualization.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>PlayCanvas の SPZ parser は engine 本体に直結した自動ロードというより、parser script と ZSTD WASM decoder を登録する設計です。この構造は『format capability を uniform 化する』のに向いています。SOG は means/scales/quats/sh0 などが WebP image set なので、thumbnail preview、chunk heatmap、missing channel overlay を shader で作りやすいです。Babylon.js 側は GaussianSplattingStream と GPUPicker の組み合わせが実装候補で、LOD switch/cooldown と picking confidence を別チャネルにできます。three.js r185 は HTMLTexture、TSL textureGather/storageTexture3D、compileAsync、render bundles が、注釈面・状態 texture・非同期準備表示に使えます。</p>
+          <p class="en-copy">PlayCanvas' SPZ parser is registered through a parser script plus a ZSTD WASM decoder rather than being an entirely implicit path, which makes format capability easy to turn into uniforms. SOG uses WebP image sets such as means, scales, quaternions, and base color/opacity, making thumbnail previews, chunk heatmaps, and missing-channel overlays natural shader tasks. On Babylon.js, GaussianSplattingStream plus GPUPicker is a practical target, with LOD switch/cooldown and picking confidence kept in separate channels. In three.js r185, HTMLTexture, TSL textureGather/storageTexture3D, compileAsync, and render bundles remain useful for annotation planes, state textures, and asynchronous readiness displays.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/spz/" target="_blank" rel="noreferrer">SPZ parser docs</a></li>
+          
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/mesh/gaussianSplatting" target="_blank" rel="noreferrer">Babylon Gaussian Splatting</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: PlayCanvas v2.21.0 の KHR_gaussian_splatting / SPZ / fog / wide line、SuperSplat v2.32.2 の 8K export / muxer wait、Babylon.js 9.17.0 の Gaussian stream retry/picking、three.js r185 の HTMLTexture/TSL。新規案件: PlayCanvas Web Components の pc-gsplat と antialias/high-resolution flags を、format pressure の入力値にする。寝かせる案件: カード UI、XR 専用操作、重い training pipeline、完成版 editor UI。短期は SOG meta.json の疑似 channel を作る。中長期は実 asset loader event と capture/export event を同じ timeline に載せる。</p>
+          <p class="en-copy">Continue watching: PlayCanvas v2.21.0 KHR_gaussian_splatting / SPZ / fog / wide lines, SuperSplat v2.32.2 8K export / muxer waits, Babylon.js 9.17.0 Gaussian stream retry/picking, and three.js r185 HTMLTexture/TSL. New item: treat PlayCanvas Web Components pc-gsplat and antialias/high-resolution flags as inputs to format pressure. Park: card UI, XR-specific controls, heavy training pipelines, and full editor UI. Short term, mock SOG meta.json channels. Mid/long term, place real asset-loader events and capture/export events on one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/web-components/tags/pc-gsplat/" target="_blank" rel="noreferrer">pc-gsplat</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、SPZ/SOG/glTF/picking を一枚の state texture に見立てることです。作成済みの `outputs/2026-07-23_spz_sog_format_pressure_scope.html` は、tile ごとに SPZ quantization、SOG LOD readiness、glTF gate、depth picking confidence を疑似生成し、ポインタ lens と遅れて追う history で decode/streaming の時間差を可視化します。次に足すなら、実際の `meta.json` を fetch して tile 数や missing file を B/A channel に反映します。</p>
+          <p class="en-copy">If trying one thing today, treat SPZ/SOG/glTF/picking as one state texture. The sample at `outputs/2026-07-23_spz_sog_format_pressure_scope.html` procedurally generates SPZ quantization, SOG LOD readiness, glTF gates, and depth-picking confidence per tile, then uses a pointer lens and lagging history point to visualize decode/streaming time offsets. The next useful addition is to fetch a real `meta.json` and feed tile count or missing files into the B/A channels.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas SPZ/SOG/Web Components/Procedural Splats docs、Babylon.js Gaussian Splatting docs、各 GitHub release の最新確認を追加。アイデア検討: 7/22 の 8K export / glTF scope を、format pressure と streaming readiness へ拡張。サンプル実装: 単体 WebGL shader で SPZ quantization、SOG LOD、glTF gate、picking confidence、streaming pressure を実装済み。結果の検証: upsert-report publish 後に day page と sample の HTTP 到達を確認する。短期は SOG meta.json の読み込み。中長期は PlayCanvas/Babylon の実 loader event と SuperSplat export queue の統合。</p>
+          <p class="en-copy">Collection: added PlayCanvas SPZ/SOG/Web Components/Procedural Splats docs, Babylon.js Gaussian Splatting docs, and verified the latest GitHub releases. Ideation: extended the 07-22 8K export / glTF scope into format pressure and streaming readiness. Prototype: implemented a standalone WebGL shader for SPZ quantization, SOG LOD, glTF gates, picking confidence, and streaming pressure. Verification: after upsert-report publish, check HTTP access for the day page and sample. Short term, load SOG meta.json. Mid/long term, integrate real PlayCanvas/Babylon loader events with the SuperSplat export queue.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、見た目の shader 表現だけではなく、asset pipeline の不確実性を shader で読める状態へ変換する方向です。7/17 以降の SOG retry、fog/audio、upload queue、export preflight、8K/glTF scope はすべて、時間差と準備状態を見える化する同じ系統です。組み合わせ候補としては、SOG image-set を background texture atlas、SPZ quantization を粒子の硬さ、KHR_gaussian_splatting compatibility を green gate、Babylon GPUPicker confidence を depth label、three.js HTMLTexture を注釈面にする構成が強いです。育てる価値が高いテーマは『形式変換と配信状態そのものを空間演出にする splat diagnostic instrument』です。</p>
+          <p class="en-copy">The recent trend is less about isolated shader looks and more about converting asset-pipeline uncertainty into shader-readable state. Since 07-17, SOG retry, fog/audio, upload queues, export preflight, and 8K/glTF scopes all belong to the same family: making time offsets and readiness visible. A strong combination is SOG image sets as background texture atlases, SPZ quantization as particle hardness, KHR_gaussian_splatting compatibility as a green gate, Babylon GPUPicker confidence as depth labels, and three.js HTMLTexture as annotation planes. The theme worth growing is a splat diagnostic instrument where format conversion and delivery state become spatial performance.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/procedural-splats/" target="_blank" rel="noreferrer">Procedural Splats</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用候補は『SPZ SOG Format Pressure Scope』です。作成済みファイルは `outputs/2026-07-23_spz_sog_format_pressure_scope.html`。実際に動く内容は、WebGL fragment shader による tile 状態、疑似 Gaussian splat、decode lens、streaming pressure、format gate、high-res capture spike です。操作は pointer move、hold、Space、F。次に発展させるなら、1. SOG meta.json を fetch して chunk 数を実データ化、2. SPZ parser availability と ZSTD WASM load result を R/G channel に接続、3. GPUPicker の深度 confidence を A channel に入れる、の順が良いです。</p>
+          <p class="en-copy">The selected candidate is SPZ SOG Format Pressure Scope. The created file is `outputs/2026-07-23_spz_sog_format_pressure_scope.html`. It runs as a WebGL fragment shader showing tile state, pseudo Gaussian splats, a decode lens, streaming pressure, format gates, and high-resolution capture spikes. Controls are pointer movement, hold, Space, and F. The next development steps are: 1. fetch SOG meta.json and make chunk counts real, 2. connect SPZ parser availability and ZSTD WASM load results to R/G channels, and 3. feed GPUPicker depth confidence into the A channel.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/spz/" target="_blank" rel="noreferrer">PlayCanvas SPZ format docs</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/sog/" target="_blank" rel="noreferrer">PlayCanvas SOG format docs</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/web-components/tags/pc-gsplat/" target="_blank" rel="noreferrer">PlayCanvas pc-gsplat web component</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/procedural-splats/" target="_blank" rel="noreferrer">PlayCanvas Procedural Splats</a></li>
+          
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/mesh/gaussianSplatting" target="_blank" rel="noreferrer">Babylon.js Gaussian Splatting docs</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/supersplat/releases/tag/v2.32.2" target="_blank" rel="noreferrer">SuperSplat v2.32.2</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="../outputs/2026-07-23_spz_sog_format_pressure_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-23_spz_sog_format_pressure_scope.html" loading="lazy" title="SPZ SOG Format Pressure Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
