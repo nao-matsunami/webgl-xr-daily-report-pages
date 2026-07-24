@@ -1,0 +1,181 @@
+{
+  "date": "2026-07-25",
+  "headline": "relighting、fisheye、MSDF 可読性を一枚の shader 診断に統合する",
+  "headlineEn": "Unify relighting, fisheye, and MSDF readability into one shader diagnostic",
+  "summary": "2026-07-25 は、PlayCanvas Engine v2.21.1 の MSDF coverage ramp 修正、Babylon.js 9.18.0 の Gaussian Splat texture leak 修正、PlayCanvas の Gaussian Splat renderers / relighting / fisheye docs、KHR_gaussian_splatting Release Candidate を、前回の SPZ/SOG format pressure から runtime quality pressure へ接続しました。今日のミニ試作は単体 WebGL の Relight Fisheye MSDF Scope です。",
+  "summaryEn": "For 2026-07-25, PlayCanvas Engine v2.21.1's MSDF coverage ramp fix, Babylon.js 9.18.0's Gaussian Splat texture leak fix, PlayCanvas Gaussian Splat renderers / relighting / fisheye docs, and the KHR_gaussian_splatting Release Candidate are connected from the previous SPZ/SOG format pressure track into runtime quality pressure. Today's mini prototype is a standalone WebGL Relight Fisheye MSDF Scope.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.21.1",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+    },
+    {
+      "label": "Babylon.js 9.18.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+    },
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "PlayCanvas Gaussian Splat Renderers",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+    },
+    {
+      "label": "PlayCanvas Gaussian Splat Relighting",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/"
+    },
+    {
+      "label": "PlayCanvas Fisheye Rendering",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/"
+    },
+    {
+      "label": "KHR_gaussian_splatting",
+      "url": "https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting"
+    },
+    {
+      "label": "Codrops All Posts",
+      "url": "https://tympanus.net/codrops/all-posts/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-25_relight_fisheye_msdf_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.21.1 が 2026-07-24 に出ており、MSDF coverage ramp が小サイズで field range を超える問題、WebGPU normal mapping、WebGPU sampled texture limit 報告値などが修正されました。2. Babylon.js 9.18.0 は 2026-07-23 リリースで、Gaussian Splat texture leak on resize が直っています。resize や high-res capture を繰り返す鑑賞/編集ツールでは、見た目よりも長時間運用に効く修正です。3. PlayCanvas docs の Gaussian Splat renderer は、WebGL2 では CPU sort、WebGPU では GPU sort を選び、CPU sort は worker round-trip による古い sort が一瞬出る可能性を明示しています。4. PlayCanvas relighting と fisheye docs は、proxy mesh の offscreen lighting texture、radialSorting、tiny planet 的投影を公式に扱っており、splat を写真風表示から演出装置へ寄せられます。5. KHR_gaussian_splatting は Release Candidate として、kernel / colorSpace / projection / sortingMethod を glTF 側に持たせる方向を示しており、7/23 の format pressure を runtime shader state へ接続する根拠になります。",
+      "bodyEn": "1. PlayCanvas Engine v2.21.1 was released on 2026-07-24 and fixes the MSDF coverage ramp exceeding the field range at small sizes, WebGPU normal mapping, and reported WebGPU sampled texture limits. 2. Babylon.js 9.18.0, released on 2026-07-23, fixes a Gaussian Splat texture leak on resize, a durability issue for viewers and editors that repeatedly resize or capture at high resolution. 3. PlayCanvas Gaussian Splat renderer docs state that WebGL2 uses CPU sorting while WebGPU can use GPU sorting, and that CPU sorting can briefly expose outdated ordering due to the worker round-trip. 4. PlayCanvas relighting and fisheye docs officially cover proxy-mesh offscreen lighting textures, radialSorting, and tiny-planet-style projection, moving splats from photographic display into spatial staging. 5. KHR_gaussian_splatting is a Release Candidate that places kernel, colorSpace, projection, and sortingMethod in glTF, giving a basis for connecting the 07-23 format pressure track to runtime shader state.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+        },
+        {
+          "label": "Babylon.js 9.18.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+        },
+        {
+          "label": "Renderers",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+        },
+        {
+          "label": "KHR_gaussian_splatting",
+          "url": "https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は PlayCanvas の relighting / fisheye / renderer docs の組み合わせです。relighting は proxy mesh を別 layer に置き、main camera と揃えた offscreen texture の RGB と alpha mask を splat fragment へ渡す発想です。fisheye は splat と skybox の投影を同時に歪ませ、広角、skydome、tiny planet を slider で作れます。renderer docs は CPU/GPU sort の差を説明しているため、表現上は『光の当たり方』『投影の歪み』『sort の遅れ』を別々の不具合ではなく、意図的に見える状態チャネルとして扱えます。Codrops 側では 7月の ZERO / Trionn / The Sleepers などが、軽量な WebGL 演出、Web Audio、scroll/gesture state を丁寧に重ねる流れを示しており、splat 診断もツール画面ではなく演出にできます。",
+      "bodyEn": "The notable combination today is PlayCanvas relighting, fisheye, and renderer documentation. Relighting places a proxy mesh on a separate layer and feeds RGB lighting plus an alpha coverage mask from a camera-aligned offscreen texture into splat fragments. Fisheye distorts splats and skybox together, allowing wide-angle, skydome, and tiny-planet looks with a slider. Renderer docs explain the CPU/GPU sorting difference, so lighting, projection distortion, and sort lag can be treated as intentional visible state channels rather than separate glitches. On Codrops, July case studies such as ZERO, Trionn, and The Sleepers continue the pattern of layering lightweight WebGL, Web Audio, scroll, and gesture state, suggesting that splat diagnostics can become staging rather than just tooling.",
+      "links": [
+        {
+          "label": "Relighting",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/"
+        },
+        {
+          "label": "Fisheye Rendering",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/"
+        },
+        {
+          "label": "Codrops All Posts",
+          "url": "https://tympanus.net/codrops/all-posts/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "中心案は『Runtime Quality Pressure Scope』です。7/23 の RGBA format pressure を、R: resize / texture leak / capture pressure、G: relighting coverage、B: fisheye + radial sort benefit、A: MSDF small-size readability として置き換えます。ポインタは relight proxy、長押しは CPU sort lag、Space は resize leak pulse、F は fisheye/radial sort の切替です。短期では単体 shader で見た目を検証し、中期では PlayCanvas の currentRenderer、radialSorting、relighting coverage texture、Babylon の resize event、three.js HTMLTexture label を実入力にします。過去案との接続は、7/20 の temporal hysteresis、7/21-7/22 の export preflight、7/23 の format pressure を、runtime の品質/演出 pressure に変換する流れです。",
+      "bodyEn": "The central idea is Runtime Quality Pressure Scope. The 07-23 RGBA format pressure is remapped as R: resize / texture leak / capture pressure, G: relighting coverage, B: fisheye plus radial sort benefit, and A: MSDF small-size readability. Pointer movement controls the relight proxy, holding injects CPU sort lag, Space triggers a resize leak pulse, and F toggles fisheye/radial sort. Short term, a standalone shader is enough to test the look. Mid term, feed PlayCanvas currentRenderer, radialSorting, a relighting coverage texture, Babylon resize events, and three.js HTMLTexture labels as real inputs. This connects the 07-20 temporal hysteresis, 07-21/07-22 export preflight, and 07-23 format pressure tracks into runtime quality and staging pressure.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-25_relight_fisheye_msdf_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "PlayCanvas v2.21.1 の MSDF 修正は、小さい注釈ラベルを splat や depth/fog 上に重ねる本プロジェクトの流れに直結します。実装時は font atlas の mipmap、coverage ramp、device pixel ratio、postprocess 後の gamma を分けて見るべきです。Babylon.js 9.18.0 の resize texture leak 修正は、canvas resize、8K capture、device pixel ratio 切替を繰り返す場合の検証項目です。PlayCanvas relighting は proxy mesh の coverage alpha を state texture として再利用できます。fisheye は radialSorting とセットで、sort artifact を UI 警告ではなく外周の blue ring / amber lag ring として可視化すると、ユーザーに『どこが危ないか』を自然に伝えられます。three.js r185 の HTMLTexture / HTML-in-Canvas 対応は、MSDF だけでは足りない注釈面の次候補です。",
+      "bodyEn": "The PlayCanvas v2.21.1 MSDF fix directly relates to this project's repeated use of small annotation labels over splats, depth, and fog. In implementation, font-atlas mipmaps, coverage ramp, device pixel ratio, and postprocess gamma should be inspected separately. Babylon.js 9.18.0's resize texture leak fix is a verification point for repeated canvas resize, 8K capture, and device-pixel-ratio changes. PlayCanvas relighting can reuse proxy-mesh coverage alpha as a state texture. Fisheye should be paired with radialSorting, turning sort artifacts into outer blue benefit rings or amber lag rings rather than UI warnings. three.js r185's HTMLTexture / HTML-in-Canvas support remains the next annotation-plane option when MSDF alone is insufficient.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+        },
+        {
+          "label": "Babylon.js 9.18.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: PlayCanvas v2.21.x の GSplat renderer / KHR_gaussian_splatting / SPZ / SOG、SuperSplat v2.32.2 の 8K export と muxer wait、Babylon.js 9.18.0 の Gaussian Splat resize leak 修正、three.js r185 の HTMLTexture。新規案件: PlayCanvas relighting / fisheye / radialSorting を実装入力にして、sort latency と coverage mask を同じ texture にする。寝かせる案件: カード UI、XR 専用操作、重い training pipeline、完成版 editor UI。短期は current/history pointer による pseudo sort lag。中長期は実 scene.gsplat.currentRenderer、relighting coverage texture、resize/capture event の収集です。",
+      "bodyEn": "Continue watching: PlayCanvas v2.21.x GSplat renderer / KHR_gaussian_splatting / SPZ / SOG, SuperSplat v2.32.2 8K export and muxer waits, Babylon.js 9.18.0 Gaussian Splat resize leak fix, and three.js r185 HTMLTexture. New item: use PlayCanvas relighting / fisheye / radialSorting as real implementation inputs so sort latency and coverage masks share one texture. Park: card UI, XR-specific controls, heavy training pipelines, and full editor UI. Short term, use current/history pointer pseudo sort lag. Mid/long term, collect real scene.gsplat.currentRenderer, relighting coverage texture, and resize/capture events.",
+      "links": [
+        {
+          "label": "Renderers",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+        },
+        {
+          "label": "SuperSplat v2.32.2",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、MSDF label、relighting coverage、fisheye/radial sort、resize pressure を一枚の shader scope に重ねることです。作成済みの `outputs/2026-07-25_relight_fisheye_msdf_scope.html` は、疑似 Gaussian splat field、relight proxy mask、CPU sort lag ring、fisheye/radial sorting benefit、small MSDF stress、resize leak pulse を単体 WebGL で表示します。操作は pointer move、hold、Space、F。次に足すなら、実 PlayCanvas の relighting coverage alpha と currentRenderer を uniform にし、MSDF label は実 font atlas に置き換えます。",
+      "bodyEn": "If trying one thing today, layer MSDF labels, relighting coverage, fisheye/radial sort, and resize pressure into one shader scope. The created `outputs/2026-07-25_relight_fisheye_msdf_scope.html` shows a pseudo Gaussian splat field, relight proxy mask, CPU sort lag ring, fisheye/radial sorting benefit, small MSDF stress, and resize leak pulse in standalone WebGL. Controls are pointer movement, hold, Space, and F. Next, feed real PlayCanvas relighting coverage alpha and currentRenderer as uniforms, then replace the pseudo MSDF label with a real font atlas.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-25_relight_fisheye_msdf_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas Engine v2.21.1、Babylon.js 9.18.0、PlayCanvas renderers/relighting/fisheye docs、KHR_gaussian_splatting、Codrops 7月記事を確認。アイデア検討: 7/23 の SPZ/SOG format pressure を、runtime quality pressure に変換。サンプル実装: 単体 WebGL で relight mask、fisheye/radial sort、MSDF stress、resize pulse を実装済み。結果の検証: JSON 保存後に upsert-report --publish を実行し、day page と sample の HTTP 到達を確認する。短期で試せるものは PlayCanvas currentRenderer と radialSorting の表示化。中長期で育てるものは format / render / export の pressure texture を一つの timeline に統合することです。",
+      "bodyEn": "Collection: checked PlayCanvas Engine v2.21.1, Babylon.js 9.18.0, PlayCanvas renderers/relighting/fisheye docs, KHR_gaussian_splatting, and July Codrops articles. Ideation: converted the 07-23 SPZ/SOG format pressure into runtime quality pressure. Prototype: implemented relight mask, fisheye/radial sort, MSDF stress, and resize pulse in standalone WebGL. Verification: after saving JSON, run upsert-report --publish and confirm HTTP access for the day page and sample. Short term, visualize PlayCanvas currentRenderer and radialSorting. Mid/long term, merge format, render, and export pressure textures into one timeline."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、Gaussian Splat の形式差から、runtime の状態差へ焦点が移っています。7/17-7/23 は SOG retry、upload queue、export preflight、format pressure を扱い、今日からは renderer selection、sort latency、relighting coverage、fisheye projection、MSDF readability へ進めます。組み合わせると面白い要素は、SPZ/SOG/glTF の format channel、PlayCanvas currentRenderer/radialSorting の render channel、Babylon resize/capture の durability channel、three.js HTMLTexture/MSDF の annotation channel です。育てる価値が高いテーマは『asset pipeline と runtime quality が同じ色/歪み/光/文字の状態場として見える splat performance instrument』です。",
+      "bodyEn": "The recent trend is shifting from Gaussian Splat format differences toward runtime state differences. From 07-17 to 07-23, the track covered SOG retry, upload queues, export preflight, and format pressure. Today it moves into renderer selection, sort latency, relighting coverage, fisheye projection, and MSDF readability. Interesting combinations are SPZ/SOG/glTF as format channels, PlayCanvas currentRenderer/radialSorting as render channels, Babylon resize/capture as durability channels, and three.js HTMLTexture/MSDF as annotation channels. The high-value theme is a splat performance instrument where asset pipeline and runtime quality appear as one color/distortion/light/text state field.",
+      "links": [
+        {
+          "label": "KHR_gaussian_splatting",
+          "url": "https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用候補は『Relight Fisheye MSDF Scope』です。作成済みファイルは `outputs/2026-07-25_relight_fisheye_msdf_scope.html`。実際に動く内容は、WebGL fragment shader による疑似 splat、relight proxy、history pointer による sort lag、fisheye/radial sorting benefit、小サイズ MSDF stress、resize/capture pressure pulse です。次に発展させるなら、1. PlayCanvas relighting coverage alpha を実 texture 化、2. `app.scene.gsplat.currentRenderer` と `radialSorting` を uniform 化、3. Babylon resize/capture event を pulse に接続、4. three.js HTMLTexture 由来の注釈面を depth/fisheye 後に重ねる、の順が良いです。",
+      "bodyEn": "The selected candidate is Relight Fisheye MSDF Scope. The created file is `outputs/2026-07-25_relight_fisheye_msdf_scope.html`. It runs as a WebGL fragment shader showing pseudo splats, a relight proxy, sort lag from a history pointer, fisheye/radial sorting benefit, small MSDF stress, and resize/capture pressure pulses. The next development order is: 1. turn PlayCanvas relighting coverage alpha into a real texture, 2. expose `app.scene.gsplat.currentRenderer` and `radialSorting` as uniforms, 3. connect Babylon resize/capture events to the pulse, and 4. layer three.js HTMLTexture annotation planes after depth/fisheye transforms.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-25_relight_fisheye_msdf_scope.html"
+        }
+      ]
+    }
+  ]
+}
