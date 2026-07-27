@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engine V2 / Lite 移行をピクセル差分と shader 診断として扱う | 2026-07-27</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.27</p>
+      <h1>Engine V2 / Lite 移行をピクセル差分と shader 診断として扱う</h1>
+      <p class="hero-subtitle">Treat Engine V2 / Lite migration as pixel-diff and shader diagnostics</p>
+      <p>2026-07-27 は、PlayCanvas Editor の Engine V1 サポート終了が 2026-07-29 に迫っていること、PlayCanvas Grace Cathedral Experience の WebGPU/WebGL 両対応 splat 実装、Babylon Lite / Viewer Lite の pixel parity と軽量 viewer、SuperSplat の Vite starter / 360 video / SPZ / splat-transform 3.0 を、移行時の見た目差分を作品化する shader diagnostic layer として整理しました。追加ミニ試作は単体 WebGL の Engine Parity Diff Scope です。</p>
+      <p class="en-copy">For 2026-07-27, the upcoming 2026-07-29 end of PlayCanvas Editor Engine V1 support, the PlayCanvas Grace Cathedral Experience's WebGPU/WebGL splat implementation, Babylon Lite / Viewer Lite pixel parity and lightweight viewer path, and SuperSplat's Vite starter / 360 video / SPZ / splat-transform 3.0 are framed as shader diagnostic layers that turn migration visual differences into an expressive surface. The added mini prototype is a standalone WebGL Engine Parity Diff Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-27_engine_parity_diff_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-26.html">← 2026.07.26</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Engine Parity Diff Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-27_engine_parity_diff_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Editor は 2026-07-29 に Engine V1 Editor fallback を終了し、以後は Editor 上の編集・launch・publish・download を Engine V2 で検証する必要があります。これは単なる保守終了ではなく、texture color space、post effects、古い script pattern の見た目差分を検査する締切です。2. PlayCanvas の Grace Cathedral Experience は WebGPU hybrid renderer と WebGL 2 fallback を併用し、cutout、flag animation、transition shader に WGSL と GLSL の実装を持たせています。移行差分を shader chunk 単位で測る設計例として重要です。3. Babylon Lite は WebGPU-only、tree-shakable、data-oriented で、Babylon.js と視覚的に同等な結果を CI の pixel diff で守る方針を掲げています。4. Viewer Lite は 9.16.2 以降、`@babylonjs/viewer/lite` として同じ Viewer API で Lite を使える一方、splat など未対応の format が残っています。5. SuperSplat の Vite starter、360 video、SPZ export、splat-transform 3.0 は、splat をツール内の素材から配布可能な web app へ動かす流れを強めています。</p>
+          <p class="en-copy">1. PlayCanvas Editor will remove the Engine V1 Editor fallback on 2026-07-29, so edited, launched, published, or downloaded projects should be validated on Engine V2. This is not just an end-of-support note; it is a deadline for checking visual differences in texture color space, post effects, and old script patterns. 2. The PlayCanvas Grace Cathedral Experience uses a WebGPU hybrid renderer with WebGL 2 fallback, and keeps WGSL and GLSL implementations for cutout, flag animation, and transition shaders. It is a concrete design example for measuring migration differences at shader-chunk level. 3. Babylon Lite is WebGPU-only, tree-shakable, and data-oriented, with pixel parity against Babylon.js enforced through CI pixel diffs. 4. Viewer Lite is available from 9.16.2 through `@babylonjs/viewer/lite` with the same Viewer API, while formats such as splats are still listed as incomplete. 5. SuperSplat's Vite starter, 360 video, SPZ export, and splat-transform 3.0 continue moving splats from editor assets into deployable web apps.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://forum.playcanvas.com/t/important-playcanvas-editor-support-for-engine-v1-ends-on-july-29th/42242" target="_blank" rel="noreferrer">PlayCanvas Engine V1 support ends July 29</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/building-the-grace-cathedral-experience/" target="_blank" rel="noreferrer">Grace Cathedral Experience</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-babylon-lite/63648" target="_blank" rel="noreferrer">Babylon Lite</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-viewer-lite/63801" target="_blank" rel="noreferrer">Viewer Lite</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-vibe-code-splat-apps/" target="_blank" rel="noreferrer">SuperSplat Vite starter / 360 / SPZ</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>最も面白い事例は Grace Cathedral Experience です。外観と内観を別 splat set として扱い、streamed SOG の粗い LOD から time-to-first-pixel を作り、desktop と mobile で splat budget を分け、mode switch は freeze-fade で隠します。さらに cutout は gsplat shader chunk で per-splat stage と fragment stage に分け、壁を覗く演出と culling を同じ構造で成立させています。これは 7/26 の format pressure scope と直結します。format や renderer の違いをユーザーから隠すだけでなく、差分が大きい場所を glowing rim、freeze residue、stream heat として見せると、検証ツールと演出が同じレイヤーになります。</p>
+          <p class="en-copy">The most interesting case is the Grace Cathedral Experience. It treats exterior and interior as separate splat sets, starts with coarse streamed-SOG LOD for time-to-first-pixel, splits splat budgets between desktop and mobile, and hides mode switches with a freeze-fade. Its cutout effect uses gsplat shader chunks split between per-splat and fragment stages, making both wall-peeking expression and culling share the same structure. This connects directly to the 07-26 format-pressure scope. Instead of only hiding format or renderer differences, show high-difference areas as glowing rims, freeze residues, and stream heat so the same layer works as both verification tool and visual direction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/building-the-grace-cathedral-experience/" target="_blank" rel="noreferrer">Grace Cathedral Experience</a></li>
+          
+            <li><a href="../outputs/2026-07-26_gltf_splat_format_pressure_scope.html" target="_blank" rel="noreferrer">2026-07-26 sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>今日の中心案は「parity diff を触れる照明にする」です。左右に legacy/WebGL-like path と V2/Lite-like path を置き、中央に pixel diff heat を出す。ポインタを inspection lens、長押しや Space を migration stress とし、color space、post FX、MSDF label、streamed splat budget の差分だけが強く光るようにします。短期では疑似 shader で十分です。中長期では PlayCanvas の Engine V2 migration 前後スクリーンショット、Babylon Lite と Babylon.js の golden image、SuperSplat export 前後を texture として読み、差分を bloom rim、粒子密度、音の帯域へ流し込むと、QA と作品性が接続できます。</p>
+          <p class="en-copy">Today's core idea is to make parity diffs into touchable lighting. Put a legacy/WebGL-like path on the left, a V2/Lite-like path on the right, and emit pixel-diff heat in the center. Pointer becomes an inspection lens; hold or Space becomes migration stress; only the differences in color space, post FX, MSDF labels, and streamed splat budgets glow strongly. Short term, pseudo shader data is enough. Mid/long term, feed PlayCanvas before/after Engine V2 migration screenshots, Babylon Lite versus Babylon.js golden images, and SuperSplat export before/after images as textures, then route the diff into bloom rims, particle density, and audio bands.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-27_engine_parity_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装上は、移行差分を『スクリーンショット比較だけで終わらせない』のがポイントです。1. 同一 camera pose と DPR cap を固定する。2. legacy path と new path の render target を同じ解像度へ揃える。3. linear/sRGB、tone mapping、post effect、MSDF coverage の差を別 channel に分ける。4. shader で diff heat texture を作り、threshold を越えた場所に inspection lens と rim を出す。5. Grace Cathedral 型の streamed splat では、coarse LOD、chunk arrival、eviction、freeze-fade を state texture にして visual diff と同時表示する。Babylon Lite の発想を借りるなら、CI の数値差分と、鑑賞時の光る差分を同じパイプラインから作るのが強いです。</p>
+          <p class="en-copy">The key production move is not stopping at screenshot comparison. 1. Lock camera pose and DPR cap. 2. Match render-target resolution between legacy and new paths. 3. Split linear/sRGB, tone mapping, post effects, and MSDF coverage into separate channels. 4. Build a diff-heat texture in shader and show an inspection lens plus rim where thresholds are exceeded. 5. For Grace Cathedral-style streamed splats, expose coarse LOD, chunk arrival, eviction, and freeze-fade as a state texture shown alongside visual diffs. Borrowing the Babylon Lite idea, use one pipeline to produce both CI numeric diffs and glowing runtime diffs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://forum.babylonjs.com/t/introducing-babylon-lite/63648" target="_blank" rel="noreferrer">Babylon Lite pixel parity discussion</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.1" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.1 MSDF fix</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: PlayCanvas Engine V2 migration、v2.21.x の GSplat / MSDF / WebGPU fixes、SuperSplat の Vite starter と splat-transform 3.0、Babylon Lite / Viewer Lite の機能追加。新規案件: Grace Cathedral の cutout shader chunk、freeze-fade、on-demand rendering を shader diagnostic layer として再利用すること。寝かせる案件: カード UI、重い editor 再実装、training pipeline、XR 固有入力。短期はスクリーン内疑似 parity diff。中長期は実アプリの before/after capture と state texture を使った visual QA layer です。</p>
+          <p class="en-copy">Continue watching: PlayCanvas Engine V2 migration, v2.21.x GSplat / MSDF / WebGPU fixes, SuperSplat's Vite starter and splat-transform 3.0, and Babylon Lite / Viewer Lite feature growth. New: reusing Grace Cathedral's cutout shader chunks, freeze-fade, and on-demand rendering as a shader diagnostic layer. Park: card UI, heavy editor rewrites, training pipelines, and XR-specific input. Short term is pseudo parity diff on screen. Mid/long term is a visual QA layer using real app before/after captures and state textures.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、移行差分を red/blue の diff map ではなく、触れる照明として見せることです。作成した `outputs/2026-07-27_engine_parity_diff_scope.html` は、左に legacy/WebGL-like path、右に V2/Lite-like path、中央に差分ヒートを出し、pointer lens と Space/長押しの migration stress で差分を強調します。次に足すなら、実際の PlayCanvas V1/V2 capture 2枚を texture として読み込み、差分閾値を超えた場所だけ cutout rim 風に発光させます。</p>
+          <p class="en-copy">If trying one thing today, show migration differences as touchable lighting rather than a red/blue diff map. The created `outputs/2026-07-27_engine_parity_diff_scope.html` places a legacy/WebGL-like path on the left, a V2/Lite-like path on the right, and diff heat in the center, with pointer lens and Space/hold migration stress to emphasize differences. Next, load two real PlayCanvas V1/V2 captures as textures and make only threshold-exceeding areas glow like a cutout rim.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-27_engine_parity_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas Engine V1 終了告知、Grace Cathedral Experience、PlayCanvas Engine v2.21.1、Babylon Lite、Viewer Lite、SuperSplat Vite starter / 360 video / SPZ / splat-transform 3.0 を確認。アイデア検討: 7/26 の format pressure を、今日は engine migration / pixel parity / visual QA へ接続。サンプル実装: 単体 WebGL の Engine Parity Diff Scope を追加済み。結果の検証: JSON parse、gallery build、publish、day page と sample の HTTP 確認を実施対象にする。短期で試せるものは疑似 diff heat と inspection lens。中長期で育てるものは capture 比較、state texture、CI pixel diff、runtime shader overlay を同じ仕組みにすることです。</p>
+          <p class="en-copy">Collection: checked the PlayCanvas Engine V1 end notice, Grace Cathedral Experience, PlayCanvas Engine v2.21.1, Babylon Lite, Viewer Lite, and SuperSplat Vite starter / 360 video / SPZ / splat-transform 3.0. Ideation: connected 07-26 format pressure to engine migration, pixel parity, and visual QA. Prototype: added a standalone WebGL Engine Parity Diff Scope. Verification targets: JSON parse, gallery build, publish, and HTTP checks for the day page and sample. Short term, use pseudo diff heat and an inspection lens. Mid/long term, unify capture comparison, state textures, CI pixel diff, and runtime shader overlay.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、splat の file format / streaming / export pressure から、runtime path の違いをどう管理するかへ広がっています。7/23-7/26 は SOG、SPZ、KHR glTF、8K export、MSDF coverage を扱いました。今日は PlayCanvas Engine V2 移行と Babylon Lite の pixel parity を重ね、差分を消すだけでなく、差分の場所を鑑賞可能な信号にする方向を追加しました。組み合わせ候補は、Grace Cathedral の cutout rim、Babylon Lite の golden diff、SuperSplat の Vite starter、7/26 の format pressure lane。育てる価値が高いテーマは、作品制作と検証を兼ねる shader diagnostic layer です。</p>
+          <p class="en-copy">The recent thread is expanding from splat file format / streaming / export pressure into managing differences between runtime paths. 07-23 to 07-26 covered SOG, SPZ, KHR glTF, 8K export, and MSDF coverage. Today adds PlayCanvas Engine V2 migration and Babylon Lite pixel parity, shifting from merely removing differences to making their locations readable as aesthetic signals. Strong combinations are Grace Cathedral's cutout rim, Babylon Lite golden diffs, SuperSplat Vite starters, and the 07-26 format-pressure lanes. The high-value theme remains a shader diagnostic layer that serves both production and verification.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Engine Parity Diff Scope」です。作成済みファイルは `outputs/2026-07-27_engine_parity_diff_scope.html`。実際に動く内容は、raw WebGL fragment shader による左右 2 系統の疑似 splat/path rendering、中央の diff heat、pointer inspection lens、長押し/Space の migration stress、color space / post FX / MSDF label / stream budget 差分の発光です。次の発展順は、1. 実 screenshot 2枚を texture として読む、2. diff channel を color/post/text/stream に分ける、3. PlayCanvas Engine V2 migration checklist から検査項目を uniform 化する、4. CI で出た pixel diff を runtime overlay と同じ palette で表示する、です。</p>
+          <p class="en-copy">The selected prototype is Engine Parity Diff Scope. The created file is `outputs/2026-07-27_engine_parity_diff_scope.html`. It runs as a raw WebGL fragment shader with two pseudo splat/path rendering paths, center diff heat, pointer inspection lens, hold/Space migration stress, and glowing differences for color space, post FX, MSDF labels, and stream budget. The next development order is: 1. read two real screenshots as textures, 2. split diff channels into color/post/text/stream, 3. turn the PlayCanvas Engine V2 migration checklist into uniforms, and 4. display CI pixel diff with the same runtime overlay palette.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-27_engine_parity_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://forum.playcanvas.com/t/important-playcanvas-editor-support-for-engine-v1-ends-on-july-29th/42242" target="_blank" rel="noreferrer">PlayCanvas Engine V1 support ends July 29</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/building-the-grace-cathedral-experience/" target="_blank" rel="noreferrer">Building the Grace Cathedral Experience</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.1" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.1</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-babylon-lite/63648" target="_blank" rel="noreferrer">Introducing Babylon Lite</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-viewer-lite/63801" target="_blank" rel="noreferrer">Introducing Viewer Lite</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-vibe-code-splat-apps/" target="_blank" rel="noreferrer">SuperSplat Vibe Code Splat Apps</a></li>
+          
+            <li><a href="../outputs/2026-07-27_engine_parity_diff_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-27_engine_parity_diff_scope.html" loading="lazy" title="Engine Parity Diff Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
