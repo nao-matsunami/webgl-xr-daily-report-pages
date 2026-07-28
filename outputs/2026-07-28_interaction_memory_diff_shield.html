@@ -9,8 +9,8 @@
       margin: 0;
       height: 100%;
       overflow: hidden;
-      background: #07100d;
-      color: #eef7f1;
+      background: #020608;
+      color: #edf7ff;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
@@ -18,26 +18,29 @@
       display: block;
       width: 100vw;
       height: 100vh;
+      background: #020608;
     }
 
     .hud {
       position: fixed;
       left: 16px;
       top: 14px;
-      max-width: min(660px, calc(100vw - 32px));
+      max-width: min(560px, calc(100vw - 32px));
       font-size: 12px;
       line-height: 1.45;
-      color: rgba(238, 247, 241, 0.84);
-      text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
+      color: rgba(222, 238, 255, 0.76);
+      text-shadow: 0 1px 18px rgba(0, 0, 0, 0.92);
       pointer-events: none;
+      mix-blend-mode: screen;
     }
 
     .hud strong {
       display: block;
       margin-bottom: 5px;
-      color: #ffffff;
+      color: #f7fbff;
       font-size: 13px;
       letter-spacing: 0;
+      text-transform: uppercase;
     }
 
     .keys {
@@ -46,7 +49,7 @@
       bottom: 14px;
       font-size: 11px;
       line-height: 1.5;
-      color: rgba(238, 247, 241, 0.74);
+      color: rgba(222, 238, 255, 0.68);
       text-align: right;
       text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
       pointer-events: none;
@@ -57,9 +60,9 @@
   <canvas id="gl"></canvas>
   <div class="hud">
     <strong>Interaction memory diff shield</strong>
-    Pointer writes a fading shield memory. Center = WebGPU/TSL vs WebGL/GLSL visual drift. Hold or Space = compile / stream pressure.
+    Pointer leaves a fading contact field. Center = renderer drift. Hold or Space = compile / stream pressure.
   </div>
-  <div class="keys">Fresnel shield · history mask · GLSL parity heat · path pulse</div>
+  <div class="keys">contact memory · parity aura · shield scan · path pulse</div>
 
   <script id="vs" type="x-shader/x-vertex">
     attribute vec2 position;
@@ -106,6 +109,10 @@
       return v;
     }
 
+    float sat(float v) {
+      return clamp(v, 0.0, 1.0);
+    }
+
     float line(vec2 p, vec2 a, vec2 b, float w) {
       vec2 pa = p - a;
       vec2 ba = b - a;
@@ -119,12 +126,31 @@
       return smoothstep(0.045, 0.0, min(g.x, g.y));
     }
 
+    float ring(vec2 p, float radius, float width) {
+      return smoothstep(width, 0.0, abs(length(p) - radius));
+    }
+
+    float arc(vec2 p, float radius, float width, float phase, float duty) {
+      float angle = atan(p.y, p.x) / 6.2831853 + 0.5;
+      float gate = smoothstep(duty, duty - 0.08, fract(angle * 7.0 + phase));
+      return ring(p, radius, width) * gate;
+    }
+
+    float starLayer(vec2 uv) {
+      vec2 cell = floor(uv * vec2(92.0, 54.0));
+      vec2 local = fract(uv * vec2(92.0, 54.0)) - 0.5;
+      float h = hash(cell);
+      float star = smoothstep(0.055, 0.0, length(local)) * smoothstep(0.982, 1.0, h);
+      return star * (0.35 + 0.65 * sin(time * 1.7 + h * 18.0));
+    }
+
     float pulsePath(vec2 p, float offset, float speed) {
-      float track = line(p, vec2(-0.85, -0.44 + offset), vec2(0.86, 0.36 - offset * 0.55), 0.014);
+      float track = line(p, vec2(-0.95, -0.44 + offset), vec2(0.96, 0.36 - offset * 0.55), 0.011);
       float u = dot(p, normalize(vec2(1.71, 0.8))) * 0.55 + 0.5;
       float head = fract(u * 1.2 - time * speed + offset);
-      float mask = smoothstep(0.11, 0.0, head) * smoothstep(0.0, 0.06, head);
-      return track * mask;
+      float mask = smoothstep(0.13, 0.0, head) * smoothstep(0.0, 0.055, head);
+      float core = line(p, vec2(-0.95, -0.44 + offset), vec2(0.96, 0.36 - offset * 0.55), 0.003);
+      return track * mask + core * mask * 1.7;
     }
 
     vec3 renderPath(vec2 p, float lane) {
@@ -139,14 +165,14 @@
       }
       float pulseA = pulsePath(p, -0.16, 0.18 + lane * 0.02);
       float pulseB = pulsePath(p.yx * vec2(1.0, -1.0), 0.18, 0.24 - lane * 0.03);
-      float bloom = smoothstep(0.05, 0.45, topology + pulseA + pulseB + n * 0.22);
-      vec3 cool = vec3(0.12, 0.72, 0.82);
-      vec3 gold = vec3(1.00, 0.67, 0.25);
-      vec3 violet = vec3(0.46, 0.34, 0.86);
-      vec3 col = vec3(0.045, 0.095, 0.075);
-      col += mix(cool, gold, lane) * topology * 1.25;
-      col += violet * bloom * (0.2 + 0.42 * lane);
-      col += vec3(0.85, 0.96, 1.0) * (pulseA + pulseB) * (0.85 + 0.55 * lane);
+      float bloom = smoothstep(0.04, 0.42, topology + pulseA + pulseB + n * 0.20);
+      vec3 cyan = vec3(0.03, 0.86, 1.0);
+      vec3 amber = vec3(1.00, 0.66, 0.22);
+      vec3 magenta = vec3(0.92, 0.18, 1.0);
+      vec3 col = vec3(0.012, 0.030, 0.038);
+      col += mix(cyan, amber, lane) * topology * 1.55;
+      col += magenta * bloom * (0.18 + 0.36 * lane);
+      col += vec3(0.90, 0.98, 1.0) * (pulseA + pulseB) * (1.0 + 0.7 * lane);
       return col;
     }
 
@@ -162,29 +188,42 @@
       vec3 glslLike = renderPath(p + vec2(0.015 * sin(time * 0.7), -0.012), 0.0);
       float diff = length(tslLike - glslLike);
 
-      vec2 sphere = p * vec2(0.88, 1.08);
+      vec2 sphere = p * vec2(0.84, 1.04);
       float r = length(sphere);
-      float shell = smoothstep(0.88, 0.81, r) * smoothstep(0.50, 0.86, r);
-      float fresnel = pow(clamp(1.0 - abs(0.72 - r), 0.0, 1.0), 4.0);
-      float hex = hexGrid(p + 0.03 * vec2(sin(time * 0.5), cos(time * 0.4))) * shell;
+      float shell = smoothstep(0.92, 0.78, r) * smoothstep(0.34, 0.74, r);
+      float coreShell = smoothstep(0.74, 0.18, r);
+      float fresnel = pow(sat(1.0 - abs(0.73 - r)), 5.5);
+      float hex = hexGrid(p * 1.08 + 0.04 * vec2(sin(time * 0.5), cos(time * 0.4))) * shell;
       float nowHit = exp(-dot(p - m, p - m) / 0.018);
       float oldHit = exp(-dot(p - pm, p - pm) / 0.055) * (0.58 + 0.42 * sin(time * 2.7));
       float memory = clamp(nowHit + oldHit, 0.0, 1.0) * shell;
-      float scan = smoothstep(0.018, 0.0, abs(r - (0.56 + 0.22 * fract(time * 0.18))));
+      float scan = smoothstep(0.018, 0.0, abs(r - (0.48 + 0.32 * fract(time * 0.18))));
+      float orbital = arc(p, 0.86, 0.010, time * 0.06, 0.62);
+      orbital += arc(p * mat2(0.78, -0.62, 0.62, 0.78), 0.66, 0.008, -time * 0.08, 0.66);
+      float crosshair = line(p, vec2(-1.18, 0.0), vec2(1.18, 0.0), 0.002) * smoothstep(0.94, 0.58, abs(p.x));
+      crosshair += line(p, vec2(0.0, -0.9), vec2(0.0, 0.9), 0.002) * smoothstep(0.82, 0.46, abs(p.y));
 
       vec3 base = mix(glslLike, tslLike, smoothstep(0.48, 0.52, uv.x));
-      vec3 heat = vec3(1.0, 0.28, 0.12) * smoothstep(0.10, 0.58, diff);
-      heat += vec3(0.18, 0.84, 1.0) * smoothstep(0.30, 0.05, abs(diff - 0.24));
-      vec3 shield = vec3(0.11, 0.82, 0.76) * fresnel * shell;
-      shield += vec3(0.95, 0.72, 0.28) * hex * (0.18 + memory * 1.4);
-      shield += vec3(1.0, 0.38, 0.18) * memory * (0.7 + pressure);
-      shield += vec3(0.46, 0.34, 0.86) * scan * shell * (0.25 + 0.75 * pressure);
+      vec3 heat = vec3(1.0, 0.34, 0.12) * smoothstep(0.12, 0.62, diff);
+      heat += vec3(0.10, 0.88, 1.0) * smoothstep(0.34, 0.05, abs(diff - 0.24));
+      vec3 shield = vec3(0.04, 0.92, 1.0) * fresnel * shell * 1.25;
+      shield += vec3(0.96, 0.78, 0.28) * hex * (0.08 + memory * 1.7);
+      shield += vec3(1.0, 0.15, 0.92) * memory * (0.55 + pressure * 1.25);
+      shield += vec3(0.36, 0.22, 1.0) * scan * shell * (0.18 + 0.95 * pressure);
+      shield += vec3(0.14, 0.92, 1.0) * orbital * (0.45 + 0.75 * pressure);
+      shield += vec3(0.76, 0.90, 1.0) * crosshair * coreShell * 0.26;
 
       float center = smoothstep(0.18, 0.0, abs(uv.x - 0.5));
-      vec3 col = base * 0.72 + heat * center * (0.55 + pressure * 0.65) + shield;
-      col += vec3(0.95, 1.0, 0.9) * smoothstep(0.005, 0.0, abs(uv.x - 0.5));
-      col *= 0.62 + 0.42 * smoothstep(1.2, 0.15, length(p));
-      col = pow(col, vec3(0.92));
+      vec3 nebula = mix(vec3(0.015, 0.026, 0.038), vec3(0.030, 0.014, 0.052), uv.y);
+      nebula += vec3(0.02, 0.08, 0.12) * fbm(p * 1.4 + time * 0.015);
+      vec3 col = nebula + base * 0.58 + heat * center * (0.42 + pressure * 0.82) + shield;
+      col += vec3(0.72, 0.95, 1.0) * starLayer(uv) * 0.75;
+      col += vec3(0.86, 0.98, 1.0) * smoothstep(0.004, 0.0, abs(uv.x - 0.5)) * 0.62;
+      float vignette = smoothstep(1.35, 0.18, length(p * vec2(0.82, 1.06)));
+      float scanline = 0.94 + 0.06 * sin(gl_FragCoord.y * 1.7 + time * 5.0);
+      col *= vignette * scanline;
+      col = col / (1.0 + col * 0.52);
+      col = pow(col, vec3(0.84));
       gl_FragColor = vec4(col, 1.0);
     }
   </script>
