@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 41</span>
+        <span>days: 42</span>
         <span>page: 1 / 4</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -301,6 +301,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-29">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.29</p>
+              <h2>投影差・タイル境界・splat 品質を一枚の診断フィールドへ寄せる</h2>
+              <p class="card-subtitle">Turning projection drift, tile seams, and splat quality into one diagnostic field</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-29" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">PlayCanvas Engine V1 Editor fallback 終了日と v2.21.2 の shader 修正を軸に、Gaussian Splat の fisheye、relighting、custom shader、Babylon の resize leak 修正、three.js r185 の HTMLTexture/SSGI を、演出と検証を兼ねる shader overlay として接続した。</p>
+          <p class="description en-copy">Today's report connects the PlayCanvas Engine V1 Editor fallback cutoff and v2.21.2 shader fix with Gaussian Splat fisheye, relighting, custom shaders, Babylon's resize leak fix, and three.js r185 HTMLTexture/SSGI work as a shader overlay that can serve both expression and validation.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-07-29.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-07-29_fisheye_tile_bias_field.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-28">
           <div class="card-top">
             <div>
@@ -550,29 +573,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-07-17.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-07-17_sog_retry_budget_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-16">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.16</p>
-              <h2>selection boolean を時間差分と stream risk の scope に進める</h2>
-              <p class="card-subtitle">Move selection booleans into temporal diff and stream-risk scopes</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-16" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">2026-07-16 は、SuperSplat v2.30.0 の selection operation、PlayCanvas Engine v2.20.6 の SOG/gsplat 安定化、Babylon.js 9.16.2 の MSDF depth 書き込み、three.js r185 の HTMLTexture/TSL 更新を継続確認し、前日の selection boolean residue を「現在選択・前回選択・差分残像・stream risk」を同時に見る時間差分 scope へ進めました。単体 WebGL サンプルでは、cyan の current keep、amber の previous keep、violet の diff residue、red の cut/stream risk、yellow の depth annotation gate を GLSL だけで描きます。</p>
-          <p class="description en-copy">For 2026-07-16, I rechecked SuperSplat v2.30.0 selection operations, PlayCanvas Engine v2.20.6 SOG/gsplat stability work, Babylon.js 9.16.2 MSDF depth writing, and three.js r185 HTMLTexture/TSL updates. The previous selection-boolean residue track now becomes a temporal-diff scope showing current selection, previous selection, diff afterimage, and stream risk at once. The standalone WebGL sample draws cyan current keep, amber previous keep, violet diff residue, red cut/stream risk, and yellow depth annotation gates in GLSL only.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-07-16.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-07-16_temporal_selection_diff_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

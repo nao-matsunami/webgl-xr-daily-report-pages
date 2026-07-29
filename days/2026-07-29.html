@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>投影差・タイル境界・splat 品質を一枚の診断フィールドへ寄せる | 2026-07-29</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.29</p>
+      <h1>投影差・タイル境界・splat 品質を一枚の診断フィールドへ寄せる</h1>
+      <p class="hero-subtitle">Turning projection drift, tile seams, and splat quality into one diagnostic field</p>
+      <p>PlayCanvas Engine V1 Editor fallback 終了日と v2.21.2 の shader 修正を軸に、Gaussian Splat の fisheye、relighting、custom shader、Babylon の resize leak 修正、three.js r185 の HTMLTexture/SSGI を、演出と検証を兼ねる shader overlay として接続した。</p>
+      <p class="en-copy">Today's report connects the PlayCanvas Engine V1 Editor fallback cutoff and v2.21.2 shader fix with Gaussian Splat fisheye, relighting, custom shaders, Babylon's resize leak fix, and three.js r185 HTMLTexture/SSGI work as a shader overlay that can serve both expression and validation.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-29_fisheye_tile_bias_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-28.html">← 2026.07.28</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Fisheye Tile Bias Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-29_fisheye_tile_bias_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Engine v2.21.2 が 2026-07-28 に出て、tiled nine-slice shader の `textureBias` 再定義を修正した。UI 部品の修正に見えるが、実装上は「タイル化された面」「mip/LOD bias」「shader variant の衝突」を検出する観点が重要。2. PlayCanvas Editor の Engine V1 fallback は 2026-07-29 が終了日。公開済み build はそのままでも、Editor で触る案件は V2 での色空間、post effect、shader 差分検証が必要になる。3. PlayCanvas Gaussian Splat docs は fisheye、relighting、custom shader がかなり制作寄りに整理されており、splat を単なる viewer ではなく「投影を変形できる素材」「照明を後から演出できる素材」として扱いやすくなっている。4. Babylon.js 9.18.0 は Gaussian Splat texture leak with resize を修正。インタラクティブ作品では resize、device rotation、presentation mode 切替が地味に壊れやすいので、視覚演出に memory/resize pressure を重ねる発想が有効。5. three.js r185 は HTMLTexture の WICG HTML-in-Canvas API 対応や SSGI 周辺が目立つ。DOM 的な情報面、screen-space lighting、splat/volumetric fog を同じ postprocess 言語で扱う方向が続いている。</p>
+          <p class="en-copy">1. PlayCanvas Engine v2.21.2 landed on 2026-07-28 and fixed a `textureBias` redefinition in tiled nine-slice shaders. It looks UI-focused, but the broader implementation signal is about tiled surfaces, mip/LOD bias, and shader variant collisions. 2. The PlayCanvas Editor Engine V1 fallback ends on 2026-07-29. Published builds remain unchanged, but anything edited in the Editor now needs V2 validation for color space, post effects, and shader drift. 3. PlayCanvas Gaussian Splat docs now make fisheye, relighting, and custom shaders production-readable, treating splats as projection- and lighting-malleable material rather than just viewer content. 4. Babylon.js 9.18.0 fixes a Gaussian Splat texture leak on resize; resize/device-rotation/presentation changes are practical failure points for interactive work. 5. three.js r185 highlights HTMLTexture support for newer HTML-in-Canvas signatures and SSGI work, continuing the move toward shared postprocess language for DOM surfaces, screen-space lighting, splats, and fog.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.2</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/important-playcanvas-editor-support-for-engine-v1-ends-on-july-29th/42242" target="_blank" rel="noreferrer">Engine V1 support ends</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0" target="_blank" rel="noreferrer">Babylon.js 9.18.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>注目は PlayCanvas の Gaussian Splat fisheye / relighting / custom shader の三点セット。fisheye は splat と infinite skybox だけを歪ませ、通常 mesh や UI は標準投影のまま残るため、投影の不一致そのものを表現素材にできる。relighting は proxy mesh を別 layer で描き、screen-aligned texture の RGB/alpha を splat fragment に渡す考え方で、これは「後から光を当てる」だけでなく、coverage mask を診断チャンネルとして使える。custom shader は GLSL と WGSL の chunk を並行指定する形なので、WebGL/WebGPU 両対応時の差分を可視化する UI ではなく、画面内 overlay として持つのが良い。Codrops の The Sleepers は、軽い fog、outline、repeating city chunks で視覚強度を出しており、巨大なレンダリング技術よりも、安い shader と配置ルールを重ねる方が短期試作に向くことを再確認できる。</p>
+          <p class="en-copy">The strongest example cluster is PlayCanvas' Gaussian Splat fisheye, relighting, and custom shader documentation. Fisheye distorts splats and the infinite skybox while leaving regular meshes and UI in normal projection, making the projection mismatch itself usable as visual material. Relighting renders a proxy mesh into a screen-aligned texture and feeds RGB/alpha into splat fragments; that coverage mask can double as a diagnostic channel. Custom shaders require GLSL and WGSL chunks side by side, which argues for an in-scene overlay that shows WebGL/WebGPU drift rather than an external QA table. Codrops' The Sleepers reinforces that lightweight fog, outlines, and repeating chunks can create strong atmosphere faster than heavy rendering systems.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/" target="_blank" rel="noreferrer">PlayCanvas Fisheye Rendering</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Relighting</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/custom-shaders/" target="_blank" rel="noreferrer">PlayCanvas Custom Shaders</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/" target="_blank" rel="noreferrer">The Sleepers case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期で試すなら「投影差を美術化した検査レンズ」が筋が良い。splat/fisheye の境界、tile seam、mip bias、resize pulse をそれぞれ色のチャンネルに割り当て、ポインタ周辺だけ高感度化する。これは前回の interaction memory diff shield の後継で、diff を renderer parity だけに閉じず、projection / shader variant / memory pressure へ広げる案。中長期では、実際の PlayCanvas V2 と WebGPU/WGSL chunk、WebGL/GLSL chunk の render capture を 2枚 texture として読み、差分 heat を空間内に出す。エンタメ寄りには、fisheye を「小惑星」ではなく、ライブ演出の歪む防護膜や、splat の記憶層が伸び縮みする舞台装置として使うとカード UI から離れられる。</p>
+          <p class="en-copy">The best short-term idea is an inspection lens that aestheticizes projection drift. Assign splat/fisheye boundaries, tile seams, mip bias, and resize pulses to separate color channels, then amplify them near the pointer. This extends yesterday's interaction memory diff shield from renderer parity into projection, shader variant, and memory pressure. Longer term, read actual captures from PlayCanvas V2 WebGPU/WGSL and WebGL/GLSL chunks as two textures and display the heat difference in the scene. For entertainment, use fisheye not as a tiny-planet gimmick but as a warping shield or stage membrane where splat memory layers expand and contract.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-29_fisheye_tile_bias_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>PlayCanvas custom splat shader は `app.scene.gsplat.material` に shader chunk を設定し、GLSL と WGSL の両方を更新して `sceneMat.update()` する流れ。fragment stage は splat footprint ごとに走るので、重い noise や texture sampling は overlap が多い scene では危険。vertex stage で分類値を作り、fragment stage へ varying stream として渡す設計が良い。fisheye は初回有効化で shader variant compile が走り、wide FOV では radial sorting が推奨される。Babylon の GS resize leak 修正からは、resize 時の texture 再生成・破棄を明示的に検証対象へ入れるべきだと読める。three.js r185 の HTMLTexture は DOM/情報面を texture 化する方向なので、将来は debug HUD を DOM ではなく shader 内の surface として折り込める。</p>
+          <p class="en-copy">PlayCanvas custom splat shaders are applied by setting chunks on `app.scene.gsplat.material`, updating both GLSL and WGSL sources, and calling `sceneMat.update()`. Fragment chunks run for every covered splat footprint, so heavy noise or texture sampling is risky in overlap-heavy scenes. A better pattern is classifying once in the vertex stage and passing values through varying streams. Fisheye triggers a shader variant compile the first time it is enabled, and radial sorting is recommended for very wide FOV. Babylon's GS resize leak fix suggests treating resize-triggered texture recreation/disposal as an explicit test target. three.js r185 HTMLTexture keeps pushing DOM/information surfaces toward texture workflows, which can eventually fold debug HUDs into shader surfaces instead of DOM overlays.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/custom-shaders/" target="_blank" rel="noreferrer">Custom Shaders</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/" target="_blank" rel="noreferrer">Fisheye Rendering</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0" target="_blank" rel="noreferrer">Babylon.js 9.18.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvas は v2.21.x 以降の shader/GSplat hotfix、特に textureBias、MSDF、radial sorting、SOG reload 周辺を継続ウォッチ。Babylon は 9.19 以降で GaussianSplattingMesh の resize / stream / LOD まわりが続くかを見る。three.js は r186 に向けた WebGPURenderer、HTMLTexture、SSGI/volumetric examples の差分を見る。Codrops / three.js forum / creator demo は、軽量 shader で視覚密度を出す例を優先し、単なる landing page やカード配置の事例は寝かせる。</p>
+          <p class="en-copy">Keep watching PlayCanvas v2.21.x+ shader and GSplat hotfixes, especially textureBias, MSDF, radial sorting, and SOG reload behavior. For Babylon, watch whether 9.19+ continues GaussianSplattingMesh resize, stream, and LOD fixes. For three.js, track WebGPURenderer, HTMLTexture, SSGI, and volumetric example changes toward r186. For Codrops, the three.js forum, and creator demos, prioritize lightweight shader approaches with high visual density and leave landing-page/card layout examples aside.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実データを読む前に「投影/タイル/resize の圧力マップ」を raw WebGL で作る。理由は、PlayCanvas V1 終了、v2.21.2 shader 修正、Babylon resize leak、fisheye docs が同じ方向を向いているから。実装は 1枚の fragment shader で、fisheye 変換した疑似 splat dome、tile seam heat、mip bias band、resize pulse、pointer inspection lens を重ねる。これなら依存なしで数分確認でき、後で PlayCanvas の実 capture texture に差し替えやすい。</p>
+          <p class="en-copy">If trying one thing today, build a raw WebGL pressure map for projection, tile, and resize issues before loading real data. The PlayCanvas V1 cutoff, v2.21.2 shader fix, Babylon resize leak, and fisheye docs all point in that direction. The implementation is a single fragment shader combining a fisheye-transformed pseudo splat dome, tile seam heat, mip bias bands, resize pulse, and pointer inspection lens. It has no dependency cost and can later be replaced with real PlayCanvas capture textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-29_fisheye_tile_bias_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas v2.21.2、Engine V1 fallback 終了、fisheye/relighting/custom shader docs、Babylon 9.18.0、three.js r185、The Sleepers を収集済み。アイデア検討: 前回の interaction memory diff shield を、projection mismatch、tile seam、resize pressure へ拡張する方針が有力。サンプル実装: `outputs/2026-07-29_fisheye_tile_bias_field.html` を作成。結果の検証: JSON parse、gallery build、publish、ローカル/公開 HTTP 確認を行う。継続案件は renderer parity diff と splat diagnostic overlay。新規案件は fisheye tile bias field。寝かせる案件は一般的なカード UI、通常の landing page、UI nine-slice そのものの再現。</p>
+          <p class="en-copy">Research: collected PlayCanvas v2.21.2, the Engine V1 fallback cutoff, fisheye/relighting/custom shader docs, Babylon 9.18.0, three.js r185, and The Sleepers. Ideation: the strongest direction is extending yesterday's interaction memory diff shield into projection mismatch, tile seams, and resize pressure. Prototype: created `outputs/2026-07-29_fisheye_tile_bias_field.html`. Verification: run JSON parse, gallery build, publish, and local/public HTTP checks. Continuing tracks are renderer parity diff and splat diagnostic overlays. The new track is fisheye tile bias field. Parked topics are general card UI, ordinary landing pages, and literal UI nine-slice reproduction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-29_fisheye_tile_bias_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、Gaussian Splat を viewer から production primitive へ押し上げる流れ。format、LOD、sorting、relighting、fisheye、custom shader がそれぞれ別トピックではなく、ひとつの runtime quality layer になってきた。組み合わせ候補は、1. fisheye と radial sorting heat、2. relighting coverage alpha と selection memory、3. HTMLTexture/DOM surface と shader diagnostic HUD、4. resize leak pulse と export preflight。育てる価値が高いテーマは「作品の見た目と検証を分けない overlay」。制作中の演出がそのまま QA 可視化になり、QA overlay がそのままエンタメ演出にもなる設計を続ける。</p>
+          <p class="en-copy">The recent trend is Gaussian Splatting becoming a production primitive rather than a viewer feature. Format, LOD, sorting, relighting, fisheye, and custom shaders are turning into one runtime quality layer. Useful combinations: 1. fisheye plus radial sorting heat, 2. relighting coverage alpha plus selection memory, 3. HTMLTexture/DOM surfaces plus shader diagnostic HUDs, and 4. resize leak pulses plus export preflight. The theme worth growing is an overlay where the artwork and validation are not separated: the production effect doubles as QA visualization, and the QA overlay can become entertainment visuals.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Relighting</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Fisheye Tile Bias Field」です。作成済みファイルは `outputs/2026-07-29_fisheye_tile_bias_field.html`。実際に動く内容は、raw WebGL fragment shader による疑似 Gaussian Splat dome、fisheye projection、tile seam heat、mip/texture bias band、resize leak pulse、pointer inspection lens です。クリックまたは Space で pressure を上げ、R で resize pulse を再発火できます。次に足すと良いのは、1. PlayCanvas の実 splat/fisheye capture を texture として読む、2. resize 前後の framebuffer を比較する、3. GLSL/WGSL chunk の出力差を色チャンネルに分ける、4. relighting coverage alpha を leak/bias heat と合成する、です。</p>
+          <p class="en-copy">The selected prototype is Fisheye Tile Bias Field. The created file is `outputs/2026-07-29_fisheye_tile_bias_field.html`. It runs as a raw WebGL fragment shader with a pseudo Gaussian Splat dome, fisheye projection, tile seam heat, mip/texture bias bands, resize leak pulses, and a pointer inspection lens. Click or hold Space to raise pressure, and press R to retrigger the resize pulse. Next additions: 1. read real PlayCanvas splat/fisheye captures as textures, 2. compare framebuffers before and after resize, 3. split GLSL/WGSL chunk drift into color channels, and 4. combine relighting coverage alpha with leak/bias heat.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-29_fisheye_tile_bias_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.2 release</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/important-playcanvas-editor-support-for-engine-v1-ends-on-july-29th/42242" target="_blank" rel="noreferrer">PlayCanvas Engine V1 Editor support ends July 29</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splat Fisheye Rendering</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/custom-shaders/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splat Custom Shaders</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splat Relighting</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0" target="_blank" rel="noreferrer">Babylon.js 9.18.0 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/" target="_blank" rel="noreferrer">The Sleepers Codrops case study</a></li>
+          
+            <li><a href="../outputs/2026-07-29_fisheye_tile_bias_field.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-29_fisheye_tile_bias_field.html" loading="lazy" title="Fisheye Tile Bias Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
