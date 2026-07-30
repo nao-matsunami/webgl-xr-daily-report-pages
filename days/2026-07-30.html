@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSDF の縁取り品質と空間音の方向感を shader overlay に束ねる | 2026-07-30</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.07.30</p>
+      <h1>MSDF の縁取り品質と空間音の方向感を shader overlay に束ねる</h1>
+      <p class="hero-subtitle">Bundling MSDF edge quality and spatial audio direction into a shader overlay</p>
+      <p>PlayCanvas Engine v2.21.3 の MSDF bright outline 修正、Babylon.js 9.18.2 の MediaStream/WebRTC 音源 spatialize 修正、three.js r185 の volumetric fire / custom fog / HTMLTexture の流れを、昨日の fisheye / tile / resize pressure から「縁取り品質、coverage alpha、音源方向」を同時に見る表現へ接続した。</p>
+      <p class="en-copy">Today's report connects PlayCanvas Engine v2.21.3's MSDF bright outline fix, Babylon.js 9.18.2's MediaStream/WebRTC spatial audio fix, and three.js r185's volumetric fire/custom fog/HTMLTexture direction with yesterday's fisheye, tile, and resize pressure work, turning edge quality, coverage alpha, and sound direction into one visual field.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-07-30_msdf_audio_spatial_halo.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-07-29.html">← 2026.07.29</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>MSDF Audio Spatial Halo</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-07-30_msdf_audio_spatial_halo.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Engine v2.21.3 が 2026-07-29 に公開され、MSDF text glyphs の bright outline 修正が入った。昨日の `textureBias` 修正と合わせると、文字・注釈・HUD を splat / shader surface に重ねる時の「縁だけ明るく壊れる」問題を継続的に見る価値がある。2. Babylon.js 9.18.2 は AudioV2 で MediaStream/WebRTC sound source を標準で spatialize する修正が入った。ライブ配信、通話、観客参加型音源を 3D 空間へ置く時に、音の方向と可視化を別管理しない設計がしやすくなる。3. three.js r185 では HTMLTexture、volumetric fire、custom fog、procedural city など、情報面・ボリューム・環境生成を shader/postprocess の側へ寄せる例が強い。4. PlayCanvas の relighting と renderers docs は、coverage alpha、CPU/GPU sorting、WebGL/WebGPU fallback を作品内 overlay にして検証できる材料として使える。5. Codrops の直近記事群は ZERO、Cerebrium、Dash、The Sleepers など、軽量 shader、Web Audio、scroll/interaction を組み合わせて抽象概念を触れる体験にする方向が続いている。</p>
+          <p class="en-copy">1. PlayCanvas Engine v2.21.3 was published on 2026-07-29 with a fix for bright outlines around MSDF text glyphs. Together with yesterday's `textureBias` fix, this makes edge artifacts in shader-based labels and HUD surfaces worth watching. 2. Babylon.js 9.18.2 fixes AudioV2 so MediaStream/WebRTC sound sources spatialize out of the box, making it easier to bind live or participatory sound to spatial visualization. 3. three.js r185 remains strong around HTMLTexture, volumetric fire, custom fog, and procedural city examples, pushing information surfaces, volumes, and environment generation toward shader/postprocess workflows. 4. PlayCanvas relighting and renderer docs provide practical hooks for turning coverage alpha, CPU/GPU sorting, and WebGL/WebGPU fallback into in-scene validation overlays. 5. Recent Codrops articles such as ZERO, Cerebrium, Dash, and The Sleepers continue the pattern of using lightweight shaders, Web Audio, and interaction to make abstract systems tangible.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.3" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.3</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.2" target="_blank" rel="noreferrer">Babylon.js 9.18.2</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>注目は PlayCanvas の MSDF 修正を、単なるテキスト品質ではなく splat 上の注釈・ラベル・測定値の信頼性として見る点。relighting docs の coverage alpha は、どのピクセルが proxy mesh の照明を受けているかを示せるため、文字の縁取り品質、splat の照明適用範囲、sorting の不確かさを同じ overlay に載せられる。Babylon の MediaStream/WebRTC spatialize 修正は、Web Audio 系の作品で「音源がどこにあるか」を renderer とは別の DOM 表示で説明せず、音波リングや方向ベクトルとして空間内に出す発想につながる。three.js の volumetric fire / custom fog は、品質診断の色を煙や炎の層へ溶かす参考になる。</p>
+          <p class="en-copy">The interesting angle is reading the PlayCanvas MSDF fix not just as text quality, but as reliability for labels, annotations, and measurements drawn over splats. Relighting coverage alpha can indicate which pixels receive proxy-mesh lighting, so edge quality, lighting coverage, and sorting uncertainty can share one overlay. Babylon's MediaStream/WebRTC spatial audio fix points toward showing live sound source positions as wave rings or direction vectors in the scene instead of explaining them through separate DOM UI. three.js volumetric fire and custom fog are useful references for dissolving diagnostic color into smoke and fire-like layers.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Relighting</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.2" target="_blank" rel="noreferrer">Babylon.js 9.18.2</a></li>
+          
+            <li><a href="https://threejs.org/examples/webgpu_volume_fire.html" target="_blank" rel="noreferrer">three.js volumetric fire</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期では「MSDF edge halo + spatial audio vectors」を作る。ポインタ周辺だけ bright outline を抑えた状態にし、外側には壊れた縁の magenta halo を残すことで、修正前後の差を作品的に見せられる。音は実入力を使わず synthetic beat でもよく、複数の音源方向から波紋が来るように描く。中長期では、WebRTC の参加者ごとの MediaStream を 3D splat 空間の点音源に割り当て、発話・位置・relighting coverage・annotation readability を同時に見るライブ空間に育てる。昨日の fisheye tile bias field とは、projection pressure の上に text/audio pressure を重ねる接続になる。</p>
+          <p class="en-copy">For a short-term test, build an MSDF edge halo plus spatial audio vectors. Suppress the bright outline inside a pointer lens and leave a magenta broken-edge halo outside, making the before/after state visible as an artwork. Sound can use a synthetic beat rather than real input, with rings arriving from multiple source directions. Longer term, map each WebRTC participant MediaStream to a point sound source in a splat space and visualize speech, position, relighting coverage, and annotation readability together. This extends yesterday's fisheye tile bias field by layering text and audio pressure over projection pressure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-30_msdf_audio_spatial_halo.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>MSDF は小サイズ、mipmap、色空間、post bloom の順で縁の破綻が目立つ。splat viewer 内のラベルは通常の DOM より背景の粒状ノイズを受けやすいので、edge distance、halo distance、coverage mask を別チャンネルで持つと調整しやすい。PlayCanvas relighting は offscreen texture の alpha を coverage として使うので、未カバー領域の注釈は自動で補色・太字・背景光を変えられる。Babylon AudioV2 の MediaStream/WebRTC spatialize は、実装上は音声 stream の lifetime と scene node の lifetime を揃える必要がある。three.js / TSL 側で将来置き換えるなら、音源方向、coverage、text edge を node material の debug output として切り替える設計がよい。</p>
+          <p class="en-copy">MSDF failures tend to surface around small sizes, mipmaps, color space, and bloom. Labels inside splat viewers receive more granular background noise than ordinary DOM text, so keeping edge distance, halo distance, and coverage mask as separate channels makes tuning easier. PlayCanvas relighting uses offscreen texture alpha as coverage, which can drive annotation contrast, weight, or backlight in uncovered regions. With Babylon AudioV2 MediaStream/WebRTC spatialization, sound stream lifetime and scene node lifetime should be managed together. If this moves to three.js/TSL later, sound direction, coverage, and text edge state should be switchable as node-material debug outputs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/web-components/tags/pc-gsplat/" target="_blank" rel="noreferrer">PlayCanvas pc-gsplat</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/" target="_blank" rel="noreferrer">PlayCanvas Renderers</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvas は v2.21.x の MSDF、shader chunks、GSplat relighting / radial sorting の追加修正を追う。Babylon は 9.18.2 以降で AudioV2、GaussianSplattingMesh、Viewer Lite、KHR_gaussian_splatting の組み合わせが出るか見る。three.js は r186 に向けた WebGPURenderer、TSL、HTMLTexture、volumetric examples の差分を継続。Codrops は WebGL 事例のうち、抽象概念を空間化する case study、Web Audio を動きに結びつける記事、カード UI ではない shader playground を優先する。</p>
+          <p class="en-copy">Watch PlayCanvas v2.21.x for further MSDF, shader chunk, GSplat relighting, and radial sorting fixes. Watch Babylon after 9.18.2 for intersections among AudioV2, GaussianSplattingMesh, Viewer Lite, and KHR_gaussian_splatting. Continue tracking three.js r186 work around WebGPURenderer, TSL, HTMLTexture, and volumetric examples. For Codrops, prioritize WebGL case studies that spatialize abstract systems, connect Web Audio to motion, or provide non-card shader playgrounds.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実音声や実 splat asset に入る前に「MSDF edge halo と spatial audio vector を同じ fragment shader で描く」こと。理由は、依存なしで PlayCanvas の MSDF 修正、Babylon の空間音、three.js の volumetric/postprocess 的な絵作りを一度に試せるから。pointer lens で edge の修正領域を見せ、音源リングを coverage alpha に混ぜると、デバッグ表示がそのままライブ演出になる。</p>
+          <p class="en-copy">If trying one thing today, draw MSDF edge halo and spatial audio vectors in one fragment shader before using real audio or real splat assets. It tests the PlayCanvas MSDF fix, Babylon spatial audio direction, and three.js-style volumetric/postprocess visuals without dependencies. A pointer lens can show corrected edge zones while sound rings blend into coverage alpha, turning debug display into live performance visuals.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-30_msdf_audio_spatial_halo.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas v2.21.3、Babylon 9.18.2、three.js r185、PlayCanvas relighting/renderers/pc-gsplat docs、Codrops 直近記事を収集。アイデア検討: 昨日の fisheye / tile / resize pressure に、MSDF edge と spatial audio direction を追加する方針が有力。サンプル実装: `outputs/2026-07-30_msdf_audio_spatial_halo.html` を作成。結果の検証: JSON parse、gallery build、publish、ローカル/公開 HTTP 確認を実施する。継続案件は renderer parity diff、splat diagnostic overlay、projection pressure。新規案件は MSDF audio spatial halo。寝かせる案件はカード型UI、単体の通常テキスト表示、重い WebRTC 実装。</p>
+          <p class="en-copy">Research: collected PlayCanvas v2.21.3, Babylon 9.18.2, three.js r185, PlayCanvas relighting/renderers/pc-gsplat docs, and recent Codrops articles. Ideation: extend yesterday's fisheye/tile/resize pressure with MSDF edges and spatial audio direction. Prototype: created `outputs/2026-07-30_msdf_audio_spatial_halo.html`. Verification: run JSON parse, gallery build, publish, and local/public HTTP checks. Continuing tracks are renderer parity diff, splat diagnostic overlays, and projection pressure. New track is MSDF audio spatial halo. Parked tracks are card UI, plain text rendering, and heavy WebRTC implementation.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-30_msdf_audio_spatial_halo.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、Gaussian Splat の品質問題が asset format だけではなく、annotation、relighting、audio、postprocess と混ざり始めていること。組み合わせ候補は、1. fisheye projection heat + MSDF edge halo、2. relighting coverage alpha + live audio direction、3. HTMLTexture surface + spatial voice labels、4. resize/mipmap pressure + volumetric fog。育てる価値が高いテーマは「空間内の情報表示を DOM UI から shader surface へ移す」こと。これにより、検証、演出、参加者の存在感が同じ画面言語になる。</p>
+          <p class="en-copy">The recent trend is that Gaussian Splat quality work is no longer only about asset formats; it is blending with annotation, relighting, audio, and postprocess. Promising combinations: 1. fisheye projection heat plus MSDF edge halo, 2. relighting coverage alpha plus live audio direction, 3. HTMLTexture surfaces plus spatial voice labels, and 4. resize/mipmap pressure plus volumetric fog. The theme worth growing is moving in-scene information display from DOM UI to shader surfaces, so validation, performance, and participant presence share one visual language.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Relighting</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「MSDF Audio Spatial Halo」です。作成済みファイルは `outputs/2026-07-30_msdf_audio_spatial_halo.html`。実際に動く内容は、raw WebGL fragment shader による疑似 splat field、MSDF 風の A/O/X glyph、壊れた bright outline halo、pointer inspection lens、relighting coverage mask、合成音源の波紋、空間音ベクトルです。クリックまたは Space で pressure を上げ、A で音源ベクトル表示を切り替えられます。次に足すと良いのは、1. 実 MSDF atlas を texture として読む、2. Web Audio AnalyserNode を synthetic beat に接続する、3. PlayCanvas relighting coverage texture を入力にする、4. WebRTC participant position を音源点へ割り当てる、です。</p>
+          <p class="en-copy">The selected prototype is MSDF Audio Spatial Halo. The created file is `outputs/2026-07-30_msdf_audio_spatial_halo.html`. It runs as a raw WebGL fragment shader with a pseudo splat field, MSDF-like A/O/X glyphs, broken bright outline halos, a pointer inspection lens, relighting coverage mask, synthetic sound ripples, and spatial audio vectors. Click or hold Space to raise pressure, and press A to toggle the audio vectors. Next additions: 1. read a real MSDF atlas as a texture, 2. connect a Web Audio AnalyserNode to the synthetic beat, 3. feed in a PlayCanvas relighting coverage texture, and 4. map WebRTC participant positions to sound-source points.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-07-30_msdf_audio_spatial_halo.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.3" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.3 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.2" target="_blank" rel="noreferrer">Babylon.js 9.18.2 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r185" target="_blank" rel="noreferrer">three.js r185 release</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splat Relighting</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splat Renderers</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/web-components/tags/pc-gsplat/" target="_blank" rel="noreferrer">PlayCanvas pc-gsplat Web Component</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+            <li><a href="https://threejs.org/examples/webgpu_volume_fire.html" target="_blank" rel="noreferrer">three.js volumetric fire example</a></li>
+          
+            <li><a href="../outputs/2026-07-30_msdf_audio_spatial_halo.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-07-30_msdf_audio_spatial_halo.html" loading="lazy" title="MSDF Audio Spatial Halo"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
