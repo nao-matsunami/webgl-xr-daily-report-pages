@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-08-01 SOG Flashlight Wave Cut Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #04070a;
+      color: #e9fbff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: rgba(233, 251, 255, 0.78);
+      text-shadow: 0 0 18px rgba(57, 210, 255, 0.45);
+    }
+
+    .hud p {
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .state {
+      min-width: 150px;
+      text-align: right;
+      color: #ffd36b;
+    }
+
+    @media (max-width: 680px) {
+      .hud {
+        flex-direction: column;
+        font-size: 10px;
+      }
+
+      .state {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <p>SOG flashlight wave cut scope / drag to steer the light / hold or press Space for cut pressure / W toggles cube-wave layer</p>
+    <div class="state">post mask + rim</div>
+  </div>
+
+  <script type="x-shader/x-vertex" id="vs">
+    attribute vec2 aPosition;
+    varying vec2 vUv;
+
+    void main() {
+      vUv = aPosition * 0.5 + 0.5;
+      gl_Position = vec4(aPosition, 0.0, 1.0);
+    }
+  </script>
+
+  <script type="x-shader/x-fragment" id="fs">
+    precision highp float;
+
+    varying vec2 vUv;
+    uniform vec2 uResolution;
+    uniform vec2 uPointer;
+    uniform vec2 uVelocity;
+    uniform float uTime;
+    uniform float uPressure;
+    uniform float uWaveLayer;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 19.19);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+        u.y
+      );
+    }
+
+    float sdBox(vec2 p, vec2 b) {
+      vec2 q = abs(p) - b;
+      return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+    }
+
+    float sdSegment(vec2 p, vec2 a, vec2 b) {
+      vec2 pa = p - a;
+      vec2 ba = b - a;
+      float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
+      return length(pa - ba * h);
+    }
+
+    vec3 heat(float x) {
+      vec3 deep = vec3(0.015, 0.025, 0.045);
+      vec3 cyan = vec3(0.10, 0.85, 1.0);
+      vec3 coral = vec3(1.0, 0.26, 0.38);
+      vec3 gold = vec3(1.0, 0.78, 0.25);
+      return mix(mix(deep, cyan, smoothstep(0.05, 0.52, x)), mix(coral, gold, smoothstep(0.52, 1.0, x)), smoothstep(0.38, 1.0, x));
+    }
+
+    void main() {
+      vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
+      vec2 uv = vUv;
+      vec2 p = (uv - 0.5) * aspect;
+      vec2 pointer = (uPointer - 0.5) * aspect;
+      vec2 vel = uVelocity * aspect;
+      float speed = clamp(length(vel) * 18.0, 0.0, 1.0);
+      vec2 dir = speed > 0.01 ? normalize(vel) : normalize(vec2(0.9, -0.34));
+
+      float wakeMask = smoothstep(0.62, 0.0, length(p - pointer));
+      float wake = sin(dot(p - pointer, dir) * 26.0 - uTime * 7.2) * wakeMask * (0.025 + 0.055 * speed);
+      p += dir * wake;
+
+      vec3 color = vec3(0.004, 0.008, 0.013);
+      float vignette = smoothstep(1.05, 0.22, length((uv - 0.5) * vec2(1.16, 1.0)));
+
+      vec2 field = p * 6.5 + vec2(uTime * 0.08, -uTime * 0.05);
+      vec2 id = floor(field);
+      vec2 local = fract(field) - 0.5;
+      float splats = 0.0;
+      float cubeWave = 0.0;
+
+      for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+          vec2 o = vec2(float(x), float(y));
+          float h = hash(id + o);
+          vec2 c = o + vec2(hash(id + o + 3.7), hash(id + o + 8.1)) - 0.5;
+          float d = length(local - c);
+          float pulse = 0.5 + 0.5 * sin(uTime * 1.7 + h * 8.0);
+          splats += exp(-d * d / mix(0.003, 0.016, h)) * (0.35 + 0.65 * pulse);
+          vec2 boxP = local - o;
+          float box = sdBox(boxP, vec2(0.17, 0.17));
+          float wave = sin(length((id + o) * 0.72 - pointer * 3.2) * 3.1 - uTime * 4.3);
+          cubeWave += smoothstep(0.035, 0.0, abs(box)) * smoothstep(-0.4, 1.0, wave);
+        }
+      }
+
+      float depth = noise(p * 2.2 + vec2(0.0, uTime * 0.04));
+      color += heat(splats * 0.38 + depth * 0.34) * splats * 0.34;
+      color += vec3(0.05, 0.48, 0.95) * cubeWave * uWaveLayer * 0.42;
+
+      float beam = smoothstep(0.58, 0.08, length(p - pointer));
+      float core = smoothstep(0.24, 0.0, length(p - pointer));
+      float cone = smoothstep(-0.14, 0.5, dot(normalize(p - pointer + 0.0001), dir));
+      float flashlight = max(core, beam * cone * (0.62 + 0.38 * speed));
+      color *= mix(0.18, 1.18, flashlight);
+      color += vec3(1.0, 0.84, 0.42) * pow(flashlight, 4.0) * 0.26;
+
+      vec2 cutCenter = vec2(-0.22, 0.05) + vec2(0.08 * sin(uTime * 0.4), 0.05 * cos(uTime * 0.35));
+      vec2 cutP = p - cutCenter;
+      float cut = sdBox(cutP, vec2(0.28 + uPressure * 0.08, 0.18 + uPressure * 0.04));
+      float removed = smoothstep(0.02, -0.025, cut);
+      float rim = smoothstep(0.055, 0.0, abs(cut)) * (1.0 - smoothstep(0.0, -0.06, cut));
+      float fragmentTest = smoothstep(0.08, 0.0, abs(cut + 0.015 * noise(p * 28.0)));
+      color *= mix(1.0, 0.22, removed * (0.72 + 0.22 * uPressure));
+      color += vec3(0.25, 0.95, 1.0) * rim * 0.55;
+      color += vec3(1.0, 0.2, 0.42) * fragmentTest * uPressure * 0.45;
+
+      float routeA = sdSegment(p, vec2(-0.62, -0.28), vec2(0.55, 0.27));
+      float routeB = sdSegment(p, vec2(-0.48, 0.32), vec2(0.48, -0.22));
+      float route = min(routeA, routeB);
+      float routePulse = fract(uTime * 0.5 + dot(p, normalize(vec2(1.0, 0.43))) * 1.9);
+      color += vec3(0.16, 0.9, 1.0) * exp(-route * 42.0) * smoothstep(0.18, 0.0, abs(routePulse - 0.5)) * 0.58;
+
+      float scan = 0.5 + 0.5 * sin(uv.y * uResolution.y * 0.65 + uTime * 11.0);
+      color += scan * vec3(0.05, 0.28, 0.42) * 0.05;
+      color *= vignette;
+      color = pow(color, vec3(0.84));
+      gl_FragColor = vec4(color, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    const pointer = { x: 0.58, y: 0.45 };
+    const target = { x: pointer.x, y: pointer.y };
+    const prev = { x: pointer.x, y: pointer.y };
+    const velocity = { x: 0, y: 0 };
+    let pressure = 0;
+    let pressureTarget = 0;
+    let waveLayer = 1;
+
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL is not available");
+    }
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, document.getElementById("vs").textContent));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, document.getElementById("fs").textContent));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const aPosition = gl.getAttribLocation(program, "aPosition");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "uResolution"),
+      pointer: gl.getUniformLocation(program, "uPointer"),
+      velocity: gl.getUniformLocation(program, "uVelocity"),
+      time: gl.getUniformLocation(program, "uTime"),
+      pressure: gl.getUniformLocation(program, "uPressure"),
+      waveLayer: gl.getUniformLocation(program, "uWaveLayer")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(innerWidth * dpr);
+      const height = Math.floor(innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function move(clientX, clientY) {
+      target.x = clientX / innerWidth;
+      target.y = 1 - clientY / innerHeight;
+    }
+
+    addEventListener("pointermove", (event) => move(event.clientX, event.clientY));
+    addEventListener("pointerdown", (event) => {
+      pressureTarget = 1;
+      move(event.clientX, event.clientY);
+    });
+    addEventListener("pointerup", () => {
+      pressureTarget = 0;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") pressureTarget = 1;
+      if (event.key.toLowerCase() === "w") waveLayer = waveLayer > 0.5 ? 0 : 1;
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space") pressureTarget = 0;
+    });
+
+    function frame(now) {
+      resize();
+      pointer.x += (target.x - pointer.x) * 0.16;
+      pointer.y += (target.y - pointer.y) * 0.16;
+      velocity.x = velocity.x * 0.82 + (pointer.x - prev.x) * 0.18;
+      velocity.y = velocity.y * 0.82 + (pointer.y - prev.y) * 0.18;
+      prev.x = pointer.x;
+      prev.y = pointer.y;
+      pressure += (pressureTarget - pressure) * 0.12;
+
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform2f(uniforms.velocity, velocity.x, velocity.y);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.pressure, pressure);
+      gl.uniform1f(uniforms.waveLayer, waveLayer);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
