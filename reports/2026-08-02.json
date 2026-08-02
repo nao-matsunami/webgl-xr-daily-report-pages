@@ -1,0 +1,203 @@
+{
+  "date": "2026-08-02",
+  "headline": "互換性リスクを作品のプリズムに変える",
+  "headlineEn": "Turning compatibility risks into an expressive prism",
+  "summary": "three.js r186 向けの WebGPU/WebGLBackend 論点、PlayCanvas の GSplat/Firefox WebGPU 修正、MRT/clear/blending 追加、Codrops の ZERO/Cerebrium 事例を、前回の flashlight/cut rim から「resolve prism」として継続した。",
+  "summaryEn": "Today connects three.js r186-facing WebGPU/WebGLBackend issues, PlayCanvas GSplat Firefox WebGPU fixes, MRT clear/blending work, and Codrops ZERO/Cerebrium case studies, extending yesterday's flashlight/cut-rim track into a resolve prism.",
+  "links": [
+    {
+      "label": "three.js r186 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/99"
+    },
+    {
+      "label": "three.js issue: MinEquation/MaxEquation not supported by WebGL backend",
+      "url": "https://github.com/mrdoob/three.js/issues/34145"
+    },
+    {
+      "label": "three.js issue: WebGPU in WebXR lacks support for MSAA",
+      "url": "https://github.com/mrdoob/three.js/issues/34135"
+    },
+    {
+      "label": "PlayCanvas PR: Fix gsplat rendering on Firefox/Windows WebGPU",
+      "url": "https://github.com/playcanvas/engine/pull/9148"
+    },
+    {
+      "label": "PlayCanvas PR: independent blending for multiple render targets",
+      "url": "https://github.com/playcanvas/engine/pull/9140"
+    },
+    {
+      "label": "Codrops: ZERO engineering breakdown",
+      "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+    },
+    {
+      "label": "Codrops: Cerebrium case study",
+      "url": "https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-02_resolve_prism_splat_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js は最新リリースが r185 のまま、r186 マイルストーンが 2026-08-05 期限で進行中。直近の未解決論点として WebGL backend の MinEquation/MaxEquation、WebGPU in WebXR の MSAA、3D/array texture readback、TSL compute texture node などが目立つ。2. PlayCanvas Engine では 2026-07-31 に GSplat rendering on Firefox/Windows WebGPU 修正 PR が入り、前回までの SOG/GSplat 表現をブラウザ差異込みで見る必要が強まった。3. PlayCanvas の MRT 周辺では independent blending、per-attachment clear colors、integer attachment clear support が連続しており、diagnostic buffer を複数出力する表現に使いやすい。4. Babylon.js は 9.19.0 の side-effect registration 復旧が最新で、loader/postprocess/audio が bundler 最適化で落ちないかを見る視点は継続。5. Codrops の ZERO と Cerebrium は、gesture gate、virtual scroll、shader pulse、interaction memory を実案件でどう整理するかのよい参照になる。",
+      "bodyEn": "1. three.js remains at r185 as the latest release while the r186 milestone is progressing toward 2026-08-05. Recent open topics include MinEquation/MaxEquation in the WebGL backend, MSAA for WebGPU in WebXR, 3D/array texture readback, and TSL compute texture nodes. 2. PlayCanvas Engine gained a July 31 PR fixing GSplat rendering on Firefox/Windows WebGPU, making browser differences important for the SOG/GSplat expression track. 3. PlayCanvas MRT work around independent blending, per-attachment clear colors, and integer attachment clears is useful for multi-channel diagnostic buffers. 4. Babylon.js 9.19.0 remains the latest release and keeps bundler side-effect registration risk on the watch list. 5. Codrops ZERO and Cerebrium are strong references for gesture gates, virtual scroll, shader pulses, and interaction memory in real projects.",
+      "links": [
+        {
+          "label": "three.js r186 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/99"
+        },
+        {
+          "label": "MinEquation/MaxEquation issue",
+          "url": "https://github.com/mrdoob/three.js/issues/34145"
+        },
+        {
+          "label": "WebGPU WebXR MSAA issue",
+          "url": "https://github.com/mrdoob/three.js/issues/34135"
+        },
+        {
+          "label": "PlayCanvas GSplat Firefox WebGPU PR",
+          "url": "https://github.com/playcanvas/engine/pull/9148"
+        },
+        {
+          "label": "Babylon.js 9.19.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "ZERO は「丸を描く」という軽い入力を gate として使い、その中心を frost shader の seed にしている点が参考になる。前回の flashlight/cut pressure も、クリックだけでなく形状認識やジェスチャ成立をトリガーにできる。Cerebrium は TSL/WebGPU から WebGLRenderer + onBeforeCompile + GPGPU ping-pong へ戻した実務判断が重要で、視覚差分を bloom/fog/material 色の再調整問題として扱っている。PlayCanvas の GSplat/Firefox WebGPU 修正は、同じ splat 表現でも backend/browser ごとにソートや resolve の見え方が変わる可能性を示す。これらを合わせると、互換性チェック自体を表現レイヤーに変換できる。",
+      "bodyEn": "ZERO is useful because a simple draw-a-circle gesture becomes a gate, and its centroid seeds the frost shader. Yesterday's flashlight and cut pressure could be triggered by recognized shapes, not only clicks. Cerebrium's move from TSL/WebGPU back to WebGLRenderer plus onBeforeCompile and ping-pong GPGPU is important because it treats visual mismatch as bloom, fog, and material-color recalibration. The PlayCanvas GSplat Firefox WebGPU fix shows that the same splat expression can differ by backend and browser. Together, these suggest turning compatibility checks themselves into an expressive layer.",
+      "links": [
+        {
+          "label": "ZERO engineering breakdown",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        },
+        {
+          "label": "Cerebrium case study",
+          "url": "https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/"
+        },
+        {
+          "label": "PlayCanvas GSplat Firefox WebGPU PR",
+          "url": "https://github.com/playcanvas/engine/pull/9148"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「Resolve Prism」。画面を4つの見えない検証レーンに分け、blend equation、XR MSAA resolve、3D texture slice readback、GSplat sort heat を色で重ねる。ポインタは inspection lens、ドラッグ方向は wake、押下は compatibility pressure として使う。前回の懐中電灯は「照らす場所」を決める入力だったが、今日は「どの互換性問題を見るか」を決める入力に変える。中長期では、実際の renderer/backend 切替、pixel diff、frame timing、GPU memory を同じ色チャンネルに流し、作品でありデバッグHUDでもあるビューに育てる。",
+      "bodyEn": "The short-term idea is Resolve Prism. Split the screen into four invisible diagnostic lanes and layer blend equation, XR MSAA resolve, 3D texture slice readback, and GSplat sort heat with color. The pointer is an inspection lens, drag direction is wake, and press state is compatibility pressure. Yesterday's flashlight selected where to illuminate; today the same input selects which compatibility problem to inspect. Longer term, feed real renderer/backend switches, pixel diffs, frame timing, and GPU memory into the same color channels so the piece becomes both artwork and debugging HUD.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-02_resolve_prism_splat_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "WebGPU/WebGL 併用時は、シェーダーの正しさだけでなく、blend equation、MSAA resolve、texture readback、MRT clear の差分を個別に小さく検証するのがよい。PlayCanvas の MRT 系 PR は、G-buffer 的な本格用途だけでなく、色・ID・heat・coverage を別 attachment へ吐く診断表現に使える。three.js の r185/r186 周辺では HTMLTexture、TSL、WebGLBackend の差分を「同じ入力から同じ絵になるか」で見る必要がある。Babylon.js の side-effect registration は、import したつもりの loader や postprocess が実行時に登録されているかを smoke test に入れるべきという合図。制作面では、ZERO の virtual scroll のように単一の正規化値で shader、DOM、音、遷移を駆動すると管理しやすい。",
+      "bodyEn": "When mixing WebGPU and WebGL, validate not only shader correctness but also blend equations, MSAA resolve, texture readback, and MRT clears in small isolated tests. PlayCanvas MRT work is useful not only for G-buffer pipelines, but also for diagnostic expression that writes color, ID, heat, and coverage to separate attachments. Around three.js r185/r186, HTMLTexture, TSL, and WebGLBackend differences should be judged by whether the same input produces the same image. Babylon's side-effect registration fix is a reminder to smoke test whether imported loaders and postprocesses are actually registered at runtime. For production structure, ZERO's virtual scroll pattern suggests driving shader, DOM, audio, and transitions from one normalized value.",
+      "links": [
+        {
+          "label": "PlayCanvas independent MRT blending PR",
+          "url": "https://github.com/playcanvas/engine/pull/9140"
+        },
+        {
+          "label": "PlayCanvas per-attachment clear colors PR",
+          "url": "https://github.com/playcanvas/engine/pull/9142"
+        },
+        {
+          "label": "PlayCanvas integer color attachment clear PR",
+          "url": "https://github.com/playcanvas/engine/pull/9143"
+        },
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js は r186 マイルストーンの closing 状況、WebGPU in WebXR MSAA、WebGLBackend の blend/readback/texture array 問題、TSL compute texture node を継続。PlayCanvas は v2.21.4 以降の GSplat/WebGPU、MRT、MSDF、SOG shader chunk を見る。Babylon.js は 9.19.x/9.20.x、Viewer Lite、AudioV2、Gaussian splatting loader の follow-up を見る。Codrops は ZERO/Cerebrium 以降、カードUIではなく gesture gate、shader memory、Web Audio、scroll-free virtual timeline、3D path pulse の実装分解を優先する。",
+      "bodyEn": "For three.js, keep watching the r186 milestone, WebGPU in WebXR MSAA, WebGLBackend blend/readback/texture-array issues, and TSL compute texture nodes. For PlayCanvas, watch v2.21.4+ work around GSplat/WebGPU, MRT, MSDF, and SOG shader chunks. For Babylon.js, watch 9.19.x/9.20.x follow-ups, Viewer Lite, AudioV2, and Gaussian splatting loaders. For Codrops, prioritize gesture gates, shader memory, Web Audio, scroll-free virtual timelines, and 3D path pulses over card UI.",
+      "links": [
+        {
+          "label": "three.js issues",
+          "url": "https://github.com/mrdoob/three.js/issues"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops Articles",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、WebGL 1枚の shader で compatibility prism を作る。理由は、実WebGPU環境やSOG assetなしでも、blend/resolve/readback/sort の見え方を同じ絵の中で検討できるため。次に進めるなら、1. 4レーンを実 render target の debug texture に置き換える、2. pointer lens を pixel diff lens にする、3. Space の pressure を frame drop / compile wait へ接続する、4. 前回の flashlight mask と今日の prism lane を掛け合わせる。",
+      "bodyEn": "If trying one thing today, build a compatibility prism in a single WebGL shader. It lets us reason about blend, resolve, readback, and sort appearance without a real WebGPU environment or SOG asset. Next steps: 1. replace the four lanes with real render-target debug textures, 2. turn the pointer lens into a pixel-diff lens, 3. connect Space pressure to frame drops or compile waits, and 4. multiply yesterday's flashlight mask with today's prism lanes.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-02_resolve_prism_splat_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r186 マイルストーン、WebGPU/WebXR MSAA、WebGLBackend blend/readback、PlayCanvas GSplat Firefox WebGPU、PlayCanvas MRT PR、Babylon 9.19.0、Codrops ZERO/Cerebrium を確認。アイデア検討: 継続案件は flashlight mask、cut rim、directional wake、MSDF halo、SOG/GSplat coverage。新規案件は compatibility prism と multi-channel diagnostic art。寝かせる案件はカードUI、本格WebGPU実装、実SOG asset最適化、重い音声入力。サンプル実装: `outputs/2026-08-02_resolve_prism_splat_scope.html` を追加。結果の検証: JSON parse、gallery build、publish、公開URL確認を行う。",
+      "bodyEn": "Research: checked the three.js r186 milestone, WebGPU/WebXR MSAA, WebGLBackend blend/readback topics, PlayCanvas GSplat Firefox WebGPU, PlayCanvas MRT PRs, Babylon 9.19.0, and Codrops ZERO/Cerebrium. Ideation: continuing tracks are flashlight masks, cut rims, directional wake, MSDF halos, and SOG/GSplat coverage. New tracks are compatibility prism and multi-channel diagnostic art. Parked tracks are card UI, full WebGPU implementation, real SOG asset optimization, and heavy audio input. Prototype: added `outputs/2026-08-02_resolve_prism_splat_scope.html`. Verification: run JSON parse, gallery build, publish, and public URL checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-02_resolve_prism_splat_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、3DGS/HTMLTexture/MSDF/TSL/WebGPU を単独機能として追う段階から、backend 差分や初期化時間まで含めて体験設計する段階へ移っている。Cerebrium は WebGPU/TSL の表現力と起動時間のトレードオフ、ZERO は入力 gate と shader seed の接続、PlayCanvas は GSplat の実行環境差分、three.js は r186 前の backend 整合性を示している。組み合わせるなら、前回の flashlight で見る領域を絞り、今日の prism で互換性チャンネルを重ね、ZERO 型 gesture gate で状態遷移させるのが筋がよい。育てる価値が高いテーマは「デバッグ情報がそのまま世界の質感になるWebGL空間」。",
+      "bodyEn": "The recent shift is from tracking 3DGS, HTMLTexture, MSDF, TSL, and WebGPU as separate features toward designing experiences that include backend differences and startup time. Cerebrium shows the tradeoff between WebGPU/TSL expressiveness and startup cost, ZERO connects input gates to shader seeds, PlayCanvas highlights GSplat runtime differences, and three.js shows backend consistency work before r186. A promising combination is to narrow the viewed region with yesterday's flashlight, overlay compatibility channels with today's prism, and change state with ZERO-style gesture gates. The theme worth growing is a WebGL space where debug information becomes the surface texture of the world.",
+      "links": [
+        {
+          "label": "Cerebrium case study",
+          "url": "https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/"
+        },
+        {
+          "label": "ZERO engineering breakdown",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「Resolve Prism Splat Scope」。作成ファイルは `outputs/2026-08-02_resolve_prism_splat_scope.html`。raw WebGL fragment shader で、疑似 splat field の上に blend equation、XR MSAA resolve、3D texture slice readback、GSplat sort heat を4レーンで重ねる。ドラッグで wake 方向が変わり、クリックまたは Space で compatibility pressure が上がり、1-4キーで強調レーンを切り替える。次に足すなら、実 render target の attachment 表示、depth-aware flashlight、Web Audio の peak 入力、backend 切替時の pixel diff texture。",
+      "bodyEn": "The selected prototype is Resolve Prism Splat Scope. The created file is `outputs/2026-08-02_resolve_prism_splat_scope.html`. It is a raw WebGL fragment shader that overlays four lanes on a pseudo splat field: blend equation, XR MSAA resolve, 3D texture slice readback, and GSplat sort heat. Dragging changes wake direction, click or Space raises compatibility pressure, and keys 1-4 switch the emphasized lane. Next additions are real render-target attachment views, a depth-aware flashlight, Web Audio peak input, and a pixel-diff texture when switching backends.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-02_resolve_prism_splat_scope.html"
+        }
+      ]
+    }
+  ]
+}
