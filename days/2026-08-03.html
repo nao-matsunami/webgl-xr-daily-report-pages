@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MRTの検証レーンを霧と屈折の演出に変える | 2026-08-03</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.03</p>
+      <h1>MRTの検証レーンを霧と屈折の演出に変える</h1>
+      <p class="hero-subtitle">Turning MRT diagnostic lanes into fog and refraction</p>
+      <p>three.js の WebGPU/WebXR MSAA・multiview・XR camera 復旧、PlayCanvas の MRT/TransformFeedback/volumetric fog/GSplat 修正、Babylon.js の GS sort padding と side-effect registration、Codrops の infinite gallery / MERSI 事例を、前回の compatibility prism から「MRT fog refraction scope」へ接続した。</p>
+      <p class="en-copy">Today connects three.js WebGPU/WebXR MSAA, multiview and XR camera restoration, PlayCanvas MRT, TransformFeedback, volumetric fog and GSplat fixes, Babylon.js GS sort padding and side-effect registration, plus Codrops infinite gallery and MERSI examples, extending yesterday's compatibility prism into an MRT fog refraction scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-03_mrt_fog_refraction_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-02.html">← 2026.08.02</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>MRT Fog Refraction Scope - 2026-08-03</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-03_mrt_fog_refraction_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は最新リリースが r185 のままだが、2026-08-01 に WebGPU in WebXR の MSAA 対応 PR #34120 が閉じ、single-pass rendering in WebXR PR #34153 と WebGLBackend OCULUS_multiview PR #34147 が残っている。XR では「片目ごとの描画コスト・解像感・resolve」が表現品質の差になる。2. PlayCanvas は 2026-07-28 以降、multiple transform feedback buffers #9131、independent blending for MRT #9140、per-attachment clear colors #9142、integer color attachment clear #9143、volumetric fog 関連 #9137/#9138、Firefox/Windows WebGPU GSplat 修正 #9148 が連続している。3. Babylon.js は 9.19.0 が最新で side-effect registration 復旧が中心だが、未マージの GS sort padding PR #18752 が重要。padding が実データを再利用すると、前面に張り付く splat が出るという問題で、表現面では「壊れた奥行きの残像」として見える。4. Codrops では 2026-07-30 の infinite GSAP scroll gallery と 2026-07-27 の MERSI が、単なる派手さより、時間軸・印刷的な質感・遷移をどう設計するかの参照になる。</p>
+          <p class="en-copy">1. three.js still has r185 as the latest release, but PR #34120 for MSAA support in WebGPU WebXR closed on 2026-08-01, while PR #34153 for single-pass WebXR rendering and PR #34147 for OCULUS_multiview in WebGLBackend remain active. In XR, per-eye cost, perceived resolution, and resolve behavior directly affect expression quality. 2. Since 2026-07-28, PlayCanvas has been moving through multiple transform feedback buffers #9131, independent MRT blending #9140, per-attachment clear colors #9142, integer color attachment clears #9143, volumetric fog #9137/#9138, and Firefox/Windows WebGPU GSplat fix #9148. 3. Babylon.js 9.19.0 remains the latest release and focuses on side-effect registration recovery, but the open GS sort padding PR #18752 matters because reused real splat data can appear stuck in front of a model. As an artifact, that reads like broken depth residue. 4. Codrops' 2026-07-30 infinite GSAP scroll gallery and 2026-07-27 MERSI case point toward designing timeline, print-like texture, and transitions rather than just visual flash.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34120" target="_blank" rel="noreferrer">three.js PR #34120</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34153" target="_blank" rel="noreferrer">three.js PR #34153</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9131" target="_blank" rel="noreferrer">PlayCanvas PR #9131</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0" target="_blank" rel="noreferrer">Babylon.js 9.19.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18752" target="_blank" rel="noreferrer">Babylon.js PR #18752</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/30/building-an-infinite-gsap-scroll-gallery-with-parallax-and-flip-transitions/" target="_blank" rel="noreferrer">Codrops infinite gallery</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>PlayCanvas の Grace Cathedral は、WebGPU では compute で splat を cull/project/sort し、WebGL2 では CPU worker sort に戻すという実装差を持ちながら、同じ体験として成立させている点が引き続き重要。今回の PlayCanvas PR 群は、このような二系統レンダリングの足場をさらに細かく整えている。Babylon.js の GS sort padding 問題は、パフォーマンスのための配列都合がそのまま見た目に漏れる例で、診断ビューでは「padding residue」を色にしておく価値がある。Codrops の infinite gallery は 3D ではないが、無限ループ、parallax、flip transition を同じ時間値で束ねる発想が、SOG chunk や LOD の入れ替わりを見せる timeline UI に転用できる。</p>
+          <p class="en-copy">PlayCanvas' Grace Cathedral remains important because it maintains one experience while using WebGPU compute for splat cull/project/sort and a WebGL2 CPU-worker sort fallback. The recent PlayCanvas PRs refine the foundation for that dual-rendering approach. Babylon's GS sort padding issue shows how array padding decisions made for performance can leak directly into the image; a diagnostic view should color that as padding residue. Codrops' infinite gallery is not 3D, but its shared time value for loop, parallax, and flip transitions can transfer to timeline views for SOG chunks and LOD swaps.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/building-the-grace-cathedral-experience/" target="_blank" rel="noreferrer">Grace Cathedral Experience</a></li>
+          
+            <li><a href="https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/" target="_blank" rel="noreferrer">PlayCanvas Gaussian Splatting renderers</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/30/building-an-infinite-gsap-scroll-gallery-with-parallax-and-flip-transitions/" target="_blank" rel="noreferrer">Codrops infinite gallery</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「MRT Fog Refraction Scope」。前回の4レーン diagnostic prism を、今回は color / object id / fog coverage / sort padding の4 attachment として見立てる。ポインタ近傍だけ per-attachment clear color が浮かび、ドラッグ方向に屈折 wake が流れ、押下中は attachment pressure として霧と padding residue が濃くなる。中長期では、PlayCanvas の actual MRT debug output、Babylon の GS padding test、three.js WebXR single-pass/multiview の左右差を同じ UI で切り替える。カードUIではなく、空間の空気・奥行き・歪みがデバッグ値で変化する方向を優先する。</p>
+          <p class="en-copy">The short-term idea is MRT Fog Refraction Scope. Yesterday's four-lane diagnostic prism becomes four conceptual attachments: color, object id, fog coverage, and sort padding. Near the pointer, per-attachment clear colors surface; dragging sends a refractive wake; while pressed, attachment pressure thickens fog and padding residue. Longer term, switch actual PlayCanvas MRT debug output, Babylon GS padding tests, and three.js WebXR single-pass/multiview eye differences inside the same interface. Prioritize air, depth, and distortion controlled by debug values rather than card UI.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>MRT を使うときは、最初から G-buffer を作るより、color / id / coverage / artifact heat の小さな4出力で始めると検証しやすい。PlayCanvas の independent blending は attachment ごとに蓄積の意味を変えられるので、発光色は加算、ID は上書き、coverage は最大値、heat は別ブレンドのような設計がしやすくなる。per-attachment clear color は、クリック位置だけ attachment の初期値を見せる inspect 表現に向く。TransformFeedback の複数 buffer は、WebGL2 側でも particle/splat の current state と previous state を分ける用途に使える。three.js WebGPU/WebXR の MSAA・single-pass・multiview は、ポストプロセス前の resolve が見た目を決めるため、glow や霧の細線は片目単位で確認する必要がある。Babylon の side-effect registration は、tree-shaking 後の loader/postprocess/audio smoke test を制作テンプレートに入れるべき合図。</p>
+          <p class="en-copy">For MRT work, start with four small outputs such as color, id, coverage, and artifact heat before building a full G-buffer. PlayCanvas independent blending lets each attachment accumulate differently: additive glow color, overwritten IDs, max coverage, and separately blended heat. Per-attachment clear colors are useful for pointer-based inspection that exposes an attachment's initial value. Multiple TransformFeedback buffers are also useful on WebGL2 for separating current and previous particle or splat state. In three.js WebGPU/WebXR, MSAA, single-pass, and multiview determine resolve before post-processing, so thin glow and fog lines need per-eye checks. Babylon's side-effect registration fixes are a signal to include loader, postprocess, and audio smoke tests after tree-shaking.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9140" target="_blank" rel="noreferrer">PlayCanvas independent MRT blending</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9142" target="_blank" rel="noreferrer">PlayCanvas per-attachment clear colors</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9143" target="_blank" rel="noreferrer">PlayCanvas integer attachment clear</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9131" target="_blank" rel="noreferrer">PlayCanvas multiple transform feedback buffers</a></li>
+          
+            <li><a href="https://threejs.org/docs/pages/WebGPURenderer.html" target="_blank" rel="noreferrer">three.js WebGPURenderer docs</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は r186 マイルストーン、WebGPURenderer single-pass WebXR #34153、WebGLBackend OCULUS_multiview #34147、XR camera restoration #34152、TSL 周辺の整理を継続。PlayCanvas は v2.21.4 以降のリリース、MRT/clear/blending が実際にどのサンプルへ反映されるか、volumetric fog と GSplat chunk の接点、Firefox/Windows WebGPU 修正の follow-up を見る。Babylon.js は 9.19.x/9.20.x、GS sort padding #18752、KHR_interactivity #18615、AudioV2 と Viewer Lite を継続。Codrops は infinite gallery、MERSI、Cerebrium から、scroll-driven ではない仮想時間、印刷的テクスチャ、shader memory を抽出する。</p>
+          <p class="en-copy">For three.js, continue watching the r186 milestone, WebGPURenderer single-pass WebXR #34153, WebGLBackend OCULUS_multiview #34147, XR camera restoration #34152, and TSL cleanup. For PlayCanvas, watch v2.21.4+, where MRT/clear/blending appears in examples, links between volumetric fog and GSplat chunks, and follow-ups to the Firefox/Windows WebGPU fix. For Babylon.js, watch 9.19.x/9.20.x, GS sort padding #18752, KHR_interactivity #18615, AudioV2, and Viewer Lite. For Codrops, extract virtual time that is not simple scroll, print-like texture, and shader memory from the infinite gallery, MERSI, and Cerebrium.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実MRTを組む前段として、1枚の WebGL fragment shader で4 attachment の見え方をシミュレートする。短時間で確認でき、前回の compatibility prism とつながり、次回以降に本物の framebuffer / debug texture / pixel diff へ置き換えやすい。実装では、1キーで color、2キーで object id、3キーで fog coverage、4キーで sort padding を強調し、ポインタを per-attachment clear-color lens として扱う。</p>
+          <p class="en-copy">If trying one thing today, simulate four attachments in one WebGL fragment shader before implementing real MRT. It is quick to verify, continues yesterday's compatibility prism, and can later be replaced by real framebuffers, debug textures, and pixel diffs. In the prototype, key 1 emphasizes color, key 2 object id, key 3 fog coverage, key 4 sort padding, while the pointer acts as a per-attachment clear-color lens.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js WebGPU/WebXR MSAA・single-pass・multiview、PlayCanvas MRT/TransformFeedback/fog/GSplat、Babylon GS sort padding、Codrops infinite gallery/MERSI を収集。アイデア検討: 継続案件は flashlight mask、compatibility prism、directional wake、SOG/GSplat coverage、MSDF halo。新規案件は MRT fog refraction と padding residue visualization。寝かせる案件はカードUI、本格WebGPUのみの実装、重いSOG asset、実音声入力。サンプル実装: `outputs/2026-08-03_mrt_fog_refraction_scope.html` を追加。結果の検証: JSON parse、gallery build、publish、公開URL確認まで行う。</p>
+          <p class="en-copy">Research: collected three.js WebGPU/WebXR MSAA, single-pass and multiview, PlayCanvas MRT, TransformFeedback, fog and GSplat work, Babylon GS sort padding, and Codrops infinite gallery/MERSI. Ideation: continuing tracks are flashlight masks, compatibility prisms, directional wake, SOG/GSplat coverage, and MSDF halos. New tracks are MRT fog refraction and padding residue visualization. Parked tracks are card UI, WebGPU-only implementation, heavy SOG assets, and real audio input. Prototype: added `outputs/2026-08-03_mrt_fog_refraction_scope.html`. Verification: JSON parse, gallery build, publish, and public URL checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日の流れは、単一エフェクトから「複数 backend / 複数 buffer / 複数時間軸」を同時に見る方向へ移っている。three.js は XR の片目・MSAA・multiview、PlayCanvas は MRT と GSplat streaming、Babylon は import side-effect と GS sort padding、Codrops は仮想時間と遷移設計を示している。組み合わせ候補は、前回の flashlight で見たい領域を切り、今日の MRT lens で buffer 種別を選び、Codrops 型 timeline で LOD chunk や fog density を移動させる構成。育てる価値が高いテーマは「レンダリング診断が空間演出そのものになるビューア」。</p>
+          <p class="en-copy">The recent trend is moving from single effects toward viewing multiple backends, buffers, and timelines at once. three.js points to per-eye XR, MSAA, and multiview; PlayCanvas points to MRT and GSplat streaming; Babylon points to import side-effects and GS sort padding; Codrops points to virtual time and transition design. A strong combination is to cut the visible region with yesterday's flashlight, select buffer types with today's MRT lens, and move LOD chunks or fog density with a Codrops-style timeline. The theme worth growing is a viewer where rendering diagnostics become the spatial staging itself.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/" target="_blank" rel="noreferrer">Cerebrium case study</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/27/between-print-and-digital-the-making-of-mersis-website/" target="_blank" rel="noreferrer">MERSI case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「MRT Fog Refraction Scope」。作成ファイルは `outputs/2026-08-03_mrt_fog_refraction_scope.html`。raw WebGL fragment shader で疑似 Gaussian splat field を描き、color / id / fog coverage / sort padding の4つの仮想 attachment を重ねて表示する。ドラッグで屈折 wake の向きが変わり、クリックまたは Space で attachment pressure が上がり、1-4キーで強調レーンを切り替える。次に足すなら、実 WebGL2 MRT、PlayCanvas の render target 出力、Babylon GS padding の再現テスト、WebXR 左右眼差分の overlay。</p>
+          <p class="en-copy">The selected prototype is MRT Fog Refraction Scope. The created file is `outputs/2026-08-03_mrt_fog_refraction_scope.html`. It draws a pseudo Gaussian splat field in a raw WebGL fragment shader and overlays four virtual attachments: color, id, fog coverage, and sort padding. Dragging changes the refractive wake direction, click or Space raises attachment pressure, and keys 1-4 switch the emphasized lane. Next additions are real WebGL2 MRT, PlayCanvas render-target output, a Babylon GS padding reproduction test, and a WebXR left/right-eye difference overlay.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、入力値として pointer、drag velocity、pressure、mode を持ち、描画状態として color/id/fog/sortPadding の4チャンネルを持つ。この4チャンネルを実データに置き換えると、展示では来場者の視線・手の動きで空間の霧や奥行き破綻が露出するビューア、Web演出では商品や建築 splat の品質診断をそのままビジュアルにするランディング、音反応では低域を fog density、中域を refraction、高域を padding residue の瞬きへ割り当てられる。WebXR では左右眼の差分を id/fog attachment に入れ、MediaPipe では手の開閉を clear lens の半径へ入れると、診断情報と身体入力が接続できる。</p>
+          <p class="en-copy">Today's sample has pointer, drag velocity, pressure, and mode as inputs, and color/id/fog/sortPadding as four render-state channels. Replacing those channels with real data could become an installation viewer where gaze or hand motion reveals fog and broken depth, a web experience where product or architectural splat quality diagnostics become the visual design, or an audio-reactive scene where bass controls fog density, mids control refraction, and highs trigger padding-residue flicker. In WebXR, left/right-eye differences could feed id/fog attachments; with MediaPipe, hand openness could control the clear-lens radius, connecting diagnostics to body input.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34120" target="_blank" rel="noreferrer">three.js PR: WebGPURenderer MSAA support in WebXR</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34153" target="_blank" rel="noreferrer">three.js PR: WebGPURenderer single-pass rendering in WebXR</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34147" target="_blank" rel="noreferrer">three.js PR: WebGLBackend OCULUS_multiview</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9131" target="_blank" rel="noreferrer">PlayCanvas PR: multiple transform feedback buffers</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9140" target="_blank" rel="noreferrer">PlayCanvas PR: independent MRT blending</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18752" target="_blank" rel="noreferrer">Babylon.js PR: Gaussian Splatting sort padding</a></li>
+          
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-03_mrt_fog_refraction_scope.html" loading="lazy" title="MRT Fog Refraction Scope - 2026-08-03"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

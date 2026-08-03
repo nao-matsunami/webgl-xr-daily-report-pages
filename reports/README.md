@@ -34,3 +34,16 @@
 リンクは `links` 配列で追加できます。
 
 英語も出したい場合は `headlineEn`, `summaryEn`, `titleEn`, `bodyEn` を追加してください。
+
+## 毎回入れる考察
+
+日次レポートでは、サンプルを作って終わりにせず、次のセクションを基本項目として入れます。
+
+```json
+{
+  "title": "サンプルデータの可能性と組み合わせ考察",
+  "titleEn": "Possibilities for the sample data and combinations",
+  "body": "今日作ったサンプルの入力値、描画状態、操作ログ、色・形・時間変化などをデータとして見たときに、どのような応用や展示・Web演出・企画につながるかを書く。音、画像、カメラ、MediaPipe、WebXR、3D、データ可視化、ブランド演出など、組み合わせると面白くなる対象も具体的に挙げる。",
+  "bodyEn": "Describe what the created sample could become when its inputs, render states, interaction logs, colors, shapes, and temporal changes are treated as data. Include concrete combinations such as audio, images, camera input, MediaPipe, WebXR, 3D, data visualization, installation staging, or brand experiences."
+}
+```
