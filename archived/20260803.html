@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Art Report - 2026/08/03</title>
+    <style>
+        body { background: #111; color: #eee; font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        video { width: 100%; border-radius: 8px; background: #000; }
+        pre { background: #222; padding: 15px; border-radius: 6px; overflow-x: auto; border: 1px solid #333; }
+        code { font-family: monospace; color: #a9ffb4; }
+        .back-link { margin-top: 30px; display: inline-block; color: #00aaff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Daily Visual Report: 2026/08/03</h1>
+            <p>Seed: <code>20260803</code> | Status: <span style="color: #00ff00;">SUCCESS</span></p>
+        </header>
+        <section class="video-section">
+            <h2>Generated Output (30s WebM)</h2>
+            <video controls autoplay loop muted src="../assets/videos/20260803.webm"></video>
+        </section>
+        <section class="code-section">
+            <h2>Source Code (TSL / Shader Nodes)</h2>
+            <pre><code>// TSL Shader Node Generated at 20260803
+const position = positionLocal;
+const colorNode = vec3( sin( position.x * 03.0 ), cos( position.y ), 1.0 );
+export { colorNode };</code></pre>
+        </section>
+        <a href="../index.html" class="back-link">← バックナンバー一覧へ戻る</a>
+    </div>
+</body>
+</html>
