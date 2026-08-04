@@ -1,0 +1,199 @@
+{
+  "date": "2026-08-01",
+  "headline": "unlit splat に照明と切断リムを後段で重ねる",
+  "headlineEn": "Adding flashlight masks and cut rims after unlit splat rendering",
+  "summary": "PlayCanvas の SOG/GSplat 懐中電灯相談、Grace Cathedral の cutout/LOD 実装、Codrops の 3D Wave Grid、Babylon.js 9.19.0 と PlayCanvas v2.21.3 の直近修正を踏まえ、前回の directional wake を「画面空間の照明マスク + 切断リム + 波面」に発展させた。",
+  "summaryEn": "Today connects PlayCanvas SOG/GSplat flashlight discussion, the Grace Cathedral cutout and LOD implementation, Codrops' 3D Wave Grid, Babylon.js 9.19.0, and PlayCanvas v2.21.3, extending yesterday's directional wake into a screen-space flashlight mask, cut rim, and wave surface.",
+  "links": [
+    {
+      "label": "PlayCanvas forum: shader-based flashlight on .sog",
+      "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+    },
+    {
+      "label": "PlayCanvas: Building the Grace Cathedral Experience",
+      "url": "https://blog.playcanvas.com/building-the-grace-cathedral-experience/"
+    },
+    {
+      "label": "Codrops: Interactive Wave Propagation Cube Grid",
+      "url": "https://tympanus.net/codrops/2026/07/09/building-an-interactive-wave-propagation-cube-grid-with-three-js/"
+    },
+    {
+      "label": "Babylon.js 9.19.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.21.3 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.3"
+    },
+    {
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-01_sog_flashlight_wave_cut_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas forum で .sog の Gaussian Splatting 空間に懐中電灯効果を載せたい相談が出ており、標準ライトではなく custom shader または screen-space postprocess が候補として挙がっている。これは前回までの relighting coverage / MSDF halo / direction wake と直結する。2. Grace Cathedral Experience は WebGPU compute で active splat を cull/project/sort し、WebGL2 fallback も維持している。さらに cutout は shader chunk で SDF 判定し、HDR rim を bloom に乗せる構成。3. Codrops の 3D Wave Grid は、ユーザー操作が止まった時もランダム波源を走らせる設計が面白い。体験を idle で死なせない自律的な shader state として使える。4. Babylon.js 9.19.0 は Core/Loaders の transitive side-effect registrations 復旧が中心で、loader や postprocess が tree-shaking で消える問題への警戒を継続。5. PlayCanvas v2.21.3 の MSDF bright outline 修正、three.js r185 の TSL/retroPass/exponentialHeightFogFactor は、読みやすさ・レトロ後処理・深度霧を同じ検証画面に入れる材料になる。",
+      "bodyEn": "1. A PlayCanvas forum thread asks how to add a flashlight effect to a .sog Gaussian Splatting scene, with custom shaders or screen-space postprocess suggested because standard lights do not affect unlit splats. This directly connects to the recent relighting coverage, MSDF halo, and directional wake track. 2. Grace Cathedral Experience uses WebGPU compute to cull, project, and sort active splats while keeping a WebGL2 fallback; its cutout uses shader chunks, SDF tests, and HDR rims for bloom. 3. Codrops' 3D Wave Grid is useful because it keeps waves alive with random points during inactivity, a good model for autonomous shader state. 4. Babylon.js 9.19.0 restores transitive side-effect registrations in Core and Loaders, so tree-shaking risk remains worth watching. 5. PlayCanvas v2.21.3's MSDF bright outline fix and three.js r185's TSL, retroPass, and height fog updates are ingredients for a combined readability, retro postprocess, and depth-fog test screen.",
+      "links": [
+        {
+          "label": "PlayCanvas forum flashlight thread",
+          "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+        },
+        {
+          "label": "Grace Cathedral Experience",
+          "url": "https://blog.playcanvas.com/building-the-grace-cathedral-experience/"
+        },
+        {
+          "label": "3D Wave Grid",
+          "url": "https://tympanus.net/codrops/2026/07/09/building-an-interactive-wave-propagation-cube-grid-with-three-js/"
+        },
+        {
+          "label": "Babylon.js 9.19.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0"
+        },
+        {
+          "label": "PlayCanvas v2.21.3",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.3"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Grace Cathedral は、3DGS を単なる閲覧物から「切れる、覗ける、移動できる、音が付く」場所へ変えている点が重要。cutout の SDF 判定、一定スクリーン幅の rim、freeze-fade、per-device splat budget は、そのまま作品演出と品質管理の共通語になる。PlayCanvas forum の懐中電灯相談は、unlit splat に対してライトを待つよりも、画面空間の暗転マスク、depth pre-pass、coverage texture、splat shader chunk のどこに責務を置くかを設計するきっかけになる。Codrops の Wave Grid は cube の高さだけでなく、操作がない時の自動波源を入れているため、展示・ランディング・音楽画面で「触っていない時間」を演出時間に変えられる。",
+      "bodyEn": "Grace Cathedral matters because it turns 3DGS from something to view into a place that can be cut, peeked into, traversed, and scored with sound. SDF cutouts, constant screen-width rims, freeze-fades, and per-device splat budgets can become shared vocabulary for both artwork direction and QA. The PlayCanvas flashlight thread frames the design choice for unlit splats: whether to put responsibility in a screen-space darkening mask, depth pre-pass, coverage texture, or splat shader chunk instead of waiting for normal lighting. Codrops' Wave Grid is useful not only for cube height animation, but because its autonomous wave source converts idle time into expressive time.",
+      "links": [
+        {
+          "label": "Grace Cathedral Experience",
+          "url": "https://blog.playcanvas.com/building-the-grace-cathedral-experience/"
+        },
+        {
+          "label": "PlayCanvas flashlight thread",
+          "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+        },
+        {
+          "label": "3D Wave Grid",
+          "url": "https://tympanus.net/codrops/2026/07/09/building-an-interactive-wave-propagation-cube-grid-with-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期では「SOG Flashlight Wave Cut Scope」を試す。ポインタを視線中心の懐中電灯として使い、unlit な疑似 splat field を暗転マスクで照らす。クリック中は cutout の圧力が上がり、Grace Cathedral 風のリムが強く出る。前回の directional wake は面を動き方向へ引く表現だったが、今回はそれを照明の cone と切断リムへ接続する。中長期では、SOG chunk の LOD 到着、cutout box、音源位置、HTMLTexture 注釈を同じ mask field に入れ、ユーザーが見た場所だけが徐々に情報化する探索体験に育てられる。",
+      "bodyEn": "Short term, try SOG Flashlight Wave Cut Scope. Use the pointer as a view-centered flashlight and illuminate an unlit pseudo splat field with a darkening mask. While pressing, cutout pressure rises and a Grace Cathedral-like rim intensifies. Yesterday's directional wake pulled the surface along movement direction; today connects that vector to a light cone and cut rim. Longer term, put SOG chunk LOD arrival, cutout boxes, sound positions, and HTMLTexture annotations into the same mask field so only viewed areas gradually become information-rich.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-01_sog_flashlight_wave_cut_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "unlit splat への簡易照明は、まず postprocess の `color *= mix(dark, lit, mask)` で十分に検証できる。mask は円形だけだと UI 的なので、`dot(normalize(p - pointer), dir)` を混ぜて方向 cone にするとカメラ操作と結びつく。cutout は SDF box で `removed` と `rim` を分け、rim だけ HDR 風に加算すれば bloom 前提の見え方を作れる。Wave Grid 型の idle wave は、入力がない時間にも画面を維持するための低コストな state source。Babylon の side-effect registration 修正から見ると、実案件では loader/postprocess/audio の import 経路が bundler で落ちないかを小さい起動テストにするのがよい。",
+      "bodyEn": "For quick lighting on unlit splats, a postprocess-style `color *= mix(dark, lit, mask)` is enough to validate the idea. A circular mask feels like UI, so mixing in `dot(normalize(p - pointer), dir)` creates a camera-linked cone. For cutouts, separate `removed` and `rim` with an SDF box, then add the rim as HDR-like color before bloom. Wave Grid-style idle waves are a low-cost state source that keeps the screen alive without input. In light of Babylon's side-effect registration fix, real projects should add small startup tests to ensure loaders, postprocesses, and audio modules are not removed by the bundler.",
+      "links": [
+        {
+          "label": "Babylon.js 9.19.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0"
+        },
+        {
+          "label": "PlayCanvas Engine v2.21.0 notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvas は SOG/GSplat の relighting、shader chunk、radial sorting、MSDF edge、小規模 forum 事例を継続。SuperSplat は v2.32.x 以降の 8K export、Orient tool、PlayCanvas 2.21 追従を見る。Babylon.js は 9.19.x の side-effect registration 追加修正、Viewer Lite、AudioV2、Gaussian splatting loader を追う。three.js は r186 に向けて TSL compile/cache、retroPass、height fog、HTMLTexture の動きを見る。Codrops はカード以外で、shader transition、video texture distortion、wave/grid、audio sync、3D gallery の実装分解を優先する。",
+      "bodyEn": "Continue watching PlayCanvas SOG/GSplat relighting, shader chunks, radial sorting, MSDF edges, and small forum examples. For SuperSplat, track v2.32.x and later work around 8K export, Orient tools, and PlayCanvas 2.21 compatibility. For Babylon.js, watch 9.19.x follow-up fixes around side-effect registrations, Viewer Lite, AudioV2, and Gaussian splatting loaders. For three.js r186, track TSL compile/cache, retroPass, height fog, and HTMLTexture. In Codrops, prioritize shader transitions, video texture distortion, wave/grid, audio sync, and 3D gallery breakdowns over card UI.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、実SOGを読む前に「postprocess flashlight」を単体GLSLで作る。理由は、PlayCanvas forum の問題設定に最短で答えられ、Grace Cathedral の cutout rim と前回の directional wake を同じ shader に入れられるため。次に実装を進めるなら、1. pointer を camera forward に置き換える、2. mask を depth texture で壁抜けしないようにする、3. SOG coverage / relighting texture を掛ける、4. idle wave を Web Audio AnalyserNode で駆動する。",
+      "bodyEn": "If trying one thing today, build a standalone GLSL postprocess flashlight before loading a real SOG. It answers the PlayCanvas forum problem quickly and lets the Grace Cathedral cut rim and yesterday's directional wake live in one shader. Next steps: 1. replace the pointer with camera forward, 2. use a depth texture so the mask does not leak through walls, 3. multiply by SOG coverage or relighting textures, and 4. drive idle waves from a Web Audio AnalyserNode.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-01_sog_flashlight_wave_cut_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas forum の .sog flashlight、Grace Cathedral、Codrops Wave Grid、Babylon 9.19.0、PlayCanvas v2.21.3、SuperSplat v2.32.3、three.js r185 を確認。アイデア検討: 継続案件は MSDF edge halo、direction wake、spatial audio vectors、SOG/GSplat format pressure。新規案件は unlit splat flashlight と SDF cut rim。寝かせる案件はカードUI、重いWebRTC、実splat読み込みの本格最適化。サンプル実装: `outputs/2026-08-01_sog_flashlight_wave_cut_scope.html` を作成。結果の検証: JSON parse、gallery build、publish、公開URL確認を行う。",
+      "bodyEn": "Research: checked the PlayCanvas .sog flashlight forum thread, Grace Cathedral, Codrops Wave Grid, Babylon 9.19.0, PlayCanvas v2.21.3, SuperSplat v2.32.3, and three.js r185. Ideation: continuing tracks are MSDF edge halo, directional wake, spatial audio vectors, and SOG/GSplat format pressure. New tracks are unlit splat flashlight and SDF cut rim. Parked tracks are card UI, heavy WebRTC, and full real-splat loading optimization. Prototype: created `outputs/2026-08-01_sog_flashlight_wave_cut_scope.html`. Verification: run JSON parse, gallery build, publish, and public URL checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-01_sog_flashlight_wave_cut_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、3DGS を「写真のような点群」から「編集可能な舞台」にする方向へ進んでいること。SOG streaming、cutout、relighting、MSDF、HTMLTexture、Web Audio は別々の話に見えるが、実際には場の状態を shader field に戻すための入力チャンネルとして揃ってきている。組み合わせ候補は、懐中電灯 mask + cut rim + idle wave + 音源方向 + HTMLTexture 注釈。育てる価値が高いテーマは「見た場所だけが明るくなり、触った場所だけが切れ、聞こえる場所だけが波打つ」探索型のWeb空間。短期はGLSL一枚で成立し、中長期では PlayCanvas/SuperSplat の実データへ差し替える。",
+      "bodyEn": "The recent trend is moving 3DGS from photographic point clouds toward editable stages. SOG streaming, cutouts, relighting, MSDF, HTMLTexture, and Web Audio look separate, but they are becoming input channels that feed scene state back into shader fields. Promising combinations are flashlight masks, cut rims, idle waves, sound direction, and HTMLTexture annotations. The theme worth growing is an exploratory web space where viewed areas brighten, touched areas cut open, and audible areas ripple. Short term, a single GLSL pass is enough; longer term, replace synthetic inputs with real PlayCanvas/SuperSplat data.",
+      "links": [
+        {
+          "label": "Grace Cathedral Experience",
+          "url": "https://blog.playcanvas.com/building-the-grace-cathedral-experience/"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「SOG Flashlight Wave Cut Scope」。作成ファイルは `outputs/2026-08-01_sog_flashlight_wave_cut_scope.html`。raw WebGL fragment shader で、疑似 Gaussian splat field、方向付き flashlight mask、SDF cutout rim、Codrops Wave Grid 由来の cube-wave、Grace Cathedral 由来の経路パルスを描く。ドラッグで照明方向が変わり、クリックまたは Space で cut pressure が上がり、W で wave layer を切り替える。次に足すなら、depth texture による遮蔽、Web Audio AnalyserNode による波源、実 SOG/GSplat coverage texture、HTMLTexture 注釈の4つ。",
+      "bodyEn": "The selected prototype is SOG Flashlight Wave Cut Scope. The created file is `outputs/2026-08-01_sog_flashlight_wave_cut_scope.html`. It is a raw WebGL fragment shader that draws a pseudo Gaussian splat field, directional flashlight mask, SDF cutout rim, Codrops Wave Grid-inspired cube waves, and Grace Cathedral-inspired route pulses. Dragging changes the light direction, click or Space raises cut pressure, and W toggles the wave layer. Next additions are depth-texture occlusion, Web Audio AnalyserNode wave sources, real SOG/GSplat coverage textures, and HTMLTexture annotations.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-01_sog_flashlight_wave_cut_scope.html"
+        }
+      ]
+    }
+  ]
+}

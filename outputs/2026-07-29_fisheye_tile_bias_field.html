@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fisheye Tile Bias Field</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #030507;
+      color: #f2f8ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #030507;
+    }
+
+    .hud {
+      position: fixed;
+      left: 16px;
+      top: 14px;
+      max-width: min(580px, calc(100vw - 32px));
+      color: rgba(226, 239, 255, 0.74);
+      font-size: 12px;
+      line-height: 1.48;
+      text-shadow: 0 1px 18px rgba(0, 0, 0, 0.92);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .hud strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #ffffff;
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .keys {
+      position: fixed;
+      right: 16px;
+      bottom: 14px;
+      color: rgba(226, 239, 255, 0.66);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: right;
+      text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <strong>Fisheye tile bias field</strong>
+    Splat dome, tile seam pressure, mip/texture bias heat, and resize leak pulses. Pointer inspects the projection boundary.
+  </div>
+  <div class="keys">drag · hold/space pressure · R resize pulse · fisheye/radial sort proxy</div>
+
+  <script id="vs" type="x-shader/x-vertex">
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fs" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 resolution;
+    uniform vec2 pointer;
+    uniform float time;
+    uniform float hold;
+    uniform float resizePulse;
+
+    float sat(float v) {
+      return clamp(v, 0.0, 1.0);
+    }
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 74.7);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+        u.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p = mat2(1.62, 1.18, -1.18, 1.62) * p + 0.13;
+        a *= 0.52;
+      }
+      return v;
+    }
+
+    float line(vec2 p, vec2 a, vec2 b, float w) {
+      vec2 pa = p - a;
+      vec2 ba = b - a;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      return smoothstep(w, 0.0, length(pa - ba * h));
+    }
+
+    float ring(vec2 p, float r, float w) {
+      return smoothstep(w, 0.0, abs(length(p) - r));
+    }
+
+    float arc(vec2 p, float radius, float width, float speed, float offset) {
+      float angle = atan(p.y, p.x) / 6.2831853 + 0.5;
+      float gate = smoothstep(0.72, 0.18, fract(angle * 6.0 - time * speed + offset));
+      return ring(p, radius, width) * gate;
+    }
+
+    vec2 fisheye(vec2 p, float strength) {
+      float r = length(p);
+      float theta = atan(r, 1.0 - 0.58 * strength);
+      float nr = theta / 1.18;
+      return p * mix(1.0, nr / max(r, 0.0001), strength);
+    }
+
+    float tileSeam(vec2 uv, float scale) {
+      vec2 g = abs(fract(uv * scale) - 0.5);
+      float seam = smoothstep(0.034, 0.0, min(g.x, g.y));
+      float diag = smoothstep(0.024, 0.0, abs(g.x - g.y));
+      return max(seam, diag * 0.48);
+    }
+
+    float splat(vec2 p, vec2 c, float radius, float stretch, float rot) {
+      vec2 d = p - c;
+      float s = sin(rot);
+      float co = cos(rot);
+      d = mat2(co, -s, s, co) * d;
+      d.x *= stretch;
+      return exp(-dot(d, d) / radius);
+    }
+
+    float splatField(vec2 p) {
+      float acc = 0.0;
+      for (int i = 0; i < 44; i++) {
+        float fi = float(i);
+        float a = hash(vec2(fi, 4.1)) * 6.2831853;
+        float rad = sqrt(hash(vec2(fi, 9.2))) * 0.92;
+        vec2 c = vec2(cos(a), sin(a)) * rad;
+        c += 0.035 * vec2(sin(time * 0.31 + fi), cos(time * 0.27 + fi * 1.7));
+        float size = mix(0.004, 0.028, hash(vec2(fi, 2.6)));
+        float stretch = mix(0.68, 2.0, hash(vec2(fi, 5.3)));
+        acc += splat(p, c, size, stretch, a + time * 0.08);
+      }
+      return acc;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / resolution.xy;
+      vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+      vec2 aspect = vec2(resolution.x / min(resolution.x, resolution.y), resolution.y / min(resolution.x, resolution.y));
+      vec2 m = (pointer * 2.0 - 1.0) * aspect;
+      float pressure = sat(hold + resizePulse);
+
+      float lensDist = length(p - m);
+      float inspect = smoothstep(0.34, 0.0, lensDist);
+      float strength = 0.40 + 0.26 * sin(time * 0.17) + 0.24 * pressure + 0.22 * inspect;
+      vec2 fp = fisheye(p, strength);
+
+      float dome = smoothstep(1.18, 0.64, length(fp)) * smoothstep(0.10, 0.42, length(fp));
+      float boundary = ring(fp, 1.03, 0.018) + arc(fp, 0.78, 0.008, 0.08, 0.0) + arc(fp, 0.56, 0.006, -0.12, 0.4);
+      float field = splatField(fp * (1.0 + 0.18 * inspect));
+      float fog = fbm(fp * 2.1 + vec2(time * 0.035, -time * 0.02));
+
+      vec2 tiled = fp * (2.4 + 0.45 * sin(time * 0.13)) + 0.04 * vec2(time, -time);
+      float seam = tileSeam(tiled, 4.0);
+      float seamHot = seam * smoothstep(0.46, 1.14, length(fp)) * (0.45 + 0.9 * pressure);
+
+      float lod = smoothstep(0.15, 1.16, length(fp));
+      float mipBias = abs(fract((lod * 8.0 + fog * 1.7 + resizePulse * 2.0)) - 0.5);
+      float biasBand = smoothstep(0.48, 0.12, mipBias) * smoothstep(1.1, 0.18, length(fp));
+      float radialSort = line(fp, vec2(-0.98, -0.24), vec2(0.98, 0.20), 0.006);
+      radialSort += line(fp, vec2(-0.72, 0.60), vec2(0.86, -0.58), 0.004);
+
+      float leakWave = ring(fp, 0.24 + 0.82 * fract(time * 0.52), 0.024) * resizePulse;
+      float pointerHalo = ring(p - m, 0.30, 0.006) + smoothstep(0.12, 0.0, lensDist) * 0.45;
+
+      vec3 bg = mix(vec3(0.012, 0.020, 0.026), vec3(0.030, 0.016, 0.046), uv.y);
+      bg += vec3(0.015, 0.060, 0.075) * fog;
+      vec3 splatColor = mix(vec3(0.05, 0.90, 1.00), vec3(0.98, 0.22, 0.84), sat(field * 0.42 + lod * 0.48));
+      vec3 col = bg;
+      col += dome * field * splatColor * 0.68;
+      col += vec3(0.10, 0.95, 1.00) * boundary * (0.55 + 0.45 * pressure);
+      col += vec3(1.00, 0.72, 0.18) * seamHot * 1.35;
+      col += vec3(0.95, 0.18, 1.00) * biasBand * (0.18 + pressure * 0.48);
+      col += vec3(0.60, 0.92, 1.00) * radialSort * (0.4 + 0.8 * inspect);
+      col += vec3(1.00, 0.32, 0.12) * leakWave * 1.15;
+      col += vec3(0.92, 0.98, 1.0) * pointerHalo * inspect;
+      col += vec3(0.76, 0.92, 1.0) * ring(fp, 0.33, 0.004) * dome * 0.28;
+
+      float scan = 0.96 + 0.04 * sin(gl_FragCoord.y * 1.7 + time * 5.0);
+      float vignette = smoothstep(1.42, 0.18, length(p));
+      col *= scan * vignette;
+      col = pow(col, vec3(0.82));
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    const pointer = [0.5, 0.5];
+    let hold = 0;
+    let resizePulse = 0;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, document.getElementById("vs").textContent));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, document.getElementById("fs").textContent));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      hold: gl.getUniformLocation(program, "hold"),
+      resizePulse: gl.getUniformLocation(program, "resizePulse")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(innerWidth * dpr);
+      const height = Math.floor(innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+        resizePulse = 1;
+      }
+    }
+
+    addEventListener("resize", resize);
+    addEventListener("pointermove", (event) => {
+      pointer[0] = event.clientX / innerWidth;
+      pointer[1] = 1 - event.clientY / innerHeight;
+    });
+    addEventListener("pointerdown", () => { hold = 1; });
+    addEventListener("pointerup", () => { hold = 0; });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") hold = 1;
+      if (event.key.toLowerCase() === "r") resizePulse = 1;
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space") hold = 0;
+    });
+
+    function frame(ms) {
+      resize();
+      resizePulse *= 0.965;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.time, ms * 0.001);
+      gl.uniform1f(uniforms.hold, hold);
+      gl.uniform1f(uniforms.resizePulse, resizePulse);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+
+    if (gl) {
+      resize();
+      requestAnimationFrame(frame);
+    }
+  </script>
+</body>
+</html>

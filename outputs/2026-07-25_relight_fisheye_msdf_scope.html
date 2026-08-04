@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relight Fisheye MSDF Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #06080a;
+      color: #eef7f8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: min(620px, calc(100vw - 36px));
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(238, 247, 248, 0.86);
+      text-shadow: 0 1px 14px #000;
+      pointer-events: none;
+    }
+    .hud b { color: #fff; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <b>Relight Fisheye MSDF Scope</b><br />
+    pointer: relight proxy / hold: CPU sort lag / space: resize leak pulse / F: fisheye + radial sort
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform vec2 history;
+      uniform float time;
+      uniform float hold;
+      uniform float pulse;
+      uniform float fisheye;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float ring(float d, float r, float w) {
+        return 1.0 - smoothstep(0.0, w, abs(d - r));
+      }
+
+      float line(float v, float target, float w) {
+        return 1.0 - smoothstep(0.0, w, abs(v - target));
+      }
+
+      float capsule(vec2 p, vec2 a, vec2 b, float r) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        return length(pa - ba * h) - r;
+      }
+
+      float pseudoMsdfGlyph(vec2 p) {
+        float d1 = abs(length(p * vec2(0.8, 1.1)) - 0.22) - 0.035;
+        float d2 = capsule(p, vec2(-0.17, -0.17), vec2(0.18, 0.17), 0.035);
+        float d3 = capsule(p, vec2(-0.18, 0.17), vec2(0.16, -0.16), 0.026);
+        float d = min(d1, min(d2, d3));
+        return smoothstep(0.018, -0.018, d);
+      }
+
+      vec2 fisheyeUv(vec2 uv, float amount) {
+        vec2 p = uv * 2.0 - 1.0;
+        p.x *= resolution.x / resolution.y;
+        float r = length(p);
+        float k = mix(1.0, 1.0 + 0.58 * r * r, amount);
+        p /= k;
+        p.x /= resolution.x / resolution.y;
+        return p * 0.5 + 0.5;
+      }
+
+      vec3 palette(float v) {
+        return 0.52 + 0.48 * cos(6.28318 * (vec3(0.02, 0.28, 0.58) + v));
+      }
+
+      void main() {
+        vec2 rawUv = gl_FragCoord.xy / resolution.xy;
+        vec2 uv = fisheyeUv(rawUv, fisheye);
+        vec2 p = uv * 2.0 - 1.0;
+        p.x *= resolution.x / resolution.y;
+
+        vec2 m = pointer * 2.0 - 1.0;
+        m.x *= resolution.x / resolution.y;
+        vec2 h = history * 2.0 - 1.0;
+        h.x *= resolution.x / resolution.y;
+
+        float dMouse = length(p - m);
+        float dHist = length(p - h);
+        float relightMask = smoothstep(0.74, 0.18, dMouse);
+        float sortLag = ring(dHist, 0.33 + 0.12 * hold, 0.022);
+
+        vec2 grid = floor((uv + vec2(0.0, time * 0.015)) * vec2(18.0, 11.0));
+        vec2 local = fract((uv + vec2(0.0, time * 0.015)) * vec2(18.0, 11.0)) - 0.5;
+        float id = hash(grid);
+        float n = noise(grid * 0.8 + time * 0.18);
+        float depth = 0.35 + 0.65 * noise(grid * 0.33);
+        float cpuSortAge = abs(sin(time * 0.55 + id * 8.0)) * (1.0 - fisheye) + hold * 0.55;
+        float radialBenefit = fisheye * smoothstep(0.46, 1.14, length(p));
+
+        float splat = exp(-dot(local, local) * mix(18.0, 52.0, depth));
+        splat *= smoothstep(0.12, 0.9, id + n * 0.5);
+        splat *= 0.58 + 0.42 * relightMask;
+
+        float proxyLight = smoothstep(0.95, 0.08, abs(p.y + 0.24 * sin(p.x * 3.0 + time)));
+        vec3 relit = mix(vec3(0.13, 0.22, 0.27), vec3(1.0, 0.76, 0.35), proxyLight);
+        vec3 col = vec3(0.025, 0.036, 0.042);
+        col += splat * mix(palette(depth * 0.7 + id * 0.25), relit, relightMask * 0.72);
+
+        float risk = smoothstep(0.52, 1.0, cpuSortAge) * (1.0 - radialBenefit);
+        col += vec3(1.0, 0.28, 0.14) * risk * splat * 0.95;
+        col += vec3(0.3, 0.85, 1.0) * radialBenefit * ring(length(p), 0.86, 0.012);
+        col += vec3(0.9, 0.82, 0.55) * sortLag;
+        col += vec3(0.4, 0.9, 1.0) * ring(dMouse, 0.22 + 0.05 * hold, 0.018);
+
+        vec2 labelUv = (rawUv - vec2(0.08, 0.16)) * vec2(7.0, 10.0);
+        vec2 glyphCell = fract(labelUv) - 0.5;
+        float labelBand = step(0.0, labelUv.x) * step(labelUv.x, 6.0) * step(0.0, labelUv.y) * step(labelUv.y, 1.0);
+        float smallRamp = mix(0.035, 0.012, fisheye);
+        float glyph = pseudoMsdfGlyph(glyphCell * vec2(0.9, 1.35));
+        float msdfStress = labelBand * smoothstep(0.46, 0.0, length(glyphCell)) * (1.0 - smoothstep(0.0, smallRamp, abs(glyph - 0.5)));
+        col += labelBand * glyph * vec3(0.75, 1.0, 0.92);
+        col += vec3(1.0, 0.42, 0.2) * msdfStress * (0.2 + 0.8 * (1.0 - fisheye));
+
+        float resizeLeakPulse = pulse * exp(-12.0 * abs(rawUv.y - 0.88)) * (0.4 + 0.6 * noise(vec2(rawUv.x * 32.0, time)));
+        col += vec3(1.0, 0.2, 0.6) * resizeLeakPulse;
+
+        float vignette = smoothstep(1.35, 0.22, length(p));
+        col *= vignette;
+        col += vec3(0.03, 0.05, 0.055) * (1.0 - vignette);
+
+        gl_FragColor = vec4(pow(col, vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      history: gl.getUniformLocation(program, "history"),
+      time: gl.getUniformLocation(program, "time"),
+      hold: gl.getUniformLocation(program, "hold"),
+      pulse: gl.getUniformLocation(program, "pulse"),
+      fisheye: gl.getUniformLocation(program, "fisheye")
+    };
+
+    const state = {
+      pointer: [0.54, 0.48],
+      history: [0.54, 0.48],
+      hold: 0,
+      pulse: 0,
+      fisheye: 0.0
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(canvas.clientWidth * dpr);
+      const h = Math.floor(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        state.pulse = 1.0;
+      }
+    }
+
+    window.addEventListener("pointermove", (event) => {
+      state.pointer[0] = event.clientX / window.innerWidth;
+      state.pointer[1] = 1 - event.clientY / window.innerHeight;
+    });
+    window.addEventListener("pointerdown", () => { state.hold = 1; });
+    window.addEventListener("pointerup", () => { state.hold = 0; });
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space") state.pulse = 1.0;
+      if (event.key.toLowerCase() === "f") state.fisheye = state.fisheye > 0.5 ? 0.0 : 1.0;
+    });
+
+    function frame(now) {
+      resize();
+      const t = now * 0.001;
+      state.history[0] += (state.pointer[0] - state.history[0]) * 0.035;
+      state.history[1] += (state.pointer[1] - state.history[1]) * 0.035;
+      state.pulse *= 0.93;
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform2f(uniforms.history, state.history[0], state.history[1]);
+      gl.uniform1f(uniforms.time, t);
+      gl.uniform1f(uniforms.hold, state.hold);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.fisheye, state.fisheye);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

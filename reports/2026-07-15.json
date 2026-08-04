@@ -1,0 +1,157 @@
+{
+  "date": "2026-07-15",
+  "headline": "semantic residue を selection boolean と depth gate へ接続する",
+  "headlineEn": "Connect semantic residue to selection booleans and depth gates",
+  "summary": "2026-07-15 は、SuperSplat v2.30.0 の selection 操作強化、Babylon.js 9.16.2 の MSDF TextRenderer depth 書き込み、PlayCanvas Engine v2.20.6 の SOG/gsplat 安定化、three.js r185 の HTMLTexture/TSL 更新をつないで、前日の semantic latency residue を「選択マスクの合成・差分・交差を見せる shader scope」へ進めました。単体 WebGL サンプルでは add / subtract / intersect の selection boolean を疑似 Gaussian splat field 上に重ね、depth text gate と residue を同時に可視化します。",
+  "summaryEn": "For 2026-07-15, I connected SuperSplat v2.30.0 selection-operation improvements, Babylon.js 9.16.2 MSDF TextRenderer depth writing, PlayCanvas Engine v2.20.6 SOG/gsplat stability fixes, and three.js r185 HTMLTexture/TSL updates. The previous semantic latency residue track now becomes a shader scope for visualizing selection-mask composition, difference, and intersection. The standalone WebGL sample overlays add / subtract / intersect selection booleans on a pseudo Gaussian splat field while also visualizing a depth text gate and residue.",
+  "links": [
+    {
+      "label": "SuperSplat v2.30.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.30.0"
+    },
+    {
+      "label": "Babylon.js 9.16.2",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "S2GS",
+      "url": "https://arxiv.org/abs/2603.14232"
+    },
+    {
+      "label": "GSStream",
+      "url": "https://arxiv.org/abs/2603.09718"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-15_selection_boolean_residue_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. SuperSplat v2.30.0 が 2026-07-14 に出ており、splat selection に intersect modifier、cursor 上の active selection operation 表示、sphere/box selection volume の numeric position、LCC2 import と format-agnostic LOD selection dialog が入りました。これは 7/13-7/14 の semantic mask / residue を、実制作の選択操作へ接続する材料です。2. Babylon.js 9.16.2 は MSDF TextRenderer に writeToDepthBuffer option を追加し、WGSL water shader、AudioV2、Viewer lite も更新。テキスト注釈を単なる HUD ではなく深度を持つ空間情報として扱いやすくなります。3. PlayCanvas Engine v2.20.6 は gsplat picking の GPU hang、SOG unload/reload/cache、gsplat detach crash の修正が中心で、streaming asset を触る診断レイヤーの信頼性に直結します。4. three.js は r185 が継続最新で、HTMLTexture の新 API signature 対応と TSL/WebGPU の整理は、DOM/注釈/診断 texture の長期基盤です。5. S2GS / GSStream の流れは、semantic reconstruction と viewport/bitrate streaming を分けずに見る方向を示しており、WebGL 側では mask channel と visual budget map に落とすのが現実的です。",
+      "bodyEn": "1. SuperSplat v2.30.0 was released on 2026-07-14 with an intersect modifier for splat selection, active selection-operation feedback at the cursor, numeric sphere/box selection-volume positioning, LCC2 import, and a format-agnostic LOD selection dialog. This connects the 2026-07-13/14 semantic mask and residue work to real production selection operations. 2. Babylon.js 9.16.2 adds a writeToDepthBuffer option to the MSDF TextRenderer and updates the WGSL water shader, AudioV2, and Viewer lite, making text annotations easier to treat as spatial depth-aware information instead of flat HUDs. 3. PlayCanvas Engine v2.20.6 focuses on gsplat picking GPU hangs, SOG unload/reload/cache behavior, and gsplat detach crashes, which directly affect diagnostic overlays for streaming assets. 4. three.js r185 remains the latest release, and its HTMLTexture API-signature support plus TSL/WebGPU cleanup remain a long-term base for DOM, annotation, and diagnostic textures. 5. S2GS and GSStream point toward reading semantic reconstruction and viewport/bitrate streaming together; on the WebGL side, the practical translation is mask channels and a visual budget map.",
+      "links": [
+        {
+          "label": "SuperSplat v2.30.0 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.30.0"
+        },
+        {
+          "label": "Babylon.js 9.16.2 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "S2GS",
+          "url": "https://arxiv.org/abs/2603.14232"
+        },
+        {
+          "label": "GSStream",
+          "url": "https://arxiv.org/abs/2603.09718"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は SuperSplat v2.30.0 の選択操作です。intersect、現在の操作表示、numeric volume entry は、派手なレンダリング機能ではなく「splat を編集可能な素材として扱う」ための足場です。7/14 までの semantic latency residue は、どの splat が新しい/古い/危ないかを見るものでした。ここに selection boolean を入れると、制作者が add / subtract / intersect で意味領域を削る行為そのものが、映像表現にも診断 UI にもなります。Babylon.js の MSDF depth 書き込みは、ラベルや文字を depth gate として扱う方向に接続でき、選択された領域だけ文字が沈む、奥の residue にだけ注釈が出る、といった表現が作れます。",
+      "bodyEn": "Today's notable item is SuperSplat v2.30.0's selection workflow. Intersect, active-operation feedback, and numeric volume entry are not flashy rendering features; they are groundwork for treating splats as editable material. Up to 2026-07-14, semantic latency residue showed which splats were new, stale, or risky. Adding selection booleans turns the creator's add / subtract / intersect action into both visual expression and diagnostic UI. Babylon.js MSDF depth writing connects this to depth-gated labels and text, enabling effects such as text sinking only inside selected regions or annotations appearing only on deeper residue.",
+      "links": [
+        {
+          "label": "SuperSplat v2.30.0",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.30.0"
+        },
+        {
+          "label": "Babylon.js 9.16.2",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "今日の中心案は「selection boolean を見える粒子場にする」ことです。cyan は add keep、red は subtract cut、violet は intersect residue、yellow は depth text gate。ポインタを動かすと選択 lens が移動し、押下中は intersect が強まります。作品表現としては、空間を選ぶ操作がそのまま色の層と残像になる。制作ツールとしては、semantic query、stream risk、LOD budget、MSDF label depth の衝突を一画面で確認できます。短期では単体 shader の体験、次の段階では SuperSplat selection を mask texture に焼き、PlayCanvas の SOG unload/reload event を alpha channel に重ねるのが良いです。",
+      "bodyEn": "The core idea is to make selection booleans visible as a particle field. Cyan is add keep, red is subtract cut, violet is intersect residue, and yellow is a depth text gate. Moving the pointer moves the selection lens; holding/touching emphasizes intersection. As artwork, the act of selecting space becomes layered color and afterimage. As a production tool, it exposes collisions between semantic queries, stream risk, LOD budgets, and MSDF label depth in one view. Short term, this is a standalone shader interaction; next, bake SuperSplat selections into a mask texture and place PlayCanvas SOG unload/reload events in the alpha channel.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-15_selection_boolean_residue_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "試作は依存なしの HTML + WebGL + GLSL。fragment shader 内で semantic field、stale field、subtract band、intersect seed、pseudo Gaussian splat を生成し、add / subtract / intersect を色分けしています。MSDF depth 書き込みの実 API は使わず、SDF 風の小さな glyph bars を depth gate として描き、文字情報が splat/residue の前後関係に入る見え方だけを先に検証しました。実装規約としては、R=selection keep、G=semantic confidence、B=latency/residue、A=stream validity を継続。今日からは別 texture または packed bits で operation mode(add/subtract/intersect)を持つと、SuperSplat の選択編集と shader overlay を同期しやすいです。",
+      "bodyEn": "The prototype is dependency-free HTML + WebGL + GLSL. The fragment shader generates a semantic field, stale field, subtract band, intersect seed, and pseudo Gaussian splats, then color-codes add / subtract / intersect. It does not use the real MSDF depth-write API; instead, it draws small SDF-like glyph bars as a depth gate to test how text-like information can sit in front of or behind splat residue. Keep the convention R = selection keep, G = semantic confidence, B = latency/residue, A = stream validity. Starting today, add an operation mode texture or packed bits for add/subtract/intersect so SuperSplat selection editing can synchronize with the shader overlay.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-15_selection_boolean_residue_scope.html"
+        },
+        {
+          "label": "Babylon.js 9.16.2 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.2"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: SuperSplat の selection operation / LOD dialog / image render export、PlayCanvas SOG streaming と picking、Babylon.js MSDF depth と KHR_gaussian_splatting、three.js HTMLTexture/TSL。新規案件: selection operation を semantic residue と同じ mask channel 群に統合する設計。寝かせる案件: カード UI、重い学習 pipeline、XR 固有導線。短期は SuperSplat の selection 結果を単純な 2D mask として shader に渡す実験。中長期は、selection、semantic query、streaming、audio impulse、timeline を一つの visual budget map で編集する小さな制作環境です。",
+      "bodyEn": "Continue watching: SuperSplat selection operations, LOD dialog, image-render export; PlayCanvas SOG streaming and picking; Babylon.js MSDF depth and KHR_gaussian_splatting; three.js HTMLTexture/TSL. New item: integrate selection operations into the same mask-channel family as semantic residue. Park: card UI, heavy training pipelines, and XR-specific flows. Short term: pass SuperSplat selection results into a shader as a simple 2D mask. Mid/long term: build a small authoring environment where selection, semantic query, streaming, audio impulse, and timeline are edited through one visual budget map."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら outputs/2026-07-15_selection_boolean_residue_scope.html を開き、ポインタ移動で cyan の keep lens と red の cut band がどう衝突するかを見ます。押下中は violet の intersect residue が強くなります。次に足すなら、7/14 の semantic latency residue を B channel として保持したまま、SuperSplat の add/subtract/intersect を operation channel にして、選択操作のたびに residue がどう残るかを比較します。",
+      "bodyEn": "If you try one thing today, open outputs/2026-07-15_selection_boolean_residue_scope.html and move the pointer to see how the cyan keep lens collides with the red cut band. Holding/touching emphasizes violet intersect residue. Next, keep the 2026-07-14 semantic latency residue as the B channel and map SuperSplat add/subtract/intersect to an operation channel, then compare how residue remains after each selection operation.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-15_selection_boolean_residue_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 公式 release と S2GS / GSStream を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue を SuperSplat v2.30.0 の selection boolean へ接続。サンプル実装: 単体 WebGL/GLSL で Selection Boolean Residue Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: selection operation channel と residue channel の合成。中長期で育てるもの: semantic selection と stream/LOD/audio/timeline を同じ overlay で編集・検証する制作ツール。",
+      "bodyEn": "Research: checked official releases plus S2GS and GSStream. Ideation: connected the 2026-07-13 semantic mask and 2026-07-14 latency residue to SuperSplat v2.30.0 selection booleans. Prototype: added Selection Boolean Residue Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: combine selection-operation channels with residue channels. Mid/long term: create an authoring tool that edits and validates semantic selection plus stream/LOD/audio/timeline through one overlay."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、splat を単に表示する段階から、選択、圧縮、streaming、意味更新、注釈 depth まで含む「編集可能な場」として扱う段階へ移っています。7/11 の projection、7/12 の latitude budget、7/13 の semantic mask、7/14 の latency residue、今日の selection boolean は一つの系列です。組み合わせ候補としては、SuperSplat で選択した領域だけ retained detail を上げ、PlayCanvas の SOG event で遅れた部分を violet residue にし、Babylon/three.js の text/HTML texture で depth-aware annotation を出す構成が筋が良いです。",
+      "bodyEn": "The recent trend is moving from displaying splats to treating them as editable fields that include selection, compression, streaming, semantic updates, and annotation depth. The 2026-07-11 projection, 2026-07-12 latitude budget, 2026-07-13 semantic mask, 2026-07-14 latency residue, and today's selection boolean belong to one sequence. A strong combination is to raise retained detail only inside SuperSplat-selected regions, mark delayed PlayCanvas SOG-event areas as violet residue, and show depth-aware annotations through Babylon/three.js text or HTML textures."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Selection Boolean Residue Scope。ファイルは outputs/2026-07-15_selection_boolean_residue_scope.html。実際に動く内容は、add keep、subtract cut、intersect residue、depth text gate を WebGL fragment shader だけで描く最小プログラムです。次に足すなら、実 SuperSplat の selection export かスクリーン座標 mask を R/operation channel に読み込み、7/14 の residue field と合成して選択操作前後の差分を見る機能を入れます。",
+      "bodyEn": "The selected prototype is Selection Boolean Residue Scope at outputs/2026-07-15_selection_boolean_residue_scope.html. It is a minimal WebGL fragment-shader program that draws add keep, subtract cut, intersect residue, and a depth text gate. Next, load a real SuperSplat selection export or screen-space mask into an R/operation channel and combine it with the 2026-07-14 residue field to inspect differences before and after selection operations.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-15_selection_boolean_residue_scope.html"
+        }
+      ]
+    }
+  ]
+}

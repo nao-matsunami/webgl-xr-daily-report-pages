@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Latitude Equalized Splat Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #07100d;
+      color: #e8f7ef;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: fixed;
+      left: 16px;
+      top: 14px;
+      max-width: min(620px, calc(100vw - 32px));
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(232, 247, 239, 0.88);
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.75);
+      pointer-events: none;
+    }
+
+    .hud b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <b>Latitude Equalized Splat Scope</b><br>
+    pointer: inspect target / hold: stronger equal-area correction<br>
+    cyan = retained detail · amber = quantized latitude bands · magenta = pole waste / seam risk
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pressed;
+
+      #define PI 3.14159265359
+      #define TAU 6.28318530718
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      vec3 equirectDir(vec2 uv) {
+        float lon = (uv.x - 0.5) * TAU;
+        float lat = (0.5 - uv.y) * PI;
+        return vec3(cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon));
+      }
+
+      vec3 colorRamp(float t) {
+        return 0.50 + 0.50 * cos(TAU * (vec3(0.04, 0.28, 0.58) + t));
+      }
+
+      float line(float value, float target, float width) {
+        return smoothstep(width, 0.0, abs(value - target));
+      }
+
+      float splatCell(vec2 uv, float latWeight, float phase, out float selected) {
+        float rowCount = mix(10.0, 28.0, latWeight);
+        float colCount = mix(18.0, 58.0, latWeight);
+        vec2 grid = uv * vec2(colCount, rowCount);
+        vec2 id = floor(grid);
+        vec2 f = fract(grid) - 0.5;
+        vec2 jitter = vec2(hash(id + phase), hash(id + phase + 31.7)) - 0.5;
+        vec2 p = f - jitter * 0.58;
+        float rnd = hash(id + phase + 8.3);
+        float size = mix(0.06, 0.20, rnd) * mix(1.25, 0.76, latWeight);
+        float g = exp(-dot(p, p) / max(0.002, size * size));
+
+        vec2 lens = uv - pointer;
+        lens.x *= resolution.x / resolution.y;
+        float radius = mix(0.14, 0.26, pressed);
+        selected = smoothstep(radius, radius * 0.35, length(lens));
+        return g * mix(0.42, 1.35, selected) * mix(0.70, 1.15, latWeight);
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec3 dir = equirectDir(uv);
+        float lat = abs(uv.y - 0.5) * 2.0;
+        float equalArea = clamp(cos(lat * PI * 0.5), 0.03, 1.0);
+        float correction = mix(0.35 + 0.65 * equalArea, equalArea, pressed);
+
+        float selectA = 0.0;
+        float selectB = 0.0;
+        float splats = splatCell(uv + vec2(time * 0.006, 0.0), correction, 2.4, selectA);
+        splats += 0.72 * splatCell(uv * vec2(1.0, 0.94) + vec2(-time * 0.004, 0.03), correction, 13.1, selectB);
+        float selected = max(selectA, selectB);
+
+        float longitude = max(line(fract(uv.x * 12.0), 0.5, 0.018), line(fract(uv.x * 24.0), 0.5, 0.008));
+        float latitude = max(line(fract(uv.y * 6.0), 0.5, 0.018), line(fract(uv.y * 18.0), 0.5, 0.006));
+        float equator = line(uv.y, 0.5, 0.006);
+        float grid = max(max(longitude, latitude) * 0.11, equator * 0.36);
+
+        float bandId = floor(uv.y * 12.0);
+        float bandEdge = line(fract(uv.y * 12.0), 0.0, 0.022);
+        float bandPulse = 0.45 + 0.55 * sin(time * 1.35 + bandId * 0.92);
+        float quantBand = bandEdge * (1.0 - correction) * bandPulse;
+
+        float seam = smoothstep(0.045, 0.0, min(uv.x, 1.0 - uv.x));
+        float poleWaste = smoothstep(0.34, 0.92, lat) * (1.0 - equalArea);
+        float risk = max(seam * 0.75, poleWaste);
+
+        vec2 lens = uv - pointer;
+        lens.x *= resolution.x / resolution.y;
+        float ring = line(length(lens), mix(0.14, 0.26, pressed), 0.005);
+        float scan = line(lens.x * cos(time * 0.7) + lens.y * sin(time * 0.7), 0.0, 0.018) * selected;
+
+        float horizon = pow(max(0.0, dir.z * 0.5 + 0.5), 1.6);
+        vec3 color = mix(vec3(0.013, 0.040, 0.036), vec3(0.054, 0.092, 0.074), horizon);
+        color += grid * vec3(0.20, 0.36, 0.31);
+        color += splats * colorRamp(uv.x * 0.16 + uv.y * 0.31 + time * 0.02) * 0.55;
+        color += splats * selected * vec3(0.00, 0.90, 1.00) * 0.92;
+        color += quantBand * vec3(1.00, 0.57, 0.16) * 0.90;
+        color += risk * vec3(0.96, 0.05, 0.54) * (0.18 + 0.38 * noise(uv * 42.0 + time));
+        color += ring * vec3(0.12, 1.00, 0.92);
+        color += scan * vec3(0.85, 1.00, 0.70) * 0.35;
+
+        float vignette = smoothstep(0.88, 0.16, distance(uv, vec2(0.5)));
+        color *= 0.62 + 0.55 * vignette;
+        color = pow(color, vec3(0.86));
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1,
+      -1, 1, 1, -1, 1, 1
+    ]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pressed: gl.getUniformLocation(program, "pressed")
+    };
+
+    const state = {
+      pointer: [0.5, 0.5],
+      target: [0.5, 0.5],
+      pressed: 0
+    };
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.target[0] = (event.clientX - rect.left) / rect.width;
+      state.target[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("pointermove", setPointer);
+    window.addEventListener("pointerdown", (event) => {
+      state.pressed = 1;
+      setPointer(event);
+    });
+    window.addEventListener("pointerup", () => {
+      state.pressed = 0;
+    });
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+      const height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function render(now) {
+      resize();
+      state.pointer[0] += (state.target[0] - state.pointer[0]) * 0.12;
+      state.pointer[1] += (state.target[1] - state.pointer[1]) * 0.12;
+
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.pressed, state.pressed);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

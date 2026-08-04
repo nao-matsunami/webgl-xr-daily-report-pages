@@ -1,0 +1,153 @@
+{
+  "date": "2026-07-12",
+  "headline": "360度splatの次は、緯度ごとの品質配分を見える化する",
+  "headlineEn": "After 360 splats, visualize latitude-based quality allocation",
+  "summary": "2026-07-12 は、three.js r185、Babylon.js 9.16.0、PlayCanvas Engine v2.20.6、SuperSplat v2.29.0 を再確認し、前日の equirectangular splat 診断を「緯度ごとの面積差と品質配分」へ進めました。新しい単体 WebGL サンプルでは、極付近で無駄になりやすい splat 密度、SPZ 風の緯度量子化、seam risk、ポインタ周辺の retained detail を同時に表示します。",
+  "summaryEn": "For 2026-07-12, I rechecked three.js r185, Babylon.js 9.16.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0, then advanced yesterday's equirectangular splat diagnostic toward latitude-based area and quality allocation. The new standalone WebGL sample visualizes wasted density near the poles, SPZ-like latitude quantization, seam risk, and retained detail near the pointer.",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.16.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.29.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "SuperSplat Explore",
+      "url": "https://superspl.at/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-12_latitude_equalized_splat_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の最新リリースは引き続き r185。HTMLTexture の HTML-in-Canvas API signature 対応、WebGLRenderer shader の normal transform 整理、TSL/WebGPU 周辺の textureGather や storageTexture3D は、DOM/情報面と shader 診断を接続する基盤として継続ウォッチです。2. Babylon.js 9.16.0 は GPUParticleSystem の emitRateControl、AudioV2 loop 修正、WebGPU projection layer、WebGPU-XR の API 分離、KHR_gaussian_splatting glTF extension が同時に進んでいます。3. PlayCanvas v2.20.6 は GSplat detaches、Windows/NVIDIA picking hang、SOG unload/reload cache の修正が中心で、実 asset をストリーミングしながら触る前提が強くなっています。4. SuperSplat v2.29.0 は 360 equirectangular video/image export、SPZ export、camera info overlay、timeline loop/keys を追加し、splat を編集から公開まで運ぶ導線がさらに具体化しました。5. SuperSplat Explore では建築、車両、食品、フラクタル形状など、点群/写真計測を作品や展示物として見せる例が並んでおり、単なる技術デモよりも「どこに注目させるか」の編集が重要になっています。",
+      "bodyEn": "1. The latest three.js release remains r185. HTMLTexture support for HTML-in-Canvas API signatures, WebGLRenderer shader normal transform cleanup, and TSL/WebGPU work around textureGather and storageTexture3D remain important foundations for connecting DOM/information surfaces with shader diagnostics. 2. Babylon.js 9.16.0 advances GPUParticleSystem emitRateControl, AudioV2 loop fixes, WebGPU projection layers, WebGPU-XR API separation, and the KHR_gaussian_splatting glTF extension together. 3. PlayCanvas v2.20.6 focuses on GSplat detaches, Windows/NVIDIA picking hangs, and SOG unload/reload cache fixes, strengthening assumptions for interacting with streamed real assets. 4. SuperSplat v2.29.0 adds 360 equirectangular video/image export, SPZ export, camera info overlays, and timeline loop/key improvements, making the edit-to-publish path more concrete. 5. SuperSplat Explore shows architecture, vehicles, food, fractal forms, and other scanned or procedural subjects as publishable exhibits, where directing attention matters more than simply demonstrating the technology.",
+      "links": [
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.16.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "SuperSplat v2.29.0 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        },
+        {
+          "label": "SuperSplat Explore",
+          "url": "https://superspl.at/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "SuperSplat Explore の一覧は、Amity Street Apartment、Garage、Mont Saint Michel、MandelTorus、Underwater Plane Wreck など、生活空間・文化財・抽象形状・水中物といった異なる題材を同じ viewer で見せています。ここで面白いのは、題材の違いよりも「視線誘導の必要性」です。360 書き出しや SPZ 圧縮が使えるようになると、どの緯度帯にディテールを残すか、極や seam に無駄な密度を置いていないか、viewer の初期カメラが本当に見せたい場所を指しているかを、制作中に可視化する価値が高くなります。",
+      "bodyEn": "SuperSplat Explore lists subjects such as Amity Street Apartment, Garage, Mont Saint Michel, MandelTorus, and Underwater Plane Wreck in the same viewer, spanning interiors, heritage-like scans, abstract forms, and underwater objects. The interesting point is less the subject variety itself and more the need for attention direction. Once 360 export and SPZ compression are available, it becomes valuable to visualize which latitude bands retain detail, whether poles and seams waste density, and whether the initial camera really points at the intended subject.",
+      "links": [
+        {
+          "label": "SuperSplat Explore",
+          "url": "https://superspl.at/"
+        },
+        {
+          "label": "SuperSplat v2.29.0",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "昨日の equirectangular splat projection scope は、全天球 UV 上で選択・圧縮・stream risk を見るものでした。今日はそこに「緯度補正」を足します。equirectangular は画面上では上下も同じ面積に見えますが、球面では極に近いほど実面積が小さくなります。そこで、ポインタ周辺は cyan で retained detail、極付近や左右端は magenta で waste/risk、緯度ごとの量子化は amber で表示します。鑑賞者には抽象的な全天球地図、制作者には quality budget の配分表として機能します。",
+      "bodyEn": "Yesterday's equirectangular splat projection scope visualized selection, compression, and stream risk on spherical UVs. Today adds latitude correction. In equirectangular maps, top and bottom areas look equal on screen, but on the sphere, real area shrinks near the poles. The interaction marks retained detail near the pointer in cyan, pole/seam waste and risk in magenta, and latitude quantization in amber. For viewers it reads as an abstract spherical map; for creators it works as a quality-budget allocation display.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-12_latitude_equalized_splat_scope.html"
+        },
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-07-11_equirect_splat_projection_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では、fragment shader 内で equirectangular UV から方向ベクトルを作り、cos(latitude) を equal-area weight として使いました。この値で疑似 splat の列数・行数・サイズ・明るさを変えると、極付近で密度が過剰に見える問題を視覚化できます。実 SuperSplat export に重ねる場合は、1. 360 WebP/動画を書き出す、2. 同じ UV に latitude weight texture を重ねる、3. PlayCanvas SOG の unload/reload/picking event を risk texture に加える、4. Babylon.js の KHR_gaussian_splatting 読み込みでも同じ色規約を使う、という順番が扱いやすいです。",
+      "bodyEn": "The implementation reconstructs a direction vector from equirectangular UVs in the fragment shader and uses cos(latitude) as an equal-area weight. Driving pseudo-splat columns, rows, size, and brightness with that value makes over-dense pole regions visible. To overlay this on real SuperSplat exports, a practical path is: 1. export a 360 WebP/video, 2. overlay a latitude weight texture on the same UVs, 3. add PlayCanvas SOG unload/reload/picking events as a risk texture, and 4. reuse the same color convention when loading KHR_gaussian_splatting assets in Babylon.js.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "Babylon.js 9.16.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js r185 の HTMLTexture/TSL、Babylon.js の KHR_gaussian_splatting、PlayCanvas の SOG/GSplat streaming、SuperSplat の 360/SPZ/timeline。新規案件: 360 書き出しを最終成果物ではなく quality budget map として使うこと。寝かせる案件: XR/VR/AR 固有の UI やカード UI は別トラックに置き、このプロジェクトでは shader、投影、圧縮、音反応、粒子、postprocess を優先します。",
+      "bodyEn": "Continue: three.js r185 HTMLTexture/TSL, Babylon.js KHR_gaussian_splatting, PlayCanvas SOG/GSplat streaming, and SuperSplat 360/SPZ/timeline. New: treat 360 export as a quality budget map rather than only a final deliverable. Park: XR/VR/AR-specific UI and card UI remain separate tracks; this project prioritizes shaders, projection, compression, audio response, particles, and postprocess."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、outputs/2026-07-12_latitude_equalized_splat_scope.html を開き、ポインタを上下へ動かして緯度による密度差を見ます。押下すると equal-area correction が強くなり、極付近の magenta waste/risk と amber の量子化帯が見えやすくなります。短期で足すなら、SuperSplat の 360 WebP を background texture として読み込み、その上にこの診断レイヤーを additive で重ねます。",
+      "bodyEn": "If you try one thing today, open outputs/2026-07-12_latitude_equalized_splat_scope.html and move the pointer vertically to inspect latitude-based density changes. Holding the pointer strengthens equal-area correction, making magenta pole waste/risk and amber quantization bands easier to see. A short-term next step is loading a SuperSplat 360 WebP as a background texture and compositing this diagnostic layer additively over it.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-12_latitude_equalized_splat_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 公式リリースと SuperSplat Explore を確認。アイデア検討: 7/11 の equirectangular 診断に、球面の実面積差を加える方針に決定。サンプル実装: 単体 WebGL/GLSL で Latitude Equalized Splat Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: 360 WebP 背景への診断レイヤー合成。中長期で育てるもの: SuperSplat export、PlayCanvas SOG event、Babylon KHR_gaussian_splatting loader を同じ quality budget 可視化に接続する制作ツール。",
+      "bodyEn": "Research: checked official releases and SuperSplat Explore. Ideation: decided to extend the 2026-07-11 equirectangular diagnostic with true spherical area differences. Prototype: added Latitude Equalized Splat Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: composite the diagnostic layer over a 360 WebP background. Mid/long term: connect SuperSplat export, PlayCanvas SOG events, and the Babylon KHR_gaussian_splatting loader into one quality-budget visualization tool."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、splat を単なる photoreal 表示から、編集・圧縮・投影・streaming を持つ制作媒体として扱う方向に寄っています。7/8 の temporal reprojection、7/9 の audio impulse、7/10 の shader atlas、7/11 の equirect projection、今日の latitude equalization は、すべて「品質をどこに残すか」を見せるための部品です。組み合わせ候補としては、音ピークで retained detail の半径を広げ、timeline key ごとに quality budget map を切り替えると、展示や音楽演出にも使いやすくなります。",
+      "bodyEn": "The recent direction is to treat splats not merely as photoreal displays but as production media with editing, compression, projection, and streaming behavior. The 2026-07-08 temporal reprojection, 2026-07-09 audio impulse, 2026-07-10 shader atlas, 2026-07-11 equirect projection, and today's latitude equalization are all parts for showing where quality is retained. A promising combination is expanding the retained-detail radius on audio peaks and switching quality-budget maps per timeline key, which would suit installations and music-driven visuals."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Latitude Equalized Splat Scope。ファイルは outputs/2026-07-12_latitude_equalized_splat_scope.html。実際に動く内容は、全天球 UV 上の疑似 splat を緯度ごとの equal-area weight で変化させ、ポインタ周辺の retained detail、緯度量子化、極/seam risk を同時に描くものです。次に足すなら、実際の SuperSplat 360 export を texture として読み込み、診断色の強度を GUI か音反応で調整します。",
+      "bodyEn": "The selected prototype is Latitude Equalized Splat Scope at outputs/2026-07-12_latitude_equalized_splat_scope.html. It changes pseudo splats on spherical UVs with a latitude-based equal-area weight and draws retained detail, latitude quantization, and pole/seam risk together. Next, load a real SuperSplat 360 export as a texture and control diagnostic intensity with a GUI or audio response.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-12_latitude_equalized_splat_scope.html"
+        }
+      ]
+    }
+  ]
+}

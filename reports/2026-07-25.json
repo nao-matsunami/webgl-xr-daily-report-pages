@@ -1,0 +1,197 @@
+{
+  "date": "2026-07-25",
+  "headline": "relighting、fisheye、SOG flashlight を一枚の shader 診断に統合する",
+  "headlineEn": "Unify relighting, fisheye, and SOG flashlight into one shader diagnostic",
+  "summary": "2026-07-25 は、PlayCanvas Engine v2.21.1 の MSDF coverage ramp 修正、Babylon.js 9.18.0 の Gaussian Splat texture leak 修正、PlayCanvas の GSplat renderer / relighting / fisheye docs に加え、SOG に通常ライトが効かないため screen-space flashlight や relighting texture を使う実装相談を拾い、runtime quality pressure と照明演出の接続として整理しました。追加ミニ試作は単体 WebGL の SOG Flashlight PostFX Scope です。",
+  "summaryEn": "For 2026-07-25, PlayCanvas Engine v2.21.1 MSDF coverage ramp fixes, Babylon.js 9.18.0 Gaussian Splat resize leak fixes, PlayCanvas GSplat renderer / relighting / fisheye docs, and a PlayCanvas forum thread about lighting unlit SOG scenes are connected as runtime quality pressure and lighting interaction. The added mini prototype is a standalone WebGL SOG Flashlight PostFX Scope.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.21.1",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+    },
+    {
+      "label": "Babylon.js 9.18.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+    },
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "PlayCanvas Gaussian Splat Renderers",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+    },
+    {
+      "label": "PlayCanvas Gaussian Splat Relighting",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/"
+    },
+    {
+      "label": "PlayCanvas Fisheye Rendering",
+      "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/fisheye/"
+    },
+    {
+      "label": "KHR_gaussian_splatting",
+      "url": "https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting"
+    },
+    {
+      "label": "Codrops All Posts",
+      "url": "https://tympanus.net/codrops/all-posts/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-25_relight_fisheye_msdf_scope.html"
+    },
+    {
+      "label": "PlayCanvas SOG flashlight discussion",
+      "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+    },
+    {
+      "label": "SOG flashlight sample",
+      "url": "../outputs/2026-07-25_sog_flashlight_postfx_scope.html"
+    },
+    {
+      "label": "Codrops Dash Creative case study",
+      "url": "https://tympanus.net/codrops/2026/07/21/magnetic-commerce-building-the-dash-creative-website/"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.21.1 が 2026-07-24 に出ており、MSDF coverage ramp が小サイズで field range を超える問題、WebGPU normal mapping、WebGPU sampled texture limit 報告値などが修正されました。2. Babylon.js 9.18.0 は 2026-07-23 リリースで、Gaussian Splat texture leak on resize が直っています。resize や high-res capture を繰り返す鑑賞/編集ツールでは、長時間運用の安定性に効く修正です。3. PlayCanvas renderer docs は WebGL2 の CPU sort、WebGPU の GPU sort、currentRenderer による実選択確認、CPU sort の非同期 lag を明示しています。4. PlayCanvas relighting / fisheye docs は、proxy mesh の offscreen lighting texture、coverage alpha、radialSorting、tiny planet 的投影を扱い、splat を写真風表示から演出装置へ寄せられる根拠になります。5. PlayCanvas フォーラムでは SOG が custom unlit shader のため通常ライトに反応しない実装相談があり、公式回答は relighting example 参照でした。ここから、画面中心 flashlight を postprocess mask で即席に作る案と、proxy coverage texture で本格化する案を分けて考えます。",
+      "bodyEn": "1. PlayCanvas Engine v2.21.1 was released on 2026-07-24 and fixes the MSDF coverage ramp at small sizes, WebGPU normal mapping, and reported WebGPU sampled texture limits. 2. Babylon.js 9.18.0, released on 2026-07-23, fixes a Gaussian Splat texture leak on resize, which matters for long-running viewers and repeated high-resolution capture. 3. PlayCanvas renderer docs clarify CPU sorting on WebGL2, GPU sorting on WebGPU, currentRenderer inspection, and asynchronous CPU-sort lag. 4. PlayCanvas relighting and fisheye docs cover proxy-mesh offscreen lighting textures, coverage alpha, radialSorting, and tiny-planet projection, giving splats a staging vocabulary beyond photographic viewing. 5. A PlayCanvas forum thread highlights that SOG uses custom unlit shaders and does not react to standard lights; the official reply points to relighting examples. This suggests splitting quick screen-space flashlight masks from production proxy-coverage relighting.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+        },
+        {
+          "label": "Babylon.js 9.18.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+        },
+        {
+          "label": "Renderers",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+        },
+        {
+          "label": "Relighting",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/"
+        },
+        {
+          "label": "SOG flashlight discussion",
+          "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は PlayCanvas の SOG flashlight 相談と relighting docs の接続です。質問は「SOG マップに通常の SpotLight/PointLight が効かないので、画面中心だけ照らせないか」という実制作上の詰まりでした。短期なら fullscreen postprocess で暗部と円形ライトを作れる一方、影や凹凸に合わせた convincing な照明には proxy mesh を別 layer で照らし、screen-aligned texture の RGB/alpha を splat fragment に渡す relighting が必要です。Codrops の Dash Creative 事例は、video texture を shader で直接 UV 変形し、cursor の方向と減衰を JS 側で平滑化する構成が参考になります。SOG flashlight も単なる円形 mask ではなく、移動方向に少し残像/遅れを持たせると探索感が出ます。",
+      "bodyEn": "The notable connection today is the PlayCanvas SOG flashlight forum question plus the relighting docs. The practical problem is that a SOG map does not respond to ordinary SpotLight or PointLight because it uses custom unlit splat shaders. A quick version can darken the scene and add a circular flashlight as a fullscreen postprocess, while convincing lighting and shadows need a proxy mesh on a separate layer whose screen-aligned RGB/alpha texture modulates the splat fragments. The Codrops Dash Creative case study is also relevant: it distorts a video texture directly in a fragment shader and smooths cursor direction and decay in JavaScript. A SOG flashlight should likewise avoid a static circle and carry slight motion persistence.",
+      "links": [
+        {
+          "label": "SOG flashlight discussion",
+          "url": "https://forum.playcanvas.com/t/how-to-create-a-shader-based-flashlight-effect-on-3d-gaussian-splatting-sog/42432"
+        },
+        {
+          "label": "Relighting docs",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/building/relighting/"
+        },
+        {
+          "label": "Dash Creative case study",
+          "url": "https://tympanus.net/codrops/2026/07/21/magnetic-commerce-building-the-dash-creative-website/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "中心案を「SOG Flashlight PostFX Scope」に更新します。R: postprocess だけで照らしてしまう不一致、G: proxy relight coverage、B: fisheye + radial sort benefit、A: CPU sort lag / resize pressure として読みます。ポインタは一人称視点の flashlight、長押しは proxy relighting coverage を混ぜる状態、F は fisheye/radial sort、Space は resize/capture pressure です。短期では画面中心または pointer 中心の mask で十分ですが、中期では relighting.texture の alpha を coverage channel にし、currentRenderer が CPU sort のときだけ amber lag ring を出すと、表現と診断が同居します。",
+      "bodyEn": "The central idea is updated to SOG Flashlight PostFX Scope. Read R as mismatch from a postprocess-only light, G as proxy relight coverage, B as fisheye plus radial-sort benefit, and A as CPU-sort lag / resize pressure. Pointer movement acts as a first-person flashlight, holding blends in proxy relighting coverage, F toggles fisheye/radial sort, and Space injects resize/capture pressure. A quick test only needs a screen- or pointer-centered mask. Mid term, use relighting.texture alpha as the coverage channel and show an amber lag ring only when currentRenderer is CPU sort, merging expression and diagnostics.",
+      "links": [
+        {
+          "label": "SOG flashlight sample",
+          "url": "../outputs/2026-07-25_sog_flashlight_postfx_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "PlayCanvas v2.21.1 の MSDF 修正は、小さい注釈ラベルを splat や depth/fog 上に重ねる本プロジェクトの流れに直結します。実装時は font atlas の mipmap、coverage ramp、device pixel ratio、postprocess 後の gamma を分けて見るべきです。Babylon.js 9.18.0 の resize texture leak 修正は、canvas resize、8K capture、device pixel ratio 切替を繰り返す場合の検証項目です。PlayCanvas relighting は proxy mesh の coverage alpha を state texture として再利用できます。fisheye は radialSorting とセットで、sort artifact を UI 警告ではなく外周の blue ring / amber lag ring として可視化すると、ユーザーに『どこが危ないか』を自然に伝えられます。three.js r185 の HTMLTexture / HTML-in-Canvas 対応は、MSDF だけでは足りない注釈面の次候補です。",
+      "bodyEn": "The PlayCanvas v2.21.1 MSDF fix directly relates to this project's repeated use of small annotation labels over splats, depth, and fog. In implementation, font-atlas mipmaps, coverage ramp, device pixel ratio, and postprocess gamma should be inspected separately. Babylon.js 9.18.0's resize texture leak fix is a verification point for repeated canvas resize, 8K capture, and device-pixel-ratio changes. PlayCanvas relighting can reuse proxy-mesh coverage alpha as a state texture. Fisheye should be paired with radialSorting, turning sort artifacts into outer blue benefit rings or amber lag rings rather than UI warnings. three.js r185's HTMLTexture / HTML-in-Canvas support remains the next annotation-plane option when MSDF alone is insufficient.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.1"
+        },
+        {
+          "label": "Babylon.js 9.18.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.18.0"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: PlayCanvas v2.21.x の GSplat renderer / KHR_gaussian_splatting / SPZ / SOG、SuperSplat v2.32.2 の 8K export と muxer wait、Babylon.js 9.18.0 の Gaussian Splat resize leak 修正、three.js r185 の HTMLTexture。新規案件: PlayCanvas relighting / fisheye / radialSorting を実装入力にして、sort latency と coverage mask を同じ texture にする。寝かせる案件: カード UI、XR 専用操作、重い training pipeline、完成版 editor UI。短期は current/history pointer による pseudo sort lag。中長期は実 scene.gsplat.currentRenderer、relighting coverage texture、resize/capture event の収集です。",
+      "bodyEn": "Continue watching: PlayCanvas v2.21.x GSplat renderer / KHR_gaussian_splatting / SPZ / SOG, SuperSplat v2.32.2 8K export and muxer waits, Babylon.js 9.18.0 Gaussian Splat resize leak fix, and three.js r185 HTMLTexture. New item: use PlayCanvas relighting / fisheye / radialSorting as real implementation inputs so sort latency and coverage masks share one texture. Park: card UI, XR-specific controls, heavy training pipelines, and full editor UI. Short term, use current/history pointer pseudo sort lag. Mid/long term, collect real scene.gsplat.currentRenderer, relighting coverage texture, and resize/capture events.",
+      "links": [
+        {
+          "label": "Renderers",
+          "url": "https://developer.playcanvas.com/user-manual/gaussian-splatting/rendering-architecture/renderers/"
+        },
+        {
+          "label": "SuperSplat v2.32.2",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、SOG に通常ライトが効かない前提で、screen-space flashlight と relighting coverage の差を見える化することです。追加した `outputs/2026-07-25_sog_flashlight_postfx_scope.html` は、疑似 SOG splat field、pointer 中心の flashlight、長押し時の proxy coverage、postprocess-only leak、CPU sort lag ring、fisheye/radial sort benefit、resize pressure を単体 WebGL で表示します。次に足すなら、PlayCanvas の relighting.texture alpha を実 texture にし、fragment chunk 側で flashlight mask と coverage mask を選択できるようにします。",
+      "bodyEn": "If trying one thing today, visualize the gap between a screen-space flashlight and relighting coverage under the assumption that ordinary lights do not affect SOG splats. The added `outputs/2026-07-25_sog_flashlight_postfx_scope.html` shows a pseudo SOG splat field, pointer-centered flashlight, proxy coverage while holding, postprocess-only leak, CPU-sort lag rings, fisheye/radial-sort benefit, and resize pressure in standalone WebGL. Next, feed real PlayCanvas relighting.texture alpha and let a fragment chunk switch between the flashlight mask and coverage mask.",
+      "links": [
+        {
+          "label": "SOG flashlight sample",
+          "url": "../outputs/2026-07-25_sog_flashlight_postfx_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas Engine v2.21.1、Babylon.js 9.18.0、SuperSplat v2.32.2、PlayCanvas renderers/relighting/fisheye docs、SOG flashlight forum、Codrops Dash Creative を確認。アイデア検討: 7/23 の format pressure と 7/25 早朝の relight/fisheye/MSDF scope を、SOG の照明インタラクションへ接続。サンプル実装: 単体 WebGL で flashlight mask、proxy coverage、sort lag、fisheye benefit、resize pressure を追加実装済み。結果の検証: upsert-report --publish 後に day page と新旧 sample の HTTP 到達を確認する。短期で試せるものは postprocess flashlight。中長期で育てるものは proxy coverage、renderer state、format/export pressure を一つの state texture に統合することです。",
+      "bodyEn": "Collection: checked PlayCanvas Engine v2.21.1, Babylon.js 9.18.0, SuperSplat v2.32.2, PlayCanvas renderers/relighting/fisheye docs, the SOG flashlight forum thread, and Codrops Dash Creative. Ideation: connected the 07-23 format pressure and the earlier 07-25 relight/fisheye/MSDF scope into SOG lighting interaction. Prototype: added a standalone WebGL sample with flashlight mask, proxy coverage, sort lag, fisheye benefit, and resize pressure. Verification: after upsert-report --publish, confirm HTTP access for the day page and both samples. Short term, try postprocess flashlight. Mid/long term, merge proxy coverage, renderer state, and format/export pressure into one state texture."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、Gaussian Splat の「ファイル形式をどう読むか」から「実行時にどう光らせ、歪ませ、遅れを説明するか」へ移っています。7/17-7/23 の SOG retry / upload / export / format pressure は運用診断、7/25 の relighting / fisheye / MSDF / flashlight は鑑賞中の演出診断です。組み合わせる価値が高いのは、SOG chunk state、renderer currentRenderer、relighting coverage alpha、fisheye radialSorting、HTMLTexture/MSDF label を RGBA channel として統一することです。寝かせるのはカード UI と重い editor 全体、育てるのは「splat の見えなさ・遅れ・照明不一致を演出として見せる performance instrument」です。",
+      "bodyEn": "The recent trend is moving from how to read Gaussian Splat formats to how to light, distort, and explain runtime lag. The 07-17 to 07-23 SOG retry / upload / export / format pressure track is operational diagnostics; the 07-25 relighting / fisheye / MSDF / flashlight track is in-view staging diagnostics. The high-value combination is to unify SOG chunk state, renderer currentRenderer, relighting coverage alpha, fisheye radialSorting, and HTMLTexture/MSDF labels as RGBA channels. Park card UI and full heavy editors; grow a performance instrument that turns invisibility, lag, and lighting mismatch into readable staging.",
+      "links": [
+        {
+          "label": "KHR_gaussian_splatting",
+          "url": "https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_gaussian_splatting"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用候補は追加版の「SOG Flashlight PostFX Scope」です。作成済みファイルは `outputs/2026-07-25_sog_flashlight_postfx_scope.html`。実際に動く内容は、WebGL fragment shader による疑似 SOG splat field、pointer flashlight、hold 中の proxy relight coverage、postprocess-only leak、history pointer による CPU sort lag、fisheye/radial sorting benefit、resize/capture pressure pulse です。次の発展順は、1. flashlight を画面中心固定モードにする、2. PlayCanvas relighting.texture alpha を実 texture 化、3. currentRenderer / radialSorting を uniform 化、4. SOG chunk load state と resize/capture event を pressure channel に入れる、です。",
+      "bodyEn": "The selected add-on candidate is SOG Flashlight PostFX Scope. The created file is `outputs/2026-07-25_sog_flashlight_postfx_scope.html`. It runs as a WebGL fragment shader showing a pseudo SOG splat field, pointer flashlight, proxy relight coverage while holding, postprocess-only leak, CPU-sort lag from a history pointer, fisheye/radial sorting benefit, and resize/capture pressure pulses. The next development order is: 1. add a screen-center flashlight mode, 2. turn PlayCanvas relighting.texture alpha into a real texture, 3. expose currentRenderer / radialSorting as uniforms, and 4. route SOG chunk load state and resize/capture events into pressure channels.",
+      "links": [
+        {
+          "label": "SOG flashlight sample",
+          "url": "../outputs/2026-07-25_sog_flashlight_postfx_scope.html"
+        }
+      ]
+    }
+  ]
+}

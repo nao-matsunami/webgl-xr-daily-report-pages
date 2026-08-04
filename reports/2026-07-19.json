@@ -1,0 +1,191 @@
+{
+  "date": "2026-07-19",
+  "headline": "SOG/LOD 診断を gesture gate と adaptive upload の演出へ接続する",
+  "headlineEn": "Connect SOG/LOD diagnostics to gesture gates and adaptive upload expression",
+  "summary": "2026-07-19 は、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、SuperSplat v2.31.1 の公式リリース状況を確認しつつ、Codrops の ZERO 事例から gesture gate、idle texture upload、adaptive quality manager、deferred text / frost / shatter pass の考え方を取り込みました。昨日の LOD Fog Audio Scope を、今日の試作では upload pressure、quality tier、gesture frost、stale hitch residue を同時に読む shader scope へ進めています。",
+  "summaryEn": "For 2026-07-19, I checked official release status for three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.31.1, then folded in the ZERO Codrops case study: gesture gates, idle texture uploads, adaptive quality management, and deferred text / frost / shatter passes. Yesterday's LOD Fog Audio Scope is advanced into a shader scope for upload pressure, quality tiers, gesture frost, and stale hitch residue.",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.17.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.31.1",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.31.1"
+    },
+    {
+      "label": "SuperSplat Streaming & Performance",
+      "url": "https://developer.playcanvas.com/user-manual/supersplat/streaming/"
+    },
+    {
+      "label": "ZERO case study",
+      "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+    },
+    {
+      "label": "3D Wave Grid demo",
+      "url": "https://projects.arkon.digital/threejs/wavy-cubes/"
+    },
+    {
+      "label": "Meet the Speakers of the First Three.js Conference",
+      "url": "https://tympanus.net/codrops/2026/07/16/meet-the-speakers-of-the-first-three-js-conference/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-19_adaptive_upload_gesture_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js は r185 が最新で、HTMLTexture の WICG HTML-in-Canvas API signatures 対応、TSL の textureGather / storageTexture3D、WebGPU examples の custom fog / volumetric fire / compute rasterizer などが継続して重要です。7/18 の fog/audio scope に対して、今日は texture upload と deferred text の扱いを接続します。2. Babylon.js 9.17.0 は GaussianSplattingStream の deferred LOD switch retry、safe-orbit camera limits、depth 書き込み時の antialiased edge 維持がポイントです。これは SOG/LOD の状態を camera と depth annotation の制約として読む材料になります。3. PlayCanvas Engine v2.20.6 は gsplat detach、picking、sog unload/reload/cache 系の修正が固まっており、SuperSplat v2.31.1 は Streamed SOG folder drag-and-drop 修正が最新です。4. ZERO 事例は、draw-a-zero gesture gate、virtual scroll、idle texture upload、adaptive quality tier、deferred text pass、frost/shatter shader を一つの体験設計にまとめています。5. 3D Wave Grid は、キューブの波伝播を最小構成で気持ちよく見せる方向で、今日の upload tile / quality tier 表現に『読み込みタイルが波として温まる』発想を足せます。",
+      "bodyEn": "1. three.js r185 remains the latest release, with HTMLTexture updates for WICG HTML-in-Canvas API signatures, TSL textureGather / storageTexture3D, and WebGPU examples such as custom fog, volumetric fire, and compute rasterizer still important. For the 07-18 fog/audio scope, today's connection is texture upload and deferred text. 2. Babylon.js 9.17.0 highlights deferred GaussianSplattingStream LOD switch retry, safe-orbit camera limits, and preserving antialiased edges when writing depth. These provide material for reading SOG/LOD state as camera and depth-annotation constraints. 3. PlayCanvas Engine v2.20.6 stabilized gsplat detach, picking, SOG unload/reload/cache behavior, and SuperSplat v2.31.1 fixes Streamed SOG folder drag-and-drop. 4. ZERO combines a draw-a-zero gesture gate, virtual scroll, idle texture uploads, adaptive quality tiers, deferred text, and frost/shatter shaders into one experience architecture. 5. 3D Wave Grid shows minimal cube wave propagation, suggesting that upload tiles and quality tiers can be warmed visually as wavefronts.",
+      "links": [
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.17.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "SuperSplat v2.31.1",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.31.1"
+        },
+        {
+          "label": "ZERO case study",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        },
+        {
+          "label": "3D Wave Grid demo",
+          "url": "https://projects.arkon.digital/threejs/wavy-cubes/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は ZERO です。面白いのは、演出が単なる映像的リッチさではなく、パフォーマンス制御と直接つながっている点です。gesture gate はユーザーの入力を frost shader の seed にし、virtual scroll は stage lifecycle を一本の値で駆動し、texture upload は idle queue で前倒しされ、品質 tier は pixel ratio、blur samples、text resolution を落としても物語の同一性を保っています。昨日までの SOG retry / fog / audio と組み合わせるなら、ロード待ちや品質低下を隠すのではなく、空間が一時的に霜・霧・粒度変化として反応する演出にできます。",
+      "bodyEn": "The key example today is ZERO. What matters is that the expression is tied directly to performance control rather than only visual richness. The gesture gate turns user input into a frost-shader seed, virtual scroll drives stage lifecycle from one value, texture uploads are pulled forward through an idle queue, and quality tiers lower pixel ratio, blur samples, and text resolution without changing the story. Connected to the recent SOG retry / fog / audio work, loading and quality drops can become visible reactions such as frost, fog, and grain shifts instead of hidden problems.",
+      "links": [
+        {
+          "label": "ZERO case study",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        },
+        {
+          "label": "ZERO site",
+          "url": "https://why.zero.university/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "中心案は『Adaptive Upload Gesture Scope』です。7/17 の SOG retry budget、7/18 の fog/audio scope を残しつつ、ZERO から gesture gate と adaptive quality manager を借ります。ポインタが gesture centroid になり、押下中は frost gate が広がる。同時に upload pressure が上がり、quality tier が一段落ちたように画面粒度が粗くなります。短期では合成スパイクで十分です。中長期では、実際の SOG chunk load、texture upload queue、shader prewarm、Web Audio impulse を同じ timeline に置き、読み込み状態を『体験の呼吸』として演出します。",
+      "bodyEn": "The core idea is Adaptive Upload Gesture Scope. Keep the 07-17 SOG retry budget and 07-18 fog/audio scope, then borrow ZERO's gesture gate and adaptive quality manager. The pointer becomes the gesture centroid; holding expands a frost gate. At the same time upload pressure increases, and the apparent quality tier drops through coarser screen grain. In the short term, a synthetic spike is enough. In the mid/long term, real SOG chunk load, texture upload queue, shader prewarming, and Web Audio impulse should share one timeline so loading state becomes the breathing of the experience.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-19_adaptive_upload_gesture_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では、chunk や texture を直接待つのではなく、状態 texture として可視化するのが扱いやすいです。R=stale hitch residue、G=warmed/uploaded quality、B=queued retry/cooldown、A=validity とし、別 uniform で quality tier と upload pressure を渡します。three.js 側なら renderer.initTexture() や shader prewarm のタイミングを event 化し、PlayCanvas / SuperSplat 側なら Streamed SOG の LOD meta / chunk load / unload / cache miss を channel 化します。Babylon.js 9.17.0 の retry cooldown と safe-orbit limits は、camera が寄りすぎた時だけ B channel を増やすと視覚的に説明しやすいです。ZERO の lesson は、KTX2/DRACO/atlas 圧縮だけでなく、GPU upload の発生タイミングを作品設計に含めることです。",
+      "bodyEn": "For production, visualize chunk and texture state as a state texture instead of waiting on raw events. Use R = stale hitch residue, G = warmed/uploaded quality, B = queued retry/cooldown, and A = validity, with uniforms for quality tier and upload pressure. In three.js, emit events around renderer.initTexture() and shader prewarming; in PlayCanvas / SuperSplat, channel Streamed SOG LOD metadata, chunk load, unload, and cache misses. Babylon.js 9.17.0 retry cooldown and safe-orbit limits can increase the B channel only when the camera pushes too close. ZERO's lesson is to design not just KTX2/DRACO/atlas compression, but the timing of GPU upload itself.",
+      "links": [
+        {
+          "label": "SuperSplat Streaming & Performance",
+          "url": "https://developer.playcanvas.com/user-manual/supersplat/streaming/"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "Babylon.js 9.17.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+        },
+        {
+          "label": "ZERO case study",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: SuperSplat Streamed SOG、PlayCanvas SOG unload/reload/cache、Babylon GaussianSplattingStream retry、three.js HTMLTexture / TSL / WebGPU fog examples。新規案件: ZERO 型の adaptive quality manager、idle texture upload、gesture gate、deferred text pass。寝かせる案件: カード UI、完全な XR 導線、重い学習 pipeline、フルゲーム化。短期ウォッチは、実 SOG chunk event を sample の RGBA channel に入れること。中長期ウォッチは、Three.js Conference 周辺で出てくる TSL / WebGPU / creative tooling の講演内容を、WebGL2 fallback 前提の作品表現へ落とすことです。",
+      "bodyEn": "Continue watching: SuperSplat Streamed SOG, PlayCanvas SOG unload/reload/cache, Babylon GaussianSplattingStream retry, and three.js HTMLTexture / TSL / WebGPU fog examples. New: ZERO-style adaptive quality management, idle texture upload, gesture gates, and deferred text passes. Park: card UI, full XR-specific flows, heavy training pipelines, and full games. Short-term watch: feed real SOG chunk events into the sample's RGBA channels. Mid/long-term watch: translate Three.js Conference discussions around TSL, WebGPU, and creative tooling into WebGL2-fallback expression.",
+      "links": [
+        {
+          "label": "Meet the Speakers of the First Three.js Conference",
+          "url": "https://tympanus.net/codrops/2026/07/16/meet-the-speakers-of-the-first-three-js-conference/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら outputs/2026-07-19_adaptive_upload_gesture_scope.html を開きます。ポインタ移動で budget lens と gesture centroid が動き、押下で frost gate と upload pressure が強くなり、画面が意図的に粗くなって quality downgrade を可視化します。スペースキーで synthetic upload spike を注入できます。次に足すなら、まず requestIdleCallback で疑似 upload queue を JS 側に作り、queue length を uniform として渡すのが最短です。その次に実 Web Audio analyser の kick を upload spike、high band を frost edge に割り当てます。",
+      "bodyEn": "If you try one thing today, open outputs/2026-07-19_adaptive_upload_gesture_scope.html. Moving the pointer moves the budget lens and gesture centroid; holding strengthens the frost gate and upload pressure, intentionally coarsening the screen to visualize quality downgrade. Space injects a synthetic upload spike. Next, build a simulated upload queue in JS with requestIdleCallback and pass queue length as a uniform. After that, map a real Web Audio analyser kick to upload spike and high band to the frost edge.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-19_adaptive_upload_gesture_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 公式 release、SuperSplat streaming docs、ZERO、3D Wave Grid、Three.js Conference 記事を確認。アイデア検討: 7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope を、今日は gesture gate / adaptive upload / quality tier へ接続。サンプル実装: 単体 WebGL/GLSL で Adaptive Upload Gesture Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで実施します。短期で試すもの: synthetic upload spike を requestIdleCallback queue に置換。中長期で育てるもの: stream validity、編集履歴、音、gesture、upload timing を 1 枚の shader scope へ統合する制作診断レイヤー。",
+      "bodyEn": "Research: checked official releases, SuperSplat streaming docs, ZERO, 3D Wave Grid, and the Three.js Conference article. Ideation: connected 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, and 07-18 fog/audio scope to gesture gates, adaptive upload, and quality tiers. Prototype: added Adaptive Upload Gesture Scope as a standalone WebGL/GLSL sample. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: replace synthetic upload spike with a requestIdleCallback queue. Mid/long term: integrate stream validity, edit history, audio, gesture, and upload timing into one shader scope.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-19_adaptive_upload_gesture_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、splat / shader を『見た目』ではなく『状態を読む装置』として扱う方向です。7/11 equirect projection、7/12 latitude budget、7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope、7/19 adaptive upload gesture まで来ました。組み合わせ候補は、SuperSplat selection = R、PlayCanvas LOD quality = G、Babylon retry/cooldown = B、stream validity = A、Web Audio = temporal gain、gesture = seed、texture upload = pressure、HTMLTexture/deferred text = depth label。育てる価値が高いテーマは、触る、音が鳴る、読み込みが詰まる、品質が落ちる、また戻る、という運用上の時間差を作品の表情に変えることです。",
+      "bodyEn": "The recent trend is treating splat/shader work not as looks but as instruments for reading state. The chain is 07-11 equirect projection, 07-12 latitude budget, 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, 07-18 fog/audio scope, and 07-19 adaptive upload gesture. A strong mapping is SuperSplat selection = R, PlayCanvas LOD quality = G, Babylon retry/cooldown = B, stream validity = A, Web Audio = temporal gain, gesture = seed, texture upload = pressure, and HTMLTexture/deferred text = depth label. The theme worth growing is turning operational time lag into expression: touch, sound, loading stalls, quality drops, and recovery.",
+      "links": [
+        {
+          "label": "ZERO case study",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Adaptive Upload Gesture Scope。ファイルは outputs/2026-07-19_adaptive_upload_gesture_scope.html。実際に動く内容は、upload queue、warmed tile、stale hitch residue、gesture frost、quality downgrade、scan ring を WebGL fragment shader だけで描く最小プログラムです。ポインタで lens を動かし、押下で frost/upload pressure を増幅し、スペースキーで synthetic upload spike を入れられます。次に足すなら、requestIdleCallback queue、renderer.initTexture() 相当の prewarm event、Web Audio analyser、SOG chunk load JSON を順番に接続します。",
+      "bodyEn": "The selected prototype is Adaptive Upload Gesture Scope at outputs/2026-07-19_adaptive_upload_gesture_scope.html. It is a minimal WebGL fragment-shader program that draws upload queue, warmed tiles, stale hitch residue, gesture frost, quality downgrade, and scan rings. The pointer moves the lens, holding amplifies frost/upload pressure, and Space injects a synthetic upload spike. Next, connect a requestIdleCallback queue, renderer.initTexture-style prewarm events, a Web Audio analyser, and SOG chunk-load JSON in that order.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-19_adaptive_upload_gesture_scope.html"
+        }
+      ]
+    }
+  ]
+}

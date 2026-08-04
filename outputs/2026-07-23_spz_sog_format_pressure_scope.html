@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPZ SOG Format Pressure Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #070908;
+      color: #eaf8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      max-width: min(560px, calc(100vw - 36px));
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(234, 248, 240, 0.86);
+      text-shadow: 0 1px 14px #000;
+      pointer-events: none;
+    }
+    .hud b { color: #fff; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <b>SPZ SOG Format Pressure Scope</b><br />
+    pointer: decode lens / hold: streaming pressure / space: high-res capture spike / F: format gate
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform vec2 history;
+      uniform float time;
+      uniform float hold;
+      uniform float spike;
+      uniform float gate;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.17, 289.31))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float line(float value, float target, float width) {
+        return 1.0 - smoothstep(0.0, width, abs(value - target));
+      }
+
+      float ring(vec2 p, vec2 c, float radius, float width) {
+        return 1.0 - smoothstep(width * 0.45, width, abs(length(p - c) - radius));
+      }
+
+      mat2 rot(float a) {
+        float s = sin(a);
+        float c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      float ellipse(vec2 p, vec2 c, vec2 r, float a) {
+        vec2 q = rot(a) * (p - c);
+        float d = dot(q / r, q / r);
+        return exp(-d * 2.6);
+      }
+
+      vec3 palette(float t) {
+        vec3 a = vec3(0.05, 0.10, 0.08);
+        vec3 b = vec3(0.15, 0.50, 0.35);
+        vec3 c = vec3(0.85, 0.72, 0.25);
+        vec3 d = vec3(0.94, 0.22, 0.24);
+        return mix(mix(a, b, smoothstep(0.0, 0.45, t)), mix(c, d, smoothstep(0.55, 1.0, t)), smoothstep(0.35, 0.95, t));
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 lens = (pointer * 2.0 - 1.0) * vec2(resolution.x / min(resolution.x, resolution.y), 1.0);
+        vec2 lag = (history * 2.0 - 1.0) * vec2(resolution.x / min(resolution.x, resolution.y), 1.0);
+
+        vec2 tile = floor((uv - 0.5) * vec2(18.0, 12.0));
+        vec2 cell = fract((uv - 0.5) * vec2(18.0, 12.0)) - 0.5;
+        float id = hash(tile + 19.0);
+
+        float spzQuant = smoothstep(0.12, 0.96, noise(tile * 0.21 + time * 0.04));
+        float sogLod = smoothstep(0.10, 0.94, noise(tile * 0.17 - time * 0.03 + 9.0));
+        float gltfCompat = smoothstep(0.22, 0.78, noise(tile * 0.13 + gate * 3.2));
+        float depthPick = smoothstep(0.18, 0.92, noise(tile * 0.29 + vec2(0.0, time * 0.02)));
+
+        float lensFalloff = 1.0 - smoothstep(0.08, 0.70, length(p - lens));
+        float lagFalloff = 1.0 - smoothstep(0.05, 0.56, length(p - lag));
+        float streamPressure = max(hold, spike) * (0.35 + 0.65 * lagFalloff);
+        float pressure = clamp(spzQuant * 0.38 + (1.0 - sogLod) * 0.26 + (1.0 - gltfCompat) * gate * 0.32 + streamPressure * 0.42, 0.0, 1.0);
+
+        vec3 col = mix(vec3(0.025, 0.035, 0.028), palette(pressure), 0.75);
+        float border = max(line(abs(cell.x), 0.49, 0.018), line(abs(cell.y), 0.49, 0.018));
+        col += border * mix(vec3(0.12, 0.42, 0.31), vec3(0.95, 0.45, 0.25), pressure) * 0.50;
+
+        float splat = 0.0;
+        for (int i = 0; i < 5; i++) {
+          float fi = float(i);
+          vec2 offset = vec2(hash(tile + fi), hash(tile + fi + 4.0)) - 0.5;
+          vec2 center = (tile + 0.5 + offset * 0.72) / vec2(18.0, 12.0) * 2.0;
+          center.x *= resolution.x / min(resolution.x, resolution.y);
+          center.y *= 1.0;
+          vec2 radius = vec2(0.018 + 0.025 * hash(tile + fi + 8.0), 0.010 + 0.032 * hash(tile + fi + 11.0));
+          splat += ellipse(p, center, radius * (1.0 + 1.6 * lensFalloff), id * 6.28 + fi);
+        }
+
+        col += splat * mix(vec3(0.10, 0.55, 0.38), vec3(1.0, 0.78, 0.34), spzQuant) * (0.18 + 0.55 * lensFalloff);
+        col += ring(p, lens, 0.27 + hold * 0.16, 0.012) * vec3(0.36, 1.0, 0.70);
+        col += ring(p, lag, 0.18 + spike * 0.26, 0.018) * vec3(1.0, 0.42, 0.30);
+
+        float guideX = line(uv.x, pointer.x, 0.0018);
+        float guideY = line(uv.y, pointer.y, 0.0018);
+        col += (guideX + guideY) * vec3(0.10, 0.45, 0.36) * 0.35;
+
+        float fog = smoothstep(0.42, 1.0, pressure + 0.20 * noise(p * 3.0 + time * 0.12));
+        col = mix(col, vec3(0.48, 0.34, 0.20), fog * (0.16 + 0.35 * streamPressure));
+
+        float scan = sin((uv.y + time * 0.08) * 260.0) * 0.5 + 0.5;
+        col += scan * streamPressure * vec3(0.35, 0.09, 0.03);
+
+        vec3 legend = vec3(0.0);
+        legend += smoothstep(0.012, 0.0, abs(uv.y - 0.94)) * step(0.05, uv.x) * step(uv.x, 0.20) * vec3(0.30, 0.95, 0.54);
+        legend += smoothstep(0.012, 0.0, abs(uv.y - 0.90)) * step(0.05, uv.x) * step(uv.x, 0.20) * vec3(0.95, 0.75, 0.26);
+        legend += smoothstep(0.012, 0.0, abs(uv.y - 0.86)) * step(0.05, uv.x) * step(uv.x, 0.20) * vec3(0.95, 0.24, 0.24);
+        col += legend * 0.65;
+
+        gl_FragColor = vec4(pow(col, vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      history: gl.getUniformLocation(program, "history"),
+      time: gl.getUniformLocation(program, "time"),
+      hold: gl.getUniformLocation(program, "hold"),
+      spike: gl.getUniformLocation(program, "spike"),
+      gate: gl.getUniformLocation(program, "gate")
+    };
+
+    const state = {
+      pointer: [0.54, 0.48],
+      history: [0.54, 0.48],
+      hold: 0,
+      spike: 0,
+      gate: 1
+    };
+
+    addEventListener("pointermove", (event) => {
+      state.pointer[0] = event.clientX / innerWidth;
+      state.pointer[1] = 1 - event.clientY / innerHeight;
+    });
+    addEventListener("pointerdown", () => { state.hold = 1; });
+    addEventListener("pointerup", () => { state.hold = 0; });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") state.spike = 1;
+      if (event.key.toLowerCase() === "f") state.gate = state.gate > 0.5 ? 0 : 1;
+    });
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(innerWidth * dpr));
+      const height = Math.max(1, Math.floor(innerHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function frame(now) {
+      resize();
+      state.history[0] += (state.pointer[0] - state.history[0]) * 0.045;
+      state.history[1] += (state.pointer[1] - state.history[1]) * 0.045;
+      state.spike *= 0.94;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform2f(uniforms.history, state.history[0], state.history[1]);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.hold, state.hold);
+      gl.uniform1f(uniforms.spike, state.spike);
+      gl.uniform1f(uniforms.gate, state.gate);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

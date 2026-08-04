@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gaussian LOD Scope</title>
+  <style>
+    :root {
+      --bg: #060809;
+      --ink: #f1f6f2;
+      --muted: #aab7ae;
+      --line: rgba(241, 246, 242, 0.16);
+      --panel: rgba(6, 8, 9, 0.68);
+      --accent: #8bf0d2;
+      --hot: #ffcf66;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #060809;
+      cursor: crosshair;
+    }
+
+    .chrome {
+      position: fixed;
+      inset: 18px;
+      display: grid;
+      grid-template-columns: minmax(240px, 380px) 1fr;
+      gap: 16px;
+      align-items: start;
+      pointer-events: none;
+    }
+
+    .panel {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+
+    .readout {
+      display: grid;
+      gap: 7px;
+      margin-top: 13px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .readout b { color: var(--hot); font-weight: 700; }
+
+    .nav {
+      justify-self: end;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      pointer-events: auto;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--panel);
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 700;
+      backdrop-filter: blur(18px);
+    }
+
+    .nav a:hover { border-color: rgba(139, 240, 210, 0.4); }
+
+    .meter {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(241, 246, 242, 0.12);
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .meter span {
+      display: block;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--hot));
+      transform-origin: left;
+    }
+
+    @media (max-width: 760px) {
+      .chrome {
+        grid-template-columns: 1fr;
+        inset: 12px;
+      }
+
+      .nav {
+        justify-self: start;
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="chrome">
+    <section class="panel">
+      <h1>Gaussian LOD Scope</h1>
+      <p>
+        Gaussian Splatting の LOD と MSDF/SDF のエッジ品質を、単体 WebGL シェーダーで触れる形にした試作です。
+        ポインタ付近だけ輪郭と点群が細かく、周辺は大きなガウス粒と粗い輪郭へ落ちます。
+      </p>
+      <div class="readout">
+        <span><b>入力</b> ポインタ移動で高精細スコープを移動</span>
+        <span><b>変化</b> クリック中は LOD 半径と発光を拡大</span>
+        <span><b>発展</b> 実 GSplat の lodRange や XR の視線中心に接続</span>
+      </div>
+    </section>
+    <nav class="nav" aria-label="Sample navigation">
+      <a href="../days/2026-07-02.html">その日のページ / Day</a>
+      <a href="../index.html">トップ / Home</a>
+    </nav>
+  </div>
+  <div class="meter" aria-hidden="true"><span id="meterFill"></span></div>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const meterFill = document.getElementById("meterFill");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    if (!gl) {
+      document.body.innerHTML = "<p style='padding:24px'>WebGL is not available in this browser.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      varying vec2 vUv;
+      void main() {
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      varying vec2 vUv;
+      uniform vec2 resolution;
+      uniform vec2 focus;
+      uniform float time;
+      uniform float pressed;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(127.1, 311.7));
+        p += dot(p, p + 19.19);
+        return fract(p.x * p.y);
+      }
+
+      vec2 hash2(vec2 p) {
+        return vec2(hash(p + 1.7), hash(p + 9.2));
+      }
+
+      float sdRing(vec2 p, float r, float w) {
+        return abs(length(p) - r) - w;
+      }
+
+      float glyphSdf(vec2 p) {
+        p.x += 0.035 * sin(time * 0.8 + p.y * 11.0);
+        float ringA = sdRing(p, 0.27, 0.018);
+        float ringB = sdRing(p - vec2(0.18, -0.06), 0.14, 0.014);
+        float bar = max(abs(p.x + 0.08) - 0.018, abs(p.y) - 0.31);
+        return min(min(ringA, ringB), bar);
+      }
+
+      float gaussianCell(vec2 p, float cells, float lod) {
+        vec2 grid = p * cells;
+        vec2 id = floor(grid);
+        vec2 local = fract(grid) - 0.5;
+        vec2 offset = hash2(id) - 0.5;
+        offset += 0.18 * vec2(sin(time * 0.7 + hash(id) * 6.28), cos(time * 0.6 + hash(id + 4.0) * 6.28));
+        vec2 q = local - offset * 0.62;
+        float radius = mix(0.11, 0.028, lod);
+        float g = exp(-dot(q, q) / max(0.001, radius));
+        float keep = smoothstep(0.18, 0.94, hash(id + floor(time * 0.2)));
+        return g * keep;
+      }
+
+      vec3 palette(float t) {
+        vec3 a = vec3(0.06, 0.09, 0.08);
+        vec3 b = vec3(0.10, 0.95, 0.73);
+        vec3 c = vec3(1.00, 0.73, 0.24);
+        vec3 d = vec3(0.45, 0.56, 1.00);
+        return mix(a, b, smoothstep(0.0, 0.55, t)) + c * pow(t, 4.0) + d * pow(max(0.0, t - 0.42), 2.0);
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
+        vec2 p = (uv - 0.5) * aspect;
+        vec2 f = (focus - 0.5) * aspect;
+        float distanceToFocus = length(p - f);
+        float scope = smoothstep(0.44 + pressed * 0.2, 0.03, distanceToFocus);
+        float mid = smoothstep(0.88, 0.12, distanceToFocus);
+
+        vec2 warped = p;
+        warped += 0.045 * vec2(sin(time * 0.35 + p.y * 4.0), cos(time * 0.31 + p.x * 5.0));
+        float coarse = gaussianCell(warped, 10.0, 0.0);
+        float fine = gaussianCell(warped + vec2(0.13, -0.08), 31.0, 1.0);
+        float splat = mix(coarse, fine, scope);
+
+        vec2 glyphP = (p - f) / (0.72 + pressed * 0.2);
+        glyphP *= mat2(cos(time * 0.09), -sin(time * 0.09), sin(time * 0.09), cos(time * 0.09));
+        float d = glyphSdf(glyphP);
+        float aa = mix(0.018, 0.0035, scope);
+        float edge = smoothstep(aa, -aa, d);
+        float halo = smoothstep(0.1, 0.0, abs(d));
+
+        float scan = smoothstep(0.022, 0.0, abs(fract((p.y + time * 0.05) * 18.0) - 0.5));
+        float vignette = smoothstep(1.28, 0.2, length(p));
+        vec3 color = vec3(0.012, 0.018, 0.016);
+        color += palette(splat) * splat * (0.72 + mid * 0.55);
+        color += vec3(0.90, 1.0, 0.88) * edge * (0.78 + pressed * 0.42);
+        color += vec3(0.18, 0.95, 0.70) * halo * (0.25 + scope * 0.5);
+        color += vec3(0.25, 0.33, 0.30) * scan * (0.16 + scope * 0.12);
+        color *= vignette;
+        color += vec3(1.0, 0.76, 0.32) * pow(scope, 8.0) * (0.35 + pressed * 0.45);
+        gl_FragColor = vec4(pow(color, vec3(0.88)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, "position");
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      focus: gl.getUniformLocation(program, "focus"),
+      time: gl.getUniformLocation(program, "time"),
+      pressed: gl.getUniformLocation(program, "pressed")
+    };
+
+    const pointer = { x: 0.5, y: 0.5, down: 0 };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(window.innerWidth * dpr);
+      const height = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function setPointer(event) {
+      pointer.x = event.clientX / window.innerWidth;
+      pointer.y = 1 - event.clientY / window.innerHeight;
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", setPointer);
+    window.addEventListener("pointerdown", (event) => {
+      setPointer(event);
+      pointer.down = 1;
+    });
+    window.addEventListener("pointerup", () => {
+      pointer.down = 0;
+    });
+
+    function frame(now) {
+      resize();
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.focus, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.pressed, pointer.down);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      meterFill.style.transform = `scaleX(${0.35 + pointer.down * 0.28 + Math.abs(pointer.x - 0.5) * 0.24})`;
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

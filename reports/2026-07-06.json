@@ -1,0 +1,219 @@
+{
+  "date": "2026-07-06",
+  "headline": "焦点制御を splat 診断レンズへ広げる",
+  "headlineEn": "Extending focus control into a splat diagnostic lens",
+  "summary": "今日は、three.js r185 の HTMLTexture/WebGPU/WebXR 更新、Babylon.js 9.15.0、PlayCanvas v2.20 系と SuperSplat、WICG HTML-in-Canvas、WebXR Layers、そして 2026-06-25 投稿の Vis4GS を確認しました。前回までの可変 AA / focus field を、Gaussian splat の coverage、blur、needle artifact を見る診断レンズへ接続し、単体 WebGL サンプルとして実装しました。",
+  "summaryEn": "Today checks three.js r185 HTMLTexture/WebGPU/WebXR updates, Babylon.js 9.15.0, PlayCanvas v2.20 and SuperSplat, WICG HTML-in-Canvas, WebXR Layers, and the June 25, 2026 Vis4GS paper. It connects the recent adaptive-AA focus-field thread to a diagnostic lens for Gaussian splat coverage, blur, and needle-like artifacts, implemented as a standalone WebGL sample.",
+  "links": [
+    {
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "SuperSplat Editor",
+      "url": "https://github.com/playcanvas/supersplat"
+    },
+    {
+      "label": "WICG HTML-in-Canvas",
+      "url": "https://github.com/WICG/html-in-canvas"
+    },
+    {
+      "label": "WebXR Layers",
+      "url": "https://github.com/immersive-web/layers"
+    },
+    {
+      "label": "Vis4GS paper",
+      "url": "https://arxiv.org/abs/2606.26985"
+    },
+    {
+      "label": "Today's sample: Splat Diagnostic Lens",
+      "url": "../outputs/2026-07-06_splat_diagnostic_lens.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js は 2026-07-06 時点で r185 が最新として表示され、HTMLTexture が WICG HTML-in-Canvas の新しい API signature に追従し、WebGPURenderer では WebXR support も入っています。2. Babylon.js は 9.15.0 系の WebGPU sRGB、OpenPBR fuzz、tree-shaking 後の side-effect 登録など、色とマテリアルの信頼性寄りの更新が引き続き重要です。3. PlayCanvas Engine v2.20 系では HTML-in-Canvas texture upload、GSplat stereo XR / foveated culling、MSDF AA 修正が同じ線上にあり、SuperSplat はブラウザで splat を検査・編集・最適化・公開する実制作側の入口です。4. WICG HTML-in-Canvas は drawElementImage / texElementImage2D / copyElementImageToTexture と paint/requestPaint を通じて、DOM を GPU 素材として扱う方向を継続しています。5. Vis4GS は 3DGS の最終見た目だけでなく、Gaussian property、View Coverage、training progress、densification genealogy を結び、artifact を primitive 単位で診断する視点を提示しています。",
+      "bodyEn": "1. As of 2026-07-06, three.js r185 is shown as the latest release; HTMLTexture follows newer WICG HTML-in-Canvas API signatures, and WebGPURenderer includes WebXR support. 2. Babylon.js 9.15.0 remains relevant for color and material reliability through WebGPU sRGB, OpenPBR fuzz, and side-effect registration after tree shaking. 3. PlayCanvas Engine v2.20 links HTML-in-Canvas texture upload, GSplat stereo XR / foveated culling, and MSDF AA fixes, while SuperSplat is a production-facing browser tool for inspecting, editing, optimizing, and publishing splats. 4. WICG HTML-in-Canvas keeps moving DOM toward GPU material via drawElementImage, texElementImage2D, copyElementImageToTexture, and paint/requestPaint. 5. Vis4GS shifts attention from final 3DGS appearance to primitive-level diagnosis through Gaussian properties, View Coverage, training progress, and densification genealogy.",
+      "links": [
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "SuperSplat GitHub",
+          "url": "https://github.com/playcanvas/supersplat"
+        },
+        {
+          "label": "Vis4GS",
+          "url": "https://arxiv.org/abs/2606.26985"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Vis4GS が面白いのは、Gaussian splat を『きれいに見る対象』から『診断できる素材』へ変えている点です。View Coverage、blur score、needle-like artifact、clone/split/prune の履歴を見られると、表現側でも単なる LOD ではなく、どの部分を意図的に粗くするか、どこだけ観客に読ませるか、どの artifact を演出に転用するかを決めやすくなります。SuperSplat のような編集ツールと組み合わせると、スキャン空間に情報膜や焦点レンズを重ねるだけでなく、splat の弱点そのものをインタラクションの手がかりにできます。",
+      "bodyEn": "Vis4GS is interesting because it turns Gaussian splats from something to view beautifully into material that can be diagnosed. When View Coverage, blur score, needle-like artifacts, and clone/split/prune history become visible, expression work can go beyond LOD and decide what should remain coarse, where viewers should be allowed to read, and which artifacts can become part of the effect. Combined with tools like SuperSplat, scanned spaces can use their own weak points as interaction cues rather than just placing information membranes or focus lenses on top.",
+      "links": [
+        {
+          "label": "Vis4GS paper",
+          "url": "https://arxiv.org/abs/2606.26985"
+        },
+        {
+          "label": "SuperSplat Editor repository",
+          "url": "https://github.com/playcanvas/supersplat"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期では、前回の adaptive MSDF / grain field を『診断レンズ』に変換します。ポインタ周辺だけ coverage ring、blur/needle heat、splat halo を出し、焦点外では空間が通常の粒子景観に戻る構成です。中期では、HTMLTexture の注釈をこのレンズ内だけ表示し、artifact score が高い splat にだけ警告や詩的なラベルを出すと、スキャン空間の欠落を作品の情報設計にできます。長期では、XR で背景 splat layer、診断 layer、注釈 layer を分け、視線・手・音で診断モードを浮上させる方向が有望です。",
+      "bodyEn": "In the short term, convert the previous adaptive MSDF / grain field into a diagnostic lens. Show coverage rings, blur/needle heat, and splat halos only around the pointer, while the unfocused area returns to a particle landscape. In the mid term, show HTMLTexture annotations only inside this lens and attach warnings or poetic labels to high-artifact splats, turning scan defects into information design. In the long term, separate background splat layers, diagnostic layers, and annotation layers in XR, letting gaze, hand movement, or audio bring diagnostic mode to the surface.",
+      "links": [
+        {
+          "label": "Previous adaptive MSDF sample",
+          "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+        },
+        {
+          "label": "Previous SDF focus sample",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        },
+        {
+          "label": "WebXR Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "focus field は今回も 0..1 の scalar として扱い、splat の halo 強度、coverage ring の透明度、artifact heat の色、scanline 密度へ配ると拡張しやすいです。実データに進む場合は、各 splat に opacity、scale anisotropy、screen-space footprint、view count 由来の coverage を持たせ、lens 内だけ attribute texture から診断値を読む構成が軽いです。HTML-in-Canvas と組み合わせる場合は、paint/requestPaint の更新頻度を lens 内だけに絞る発想が有効で、XR Layers では診断表示を quad/cylinder/equirect など別レイヤーへ逃がすと背景の splat 品質と UI 可読性を分けられます。",
+      "bodyEn": "Keep the focus field as a 0..1 scalar and distribute it to splat halo intensity, coverage-ring opacity, artifact-heat color, and scanline density. With real data, attach opacity, scale anisotropy, screen-space footprint, and view-count-derived coverage to each splat, then read diagnostic values from an attribute texture only inside the lens. With HTML-in-Canvas, limit paint/requestPaint updates to the lens region; in XR Layers, move diagnostic display into a separate quad, cylinder, or equirect layer so background splat quality and UI readability can be tuned separately.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "WebXR Layers repository",
+          "url": "https://github.com/immersive-web/layers"
+        },
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は three.js HTMLTexture/WebGPU/WebXR、Babylon.js WebGPU color/material、PlayCanvas GSplat/HTML-in-Canvas/MSDF、SuperSplat、WICG HTML-in-Canvas、WebXR Layers です。新規案件は Vis4GS 型の診断 UI、3DGS の artifact score、coverage 可視化、splat の編集履歴です。寝かせる案件はカード UI、通常のダッシュボード、重い XR アプリ雛形です。このプロジェクトでは、診断値をそのまま表現パラメータに変える方向へ寄せます。",
+      "bodyEn": "Continue watching three.js HTMLTexture/WebGPU/WebXR, Babylon.js WebGPU color/material work, PlayCanvas GSplat/HTML-in-Canvas/MSDF, SuperSplat, WICG HTML-in-Canvas, and WebXR Layers. New watch items are Vis4GS-style diagnostic UI, 3DGS artifact scores, coverage visualization, and splat edit history. Put card UI, ordinary dashboards, and heavy XR app scaffolds aside. This project should lean toward turning diagnostic values directly into expressive parameters.",
+      "links": [
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、splat の artifact を隠すのではなく、焦点が合った時だけ見える診断情報として描くことです。今回のサンプルは outputs/2026-07-06_splat_diagnostic_lens.html で、ポインタ周辺に coverage ring、blur/needle heat、scanline、splat halo が出ます。押している間は inspection field が広がり、診断範囲が大きくなります。次に足すなら、実 SuperSplat/PLY の attribute を読む前段として、2D texture に疑似 coverage/anisotropy を焼き、レンズ内だけ lookup するのが良いです。",
+      "bodyEn": "If trying one thing today, do not hide splat artifacts; draw them as diagnostic information that appears only when focus arrives. Today's sample is outputs/2026-07-06_splat_diagnostic_lens.html: coverage rings, blur/needle heat, scanlines, and splat halos appear around the pointer. Holding/clicking expands the inspection field. Next, before loading real SuperSplat/PLY attributes, bake pseudo coverage/anisotropy into a 2D texture and look it up only inside the lens.",
+      "links": [
+        {
+          "label": "Open today's sample",
+          "url": "../outputs/2026-07-06_splat_diagnostic_lens.html"
+        },
+        {
+          "label": "SuperSplat",
+          "url": "https://github.com/playcanvas/supersplat"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r185、Babylon.js 9.15.0 系、PlayCanvas v2.20 系、SuperSplat、WICG HTML-in-Canvas、WebXR Layers、Vis4GS を確認。アイデア検討: 2026-07-03 の HTML texture、2026-07-04 の SDF focus membrane、2026-07-05 の adaptive MSDF grain を、splat 診断 lens に接続。サンプル実装: 単体 WebGL/GLSL で疑似 splat field、coverage ring、blur/needle heat、押下時の lens 拡張を実装。結果の検証: JSON 保存後に gallery build と publish を実行。短期で試すものは shader 内の診断レンズ、中長期で育てるものは実 splat attribute + HTMLTexture 注釈 + XR Layers 分離表示です。",
+      "bodyEn": "Research: checked three.js r185, Babylon.js 9.15.0-line updates, PlayCanvas v2.20, SuperSplat, WICG HTML-in-Canvas, WebXR Layers, and Vis4GS. Ideation: connected the July 3 HTML texture sample, July 4 SDF focus membrane, and July 5 adaptive MSDF grain to a splat diagnostic lens. Prototype: implemented a pseudo splat field, coverage rings, blur/needle heat, and press-to-expand lens in standalone WebGL/GLSL. Evaluation: after saving JSON, run gallery build and publish. The short-term experiment is a shader-side diagnostic lens; the mid-to-long-term theme is real splat attributes plus HTMLTexture annotations plus separated XR Layers display.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-06_splat_diagnostic_lens.html"
+        },
+        {
+          "label": "Previous adaptive MSDF sample",
+          "url": "../outputs/2026-07-05_adaptive_msdf_grain_field.html"
+        },
+        {
+          "label": "Vis4GS",
+          "url": "https://arxiv.org/abs/2606.26985"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは『情報を GPU texture にする』、『注意が向いた場所だけ高品質化する』に続き、『品質や artifact の理由を見せる』へ進められます。HTML-in-Canvas は情報面、MSDF は可読性、GSplat/foveated culling は空間品質配分、Vis4GS は診断軸、WebXR Layers は表示分離を担えます。組み合わせ候補は、1. splat diagnostic lens + HTMLTexture 注釈、2. artifact score + 音反応、3. coverage heat + gaze/focus field、4. SuperSplat 編集履歴 + 時間方向の shader、5. XR Layers + 診断 mode の出し入れ。育てる価値が高いテーマは『欠陥を隠す最適化』ではなく『欠陥を読める演出へ変える最適化』です。",
+      "bodyEn": "The recent path can move from making information into GPU textures, to raising quality only where attention arrives, and now to showing why quality or artifacts exist. HTML-in-Canvas provides information surfaces, MSDF provides readability, GSplat/foveated culling provides spatial quality allocation, Vis4GS provides diagnostic axes, and WebXR Layers provides display separation. Promising combinations are: splat diagnostic lens plus HTMLTexture annotations, artifact score plus audio reactivity, coverage heat plus gaze/focus fields, SuperSplat edit history plus temporal shaders, and XR Layers plus toggled diagnostic modes. The high-value theme is not optimization that hides defects, but optimization that turns defects into readable expression.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "Vis4GS",
+          "url": "https://arxiv.org/abs/2606.26985"
+        },
+        {
+          "label": "WebXR Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Splat Diagnostic Lens です。ファイルは outputs/2026-07-06_splat_diagnostic_lens.html。WebGL fragment shader だけで疑似 Gaussian splat field を描き、ポインタ周辺だけ coverage ring、blur score、needle-like artifact heat、halo を表示します。次に発展させるなら、1. 実 splat の scale/opacity/view count を attribute texture 化、2. lens 内だけ HTMLTexture 注釈を表示、3. Web Audio peak で診断半径や artifact heat を変調、4. XR Layers で背景 splat と診断 layer を分離、の順が良いです。",
+      "bodyEn": "The selected mini prototype is Splat Diagnostic Lens. The file is outputs/2026-07-06_splat_diagnostic_lens.html. A single WebGL fragment shader draws a pseudo Gaussian splat field and reveals coverage rings, blur score, needle-like artifact heat, and halos only around the pointer. Next steps: turn real splat scale/opacity/view count into an attribute texture, show HTMLTexture annotations only inside the lens, modulate diagnostic radius or artifact heat with Web Audio peaks, then separate background splats and the diagnostic layer through XR Layers.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-06_splat_diagnostic_lens.html"
+        }
+      ]
+    }
+  ]
+}

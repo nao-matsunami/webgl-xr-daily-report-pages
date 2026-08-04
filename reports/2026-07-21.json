@@ -1,0 +1,187 @@
+{
+  "date": "2026-07-21",
+  "headline": "書き出し前診断と作業平面を shader scope に重ねる",
+  "headlineEn": "Layer export preflight and working planes into a shader scope",
+  "summary": "2026-07-21 は、SuperSplat v2.32.1 / v2.32.0 の video export preflight と Orient tool / grid plane 更新を新規トピックとして拾い、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6 の継続状況と接続しました。昨日の temporal hysteresis / upload queue を、動画書き出し前の capability、encode queue、failed tile、作業平面 pivot まで読める診断レイヤーへ進めます。",
+  "summaryEn": "For 2026-07-21, I picked up SuperSplat v2.32.1 / v2.32.0 video export preflight plus Orient tool / grid plane updates, then connected them to the continuing state of three.js r185, Babylon.js 9.17.0, and PlayCanvas Engine v2.20.6. Yesterday's temporal hysteresis / upload queue becomes a diagnostic layer for export capability, encode queue, failed tiles, and working-plane pivots.",
+  "links": [
+    {
+      "label": "SuperSplat v2.32.1",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.1"
+    },
+    {
+      "label": "SuperSplat v2.32.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.0"
+    },
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.17.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "3D Wave Grid",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-21_export_preflight_plane_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. SuperSplat v2.32.1 が 2026-07-20 に公開され、capability-aware video export preflight が追加されました。これは単なる書き出し UI ではなく、ブラウザ/端末/codec の可否を作品側の状態として先読みできる材料です。2. SuperSplat v2.32.0 では grid plane setting、Orient tool、3-point plane alignment、persistent local frames が入り、splat 編集時の作業平面を明示できるようになっています。昨日までの pointer history / state scope に pivot plane を重ねると、編集・移動・書き出しを同じ shader 診断で読めます。3. three.js は r185 が最新で、HTMLTexture の HTML-in-Canvas signature 対応、TSL textureGather / storageTexture3D、WebGPU/WebGL renderer の compileAsync / render bundle 修正が継続案件です。4. Babylon.js 9.17.0 は GaussianSplattingStream の LOD switch retry cooldown と safe-orbit camera limits が継続して重要です。5. PlayCanvas Engine v2.20.6 は gsplat picking、SOG unload、mid-load unload、destroyed texture cache 修正が引き続き stream state 可視化の根拠になります。",
+      "bodyEn": "1. SuperSplat v2.32.1 shipped on 2026-07-20 with capability-aware video export preflight. This is not just export UI; it gives the artwork a way to read browser/device/codec readiness as state. 2. SuperSplat v2.32.0 added grid plane settings, the Orient tool, 3-point plane alignment, and persistent local frames. Layering a pivot plane over yesterday's pointer history / state scope lets editing, moving, and exporting share one shader diagnostic. 3. three.js r185 remains current, with HTMLTexture support for HTML-in-Canvas signatures, TSL textureGather / storageTexture3D, and renderer compileAsync / render-bundle fixes. 4. Babylon.js 9.17.0 stays relevant for GaussianSplattingStream LOD switch retry cooldown and safe-orbit camera limits. 5. PlayCanvas Engine v2.20.6 continues to ground stream-state visualization through gsplat picking, SOG unload, mid-load unload, and destroyed texture cache fixes.",
+      "links": [
+        {
+          "label": "SuperSplat v2.32.1 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.1"
+        },
+        {
+          "label": "SuperSplat v2.32.0 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.0"
+        },
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.17.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.17.0"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は SuperSplat v2.32 系です。面白いのは、編集ツールの更新が『仕上げの直前に何が失敗しそうか』と『いま何を基準面として編集しているか』を明示する方向へ進んでいる点です。7/19 の adaptive upload、7/20 の temporal hysteresis は runtime の詰まりを見せる試作でしたが、今日の preflight は capture/export 直前の詰まりを見せる流れです。Codrops 側では ZERO / Trionn / The Sleepers に続き、3D Wave Grid や scroll-driven 3D gallery のような軽いインタラクティブ表現が継続して並んでおり、重いデータを扱う前に状態・遅延・作業面を見せる layer を持つ価値が上がっています。",
+      "bodyEn": "Today's notable source is the SuperSplat v2.32 line. The interesting shift is that editor updates are making two things explicit: what might fail right before finishing, and which working plane anchors the current edit. 07-19 adaptive upload and 07-20 temporal hysteresis visualized runtime stalls; today's preflight visualizes capture/export stalls. On the Codrops side, lightweight interactive examples such as 3D Wave Grid and scroll-driven 3D galleries continue alongside ZERO / Trionn / The Sleepers, reinforcing the value of a state/delay/working-plane layer before handling heavier data.",
+      "links": [
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "ZERO case study",
+          "url": "https://tympanus.net/codrops/2026/07/17/zero-the-engineering-behind-a-defiant-interactive-narrative/"
+        },
+        {
+          "label": "Trionn case study",
+          "url": "https://tympanus.net/codrops/2026/07/15/the-architecture-behind-trionn-coordinating-gsap-three-js-lenis-and-web-audio/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "中心案は『Export Preflight Plane Scope』です。画面上に作業平面グリッド、現在 pivot、遅れて追従する history pivot、capability band、encode queue、failed tile を重ねます。ポインタ移動は pivot、押下は encode pressure、Space は capability spike、P は XZ / XY / YZ の平面切替です。短期では実 codec 判定を持たない疑似 preflight で十分です。中長期では、MediaRecorder.isTypeSupported、canvas captureStream、SuperSplat video export preflight、SOG chunk state、Babylon retry cooldown、Web Audio analyser をひとつの state texture にまとめ、作品の『撮れる/撮れない/粗くなる/平面がずれる』を見せる演出にします。",
+      "bodyEn": "The core idea is Export Preflight Plane Scope. The screen layers a working-plane grid, current pivot, lagged history pivot, capability band, encode queue, and failed tiles. Pointer movement controls the pivot, holding adds encode pressure, Space injects a capability spike, and P switches XZ / XY / YZ planes. Short term, a simulated preflight is enough. Mid/long term, MediaRecorder.isTypeSupported, canvas captureStream, SuperSplat video export preflight, SOG chunk state, Babylon retry cooldown, and a Web Audio analyser can feed one state texture that shows whether the piece can be captured, degrades, or loses its working plane.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-21_export_preflight_plane_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "今日の実装メモは、preflight を boolean で終わらせず、shader が読める連続値にすることです。R=failed / unsupported risk、G=capability pass、B=queue / encode pressure、A=plane validity として持つと、7/13 以降の semantic / latency / selection / SOG retry の RGBA 設計にそのまま接続できます。JS 側では history pivot、queue、capability を指数減衰で管理し、GLSL は可視化に集中させます。実装を進めるなら、まず MediaRecorder.isTypeSupported で複数 mimeType の結果を capability array にし、canvas captureStream の有無、WebCodecs の有無、devicePixelRatio / canvas size / frame budget を加点減点して uniform 化します。",
+      "bodyEn": "Today's production note is to treat preflight as continuous shader-readable values, not a final boolean. R = failed / unsupported risk, G = capability pass, B = queue / encode pressure, and A = plane validity connects directly to the RGBA state design used since 07-13 for semantic, latency, selection, and SOG retry. Keep history pivot, queue, and capability as JS-side exponential decay values; let GLSL focus on visualization. Next, use MediaRecorder.isTypeSupported across multiple mimeTypes, then fold in canvas captureStream availability, WebCodecs availability, devicePixelRatio, canvas size, and frame budget as uniform scores.",
+      "links": [
+        {
+          "label": "SuperSplat v2.32.1",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.1"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: SuperSplat Streamed SOG、selection / orient / video export、PlayCanvas SOG unload/reload/cache、Babylon GaussianSplattingStream retry、three.js HTMLTexture / TSL / texture prewarm。新規案件: video export preflight を作品内 HUD ではなく shader layer として可視化すること、作業平面の XZ / XY / YZ 切替を grid warp / fog / depth label に反映すること。寝かせる案件: カード UI、重い学習 pipeline、完全 XR 専用体験、フル機能動画編集 UI。短期ウォッチは MediaRecorder / captureStream の実判定化。中長期ウォッチは、編集・streaming・capture・audio を同じ状態語彙で扱う creative QA layer です。",
+      "bodyEn": "Continue watching: SuperSplat Streamed SOG, selection / orient / video export, PlayCanvas SOG unload/reload/cache, Babylon GaussianSplattingStream retry, and three.js HTMLTexture / TSL / texture prewarming. New watch: visualizing video export preflight as a shader layer rather than an in-app HUD, and letting XZ / XY / YZ working-plane switches affect grid warp, fog, and depth labels. Park: card UI, heavy training pipelines, XR-only experiences, and full video-editor UI. Short term: real MediaRecorder / captureStream capability checks. Mid/long term: a creative QA layer where editing, streaming, capture, and audio use the same state vocabulary.",
+      "links": [
+        {
+          "label": "SuperSplat releases",
+          "url": "https://github.com/playcanvas/supersplat/releases"
+        },
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら outputs/2026-07-21_export_preflight_plane_scope.html を開きます。ポインタ移動で現在 pivot、青い history pivot、両者を結ぶ amber path が動きます。押下すると encode pressure と failed tile が増え、Space で capability が一時的に回復し、P で XZ / XY / YZ の作業平面が切り替わります。次に足すなら、疑似 capability を MediaRecorder.isTypeSupported と captureStream の実判定に置き換えるのが最短です。",
+      "bodyEn": "If you try one thing today, open outputs/2026-07-21_export_preflight_plane_scope.html. Pointer movement drives the current pivot, blue history pivot, and amber path between them. Holding increases encode pressure and failed tiles, Space temporarily recovers capability, and P switches the XZ / XY / YZ working plane. Next, replace simulated capability with real MediaRecorder.isTypeSupported and captureStream checks.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-21_export_preflight_plane_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: SuperSplat v2.32.1 / v2.32.0、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、Codrops の WebGL/three.js 事例群を確認。アイデア検討: 7/17 SOG retry budget、7/18 fog/audio scope、7/19 adaptive upload gesture、7/20 temporal hysteresis を、今日は export preflight と working plane に接続。サンプル実装: 単体 WebGL/GLSL で Export Preflight Plane Scope を追加。結果の検証: JSON 保存、gallery build、publish、ローカル/公開 URL 確認まで進めます。短期で試すもの: MediaRecorder / captureStream の実 capability uniform 化。中長期で育てるもの: stream validity、編集平面、書き出し可否、音、gesture、upload timing を 1 枚の状態 shader へ統合する制作診断レイヤー。",
+      "bodyEn": "Research: checked SuperSplat v2.32.1 / v2.32.0, three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and Codrops WebGL/three.js examples. Ideation: connected 07-17 SOG retry budget, 07-18 fog/audio scope, 07-19 adaptive upload gesture, and 07-20 temporal hysteresis to export preflight and working planes. Prototype: added Export Preflight Plane Scope as standalone WebGL/GLSL. Evaluation: save JSON, build gallery, publish, and verify local/public URLs. Short term: real MediaRecorder / captureStream capability uniforms. Mid/long term: one production diagnostic shader for stream validity, edit plane, export readiness, audio, gesture, and upload timing.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-21_export_preflight_plane_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、splat / shader を『見た目の膜』から『制作状態を読む計器』にする方向で一貫しています。7/13 semantic mask、7/14 latency residue、7/15 selection boolean、7/16 temporal diff、7/17 SOG retry budget、7/18 fog/audio scope、7/19 adaptive upload gesture、7/20 temporal hysteresis、7/21 export preflight plane と、状態の種類が runtime から editing / export まで広がりました。組み合わせ候補は、SuperSplat selection = R、PlayCanvas LOD quality = G、Babylon retry/cooldown = B、stream validity = A、Web Audio = temporal gain、gesture = seed、texture upload = pressure、history pointer = hysteresis、Orient plane = grid basis、video preflight = capture risk。育てる価値が高いテーマは、ユーザーが触る、読み込む、編集する、撮る、失敗する、復帰する、という制作の時間差を同じ可視言語で扱うことです。",
+      "bodyEn": "The recent direction is consistent: splat/shader work is becoming an instrument for reading production state, not just a visual surface. The sequence from 07-13 semantic mask, 07-14 latency residue, 07-15 selection boolean, 07-16 temporal diff, 07-17 SOG retry budget, 07-18 fog/audio scope, 07-19 adaptive upload gesture, 07-20 temporal hysteresis, and 07-21 export preflight plane expands state from runtime into editing and export. A strong mapping is SuperSplat selection = R, PlayCanvas LOD quality = G, Babylon retry/cooldown = B, stream validity = A, Web Audio = temporal gain, gesture = seed, texture upload = pressure, history pointer = hysteresis, Orient plane = grid basis, and video preflight = capture risk. The theme worth growing is one visual language for touching, loading, editing, capturing, failing, and recovering.",
+      "links": [
+        {
+          "label": "SuperSplat v2.32.1",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.1"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Export Preflight Plane Scope。ファイルは outputs/2026-07-21_export_preflight_plane_scope.html。実際に動く内容は、capability band、encode queue、failed tile、current pivot、history pivot、作業平面グリッドを WebGL fragment shader だけで描く最小プログラムです。ポインタで pivot、押下で encode pressure、Space で capability spike、P で XZ / XY / YZ plane を切り替えます。次に足すなら、MediaRecorder.isTypeSupported、canvas.captureStream、WebCodecs presence、SOG chunk event JSON、Web Audio analyser の順で接続します。",
+      "bodyEn": "The selected prototype is Export Preflight Plane Scope at outputs/2026-07-21_export_preflight_plane_scope.html. It is a minimal WebGL fragment-shader program drawing capability bands, encode queue, failed tiles, current pivot, history pivot, and a working-plane grid. Pointer controls the pivot, holding adds encode pressure, Space injects a capability spike, and P switches XZ / XY / YZ planes. Next, connect MediaRecorder.isTypeSupported, canvas.captureStream, WebCodecs presence, SOG chunk event JSON, and a Web Audio analyser in that order.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-21_export_preflight_plane_scope.html"
+        }
+      ]
+    }
+  ]
+}

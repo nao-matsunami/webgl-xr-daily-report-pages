@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XRの片目差分とフォールバックを演出レイヤーにする | 2026-08-04</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.04</p>
+      <h1>XRの片目差分とフォールバックを演出レイヤーにする</h1>
+      <p class="hero-subtitle">Turning XR eye differences and fallback states into an expressive layer</p>
+      <p>three.js の WebGPU/WebXR single-pass と DirectRenderPipeline、Babylon.js の WebGPU-XR フェーズ整理と KHR_interactivity、PlayCanvas の型/JSDoc 整備、Codrops の Bonhomme 記事を、前回の MRT fog refraction から「XR Eye Resolve Fog Scope」へ接続した。</p>
+      <p class="en-copy">Today connects three.js WebGPU/WebXR single-pass and DirectRenderPipeline work, Babylon.js WebGPU-XR phase planning and KHR_interactivity, PlayCanvas type/JSDoc hardening, and Codrops' Bonhomme article, extending yesterday's MRT fog refraction into an XR Eye Resolve Fog Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-03.html">← 2026.08.03</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>XR Eye Resolve Fog Scope - 2026-08-04</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は最新リリースが r185 のままだが、2026-08-03 時点で WebGPURenderer の single-pass WebXR PR #34153 と DirectRenderPipeline PR #34166 が動いている。前回見た MSAA/multiview と合わせると、XR で「左右眼をどうまとめ、どこで resolve し、どこから postprocess へ渡すか」が品質と表現の境界になる。2. Babylon.js は 9.19.0 が最新リリースで、同時に WebGPU-XR の Phase 2-5 issue が 10.0 milestone に置かれている。Phase 5 は capability detection、graceful fallback、手動 headset 検証、ドキュメント化が範囲で、制作側の実装判断に直結する。3. Babylon.js の KHR_interactivity importer PR #18615 は、refs/events/pointer selection/math ops を含む glTF 側の対話仕様追従で、将来的に 3D asset 側に操作ロジックを持たせる方向とつながる。4. PlayCanvas は v2.21.3 以降の大きな描画リリースはまだ出ていないが、PR #9151 で JSDoc と公開型を固める動きがある。LLM や型生成が読む情報を明示的に整える流れは、エンジン機能を制作テンプレートへ落とし込む上で重要。5. Codrops の Bonhomme 記事は、WebGL、リアルタイムレンダリング、シェーダー、高度な interaction をブランド物語のために使う姿勢を明確にしている。診断表示も単なる開発補助ではなく、意味のある micro-interaction に変えられる。</p>
+          <p class="en-copy">1. three.js still has r185 as the latest release, but WebGPURenderer single-pass WebXR PR #34153 and DirectRenderPipeline PR #34166 were active as of 2026-08-03. Together with the recent MSAA and multiview work, the boundary between quality and expression in XR is where eye views are combined, where resolve happens, and where post-processing begins. 2. Babylon.js 9.19.0 remains the latest release, while WebGPU-XR Phase 2-5 issues sit under the 10.0 milestone. Phase 5 covers capability detection, graceful fallback, manual headset validation, and documentation, directly affecting production decisions. 3. Babylon's KHR_interactivity importer PR #18615 follows glTF interaction features including refs, events, pointer selection, and math ops, pointing toward assets that carry interaction logic. 4. PlayCanvas has not shipped a larger rendering release after v2.21.3 yet, but PR #9151 hardens JSDoc and published types. Treating the information read by LLMs and generated types as a public surface matters when translating engine features into production templates. 5. Codrops' Bonhomme article frames WebGL, realtime rendering, shaders, and advanced interaction as storytelling tools. A diagnostic overlay can likewise become a meaningful micro-interaction rather than a developer-only aid.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34153" target="_blank" rel="noreferrer">three.js PR #34153</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34166" target="_blank" rel="noreferrer">three.js PR #34166</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.0" target="_blank" rel="noreferrer">Babylon.js 9.19.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18641" target="_blank" rel="noreferrer">Babylon.js WebGPU-XR Phase 5</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas PR #9151</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/03/the-story-is-in-the-interaction-bonhommes-digital-experiences-for-luxury-brands/" target="_blank" rel="noreferrer">Bonhomme on Codrops</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Bonhomme の記事で面白いのは、WebGL の海、ブランド体験、インスタレーションを「演出の派手さ」ではなく、物語と使いやすさを壊さない技術選択として語っている点。これは最近の MRT/compatibility prism 系の試作にも効く。デバッグ色をそのまま見せるのではなく、ユーザーの操作が何を露出しているかを物語化すると、品質検証と鑑賞体験が近づく。Babylon.js の WebGPU-XR フェーズ issue は、まだ実装完了ニュースではないが、unsupported の明示、fallback、manual headset check がセットになっているため、XR 表現では「壊れない入口」自体が演出設計になる。KHR_interactivity は、ポインタ選択やイベントを asset 由来に寄せられるので、shader 側の反応をシーンデータと結びやすい。</p>
+          <p class="en-copy">The interesting part of the Bonhomme article is that WebGL oceans, brand experiences, and installations are discussed as technical choices that serve narrative and usability, not just spectacle. That matters for the recent MRT and compatibility-prism prototypes: instead of showing raw debug colors, make the user's action explain what is being revealed. Babylon's WebGPU-XR phase issues are not completed implementation news, but their emphasis on unsupported behavior, fallback, and manual headset checks means that a non-breaking entry path is itself part of XR experience design. KHR_interactivity can move pointer selection and events closer to asset data, making shader reactions easier to bind to scene semantics.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/08/03/the-story-is-in-the-interaction-bonhommes-digital-experiences-for-luxury-brands/" target="_blank" rel="noreferrer">Bonhomme WebGL section</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18641" target="_blank" rel="noreferrer">Babylon.js WebGPU-XR Phase 5</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18615" target="_blank" rel="noreferrer">Babylon.js KHR_interactivity PR</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「XR Eye Resolve Fog Scope」。実 XR を立ち上げず、1枚の fragment shader で左右眼の微小差分、resolve error、fog coverage、padding residue を疑似的に描く。ポインタは stereo resolve lens になり、ドラッグ方向で左右眼の差分軸が傾き、クリック/Space で fallback pressure が上がる。昨日の MRT fog refraction とは、color/id/fog/padding の4レーンから、stereo/resolve/fog/padding の4レーンへ変えた関係。中長期案は、この lens を three.js WebXR の左右眼 capture、Babylon WebGPU-XR fallback state、PlayCanvas GSplat chunk/fog debug に接続すること。</p>
+          <p class="en-copy">The short-term idea is XR Eye Resolve Fog Scope. Without launching real XR, one fragment shader simulates left/right-eye micro-differences, resolve error, fog coverage, and padding residue. The pointer becomes a stereo resolve lens; dragging tilts the eye-disparity axis; click or Space raises fallback pressure. It extends yesterday's MRT fog refraction by shifting from color/id/fog/padding lanes to stereo/resolve/fog/padding lanes. Longer term, connect this lens to three.js WebXR eye captures, Babylon WebGPU-XR fallback state, and PlayCanvas GSplat chunk/fog debugging.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>XR の postprocess は、片目ごとの色・深度・fog を合成した後に何を共有し、何を個別に残すかが重要。single-pass/multiview は CPU/GPU コストを下げる一方、左右差分の検証を見落としやすいので、resolve error を色に出す debug pass を持つとよい。fallback 設計では、WebGPU-XR が使えない場合に単に 2D に落とすのではなく、機能不足を fog density、grain、色収差、入力遅延の演出へ変換できる。KHR_interactivity を視野に入れるなら、ポインタ選択、イベント名、数値パラメータを shader uniform に直接渡せる小さな bridge を作る。PlayCanvas の JSDoc/型整備は、サンプル生成や社内テンプレートで `renderTarget`, `texture`, `fog`, `splat` の API 誤読を減らす材料として見る。</p>
+          <p class="en-copy">For XR post-processing, decide which color, depth, and fog data is shared after eye composition and which data stays per-eye. Single-pass and multiview reduce CPU/GPU cost, but can hide eye-specific defects, so a debug pass that colors resolve error is useful. For fallback design, do not simply drop to 2D when WebGPU-XR is unavailable; convert missing capabilities into fog density, grain, chromatic offset, or input-latency staging. If tracking KHR_interactivity, build a small bridge that passes pointer selections, event names, and numeric parameters into shader uniforms. PlayCanvas JSDoc/type hardening is useful as material for sample generation and internal templates, reducing API misreads around render targets, textures, fog, and splats.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/docs/pages/WebGPURenderer.html" target="_blank" rel="noreferrer">three.js WebGPU renderer docs</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18641" target="_blank" rel="noreferrer">Babylon.js WebGPU-XR fallback issue</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas published types PR</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は #34153 single-pass WebXR、#34166 DirectRenderPipeline、r186 milestone、WebGLBackend multiview 系の続き。Babylon.js は WebGPU-XR の Phase 2 render target provider、Phase 3 projection/NDC、Phase 4 composition/quad layers、Phase 5 fallback/docs、KHR_interactivity #18615、次の 9.19.x/9.20.x。PlayCanvas は v2.21.4 以降、#9151 の merge、有効な型情報が GSplat/MRT/fog サンプルへどう効くか。Codrops は Bonhomme のような studio spotlight から、WebGL がブランド体験やインスタレーションでどう“目的を持つ演出”になっているかを継続観察する。</p>
+          <p class="en-copy">Watch three.js #34153 single-pass WebXR, #34166 DirectRenderPipeline, the r186 milestone, and continuing WebGLBackend multiview work. Watch Babylon.js WebGPU-XR Phase 2 render target provider, Phase 3 projection/NDC, Phase 4 composition/quad layers, Phase 5 fallback/docs, KHR_interactivity #18615, and the next 9.19.x/9.20.x releases. Watch PlayCanvas v2.21.4+, PR #9151 merge status, and how stronger type information affects GSplat, MRT, and fog samples. For Codrops, keep observing studio spotlights like Bonhomme to see how WebGL becomes purposeful staging for brand experiences and installations.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18640" target="_blank" rel="noreferrer">Babylon.js WebGPU-XR Phase 2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18639" target="_blank" rel="noreferrer">Babylon.js WebGPU-XR Phase 3</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、XR 対応を本格実装する前に、左右眼差分と resolve error を 2D shader で可視化する。これなら依存なしで数分で見られ、XR headset なしでも「片目で破綻する glow/fog/padding」をデザイン検討できる。操作は、1 stereo、2 resolve、3 fog、4 padding の切り替え、ドラッグで差分軸変更、クリック/Space で fallback pressure。</p>
+          <p class="en-copy">If trying one thing today, visualize eye disparity and resolve error in a 2D shader before implementing full XR. It requires no dependencies, can be inspected in minutes, and lets you design glow, fog, and padding failures that would otherwise appear per-eye in a headset. Controls are 1 stereo, 2 resolve, 3 fog, 4 padding, drag to change the disparity axis, and click or Space for fallback pressure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34153/#34166、Babylon WebGPU-XR phase issues と KHR_interactivity、PlayCanvas #9151、Codrops Bonhomme を収集。アイデア検討: 継続案件は MRT fog refraction、compatibility prism、flashlight mask、padding residue、WebXR per-eye overlay。新規案件は XR eye resolve lens と fallback-as-style。寝かせる案件はカードUI、本格 WebGPU compute 実装、重い実 SOG/PLY asset、実 headset 検証。サンプル実装: `outputs/2026-08-04_xr_eye_resolve_fog_scope.html` を追加。結果の検証: JSON parse、gallery build、upsert/publish、ローカル HTTP 200、公開 HTTP 200 を確認する。</p>
+          <p class="en-copy">Research: collected three.js #34153/#34166, Babylon WebGPU-XR phase issues and KHR_interactivity, PlayCanvas #9151, and Codrops Bonhomme. Ideation: continuing tracks are MRT fog refraction, compatibility prism, flashlight mask, padding residue, and WebXR per-eye overlay. New tracks are XR eye resolve lens and fallback-as-style. Parked tracks are card UI, full WebGPU compute implementation, heavy real SOG/PLY assets, and real headset validation. Prototype: added `outputs/2026-08-04_xr_eye_resolve_fog_scope.html`. Verification: JSON parse, gallery build, upsert/publish, local HTTP 200, and public HTTP 200.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、描画機能そのものより「切り替わり・差分・fallback」をどう見せるかに寄っている。PlayCanvas の MRT/fog/GSplat、three.js の WebXR single-pass/multiview、Babylon の WebGPU-XR fallback、Codrops の interaction-first な事例は、全部「内部状態が体験の質を決める」話として接続できる。組み合わせ候補は、前回の attachment lens に今日の eye resolve lens を重ね、Bonhomme 的に“触るたびにブランド/空間の物語が深くなる” micro-interaction に変えること。育てる価値が高いテーマは、XR/非XRを跨いで使える「診断値を美術演出に変換する shader overlay」。</p>
+          <p class="en-copy">The recent trend is less about individual rendering features and more about how to show transitions, differences, and fallback. PlayCanvas MRT/fog/GSplat, three.js WebXR single-pass/multiview, Babylon WebGPU-XR fallback, and Codrops' interaction-first examples all connect as cases where internal state determines experiential quality. A strong combination is to layer today's eye resolve lens on yesterday's attachment lens and turn it into Bonhomme-like micro-interaction where each touch deepens the brand or spatial story. The theme worth growing is a shader overlay that converts diagnostic values into art direction across XR and non-XR contexts.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-03_mrt_fog_refraction_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/03/the-story-is-in-the-interaction-bonhommes-digital-experiences-for-luxury-brands/" target="_blank" rel="noreferrer">Bonhomme article</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「XR Eye Resolve Fog Scope」。作成ファイルは `outputs/2026-08-04_xr_eye_resolve_fog_scope.html`。raw WebGL fragment shader だけで疑似 splat field を描き、左右眼差分、resolve error、fog coverage、padding residue を重ねる。1-4 キーで強調レーンを切り替え、ドラッグで eye disparity の軸を変え、クリック/Space で fallback pressure を上げる。次に足すなら、実 three.js WebXR の左右眼 render target capture、Babylon WebGPU-XR fallback state の入力、PlayCanvas GSplat の fog/LOD chunk debug texture、音の低中高域による resolve/fog/padding の変調。</p>
+          <p class="en-copy">The selected prototype is XR Eye Resolve Fog Scope. The created file is `outputs/2026-08-04_xr_eye_resolve_fog_scope.html`. It uses only a raw WebGL fragment shader to draw a pseudo splat field and overlay eye disparity, resolve error, fog coverage, and padding residue. Keys 1-4 switch emphasized lanes, drag changes the eye-disparity axis, and click or Space raises fallback pressure. Next additions are real three.js WebXR eye render-target captures, Babylon WebGPU-XR fallback-state input, PlayCanvas GSplat fog/LOD chunk debug textures, and audio-band modulation for resolve, fog, and padding.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、pointer、drag velocity、pressure、mode を入力にし、stereo disparity、resolve error、fog coverage、padding residue を描画状態として持つ。この4値を実データに置き換えると、XR 作品では左右眼の快適性を演出として可視化し、建築・商品 splat では見えない品質指標を鑑賞可能な霧や光に変換できる。Web Audio と組み合わせるなら、低域を fog、中域を eye disparity、高域を padding flicker に入れると、音楽に合わせて空間の安定性が揺れる。MediaPipe と組み合わせるなら、手の開閉を fallback pressure、顔の向きを eye axis に割り当てると、身体入力で視差の破綻を“照らす”体験になる。WebXR では headset がない環境にも同じ shader overlay を出し、fallback 画面を退屈な警告ではなく、体験の入口として使える。</p>
+          <p class="en-copy">Today's sample uses pointer, drag velocity, pressure, and mode as inputs, with stereo disparity, resolve error, fog coverage, and padding residue as render states. Replacing those four values with real data could visualize eye comfort in XR works or turn hidden quality metrics in architectural and product splats into viewable fog and light. With Web Audio, bass can drive fog, mids eye disparity, and highs padding flicker, making spatial stability move with music. With MediaPipe, hand openness can become fallback pressure and face direction can become the eye axis, letting the body illuminate disparity failures. In WebXR, the same shader overlay can appear on non-headset fallback screens, turning an otherwise dull warning into an entry experience.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34153" target="_blank" rel="noreferrer">three.js PR: Enable single-pass rendering in WebXR</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34166" target="_blank" rel="noreferrer">three.js PR: Add DirectRenderPipeline</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18641" target="_blank" rel="noreferrer">Babylon.js issue: WebGPU-XR Phase 5</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18615" target="_blank" rel="noreferrer">Babylon.js PR: KHR_interactivity importer update</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas PR: harden JSDoc and published types</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/03/the-story-is-in-the-interaction-bonhommes-digital-experiences-for-luxury-brands/" target="_blank" rel="noreferrer">Codrops: Bonhomme digital experiences</a></li>
+          
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" loading="lazy" title="XR Eye Resolve Fog Scope - 2026-08-04"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

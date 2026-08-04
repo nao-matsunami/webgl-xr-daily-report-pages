@@ -1,0 +1,149 @@
+{
+  "date": "2026-07-11",
+  "headline": "360度書き出しとSOG安定化を、splat投影の診断レンズへ接続する",
+  "headlineEn": "Connecting 360 export and SOG stability to a splat projection diagnostic lens",
+  "summary": "2026-07-11 は、three.js r185 の HTMLTexture/TSL、Babylon.js 9.16.0 の WebGPU-XR/KHR_gaussian_splatting、PlayCanvas v2.20.6 の SOG/GSplat 安定化、SuperSplat v2.29.0 の 360 equirectangular と SPZ export を確認しました。前回の shader atlas の次段として、球面投影上で splat の選択、圧縮、ストリーミング危険域を同時に見る WebGL サンプルを追加しました。",
+  "summaryEn": "For 2026-07-11, I checked three.js r185 HTMLTexture/TSL, Babylon.js 9.16.0 WebGPU-XR/KHR_gaussian_splatting, PlayCanvas v2.20.6 SOG/GSplat stability fixes, and SuperSplat v2.29.0 360 equirectangular and SPZ export. As the next step after the shader atlas, I added a WebGL sample that visualizes splat selection, compression, and streaming risk on an equirectangular projection.",
+  "links": [
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.16.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.16.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+    },
+    {
+      "label": "SuperSplat v2.29.0",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+    },
+    {
+      "label": "WebSplatter paper",
+      "url": "https://arxiv.org/abs/2602.03207"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-11_equirect_splat_projection_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の最新リリースは r185 で、HTMLTexture の新しい HTML-in-Canvas API signature 対応、TSL の textureGather / storageTexture3D 周辺が引き続き表現実験の土台です。2. Babylon.js 9.16.0 は GPUParticleSystem の emitRateControl、AudioV2 修正、WebGPU projection layer / XRGPUBinding plumbing、KHR_gaussian_splatting glTF extension がまとまっており、粒子、音、投影、splat を同じ設計面で扱いやすくしています。3. PlayCanvas Engine v2.20.6 は GSplat detaches、Windows/NVIDIA picking hang、SOG unload / streaming re-load の修正が中心で、実 asset を触る前の不安定要因が減っています。4. SuperSplat v2.29.0 は 360 equirectangular video/image export、SPZ export、camera info overlay、timeline loop/keys を追加・改善しており、splat を作品化する出口が強くなっています。5. WebSplatter のような WebGPU 3DGS 研究は、opacity-aware culling や browser 向け sort の方向性を示しており、WebGL 側でも「何を見せ、何を落とすか」の可視化が重要です。",
+      "bodyEn": "1. The latest three.js release is r185, with HTMLTexture support for new HTML-in-Canvas API signatures and continued TSL work around textureGather and storageTexture3D. 2. Babylon.js 9.16.0 combines GPUParticleSystem emitRateControl, AudioV2 fixes, WebGPU projection layer / XRGPUBinding plumbing, and KHR_gaussian_splatting glTF extension work, making particles, audio, projection, and splats easier to reason about together. 3. PlayCanvas Engine v2.20.6 focuses on GSplat detach issues, Windows/NVIDIA picking hangs, and SOG unload / streaming re-load fixes, reducing instability before using real assets. 4. SuperSplat v2.29.0 improves 360 equirectangular video/image export, SPZ export, camera info overlays, and timeline loop/key workflows, strengthening the path from splat edit to publish. 5. WebGPU 3DGS research such as WebSplatter points toward opacity-aware culling and browser-oriented sorting, which makes WebGL-side visualization of what to show and what to drop valuable.",
+      "links": [
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas v2.20.6 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "SuperSplat v2.29.0 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        },
+        {
+          "label": "WebSplatter",
+          "url": "https://arxiv.org/abs/2602.03207"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "SuperSplat v2.29.0 の面白さは、単なる viewer 機能ではなく「カメラ、タイムライン、360度、圧縮形式」が同じ制作導線に並んだことです。PlayCanvas 側の SOG streaming 修正と組み合わせると、splat は静的背景ではなく、編集点、書き出し点、ストリーミング境界を持つメディアになります。前回の shader atlas で比較した focus / prediction / history / impulse は、ここでは equirectangular 上の選択レンズ、圧縮バンド、stream-risk seam として再利用できます。",
+      "bodyEn": "The interesting part of SuperSplat v2.29.0 is not just viewer functionality; camera, timeline, 360 output, and compression formats now sit in one production path. Combined with PlayCanvas SOG streaming fixes, splats become media with edit points, export points, and streaming boundaries rather than static backgrounds. The focus / prediction / history / impulse fields from the previous shader atlas can be reused here as selection lenses, compression bands, and stream-risk seams on an equirectangular map.",
+      "links": [
+        {
+          "label": "SuperSplat v2.29.0",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.29.0"
+        },
+        {
+          "label": "PlayCanvas Engine v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "360度 splat 書き出しを「完成画像」ではなく「診断面」として扱います。横方向は longitude、縦方向は latitude とし、ポインタをカメラターゲットに見立てて周辺 splat を cyan で選択、SPZ 的な量子化セルを amber、左右端と極付近の seam / polar risk を magenta で出します。視聴体験としては全天球の地図を触るだけですが、制作側にはどの領域を高品質に残すべきか、どこで streaming/reload の破綻が出やすいかが見えます。",
+      "bodyEn": "Treat 360 splat output as a diagnostic surface rather than a final image. Horizontal position is longitude and vertical position is latitude. Pointer position acts as a camera target: nearby splats are selected in cyan, SPZ-like quantization cells appear in amber, and seam / polar risk near the horizontal edges and poles appears in magenta. For viewers it feels like touching a spherical map; for production it reveals which areas deserve higher quality and where streaming/reload failures may be visible.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-11_equirect_splat_projection_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "WebGL 実装では、equirectangular UV から方向ベクトルを復元し、疑似 splat grid、選択レンズ、量子化セル、seam risk をすべて fragment shader 内で合成しました。実 asset に進む時は、1. SuperSplat で camera/timeline/export を作る、2. PlayCanvas/SOG の LOD や unload/reload で発生する状態をイベントとして取る、3. shader 側に risk texture として渡す、という流れが自然です。WebGPU へ移る場合も、まず同じ診断色を保持してから sort/culling を置き換えると比較しやすいです。",
+      "bodyEn": "The WebGL implementation reconstructs a direction vector from equirectangular UVs, then composes pseudo splat grids, a selection lens, quantization cells, and seam risk entirely in the fragment shader. For real assets, a natural path is: 1. author camera/timeline/export in SuperSplat, 2. capture PlayCanvas/SOG LOD and unload/reload events, and 3. feed them to the shader as a risk texture. When moving to WebGPU, keep the same diagnostic colors first, then replace sort/culling so comparisons remain clear.",
+      "links": [
+        {
+          "label": "PlayCanvas v2.20.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.6"
+        },
+        {
+          "label": "WebSplatter",
+          "url": "https://arxiv.org/abs/2602.03207"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js r185 の HTMLTexture/TSL、Babylon.js の KHR_gaussian_splatting と WebGPU-XR plumbing、PlayCanvas の SOG/GSplat streaming、SuperSplat の SPZ/360/timeline。新規案件: 360 equirectangular を通常の postprocess 入力ではなく、品質診断・選択マップとして使う。寝かせる案件: XR/VR/AR 固有 UI は別トラックで扱い、このスレッドでは shader 診断色、投影、圧縮、音反応に絞ります。",
+      "bodyEn": "Continue: three.js r185 HTMLTexture/TSL, Babylon.js KHR_gaussian_splatting and WebGPU-XR plumbing, PlayCanvas SOG/GSplat streaming, and SuperSplat SPZ/360/timeline. New: use 360 equirectangular output as a quality diagnostic and selection map rather than a normal postprocess input. Park: XR/VR/AR-specific UI remains in a separate track; this thread stays focused on shader diagnostic colors, projection, compression, and audio response."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、equirectangular 上で「選択、圧縮、stream risk」を同時に見ることです。追加サンプル outputs/2026-07-11_equirect_splat_projection_scope.html は、ポインタ周辺の splat を cyan で強調し、押下中は export frustum を広げます。amber のセルは SPZ 的な量子化、magenta は左右端と極付近の破綻しやすい領域を表します。",
+      "bodyEn": "If you try one thing today, view selection, compression, and stream risk together on an equirectangular surface. The added sample outputs/2026-07-11_equirect_splat_projection_scope.html highlights splats near the pointer in cyan and expands the export frustum while pressed. Amber cells represent SPZ-like quantization, and magenta marks fragile seam/pole regions.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-11_equirect_splat_projection_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r185、Babylon.js 9.16.0、PlayCanvas v2.20.6、SuperSplat v2.29.0、WebSplatter を確認。アイデア検討: shader atlas の4要素を、360 splat 投影の選択・圧縮・危険域に変換。サンプル実装: 単体 WebGL で equirectangular splat projection scope を追加。結果の検証: JSON 保存、gallery build、publish、公開 URL の HTTP 確認まで実施します。短期: 実 SuperSplat 画像を背景 texture にする。中長期: SOG streaming event と診断 texture を接続する。",
+      "bodyEn": "Research: checked three.js r185, Babylon.js 9.16.0, PlayCanvas v2.20.6, SuperSplat v2.29.0, and WebSplatter. Ideation: translated the four shader-atlas elements into selection, compression, and risk regions for 360 splat projection. Prototype: added a standalone WebGL equirectangular splat projection scope. Evaluation: save JSON, build gallery, publish, and verify public URLs. Short term: use a real SuperSplat image as the background texture. Mid/long term: connect SOG streaming events to a diagnostic texture."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、splat が「見るだけの点群」から「編集・圧縮・投影・ストリーミングを持つ媒体」へ移っていることです。組み合わせ候補としては、SuperSplat の 360/SPZ export、PlayCanvas の SOG reload 安定化、Babylon.js の KHR_gaussian_splatting、three.js の HTMLTexture/TSL を、1つの診断ビューに寄せるのが筋が良いです。育てる価値が高いテーマは、前回の shader atlas と今日の equirect scope をつないだ「品質配分を見える化する制作ツール」です。",
+      "bodyEn": "The recent trend is that splats are moving from view-only point media to media with editing, compression, projection, and streaming behavior. A strong combination is to bring SuperSplat 360/SPZ export, PlayCanvas SOG reload stability, Babylon.js KHR_gaussian_splatting, and three.js HTMLTexture/TSL into one diagnostic view. The theme worth growing is a production tool that visualizes quality allocation by connecting the previous shader atlas with today's equirect scope."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は Equirect Splat Projection Scope。ファイルは outputs/2026-07-11_equirect_splat_projection_scope.html。実際に動く内容は、全天球 UV 上に疑似 splat を描き、ポインタ周辺を選択レンズとして強調し、SPZ 風の量子化バンドと seam/pole の stream-risk を重ねるものです。次に足すなら、SuperSplat の 360 export 画像を texture として読み込み、その上にこの診断レイヤーを重ねます。",
+      "bodyEn": "The selected mini prototype is Equirect Splat Projection Scope at outputs/2026-07-11_equirect_splat_projection_scope.html. It draws pseudo splats on a spherical UV map, highlights the pointer area as a selection lens, and overlays SPZ-like quantization bands plus seam/pole stream-risk. Next, load a SuperSplat 360 export image as a texture and place this diagnostic layer over it.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-11_equirect_splat_projection_scope.html"
+        }
+      ]
+    }
+  ]
+}

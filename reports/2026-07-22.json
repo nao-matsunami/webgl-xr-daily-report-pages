@@ -1,0 +1,141 @@
+{
+  "date": "2026-07-22",
+  "headline": "8K 書き出しと glTF Gaussian を同じ状態スコープで見る",
+  "headlineEn": "Read 8K export and glTF Gaussian support through one state scope",
+  "summary": "2026-07-22 は、PlayCanvas Engine v2.21.0 の KHR_gaussian_splatting / SPZ / volumetric fog / wide line / WebGL2 view uniform buffer と、SuperSplat v2.32.2 の video muxer finalize 修正・8K render resolution・PlayCanvas 2.21 対応を新規トピックにしました。昨日の export preflight plane scope を、書き出し解像度、muxer 書き込み待ち、glTF/SPZ 互換 gate、fog による状態表現へ拡張します。",
+  "summaryEn": "For 2026-07-22, the new axis is PlayCanvas Engine v2.21.0 with KHR_gaussian_splatting, SPZ, volumetric fog, wide lines, and WebGL2 view uniform buffers, plus SuperSplat v2.32.2 with video muxer finalization, 8K render resolutions, and PlayCanvas 2.21 support. Yesterday's export preflight plane scope is extended into export resolution, muxer write waiting, glTF/SPZ compatibility gates, and fog-based state expression.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.21.0",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.0"
+    },
+    {
+      "label": "SuperSplat v2.32.2",
+      "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+    },
+    {
+      "label": "KHR_gaussian_splatting",
+      "url": "https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_gaussian_splatting/README.md"
+    },
+    {
+      "label": "three.js r185",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops WebGL tag",
+      "url": "https://tympanus.net/codrops/tag/webgl/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-07-22_export_resolution_gltf_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.21.0 が 2026-07-21 に公開され、KHR_gaussian_splatting glTF extension、SPZ gaussian splat format support、CameraFrame の volumetric fog、instanced wide line renderer、WebGL2 の view-level uniform buffer などが入りました。7/21 の作業平面と export preflight から見ると、これは『標準 glTF と独自 SOG/SPZ の間をどう診断して見せるか』という新しい軸です。2. SuperSplat v2.32.2 は 2026-07-21 に公開され、video muxer writes を待ってから finalize する修正、8K render resolutions、PlayCanvas 2.21 の public layer clear API 対応が入りました。昨日の capability-aware preflight は、今日から『高解像度 capture の完了待ちを見せる』方向へ進められます。3. Khronos の KHR_gaussian_splatting は Release Candidate で、POINTS primitive、ellipse kernel、rotation / scale / opacity / spherical harmonics、fallback point cloud という設計を示しています。4. three.js は r185 が最新で、HTMLTexture、TSL textureGather / storageTexture3D、compileAsync、render bundles は引き続き状態 texture / annotation layer の候補です。5. Codrops の WebGL 事例では ZERO、Trionn、Sleepers、3D Wave Grid が近い流れとして並び、状態同期、軽量 fog、scroll/pointer/audio を作品の駆動値にする方向が継続しています。",
+      "bodyEn": "1. PlayCanvas Engine v2.21.0 shipped on 2026-07-21 with KHR_gaussian_splatting glTF extension support, SPZ gaussian splat format support, volumetric fog in CameraFrame, an instanced wide line renderer, and WebGL2 view-level uniform buffers. From the 07-21 working-plane/export-preflight thread, this creates a new axis: how to diagnose and present the gap between standardized glTF splats and SOG/SPZ workflows. 2. SuperSplat v2.32.2 shipped on 2026-07-21 with a fix to wait for video muxer writes before finalizing, 8K render resolutions, and PlayCanvas 2.21 public layer clear API support. Yesterday's capability-aware preflight can now become a visible wait state for high-resolution capture completion. 3. Khronos KHR_gaussian_splatting is a Release Candidate defining POINTS primitives, the ellipse kernel, rotation / scale / opacity / spherical harmonics, and point-cloud fallback. 4. three.js r185 remains current, with HTMLTexture, TSL textureGather / storageTexture3D, compileAsync, and render bundles still useful for state textures and annotation layers. 5. Codrops WebGL examples such as ZERO, Trionn, Sleepers, and 3D Wave Grid continue the pattern of shared state, lightweight fog, and scroll/pointer/audio as experience-driving values.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.0 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.0"
+        },
+        {
+          "label": "SuperSplat v2.32.2 release",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+        },
+        {
+          "label": "KHR_gaussian_splatting README",
+          "url": "https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_gaussian_splatting/README.md"
+        },
+        {
+          "label": "three.js r185 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Codrops WebGL",
+          "url": "https://tympanus.net/codrops/tag/webgl/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は PlayCanvas v2.21.0 と SuperSplat v2.32.2 の組み合わせです。片方は glTF KHR_gaussian_splatting / SPZ / volumetric fog を engine 側に入れ、もう片方は 8K 書き出しと muxer finalize の待ちを editor/export 側で詰めています。面白いのは、splat が『標準フォーマットとして読めるか』と『高解像度で最後まで撮れるか』が同時に制作体験の品質になっている点です。これを UI の成功/失敗表示だけにせず、fog、grid、chunk heat、pivot lag として空間内に出すと、巨大な splat 空間の準備状態そのものが作品になります。",
+      "bodyEn": "The notable combination is PlayCanvas v2.21.0 plus SuperSplat v2.32.2. One side adds glTF KHR_gaussian_splatting, SPZ, and volumetric fog at the engine layer; the other tightens 8K export and muxer-finalization waits at the editor/export layer. The interesting point is that whether a splat can be read as a standard format and whether it can be captured at high resolution both become part of production quality. If those states are shown as fog, grids, chunk heat, and pivot lag instead of just UI success/failure, the readiness of a huge splat space becomes the piece.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.0"
+        },
+        {
+          "label": "SuperSplat v2.32.2",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "中心案は『Export Resolution glTF Scope』です。ポインタは作業 pivot、遅れて追う history は muxer finalize の待ち、Space は 8K export spike、G は glTF/SPZ compatibility gate として使います。画面上の tile は splat chunk、green は glTF/SPZ 互換で読める chunk、red は high-res export で落ちそうな chunk、amber は muxer finalize 待ち、cyan は作業平面です。短期では今回のような procedural shader で十分です。中長期では、MediaRecorder / WebCodecs / canvas size / devicePixelRatio、KHR_gaussian_splatting loader 結果、SPZ parse 結果、SOG chunk 状態をひとつの RGBA state texture に詰めます。",
+      "bodyEn": "The central idea is Export Resolution glTF Scope. Pointer position is the working pivot, the lagging history point is muxer-finalization wait, Space is an 8K export spike, and G toggles the glTF/SPZ compatibility gate. Tiles are splat chunks: green means readable through glTF/SPZ, red means risky under high-resolution export, amber means muxer finalization waiting, and cyan is the working plane. Short term, a procedural shader is enough. Mid/long term, MediaRecorder / WebCodecs / canvas size / devicePixelRatio, KHR_gaussian_splatting load results, SPZ parse results, and SOG chunk state should be packed into one RGBA state texture.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-22_export_resolution_gltf_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装メモは、昨日の preflight を codec 可否だけで終わらせず、format gate と resolution pressure を分離することです。R=8K/export failure risk、G=KHR_gaussian_splatting/SPZ compatibility、B=muxer finalize wait または encode queue、A=working-plane / chunk validity と置くと、7/13 以降の RGBA state 設計にそのまま接続できます。PlayCanvas v2.21.0 の WebGL2 view uniform buffer は、camera/view ごとの状態をまとめて渡す発想に近く、wide line renderer は診断 grid や chunk 境界に向きます。volumetric fog はエラーの赤表示より柔らかく、chunk が読めていない/まだ finalize していない状態を空間の密度として見せやすいです。",
+      "bodyEn": "The production note is to split yesterday's preflight into format gate and resolution pressure rather than only codec availability. R = 8K/export failure risk, G = KHR_gaussian_splatting/SPZ compatibility, B = muxer-finalization wait or encode queue, and A = working-plane / chunk validity connects directly to the RGBA state design used since 07-13. PlayCanvas v2.21.0's WebGL2 view uniform buffers align with passing per-camera/view state in bundles, while the wide line renderer is useful for diagnostic grids and chunk boundaries. Volumetric fog is softer than red error overlays and can present unread chunks or unfinished finalization as spatial density.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.21.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.21.0"
+        },
+        {
+          "label": "SuperSplat v2.32.2",
+          "url": "https://github.com/playcanvas/supersplat/releases/tag/v2.32.2"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: SuperSplat video export preflight / 8K / muxer finalize、PlayCanvas KHR_gaussian_splatting / SPZ / volumetric fog、three.js HTMLTexture / TSL / compileAsync、Codrops の state-driven WebGL 事例。新規案件: glTF Gaussian と SPZ/SOG の互換状態を shader texture 化する。寝かせる案件: カード UI、XR 専用操作、重い training pipeline、完成作品レベルの動画 export UI。短期は MediaRecorder.isTypeSupported と canvas サイズから疑似 risk uniform を作る。中長期は実 glTF/SPZ/SOG asset の loader event と export queue を同じ timeline に載せる。",
+      "bodyEn": "Continue watching: SuperSplat video export preflight / 8K / muxer finalization, PlayCanvas KHR_gaussian_splatting / SPZ / volumetric fog, three.js HTMLTexture / TSL / compileAsync, and Codrops state-driven WebGL cases. New item: convert glTF Gaussian and SPZ/SOG compatibility into shader textures. Park: card UI, XR-specific controls, heavy training pipelines, and full video-export product UI. Short term, create risk uniforms from MediaRecorder.isTypeSupported and canvas size. Mid/long term, place real glTF/SPZ/SOG loader events and export queues onto one timeline."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、8K export pressure と format gate を同じ shader に入れることです。今回の `outputs/2026-07-22_export_resolution_gltf_scope.html` は、ポインタ移動で pivot、長押しで muxer finalize pressure、Space で 8K spike、G で glTF/SPZ gate を切り替えます。次に足すなら、JS 側で MediaRecorder.isTypeSupported の複数 mimeType 結果を取り、G channel の初期値に反映します。",
+      "bodyEn": "If trying one thing today, put 8K export pressure and the format gate into the same shader. The sample at `outputs/2026-07-22_export_resolution_gltf_scope.html` maps pointer movement to pivot, holding to muxer finalization pressure, Space to an 8K spike, and G to the glTF/SPZ gate. The next useful addition is to query multiple MediaRecorder.isTypeSupported mime types in JS and feed the result into the initial G channel."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas v2.21.0、SuperSplat v2.32.2、KHR_gaussian_splatting、Codrops WebGL 事例を追加。アイデア検討: 7/21 の export preflight plane scope を、8K resolution pressure と glTF/SPZ format gate に拡張。サンプル実装: procedural WebGL shader で chunk compatibility、8K spike、muxer wait、working plane fog を実装済み。結果の検証: build-gallery と publish 後に day page / sample の HTTP 到達を確認する。短期は codec/canvas capability を uniform 化。中長期は実 asset loader と export queue を RGBA state texture 化。",
+      "bodyEn": "Collection: added PlayCanvas v2.21.0, SuperSplat v2.32.2, KHR_gaussian_splatting, and Codrops WebGL cases. Ideation: extended the 07-21 export preflight plane scope into 8K resolution pressure and glTF/SPZ format gates. Prototype: implemented procedural WebGL shader visualization for chunk compatibility, 8K spikes, muxer waits, and working-plane fog. Verification: after build-gallery and publish, check HTTP access for the day page and sample. Short term, convert codec/canvas capability into uniforms. Mid/long term, convert real asset-loader and export-queue events into RGBA state textures."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、selection / semantic / SOG retry / upload / export preflight がすべて『状態を shader で読む』方向に収束しています。今日の PlayCanvas v2.21.0 で glTF Gaussian と SPZ が engine に入り、SuperSplat v2.32.2 で 8K export の完了待ちが明示されたので、runtime と authoring/export の境界がかなり近づきました。組み合わせ候補としては、KHR_gaussian_splatting の fallback point cloud を low LOD 表現、SPZ/SOG を high LOD 表現、volumetric fog を未確定状態、HTMLTexture/MSDF を depth-aware label にする構成が強いです。育てる価値が高いテーマは『標準化されつつある splat asset を、読み込み・編集・書き出しの時間差ごと表現する scope』です。",
+      "bodyEn": "The recent trend is converging on reading selection, semantic state, SOG retry, upload, and export preflight through shaders. With PlayCanvas v2.21.0 bringing glTF Gaussian and SPZ into the engine and SuperSplat v2.32.2 making 8K export waiting explicit, runtime and authoring/export are moving closer together. A strong combination is KHR_gaussian_splatting fallback point clouds as low LOD, SPZ/SOG as high LOD, volumetric fog as unresolved state, and HTMLTexture/MSDF as depth-aware labels. The theme worth growing is a scope for standardized splat assets that expresses loading, editing, and exporting delays as part of the visual language."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用候補は『Export Resolution glTF Scope』です。作成済みファイルは `outputs/2026-07-22_export_resolution_gltf_scope.html`。実際に動く内容は、WebGL fragment shader による作業平面 grid、splat chunk 風 tile、glTF/SPZ 互換 gate、8K export spike、muxer finalize wait、fog 状態表示です。次に発展させるなら、1. MediaRecorder / WebCodecs / captureStream の実 capability を uniform 化、2. glTF/SPZ/SOG loader の成功/失敗を tile texture 化、3. SuperSplat の export resolution 設定に合わせて risk 半径を変える、の順が良いです。",
+      "bodyEn": "The selected candidate is Export Resolution glTF Scope. The file is `outputs/2026-07-22_export_resolution_gltf_scope.html`. It runs as a WebGL fragment shader showing a working-plane grid, splat-like chunks, glTF/SPZ compatibility gates, 8K export spikes, muxer-finalization waits, and fog state. The next development steps are: 1. feed real MediaRecorder / WebCodecs / captureStream capability as uniforms, 2. turn glTF/SPZ/SOG loader success/failure into a tile texture, and 3. vary risk radius from SuperSplat export-resolution settings."
+    }
+  ]
+}

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selection Boolean Residue Scope</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; overflow: hidden; background: #050607; color: #edf7f4; font-family: Inter, "Avenir Next", system-ui, sans-serif; }
+    canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      width: min(440px, calc(100vw - 36px));
+      padding: 14px 16px;
+      border: 1px solid rgba(138, 228, 210, 0.28);
+      background: rgba(7, 12, 13, 0.74);
+      backdrop-filter: blur(16px) saturate(1.2);
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
+    }
+    h1 { margin: 0 0 7px; font-size: 17px; letter-spacing: 0; font-weight: 680; }
+    p { margin: 0; color: #bad0c9; font-size: 13px; line-height: 1.55; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 11px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; color: #e6f6f2; font-size: 12px; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 13px currentColor; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <h1>Selection Boolean Residue Scope</h1>
+    <p>Move to place the selection lens. Hold/touch to switch from add/subtract preview into intersect emphasis.</p>
+    <div class="legend">
+      <span class="chip"><span class="swatch" style="background:#56f3d0"></span>add keep</span>
+      <span class="chip"><span class="swatch" style="background:#ff6d4c"></span>subtract cut</span>
+      <span class="chip"><span class="swatch" style="background:#b56dff"></span>intersect residue</span>
+      <span class="chip"><span class="swatch" style="background:#ffe077"></span>depth text gate</span>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    const pointer = { x: 0.52, y: 0.48, down: 0 };
+
+    const vertex = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragment = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float down;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.23, 289.17))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 5; i++) {
+          v += a * noise(p);
+          p = mat2(1.62, -1.08, 1.08, 1.62) * p + 0.19;
+          a *= 0.53;
+        }
+        return v;
+      }
+
+      float gaussian(vec2 p, vec2 center, vec2 axis, float angle) {
+        vec2 q = p - center;
+        float c = cos(angle);
+        float s = sin(angle);
+        q = mat2(c, -s, s, c) * q;
+        return exp(-dot(q / axis, q / axis));
+      }
+
+      float ring(float d, float r, float w) {
+        return 1.0 - smoothstep(w, w * 2.35, abs(d - r));
+      }
+
+      float sdBox(vec2 p, vec2 b) {
+        vec2 q = abs(p) - b;
+        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+      }
+
+      float glyphBars(vec2 p) {
+        p.x += 0.34;
+        float a = 1.0 - smoothstep(0.010, 0.024, abs(sdBox(p - vec2(-0.09, 0.0), vec2(0.015, 0.135))));
+        float b = 1.0 - smoothstep(0.010, 0.024, abs(sdBox(p - vec2(-0.02, 0.0), vec2(0.015, 0.090))));
+        float c = 1.0 - smoothstep(0.010, 0.024, abs(sdBox(p - vec2(0.05, 0.0), vec2(0.015, 0.055))));
+        return max(a, max(b, c));
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 m = vec2(pointer.x, 1.0 - pointer.y);
+        vec2 mp = (m * resolution.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+
+        vec2 drift = vec2(
+          fbm(p * 1.2 + vec2(time * 0.036, 0.2)),
+          fbm(p * 1.1 + vec2(-0.4, time * 0.031))
+        ) - 0.5;
+        vec2 q = p + drift * 0.18;
+        float baseField = fbm(q * 1.9 + vec2(time * 0.025, -time * 0.018));
+        float semantic = smoothstep(0.43, 0.74, fbm(q * 2.55 + vec2(0.0, time * 0.018)));
+        float stale = smoothstep(0.48, 0.78, fbm((q + vec2(-0.18, 0.09)) * 2.55 + vec2(0.34, -time * 0.012)));
+
+        float lensDistance = length(p - mp);
+        float lens = smoothstep(0.43 + down * 0.08, 0.0, lensDistance);
+        float lensRing = ring(lensDistance, 0.43 + down * 0.08, 0.012);
+        float subtractBand = smoothstep(0.34, 0.13, abs(p.x + 0.34 + 0.06 * sin(time * 0.7 + p.y * 3.0)));
+        float intersectSeed = smoothstep(0.36, 0.69, fbm(q * 3.2 + vec2(1.1, time * 0.04)));
+        float addMask = max(semantic * 0.76, lens);
+        float subtractMask = subtractBand * (0.65 + 0.35 * stale);
+        float intersectMask = min(addMask, intersectSeed + lens * (0.35 + down * 0.65));
+        float booleanResidue = abs(addMask - stale) * (0.35 + intersectMask);
+
+        vec3 color = mix(vec3(0.015, 0.018, 0.017), vec3(0.028, 0.060, 0.055), baseField);
+        color += vec3(0.02, 0.10, 0.09) * semantic;
+        color += vec3(0.06, 0.03, 0.025) * subtractBand;
+
+        float keep = 0.0;
+        float cut = 0.0;
+        float intersect = 0.0;
+        float ageSpark = 0.0;
+        for (int i = 0; i < 56; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(fi * 12.37, fi * 7.91);
+          vec2 c = vec2(-0.98 + 1.96 * hash(seed), -0.70 + 1.40 * hash(seed + 4.2));
+          c += 0.045 * vec2(sin(time * 0.22 + fi), cos(time * 0.17 + fi * 1.6));
+          float age = hash(seed + 8.0);
+          float g = gaussian(p, c, vec2(0.026 + age * 0.038, 0.008 + hash(seed + 2.0) * 0.018), fi * 0.73);
+          float core = gaussian(p, c, vec2(0.005 + age * 0.006, 0.003 + hash(seed + 6.0) * 0.005), fi);
+          float localLens = smoothstep(0.47, 0.02, length(c - mp));
+          float s = smoothstep(0.34, 0.76, fbm(c * 2.4 + vec2(0.0, time * 0.018)));
+          float staleFit = smoothstep(0.42, 0.84, stale + age * 0.7);
+          float opAdd = max(s, localLens);
+          float opCut = smoothstep(0.20, 0.72, subtractBand + staleFit * 0.3);
+          float opIntersect = min(opAdd, smoothstep(0.32, 0.78, intersectSeed + localLens * down));
+          keep += g * opAdd * (1.0 - opCut * 0.55) + core * opAdd;
+          cut += g * opCut * (0.7 + localLens * 0.7);
+          intersect += g * opIntersect * (0.45 + down) + core * opIntersect * 1.4;
+          ageSpark += core * staleFit * (0.7 + 0.5 * sin(time * 1.5 + fi));
+        }
+
+        float grid = max(
+          ring(abs(fract((q.x + time * 0.012) * 8.0) - 0.5), 0.48, 0.006),
+          ring(abs(fract((q.y - time * 0.008) * 8.0) - 0.5), 0.48, 0.006)
+        );
+        float msdfGate = glyphBars(vec2(p.x - 0.48, p.y + 0.42)) * smoothstep(-0.20, 0.75, p.y + booleanResidue * 0.4);
+        float depthHalo = ring(length(vec2(p.x - 0.14, p.y + 0.40)), 0.31, 0.018) * (0.35 + msdfGate);
+        float scan = smoothstep(0.984, 1.0, sin((uv.y + time * 0.085) * 230.0) * 0.5 + 0.5);
+        float vignette = smoothstep(1.52, 0.18, length(p));
+
+        color += vec3(0.33, 1.00, 0.82) * keep * 0.50;
+        color += vec3(1.00, 0.28, 0.15) * cut * 0.42;
+        color += vec3(0.58, 0.28, 1.00) * intersect * 0.70;
+        color += vec3(0.98, 0.18, 0.74) * booleanResidue * 0.44;
+        color += vec3(1.00, 0.82, 0.25) * msdfGate * 0.85;
+        color += vec3(1.00, 0.70, 0.18) * depthHalo * 0.36;
+        color += vec3(0.25, 0.92, 0.82) * lensRing * 1.25;
+        color += vec3(0.10, 0.33, 0.30) * lens * 0.45;
+        color += vec3(0.22, 0.36, 0.32) * grid * 0.11;
+        color += vec3(0.92, 0.34, 1.00) * ageSpark * 0.26;
+        color += scan * vec3(0.018, 0.036, 0.032);
+        color *= 0.58 + 0.58 * vignette;
+        color = color / (1.0 + color * 0.42);
+        color = pow(color, vec3(0.84));
+        color += (hash(gl_FragCoord.xy + time) - 0.5) * 0.014;
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader) || "Shader compile failed";
+        document.body.insertAdjacentHTML("beforeend", `<pre style="position:fixed;right:14px;bottom:14px;max-width:min(520px,calc(100vw - 28px));padding:12px;background:#18080d;color:#ffd9df;white-space:pre-wrap;z-index:10;">${message.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</pre>`);
+        throw new Error(message);
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      down: gl.getUniformLocation(program, "down")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(window.innerWidth * dpr));
+      const height = Math.max(1, Math.floor(window.innerHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function updatePointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = (event.clientX - rect.left) / rect.width;
+      pointer.y = (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", updatePointer);
+    window.addEventListener("pointerdown", (event) => { pointer.down = 1; updatePointer(event); });
+    window.addEventListener("pointerup", () => { pointer.down = 0; });
+    window.addEventListener("pointercancel", () => { pointer.down = 0; });
+
+    const start = performance.now();
+    function frame(now) {
+      resize();
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, (now - start) * 0.001);
+      gl.uniform1f(uniforms.down, pointer.down);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

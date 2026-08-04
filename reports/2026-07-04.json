@@ -1,0 +1,195 @@
+{
+  "date": "2026-07-04",
+  "headline": "HTML texture と GSplat LOD を SDF 焦点膜へ接続する",
+  "headlineEn": "Connecting HTML textures and GSplat LOD through an SDF focus membrane",
+  "summary": "今日は、three.js r185 の HTMLTexture 更新、Babylon.js 9.15.0 の WebGPU/sRGB と tree-shaking 修正、PlayCanvas v2.20.5 の GSplat streaming 修正、WICG HTML-in-Canvas の WebGL/WebGPU texture 化提案を、前回までの Gaussian LOD と情報膜の流れに接続しました。短期試作は、ポインタ周辺だけ SDF 輪郭と疑似 splat の密度が上がる焦点膜です。",
+  "summaryEn": "Today connects the three.js r185 HTMLTexture update, Babylon.js 9.15.0 WebGPU/sRGB and tree-shaking fixes, PlayCanvas v2.20.5 GSplat streaming fixes, and the WICG HTML-in-Canvas texture proposal to the previous Gaussian LOD and information-membrane thread. The short prototype is a focus membrane where SDF contours and pseudo splat density sharpen only near the pointer.",
+  "links": [
+    {
+      "label": "three.js r185 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+    },
+    {
+      "label": "Babylon.js 9.15.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.20.5 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.5"
+    },
+    {
+      "label": "WICG HTML-in-Canvas proposal",
+      "url": "https://github.com/WICG/html-in-canvas"
+    },
+    {
+      "label": "Today's sample: SDF Focus Splat Membrane",
+      "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r185 は 2026-07-01 公開の最新 release として確認でき、HTMLTexture が WICG HTML-in-Canvas の新しい API signature に追従しています。2. Babylon.js 9.15.0 は 2026-07-02 公開で、WGSL exact sRGB conversion、OpenPBR fuzz、tree-shaking 後の side-effect 登録、camera 操作の修正がまとまっています。3. PlayCanvas Engine v2.20.5 は 2026-07-02 公開で、canvas に getBoundingClientRect がない場合の crash と、GSplat octree asset unload 時の streaming world crash を修正しています。4. WICG HTML-in-Canvas は、drawElementImage、texElementImage2D、copyElementImageToTexture という形で、DOM/HTML を canvas/WebGL/WebGPU 素材として扱う方向を明文化しています。",
+      "bodyEn": "1. three.js r185 is the latest release observed today, published on 2026-07-01, and updates HTMLTexture for newer WICG HTML-in-Canvas API signatures. 2. Babylon.js 9.15.0 was published on 2026-07-02 with WGSL exact sRGB conversion, OpenPBR fuzz, side-effect registration after tree shaking, and camera-control fixes. 3. PlayCanvas Engine v2.20.5 was published on 2026-07-02 and fixes a crash when a canvas lacks getBoundingClientRect plus a GSplat octree unload crash in the streaming world. 4. WICG HTML-in-Canvas explicitly frames DOM/HTML as canvas, WebGL, and WebGPU material through drawElementImage, texElementImage2D, and copyElementImageToTexture.",
+      "links": [
+        {
+          "label": "three.js r185",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r185"
+        },
+        {
+          "label": "Babylon.js 9.15.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+        },
+        {
+          "label": "PlayCanvas v2.20.5",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.5"
+        },
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "面白いのは、HTML-in-Canvas が単なる UI 表示ではなく、読みやすい HTML/CSS を shader の入力素材にする提案として見えてきたことです。three.js の HTMLTexture 更新はその受け皿で、Babylon.js の sRGB 修正は情報 texture を post-process に通す時の色の信頼性に効きます。PlayCanvas の GSplat streaming 修正は地味ですが、scan や splat asset を切り替える展示表現では unload まわりの安定性がそのまま体験品質になります。",
+      "bodyEn": "The interesting point is that HTML-in-Canvas reads less like simple UI rendering and more like a proposal for turning readable HTML/CSS into shader input. The three.js HTMLTexture update is one receiver for that direction, while Babylon.js's sRGB fix matters for color reliability when information textures go through post-processing. The PlayCanvas GSplat streaming fix is quiet, but unload stability directly affects experience quality in exhibitions that swap scan or splat assets.",
+      "links": [
+        {
+          "label": "three.js HTMLTexture PR",
+          "url": "https://github.com/mrdoob/three.js/pull/33788"
+        },
+        {
+          "label": "Babylon.js 9.15.0 release notes",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+        },
+        {
+          "label": "PlayCanvas v2.20.5 release notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.5"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期では、前回の『屈折する情報面』に SDF edge と疑似 Gaussian LOD を足し、読める領域をポインタ/視線/手の周辺だけに限定するのがよさそうです。中期では、HTMLTexture 由来の注釈膜を実 GSplat scene の上に重ね、近い場所だけ文字、輪郭、粒子密度が同期して立ち上がる表現にできます。長期では、XR 空間で現実スキャンの上に『普段は環境に溶けているが、焦点を合わせると読める』注釈レイヤーを育てる価値があります。",
+      "bodyEn": "In the short term, add SDF edges and pseudo Gaussian LOD to the previous refractive information surface, limiting readable regions to the pointer, gaze, or hand neighborhood. In the mid term, layer HTMLTexture-derived annotation membranes over a real GSplat scene so text, outlines, and particle density rise together near the viewer. In the long term, this can become an XR annotation layer over real-world scans: normally blended into the environment, readable when focused.",
+      "links": [
+        {
+          "label": "Previous HTML texture sample",
+          "url": "../outputs/2026-07-03_html_texture_refraction_surface.html"
+        },
+        {
+          "label": "Previous Gaussian LOD sample",
+          "url": "../outputs/2026-07-02_gaussian_lod_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装上は、情報 texture と splat/scan を同じ focus 値で制御すると設計しやすいです。focus を 0..1 の場として持ち、SDF の antialias 幅、splat の cell size、屈折量、色収差、ポストプロセス強度へ分配します。HTML-in-Canvas を使う場合は、DOM snapshot 更新頻度、texElementImage2D / copyElementImageToTexture の転送コスト、DOM 側の hit testing と描画位置の同期を別々に測る必要があります。Babylon.js 9.15.0 の sRGB 修正は、こうした情報 texture を WebGPU pipeline へ載せる時の色管理の確認ポイントになります。",
+      "bodyEn": "A practical implementation pattern is to drive both information textures and splat/scan rendering with the same focus value. Keep focus as a 0..1 field and distribute it to SDF antialias width, splat cell size, refraction amount, chromatic shift, and post-process intensity. With HTML-in-Canvas, measure DOM snapshot update rate, texElementImage2D / copyElementImageToTexture transfer cost, and synchronization between DOM hit testing and drawn position separately. Babylon.js 9.15.0's sRGB fix is a useful checkpoint for color management when these information textures enter a WebGPU pipeline.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas explainer",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "Babylon.js 9.15.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.15.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は、three.js HTMLTexture、Babylon.js HtmlTexture / OpenPBR / WebGPU 色管理、PlayCanvas GSplat streaming / SuperSplat、WICG HTML-in-Canvas の API 変更です。新規案件としては、WebXR Layers と DOM/HTML texture を組み合わせた readable layer の扱いを追いたいです。寝かせる案件は、通常のカード UI と大きな依存を伴う XR アプリ雛形です。このプロジェクトでは、軽量な shader、粒子、ポストプロセス、空間演出を優先します。",
+      "bodyEn": "Continue watching three.js HTMLTexture, Babylon.js HtmlTexture / OpenPBR / WebGPU color management, PlayCanvas GSplat streaming / SuperSplat, and WICG HTML-in-Canvas API changes. As a new thread, watch how readable layers could combine WebXR Layers with DOM/HTML textures. Put ordinary card UI and heavy XR app scaffolding aside for now; this project should prioritize lightweight shaders, particles, post-processing, and spatial staging.",
+      "links": [
+        {
+          "label": "three.js releases",
+          "url": "https://github.com/mrdoob/three.js/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Immersive Web Layers repo",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、focus 値を 1 つ作って、SDF 輪郭、粒子密度、屈折を同時に制御することです。今回のサンプルは outputs/2026-07-04_sdf_focus_splat_membrane.html で、ポインタ周辺だけ輪郭と疑似 splat が細かくなり、押している間は焦点半径が広がります。次に足すなら、2D canvas 由来の実 texture を読み込み、SDF 文字ではなく実 HTML/Canvas 情報面を同じ focus 値で制御するのが最短です。",
+      "bodyEn": "If trying one thing today, create one focus value and use it to control SDF contours, particle density, and refraction together. Today's sample is outputs/2026-07-04_sdf_focus_splat_membrane.html: outlines and pseudo splats sharpen near the pointer, and holding the pointer expands the focus radius. The fastest next step is to load a real 2D-canvas texture and control an actual HTML/canvas information surface with the same focus value instead of procedural SDF letters.",
+      "links": [
+        {
+          "label": "Open today's sample",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r185、Babylon.js 9.15.0、PlayCanvas v2.20.5、WICG HTML-in-Canvas、Immersive Web Layers を確認。アイデア検討: 2026-07-02 の Gaussian LOD scope と 2026-07-03 の HTML texture refraction を、focus field で統合する方向に整理。サンプル実装: 単体 WebGL/GLSL で SDF 文字、疑似 splat、焦点リング、押下時の焦点拡張を実装。結果の検証: HTML 単体の表示と gallery build/publish で確認する。短期で試すものは focus field の統合、中長期で育てるものは実 GSplat scene + readable HTML texture + XR gaze/hand interaction です。",
+      "bodyEn": "Research: checked three.js r185, Babylon.js 9.15.0, PlayCanvas v2.20.5, WICG HTML-in-Canvas, and Immersive Web Layers. Ideation: organized the 2026-07-02 Gaussian LOD scope and the 2026-07-03 HTML texture refraction sample around a shared focus field. Prototype: implemented SDF letters, pseudo splats, a focus ring, and press-to-expand focus in standalone WebGL/GLSL. Evaluation: verify through standalone HTML and gallery build/publish. The short-term experiment is unified focus fields; the mid-to-long-term theme is real GSplat scenes plus readable HTML textures plus XR gaze/hand interaction.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        },
+        {
+          "label": "Gaussian LOD sample",
+          "url": "../outputs/2026-07-02_gaussian_lod_scope.html"
+        },
+        {
+          "label": "HTML texture refraction sample",
+          "url": "../outputs/2026-07-03_html_texture_refraction_surface.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、派手な新機能よりも『読める情報を GPU 素材として破綻なく扱う』方向にまとまっています。HTML-in-Canvas は情報の素材化、Babylon.js の sRGB/tree-shaking 修正は色と依存関係の安定化、PlayCanvas の GSplat streaming 修正は重い空間 asset の差し替え安定化です。組み合わせ候補は、1. HTMLTexture + SDF focus、2. Gaussian LOD + readable membrane、3. GSplat streaming + 音反応、4. WebXR Layers + shader controlled annotations。育てる価値が高いテーマは『読める/読めないの境界をインタラクションにする』ことです。",
+      "bodyEn": "The recent direction is less about flashy new features and more about handling readable information as GPU material without breaking. HTML-in-Canvas materializes information; Babylon.js sRGB/tree-shaking fixes stabilize color and dependencies; PlayCanvas GSplat streaming fixes stabilize heavy spatial-asset swaps. Promising combinations are: HTMLTexture plus SDF focus, Gaussian LOD plus readable membranes, GSplat streaming plus audio reactivity, and WebXR Layers plus shader-controlled annotations. The high-value theme remains making the boundary between readable and unreadable interactive.",
+      "links": [
+        {
+          "label": "WICG HTML-in-Canvas",
+          "url": "https://github.com/WICG/html-in-canvas"
+        },
+        {
+          "label": "PlayCanvas v2.20.5",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.20.5"
+        },
+        {
+          "label": "Immersive Web Layers",
+          "url": "https://github.com/immersive-web/layers"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した候補は SDF Focus Splat Membrane です。ファイルは outputs/2026-07-04_sdf_focus_splat_membrane.html。WebGL fragment shader だけで、情報膜、SDF 文字、疑似 Gaussian splat、焦点リングを描き、ポインタ周辺だけ情報のエッジと粒子密度が上がるようにしています。次に発展させるなら、1. 2026-07-03 の canvas texture をこの膜に貼る、2. Web Audio の peak で focus 半径を揺らす、3. 実 GSplat asset の LOD/picking と同じ focus 値を共有する、の順が良いです。",
+      "bodyEn": "The selected mini prototype is SDF Focus Splat Membrane. The file is outputs/2026-07-04_sdf_focus_splat_membrane.html. A single WebGL fragment shader draws an information membrane, SDF letters, pseudo Gaussian splats, and a focus ring, increasing edge quality and particle density only near the pointer. The next steps should be: map the 2026-07-03 canvas texture onto this membrane, modulate focus radius with Web Audio peaks, then share the same focus value with real GSplat LOD and picking.",
+      "links": [
+        {
+          "label": "Open sample",
+          "url": "../outputs/2026-07-04_sdf_focus_splat_membrane.html"
+        }
+      ]
+    }
+  ]
+}

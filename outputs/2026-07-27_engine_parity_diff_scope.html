@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Engine Parity Diff Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #06110f;
+      color: #e6f0ed;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hud {
+      position: fixed;
+      left: 16px;
+      top: 14px;
+      max-width: min(620px, calc(100vw - 32px));
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(230, 240, 237, 0.84);
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+    }
+
+    .hud strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #ffffff;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+
+    .keys {
+      position: fixed;
+      right: 16px;
+      bottom: 14px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: rgba(230, 240, 237, 0.74);
+      text-align: right;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <strong>Engine parity diff scope</strong>
+    Left = legacy/WebGL-like path. Right = V2/Lite-like path. Center glow = visual diff. Pointer = inspection lens. Hold or Space = migration stress.
+  </div>
+  <div class="keys">color space · post FX · MSDF labels · streamed splat budget</div>
+
+  <script id="vs" type="x-shader/x-vertex">
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fs" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 resolution;
+    uniform vec2 pointer;
+    uniform float time;
+    uniform float hold;
+    uniform float pulse;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 74.7);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+        u.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float f = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 4; i++) {
+        f += a * noise(p);
+        p = mat2(1.62, 1.18, -1.18, 1.62) * p + 0.13;
+        a *= 0.5;
+      }
+      return f;
+    }
+
+    float segment(vec2 p, vec2 a, vec2 b, float w) {
+      vec2 pa = p - a;
+      vec2 ba = b - a;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      return smoothstep(w, 0.0, length(pa - ba * h));
+    }
+
+    float labelMark(vec2 p, float id) {
+      p = p * 2.0 - 1.0;
+      float g = 0.0;
+      if (id < 0.5) {
+        g += segment(p, vec2(-0.55, 0.42), vec2(0.40, 0.42), 0.055);
+        g += segment(p, vec2(-0.55, -0.42), vec2(0.40, -0.42), 0.055);
+        g += segment(p, vec2(-0.42, 0.42), vec2(-0.42, -0.42), 0.055);
+      } else if (id < 1.5) {
+        g += segment(p, vec2(-0.48, 0.42), vec2(0.44, -0.42), 0.055);
+        g += segment(p, vec2(0.44, 0.42), vec2(-0.48, -0.42), 0.055);
+      } else {
+        g += segment(p, vec2(-0.52, 0.36), vec2(0.48, 0.36), 0.055);
+        g += segment(p, vec2(-0.52, 0.00), vec2(0.25, 0.00), 0.055);
+        g += segment(p, vec2(-0.52, -0.36), vec2(0.48, -0.36), 0.055);
+      }
+      return clamp(g, 0.0, 1.0);
+    }
+
+    float splat(vec2 p, vec2 c, float r, float stretch, float angle) {
+      vec2 d = p - c;
+      float s = sin(angle);
+      float co = cos(angle);
+      d = mat2(co, -s, s, co) * d;
+      d.x /= stretch;
+      return exp(-dot(d, d) / max(r * r, 0.0001));
+    }
+
+    vec3 pathColor(vec2 p, float lane, float stress) {
+      float field = 0.0;
+      float stream = 0.0;
+      for (int i = 0; i < 58; i++) {
+        float fi = float(i);
+        vec2 seed = vec2(hash(vec2(fi, 5.0)), hash(vec2(fi, 19.0)));
+        vec2 c = seed * 2.0 - 1.0;
+        c.x += 0.16 * sin(time * 0.16 + fi);
+        c.y += 0.09 * cos(time * 0.13 + fi * 1.7);
+        float lod = smoothstep(0.10, 0.65, length(p - c));
+        float legacyRadius = mix(0.036, 0.065, lod);
+        float v2Radius = mix(0.028, 0.048, lod * 0.72);
+        float r = mix(legacyRadius, v2Radius, lane);
+        float g = splat(p, c, r, mix(1.0, 1.75, hash(seed + 2.0)), fi + time * 0.08);
+        field += g * mix(0.06, 0.18, hash(seed + 8.0));
+        stream += g * smoothstep(0.35, 0.88, hash(floor(seed * 12.0) + floor(time * 0.7)));
+      }
+
+      field = clamp(field, 0.0, 1.0);
+      stream = clamp(stream, 0.0, 1.0);
+      float fog = smoothstep(1.0, 0.08, length(p));
+      float surface = fbm(p * 2.2 + vec2(time * 0.05, lane * 4.0));
+      float colorSpace = mix(pow(field, 0.92), pow(field, 1.22), lane);
+      float post = smoothstep(0.42, 0.95, colorSpace + 0.28 * surface);
+      float aa = smoothstep(0.015 + 0.020 * lane, 0.0, abs(fract((p.y + 0.12 * sin(p.x * 5.0)) * 14.0) - 0.5) - 0.47);
+      float label = 0.0;
+      label += labelMark((p - vec2(-0.68, 0.62)) / vec2(0.13, 0.09) + 0.5, lane);
+      label += labelMark((p - vec2(0.48, -0.56)) / vec2(0.13, 0.09) + 0.5, 2.0 - lane);
+      vec3 baseA = vec3(0.07, 0.16, 0.14);
+      vec3 baseB = vec3(0.12, 0.23, 0.34);
+      vec3 warm = vec3(0.95, 0.60, 0.24);
+      vec3 cool = vec3(0.20, 0.76, 0.86);
+      vec3 col = mix(baseA, baseB, lane);
+      col += mix(warm, cool, lane) * colorSpace * 1.25;
+      col += vec3(0.58, 0.38, 0.86) * post * (0.32 + 0.55 * lane);
+      col += vec3(1.0, 0.94, 0.70) * label * (0.55 + 0.32 * lane);
+      col += vec3(0.95, 0.24, 0.16) * stream * stress * (1.0 - 0.25 * lane);
+      col += vec3(0.16, 0.58, 0.36) * aa * (0.35 + 0.5 * stress);
+      col *= 0.42 + fog * 0.82;
+      return col;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / resolution.xy;
+      vec2 p = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+      vec2 m = (pointer * 2.0 - 1.0) * vec2(resolution.x / min(resolution.x, resolution.y), resolution.y / min(resolution.x, resolution.y));
+      float stress = clamp(hold + pulse, 0.0, 1.0);
+
+      vec3 legacy = pathColor(p + vec2(0.025 * sin(time), 0.0), 0.0, stress);
+      vec3 v2 = pathColor(p, 1.0, stress);
+      float diff = length(legacy - v2);
+      float lens = smoothstep(0.38, 0.05, length(p - m));
+      float divider = smoothstep(0.006, 0.0, abs(uv.x - 0.5));
+
+      vec3 col = uv.x < 0.5 ? legacy : v2;
+      vec3 diffHeat = vec3(1.0, 0.33, 0.14) * smoothstep(0.10, 0.62, diff);
+      diffHeat += vec3(0.24, 0.82, 1.0) * smoothstep(0.28, 0.05, abs(diff - 0.22));
+      col = mix(col, diffHeat, 0.34 + 0.46 * lens);
+
+      float centerBand = smoothstep(0.16, 0.0, abs(uv.x - 0.5));
+      col += diffHeat * centerBand * (0.55 + 0.45 * stress);
+      col += vec3(0.9, 0.98, 0.88) * divider;
+      col += vec3(0.95, 0.78, 0.34) * smoothstep(0.018, 0.0, abs(length(p - m) - 0.38)) * (0.4 + 0.6 * stress);
+      col += vec3(0.02, 0.05, 0.04) * smoothstep(0.9, 0.25, length(p)) * 0.25;
+      col = pow(col, vec3(0.94));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false });
+    const pointer = { x: 0.52, y: 0.52 };
+    let hold = 0;
+    let pulse = 0;
+
+    function compileShader(type, id) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, document.getElementById(id).textContent);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, "vs"));
+    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, "fs"));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      hold: gl.getUniformLocation(program, "hold"),
+      pulse: gl.getUniformLocation(program, "pulse")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(innerWidth * dpr));
+      const height = Math.max(1, Math.floor(innerHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, width, height);
+      pulse = Math.max(pulse, 0.75);
+    }
+
+    addEventListener("resize", resize);
+    addEventListener("pointermove", (event) => {
+      pointer.x = event.clientX / innerWidth;
+      pointer.y = 1 - event.clientY / innerHeight;
+    });
+    addEventListener("pointerdown", () => {
+      hold = 1;
+      pulse = 1;
+    });
+    addEventListener("pointerup", () => {
+      hold = 0;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        pulse = 1;
+      }
+    });
+
+    const started = performance.now();
+    function frame(now) {
+      resize();
+      pulse = Math.max(0, pulse - 0.018);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, (now - started) / 1000);
+      gl.uniform1f(uniforms.hold, hold);
+      gl.uniform1f(uniforms.pulse, pulse);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
