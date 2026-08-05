@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Per-Eye Clear NDC Scope - 2026-08-05</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #020507;
+      color: #e9f8ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 16px 18px auto 18px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: rgba(229, 250, 255, 0.78);
+      text-shadow: 0 0 18px rgba(80, 230, 255, 0.45);
+    }
+    .hud strong {
+      display: block;
+      color: #ffd36f;
+      font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      .hud {
+        inset: 12px;
+        grid-template-columns: 1fr;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <span><strong>Per-Eye Clear NDC Scope</strong>Pointer = pass inspector / Hold or Space = clear pressure / Drag = NDC tilt</span>
+    <span>1 clear / 2 half-Z / 3 clustered WGSL / 4 direct pipeline</span>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: false });
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform vec2 velocity;
+      uniform float time;
+      uniform float pressure;
+      uniform float mode;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.7, 289.1))) * 43758.5453);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 5; i++) {
+          v += noise(p) * a;
+          p = mat2(1.48, -1.08, 1.08, 1.48) * p + vec2(7.1, 2.9);
+          a *= 0.52;
+        }
+        return v;
+      }
+
+      float ring(vec2 p, float r, float w) {
+        return 1.0 - smoothstep(0.0, w, abs(length(p) - r));
+      }
+
+      float beam(vec2 p, float a, float w) {
+        vec2 d = vec2(cos(a), sin(a));
+        float side = abs(dot(p, vec2(-d.y, d.x)));
+        float along = dot(p, d);
+        return smoothstep(w, 0.0, side) * smoothstep(-0.2, 0.72, along);
+      }
+
+      float splat(vec2 p, vec2 c, vec2 scale, float rot) {
+        float co = cos(rot);
+        float si = sin(rot);
+        mat2 m = mat2(co, -si, si, co);
+        vec2 q = m * (p - c);
+        return exp(-dot(q / scale, q / scale));
+      }
+
+      vec3 heat(float x) {
+        vec3 deep = vec3(0.015, 0.022, 0.030);
+        vec3 blue = vec3(0.06, 0.70, 1.00);
+        vec3 lime = vec3(0.58, 1.00, 0.68);
+        vec3 pink = vec3(1.00, 0.22, 0.66);
+        return mix(mix(deep, blue, smoothstep(0.02, 0.48, x)), mix(lime, pink, x), smoothstep(0.45, 1.18, x));
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 m = (pointer * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 drag = velocity * vec2(15.0, 11.0);
+        vec2 ndcAxis = normalize(vec2(0.20, 1.0) + drag);
+        float fog = fbm(uv * 2.4 + vec2(time * 0.08, -time * 0.05));
+
+        float leftFrame = 0.0;
+        float rightFrame = 0.0;
+        float depthZ = 0.0;
+        float wgslRisk = 0.0;
+        float directGain = 0.0;
+
+        for (int i = 0; i < 58; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(hash(vec2(fi, 12.0)), hash(vec2(2.0, fi)));
+          vec2 c = (seed * 2.0 - 1.0) * vec2(1.72, 0.88);
+          c += 0.050 * vec2(sin(time * 0.18 + fi * 1.3), cos(time * 0.15 + fi * 1.7));
+          float z = hash(seed * 19.0 + 3.0);
+          vec2 scale = vec2(0.020 + z * 0.055, 0.010 + z * 0.028);
+          float rot = fi * 0.43 + time * 0.035;
+          float parallax = 0.020 + z * 0.052 + pressure * 0.015;
+          float l = splat(uv + vec2(parallax, 0.0), c, scale, rot);
+          float r = splat(uv - vec2(parallax, 0.0), c, scale, rot + 0.12);
+          leftFrame += l * (0.55 + z);
+          rightFrame += r * (0.55 + z);
+          depthZ += max(l, r) * smoothstep(0.18, 0.92, z);
+          wgslRisk += max(l, r) * step(0.86, hash(seed * 53.0 + floor(time * 0.7)));
+          directGain += max(l, r) * smoothstep(0.35, 0.95, 1.0 - abs(z - 0.52) * 1.7);
+        }
+
+        vec2 lensP = uv - m;
+        float lens = smoothstep(0.70, 0.08, length(lensP));
+        float lensRing = ring(lensP, 0.25 + pressure * 0.18, 0.016);
+        float clearSweep = smoothstep(0.045, 0.0, abs(fract((uv.x * 0.70 + uv.y * 0.18) + time * (0.18 + pressure * 0.35)) - 0.50));
+        float halfZ = smoothstep(0.018, 0.0, abs(dot(uv, ndcAxis) + 0.22 * sin(uv.x * 4.0 + time) - 0.18));
+        float wrongSceneClear = clearSweep * smoothstep(0.20, 0.98, rightFrame) * (0.35 + pressure);
+        float upright = ring(vec2(uv.x * 0.68, uv.y + 0.08), 0.72, 0.012);
+        float clusterTiles = smoothstep(0.986, 1.0, sin(uv.x * 34.0) * sin(uv.y * 24.0 + time * 0.7));
+        float directPath = beam(uv - vec2(-0.82, -0.34), 0.55, 0.012) + beam(uv - vec2(-0.20, -0.42), 0.86, 0.010);
+
+        float clearOn = mode < 1.5 ? 1.0 : 0.26;
+        float ndcOn = abs(mode - 2.0) < 0.5 ? 1.0 : 0.26;
+        float wgslOn = abs(mode - 3.0) < 0.5 ? 1.0 : 0.26;
+        float directOn = mode > 3.5 ? 1.0 : 0.26;
+
+        vec3 col = vec3(0.008, 0.014, 0.020);
+        col += heat(0.45 * leftFrame + 0.45 * rightFrame) * (0.28 + 0.30 * lens);
+        col += vec3(1.0, 0.36, 0.16) * wrongSceneClear * (0.22 + clearOn);
+        col += vec3(0.55, 0.90, 1.0) * halfZ * depthZ * (0.25 + ndcOn);
+        col += vec3(1.0, 0.18, 0.72) * wgslRisk * (0.15 + wgslOn);
+        col += vec3(0.42, 1.0, 0.72) * directGain * directPath * (0.30 + directOn);
+        col += vec3(0.22, 0.72, 1.0) * clusterTiles * wgslOn * (0.18 + pressure * 0.30);
+        col += vec3(0.95, 0.90, 0.62) * upright * ndcOn;
+        col += vec3(0.70, 0.95, 1.0) * fog * smoothstep(-0.65, 0.78, uv.y) * 0.13;
+        col += vec3(1.0, 0.78, 0.25) * lensRing * (0.78 + pressure);
+        col += vec3(0.20, 0.82, 1.0) * lens * 0.15;
+
+        float scan = smoothstep(0.988, 1.0, sin((uv.y + time * 0.045) * 64.0));
+        float vignette = smoothstep(1.78, 0.20, length(uv));
+        float grain = noise(gl_FragCoord.xy * 0.72 + time * 23.0);
+        col += vec3(0.05, 0.18, 0.24) * scan * (0.18 + pressure * 0.34);
+        col *= vignette;
+        col += grain * 0.020;
+        col = col / (1.0 + col);
+        col = pow(col, vec3(0.82));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const loc = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      velocity: gl.getUniformLocation(program, "velocity"),
+      time: gl.getUniformLocation(program, "time"),
+      pressure: gl.getUniformLocation(program, "pressure"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [window.innerWidth * 0.55, window.innerHeight * 0.52],
+      last: [window.innerWidth * 0.55, window.innerHeight * 0.52],
+      velocity: [0, 0],
+      down: false,
+      keyPressure: false,
+      pressure: 0,
+      mode: 1
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", (event) => {
+      state.last = state.pointer;
+      state.pointer = [event.clientX, window.innerHeight - event.clientY];
+      state.velocity = [
+        (state.pointer[0] - state.last[0]) / Math.max(window.innerWidth, 1),
+        (state.pointer[1] - state.last[1]) / Math.max(window.innerHeight, 1)
+      ];
+    });
+    window.addEventListener("pointerdown", () => {
+      state.down = true;
+    });
+    window.addEventListener("pointerup", () => {
+      state.down = false;
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") state.mode = Number(event.key);
+      if (event.code === "Space") state.keyPressure = true;
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "Space") state.keyPressure = false;
+    });
+
+    resize();
+    const start = performance.now();
+    function frame(now) {
+      const targetPressure = state.down || state.keyPressure ? 1 : 0;
+      state.pressure += (targetPressure - state.pressure) * 0.08;
+      state.velocity[0] *= 0.92;
+      state.velocity[1] *= 0.92;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0] * dpr, state.pointer[1] * dpr);
+      gl.uniform2f(uniforms.velocity, state.velocity[0], state.velocity[1]);
+      gl.uniform1f(uniforms.time, (now - start) * 0.001);
+      gl.uniform1f(uniforms.pressure, state.pressure);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

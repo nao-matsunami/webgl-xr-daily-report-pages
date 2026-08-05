@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Per-eye clear の失敗をXR診断演出に変換する | 2026-08-05</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.05</p>
+      <h1>Per-eye clear の失敗をXR診断演出に変換する</h1>
+      <p class="hero-subtitle">Turning per-eye clear failures into XR diagnostic staging</p>
+      <p>Babylon.js 9.19.1 と WebGPU-XR Phase 3 の per-eye clear / half-Z NDC 修正、three.js DirectRenderPipeline と Gaussian Splat TSL PR、PlayCanvas の JSDoc/型整備、Codrops の WebGL事例群を、昨日の XR eye resolve から「Per-Eye Clear NDC Scope」へ接続した。</p>
+      <p class="en-copy">Today connects Babylon.js 9.19.1 and WebGPU-XR Phase 3 per-eye clear / half-Z NDC work, three.js DirectRenderPipeline and Gaussian Splat TSL PRs, PlayCanvas JSDoc/type hardening, and Codrops WebGL examples, extending yesterday's XR eye resolve into a Per-Eye Clear NDC Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-04.html">← 2026.08.04</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Per-Eye Clear NDC Scope - 2026-08-05</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. Babylon.js は 2026-08-04 に 9.19.1 を公開し、Firefox WebGPU の clustered lighting WGSL validation 修正、touch hover の pointer slot 枯渇防止、Gaussian Splatting sort padding 修正などが入った。単発の修正群だが、WebGPU と入力と GSplat の壊れ方が同時に出ている点が制作上重要。2. Babylon.js PR #18688 は WebGPU-XR Phase 3 として、Quest 3 で per-eye clear が描画済みフレームを消し続ける症状、upright rendering、half-Z NDC を扱う。昨日の左右眼 resolve に対して、今日は「clear pass がどちらの眼をいつ消すか」が主題になる。3. three.js PR #34166 DirectRenderPipeline は、output node、tone mapping、color-space conversion を material shader 側へ寄せ、中間 framebuffer と output pass を避ける opt-in 経路を提案している。XR の native WebGPU output target と direct MSAA にも触れており、postprocess を前提にした表現の置き場所を考え直す材料になる。4. three.js PR #33950 は TSL/WebGPU/WebGL をまたぐ Gaussian Splat renderer / loader と glTF import を追加する提案で、PLY/SPLAT/SPZ/KSplat と GPU sorting を小さく理解可能な addon としてまとめようとしている。5. PlayCanvas PR #9151 は、LLM や型生成が読む JSDoc と公開 d.ts を強化する内容。描画機能そのものではないが、制作テンプレートや自動生成サンプルの誤作動を減らす基盤として継続ウォッチ対象。</p>
+          <p class="en-copy">1. Babylon.js released 9.19.1 on 2026-08-04, including fixes for Firefox WebGPU clustered lighting WGSL validation, touch-hover pointer slot exhaustion, and Gaussian Splatting sort padding. These are separate fixes, but together they expose WebGPU, input, and GSplat failure modes that matter in production. 2. Babylon.js PR #18688, part of WebGPU-XR Phase 3, handles a Quest 3 symptom where per-eye clear keeps erasing drawn frames, plus upright rendering and half-Z NDC. After yesterday's eye resolve topic, today's focus is which eye a clear pass erases and when. 3. three.js PR #34166 proposes an opt-in DirectRenderPipeline that moves output-node processing, tone mapping, and color-space conversion into material shaders, avoiding the intermediate framebuffer and output pass. Because it also mentions native WebGPU XR output targets and direct MSAA, it changes where postprocess-based expression can live. 4. three.js PR #33950 proposes a Gaussian Splat renderer / loader across TSL, WebGPU, WebGL, and glTF import, covering PLY/SPLAT/SPZ/KSplat and GPU sorting as a compact addon. 5. PlayCanvas PR #9151 strengthens the JSDoc and public d.ts surfaces read by LLMs and type generation. It is not a rendering feature, but it is a foundation for reducing broken generated samples and templates.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.1" target="_blank" rel="noreferrer">Babylon.js 9.19.1</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18688" target="_blank" rel="noreferrer">Babylon.js PR #18688</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34166" target="_blank" rel="noreferrer">three.js PR #34166</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33950" target="_blank" rel="noreferrer">three.js PR #33950</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas PR #9151</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は Babylon.js PR #18688 の失敗記述そのもの。WebGPU XR で一瞬描いた後に消え、clear color だけが出続け、validation error は出ない、という症状は、通常なら怖いバグだが、視覚表現としては非常に強い。左眼/右眼、clear observer、scene autoClear、half-Z NDC、upright rendering をそれぞれ色や走査線に割り当てると、XR の内部状態を作品の“緊張感”として見せられる。Codrops の WebGL 事例一覧を見ると、Cerebrium、Dash、ZERO、Trionn のように、WebGL は単なる背景ではなく、抽象概念やブランドの手触りを説明する装置として使われている。この流れに乗せるなら、診断値も QA 表示ではなく、体験がなぜ安定・不安定なのかを触って理解する演出に変えられる。</p>
+          <p class="en-copy">Today's notable case is the failure description in Babylon.js PR #18688 itself. In WebGPU XR, a scene appears for one frame, then disappears while only the clear color keeps presenting and no validation error appears. That is a severe bug in production, but a strong visual motif. If left eye, right eye, clear observer, scene autoClear, half-Z NDC, and upright rendering are mapped to colors or scanlines, XR internal state becomes staged tension. Codrops' WebGL index shows cases such as Cerebrium, Dash, ZERO, and Trionn using WebGL not as background decoration but as a device for explaining abstract ideas and brand texture. In that context, diagnostic values can move from QA overlays into interactions that let users feel why an experience is stable or unstable.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18688" target="_blank" rel="noreferrer">Babylon.js PR #18688</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL articles</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/tag/webgl/" target="_blank" rel="noreferrer">Codrops Creative Hub WebGL</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「Per-Eye Clear NDC Scope」。昨日の stereo resolve lens を引き継ぎ、今回は clear wipe、half-Z depth band、clustered lighting WGSL risk、direct pipeline path の4レーンにする。ポインタは pass inspector、ドラッグは NDC の傾き、クリック/Space は clear pressure。画面上では、描画された splat field が clear sweep によって局所的に消え、half-Z の帯が depth を切り、WGSL risk がタイル状に点滅し、direct path が緑の転送線として抜ける。中長期案は、この4レーンを実 engine の状態値に置き換えること。Babylon なら WebGPU-XR render target provider の clear 状態、three.js なら DirectRenderPipeline の有無、PlayCanvas なら GSplat/fog/MRT debug texture を接続する。</p>
+          <p class="en-copy">The short-term idea is Per-Eye Clear NDC Scope. It inherits yesterday's stereo resolve lens, but changes the four lanes to clear wipe, half-Z depth band, clustered lighting WGSL risk, and direct pipeline path. The pointer is a pass inspector, dragging tilts NDC, and click or Space increases clear pressure. On screen, a rendered splat field is locally erased by a clear sweep, half-Z bands cut depth, WGSL risk blinks as tiles, and the direct path exits as green transfer beams. Longer term, replace these four lanes with real engine state: Babylon WebGPU-XR render-target provider clear state, three.js DirectRenderPipeline enablement, and PlayCanvas GSplat/fog/MRT debug textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>WebGPU XR では clear を単なる初期化処理として扱わず、render pass の境界として観察する。特に per-eye target に observer を付ける設計では、どの scene の autoClear を見ているか、pass が開いていない状態で clear が新しい pass を作らないかを記録できるようにする。three.js DirectRenderPipeline 型の経路では、中間 framebuffer が消える分、screen-space postprocess に依存した演出は material shader 側か別の capture pass に戻す必要がある。Babylon の clustered lighting 修正は、Chrome で通る WGSL が Firefox/Naga で落ちる典型例なので、storage pointer、include 展開、feature extension の有無を shader diagnostic に出す価値がある。PlayCanvas の JSDoc/型整備は、`StandardMaterial.update()`、`CameraFrame` group、Asset ready/failure のような silent failure をサンプル生成時のチェック項目にできる。</p>
+          <p class="en-copy">In WebGPU XR, treat clear not as a trivial initialization step but as a render-pass boundary worth observing. With observers attached to per-eye targets, log which scene's autoClear is read and whether clear creates a new pass when no pass is open. In a three.js DirectRenderPipeline-style path, losing the intermediate framebuffer means screen-space postprocess effects must move into material shaders or an explicit capture pass. Babylon's clustered lighting fix is a classic case where WGSL accepted by Chrome fails in Firefox/Naga, so storage pointers, include expansion, and feature extensions are worth exposing in shader diagnostics. PlayCanvas JSDoc/type hardening can turn silent failures such as `StandardMaterial.update()`, `CameraFrame` groups, and Asset ready/failure behavior into generated-sample checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34166" target="_blank" rel="noreferrer">three.js DirectRenderPipeline PR</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18761" target="_blank" rel="noreferrer">Babylon.js clustered lighting WGSL PR</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas JSDoc/types PR</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は #34166 DirectRenderPipeline、#34153 single-pass WebXR、#33950 Gaussian Splat addon、#34162 render object refresh types、r186 milestone。Babylon.js は 9.19.1 後の 9.19.x、#18688 WebGPU-XR Phase 3、#18615 KHR_interactivity、#18746 Closure sidecar packages、Firefox WebGPU/Naga 関連の追加修正。PlayCanvas は #9151 の merge と v2.21.4 以降、特に型情報が GSplat/MRT/fog の sample authoring にどう効くか。Codrops は WebGL tag と Creative Hub の新規事例、特に WebGL をデータ可視化、ブランド体験、インスタレーションへ接続する記事。</p>
+          <p class="en-copy">Watch three.js #34166 DirectRenderPipeline, #34153 single-pass WebXR, #33950 Gaussian Splat addon, #34162 render object refresh types, and the r186 milestone. Watch Babylon.js post-9.19.1 releases, #18688 WebGPU-XR Phase 3, #18615 KHR_interactivity, #18746 Closure sidecar packages, and further Firefox WebGPU/Naga fixes. Watch PlayCanvas #9151 merge status and v2.21.4+, especially how type information affects GSplat/MRT/fog sample authoring. Watch Codrops WebGL tag and Creative Hub for examples connecting WebGL to data visualization, brand experiences, and installations.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34153" target="_blank" rel="noreferrer">three.js PR #34153</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18615" target="_blank" rel="noreferrer">Babylon.js KHR_interactivity PR</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、XR 実機や WebGPU セットアップに入る前に、clear / depth / validation / direct path を1枚の WebGL fragment shader で疑似可視化する。これなら依存なしで、どの failure state が画として強いかをすぐ判断できる。操作は 1 clear、2 half-Z、3 clustered WGSL、4 direct pipeline、ドラッグで NDC 傾き、クリック/Space で clear pressure。</p>
+          <p class="en-copy">If trying one thing today, visualize clear, depth, validation, and direct-path states in one WebGL fragment shader before moving into a real XR device or WebGPU setup. With no dependencies, it quickly shows which failure states have expressive value. Controls are 1 clear, 2 half-Z, 3 clustered WGSL, 4 direct pipeline, drag to tilt NDC, and click or Space for clear pressure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: Babylon.js 9.19.1、WebGPU-XR #18688、clustered lighting #18761、three.js #34166/#33950/#34162、PlayCanvas #9151、Codrops WebGL tag を収集。アイデア検討: 継続案件は XR eye resolve、MRT fog refraction、compatibility prism、fallback-as-style。新規案件は per-eye clear failure、half-Z NDC band、WGSL validation tile、direct pipeline transfer line。寝かせる案件はカードUI、本格 WebGPU compute 実装、実 headset 検証、重い splat asset 読み込み。サンプル実装: `outputs/2026-08-05_per_eye_clear_ndc_scope.html` を追加。結果の検証: JSON parse、gallery build、upsert/publish、ローカル HTTP、公開 HTTP を確認する。</p>
+          <p class="en-copy">Research: collected Babylon.js 9.19.1, WebGPU-XR #18688, clustered lighting #18761, three.js #34166/#33950/#34162, PlayCanvas #9151, and Codrops WebGL tag. Ideation: continuing tracks are XR eye resolve, MRT fog refraction, compatibility prism, and fallback-as-style. New tracks are per-eye clear failure, half-Z NDC bands, WGSL validation tiles, and direct pipeline transfer lines. Parked tracks are card UI, full WebGPU compute implementation, real headset validation, and heavy splat asset loading. Prototype: added `outputs/2026-08-05_per_eye_clear_ndc_scope.html`. Verification: JSON parse, gallery build, upsert/publish, local HTTP, and public HTTP.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、GPU 機能の追加よりも「内部状態の境界」が作品品質を左右していること。MRT の attachment、XR の eye target、WebGPU の render pass、WGSL compiler の差、型情報の曖昧さは、全部 silent failure を生みやすい。同時に、これらは視覚化すると強い素材になる。昨日の eye resolve lens と今日の per-eye clear scope を組み合わせると、XR/非XRをまたぐ診断 overlay の核になる。育てる価値が高いテーマは、debug texture、fallback state、input state を美術演出に変換する共通 shader vocabulary。</p>
+          <p class="en-copy">The recent trend is that boundaries between internal GPU states influence experience quality as much as new features do. MRT attachments, XR eye targets, WebGPU render passes, WGSL compiler differences, and ambiguous type information all create silent failures. At the same time, they become strong material when visualized. Combining yesterday's eye resolve lens with today's per-eye clear scope gives a core for a diagnostic overlay that works across XR and non-XR. The theme worth growing is a shared shader vocabulary that converts debug textures, fallback states, and input states into art direction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-04_xr_eye_resolve_fog_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Per-Eye Clear NDC Scope」。作成ファイルは `outputs/2026-08-05_per_eye_clear_ndc_scope.html`。raw WebGL fragment shader だけで疑似 splat field を描き、per-eye clear wipe、half-Z NDC depth band、clustered lighting WGSL validation risk、DirectRenderPipeline 風の direct path を重ねる。次に足すなら、実 Babylon WebGPU-XR の clear/pass ログ、three.js DirectRenderPipeline の切替、PlayCanvas GSplat/MRT debug texture、Web Audio の帯域別 clear pressure、MediaPipe の手入力による NDC tilt。</p>
+          <p class="en-copy">The selected prototype is Per-Eye Clear NDC Scope. The created file is `outputs/2026-08-05_per_eye_clear_ndc_scope.html`. It uses only a raw WebGL fragment shader to draw a pseudo splat field and overlay per-eye clear wipe, half-Z NDC depth bands, clustered-lighting WGSL validation risk, and a DirectRenderPipeline-like direct path. Next additions are real Babylon WebGPU-XR clear/pass logs, three.js DirectRenderPipeline toggles, PlayCanvas GSplat/MRT debug textures, Web Audio band-based clear pressure, and MediaPipe hand input for NDC tilt.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、pointer、drag velocity、pressure、mode を入力にし、clear wipe、depth band、validation risk、direct path を描画状態として持つ。この4値を実データへ置き換えると、XR の pass lifecycle、WebGPU compiler compatibility、postprocess pipeline choice を同じ可視化に載せられる。音と組み合わせるなら低域を clear pressure、中域を depth band、高域を validation tile flicker に割り当てる。カメラや MediaPipe と組み合わせるなら、手の速度で clear sweep、顔の傾きで NDC axis、視線で direct path を制御する。展示では、普段は見えない engine の安定性を、来場者の操作で現れる光の層として提示できる。ブランド体験では、fallback 画面をエラーではなく“環境に合わせて変形する入口”として扱える。</p>
+          <p class="en-copy">Today's sample uses pointer, drag velocity, pressure, and mode as inputs, with clear wipe, depth bands, validation risk, and direct path as render states. Replacing those four values with real data can put XR pass lifecycle, WebGPU compiler compatibility, and postprocess pipeline choice into one visualization. With audio, bass can drive clear pressure, mids depth bands, and highs validation tile flicker. With camera or MediaPipe input, hand speed can control clear sweep, face tilt the NDC axis, and gaze the direct path. In an installation, engine stability can appear as light layers revealed by visitors. In a brand experience, fallback screens can become adaptive entry scenes instead of errors.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.19.1" target="_blank" rel="noreferrer">Babylon.js 9.19.1</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18688" target="_blank" rel="noreferrer">Babylon.js PR: WebGPU-XR Phase 3 per-eye clear and half-Z NDC</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18761" target="_blank" rel="noreferrer">Babylon.js PR: Firefox WebGPU clustered lighting WGSL validation</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34166" target="_blank" rel="noreferrer">three.js PR: DirectRenderPipeline</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33950" target="_blank" rel="noreferrer">three.js PR: Gaussian Splat renderer / loader using TSL</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas PR: harden JSDoc and published types</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-05_per_eye_clear_ndc_scope.html" loading="lazy" title="Per-Eye Clear NDC Scope - 2026-08-05"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
