@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Interactivity Ref Event Scope - 2026-08-06</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #030406;
+      color: #eefaff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 16px 18px auto 18px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: rgba(233, 250, 255, 0.76);
+      text-shadow: 0 0 18px rgba(70, 220, 255, 0.45);
+    }
+    .hud strong {
+      display: block;
+      color: #86ffc4;
+      font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      .hud {
+        inset: 12px;
+        grid-template-columns: 1fr;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <span><strong>Interactivity Ref Event Scope</strong>Pointer = selected ref / Hold or Space = stop propagation / Drag = event flow bias</span>
+    <span>1 refs / 2 events / 3 MRT clear / 4 raw camera guard</span>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: false });
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform vec2 velocity;
+      uniform float time;
+      uniform float pressure;
+      uniform float mode;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 5; i++) {
+          v += noise(p) * a;
+          p = mat2(1.57, -1.04, 1.04, 1.57) * p + vec2(4.3, 8.1);
+          a *= 0.52;
+        }
+        return v;
+      }
+
+      float ring(vec2 p, float r, float w) {
+        return 1.0 - smoothstep(0.0, w, abs(length(p) - r));
+      }
+
+      float capsule(vec2 p, vec2 a, vec2 b, float r) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        return 1.0 - smoothstep(r, r + 0.018, length(pa - ba * h));
+      }
+
+      float node(vec2 p, vec2 c, float id, float selected) {
+        float core = smoothstep(0.18, 0.0, length(p - c));
+        float shell = ring(p - c, 0.18 + 0.018 * sin(time * 1.5 + id), 0.014);
+        float facet = smoothstep(0.035, 0.0, abs(sin(atan(p.y - c.y, p.x - c.x) * 4.0 + id)));
+        return core * 0.45 + shell * (0.8 + selected) + facet * core * 0.22;
+      }
+
+      vec3 grade(float x) {
+        vec3 ink = vec3(0.010, 0.014, 0.020);
+        vec3 cyan = vec3(0.08, 0.82, 1.0);
+        vec3 green = vec3(0.45, 1.0, 0.58);
+        vec3 coral = vec3(1.0, 0.26, 0.42);
+        return mix(mix(ink, cyan, smoothstep(0.02, 0.6, x)), mix(green, coral, x), smoothstep(0.55, 1.25, x));
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 m = (pointer * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 flow = normalize(vec2(0.65, 0.28) + velocity * vec2(22.0, 16.0));
+        float fog = fbm(uv * 2.1 + vec2(time * 0.05, -time * 0.07));
+
+        vec2 p0 = vec2(-0.70, 0.18);
+        vec2 p1 = vec2(-0.18, -0.24);
+        vec2 p2 = vec2(0.38, 0.20);
+        vec2 p3 = vec2(0.78, -0.28);
+        float d0 = length(m - p0);
+        float d1 = length(m - p1);
+        float d2 = length(m - p2);
+        float d3 = length(m - p3);
+        float selected0 = 1.0 - step(min(min(d1, d2), d3), d0);
+        float selected1 = 1.0 - step(min(min(d0, d2), d3), d1);
+        float selected2 = 1.0 - step(min(min(d0, d1), d3), d2);
+        float selected3 = 1.0 - step(min(min(d0, d1), d2), d3);
+
+        float refsOn = mode < 1.5 ? 1.0 : 0.25;
+        float eventsOn = abs(mode - 2.0) < 0.5 ? 1.0 : 0.25;
+        float clearOn = abs(mode - 3.0) < 0.5 ? 1.0 : 0.25;
+        float cameraOn = mode > 3.5 ? 1.0 : 0.25;
+
+        float graph = 0.0;
+        graph += node(uv, p0, 0.0, selected0);
+        graph += node(uv, p1, 1.0, selected1);
+        graph += node(uv, p2, 2.0, selected2);
+        graph += node(uv, p3, 3.0, selected3);
+
+        float edge01 = capsule(uv, p0, p1, 0.010);
+        float edge12 = capsule(uv, p1, p2, 0.010);
+        float edge23 = capsule(uv, p2, p3, 0.010);
+        float pulse = fract(dot(uv, flow) * 1.9 - time * (0.34 + pressure * 0.55));
+        float packet = smoothstep(0.07, 0.0, abs(pulse - 0.18));
+        float eventFlow = (edge01 + edge12 + edge23) * packet;
+        float stopGate = ring(uv - mix(p1, p2, 0.48), 0.32 + pressure * 0.14, 0.018) * pressure;
+
+        float refGrid = smoothstep(0.985, 1.0, sin((uv.x + 1.2) * 22.0) * sin((uv.y - 0.3) * 18.0));
+        float pointerRay = capsule(uv, m, vec2(0.0), 0.006);
+        float mrtA = smoothstep(0.018, 0.0, abs(uv.y + 0.56 + 0.04 * sin(uv.x * 6.0 + time)));
+        float mrtB = smoothstep(0.018, 0.0, abs(uv.y + 0.43 + 0.04 * sin(uv.x * 7.0 - time * 0.7)));
+        float mrtC = smoothstep(0.018, 0.0, abs(uv.y + 0.30 + 0.04 * sin(uv.x * 8.0 + time * 0.4)));
+        float intMark = smoothstep(0.03, 0.0, abs(fract((uv.x + 1.0) * 5.0) - 0.5)) * smoothstep(0.78, 0.0, abs(uv.y + 0.43));
+        float rawCameraGuard = ring(uv - vec2(0.0, 0.02), 0.82, 0.015) + capsule(uv, vec2(-0.52, 0.48), vec2(0.52, -0.44), 0.010);
+        float disabled = smoothstep(0.02, 0.0, abs(uv.x - uv.y * 1.12)) * smoothstep(0.95, 0.0, length(uv));
+
+        float trail = 0.0;
+        for (int i = 0; i < 42; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(hash(vec2(fi, 3.1)), hash(vec2(8.9, fi)));
+          vec2 c = (seed * 2.0 - 1.0) * vec2(1.36, 0.76);
+          c += 0.035 * vec2(sin(time * 0.19 + fi), cos(time * 0.17 + fi * 1.3));
+          float z = hash(seed * 14.7);
+          float r = 0.015 + z * 0.040;
+          trail += exp(-dot((uv - c) / vec2(r * 1.8, r), (uv - c) / vec2(r * 1.8, r))) * (0.4 + z);
+        }
+
+        vec3 col = vec3(0.006, 0.010, 0.014);
+        col += grade(trail) * 0.20;
+        col += vec3(0.20, 0.95, 1.0) * graph * (0.28 + refsOn * 0.55);
+        col += vec3(0.55, 1.0, 0.54) * eventFlow * (0.20 + eventsOn);
+        col += vec3(1.0, 0.30, 0.50) * stopGate * (0.35 + eventsOn);
+        col += vec3(0.60, 0.92, 1.0) * refGrid * refsOn * 0.28;
+        col += vec3(1.0, 0.72, 0.20) * pointerRay * refsOn * (0.25 + selected0 + selected1 + selected2 + selected3);
+        col += vec3(0.08, 0.45, 1.0) * mrtA * clearOn;
+        col += vec3(0.52, 1.0, 0.46) * mrtB * clearOn;
+        col += vec3(1.0, 0.26, 0.66) * mrtC * clearOn;
+        col += vec3(1.0, 0.86, 0.26) * intMark * clearOn * 0.30;
+        col += vec3(0.95, 0.34, 0.25) * rawCameraGuard * cameraOn * (0.30 + pressure * 0.35);
+        col += vec3(0.22, 0.62, 1.0) * disabled * cameraOn * 0.36;
+        col += vec3(0.25, 0.78, 0.94) * fog * smoothstep(-0.8, 0.9, uv.y) * 0.13;
+
+        float scan = smoothstep(0.988, 1.0, sin((uv.y + time * 0.04) * 70.0));
+        float vignette = smoothstep(1.72, 0.18, length(uv));
+        float grain = noise(gl_FragCoord.xy * 0.75 + time * 31.0);
+        col += vec3(0.05, 0.18, 0.22) * scan * (0.12 + pressure * 0.26);
+        col *= vignette;
+        col += grain * 0.018;
+        col = col / (1.0 + col);
+        col = pow(col, vec3(0.82));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      velocity: gl.getUniformLocation(program, "velocity"),
+      time: gl.getUniformLocation(program, "time"),
+      pressure: gl.getUniformLocation(program, "pressure"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [innerWidth * 0.5, innerHeight * 0.52],
+      last: [innerWidth * 0.5, innerHeight * 0.52],
+      velocity: [0, 0],
+      pressure: 0,
+      targetPressure: 0,
+      mode: 1,
+      down: false
+    };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      canvas.style.width = `${innerWidth}px`;
+      canvas.style.height = `${innerHeight}px`;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function setPointer(event) {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      state.last[0] = state.pointer[0];
+      state.last[1] = state.pointer[1];
+      state.pointer[0] = event.clientX * dpr;
+      state.pointer[1] = (innerHeight - event.clientY) * dpr;
+      state.velocity[0] = (state.pointer[0] - state.last[0]) / Math.max(canvas.width, 1);
+      state.velocity[1] = (state.pointer[1] - state.last[1]) / Math.max(canvas.height, 1);
+    }
+
+    addEventListener("resize", resize);
+    addEventListener("pointermove", setPointer);
+    addEventListener("pointerdown", (event) => {
+      state.down = true;
+      state.targetPressure = 1;
+      setPointer(event);
+    });
+    addEventListener("pointerup", () => {
+      state.down = false;
+      state.targetPressure = 0;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") state.mode = Number(event.key);
+      if (event.code === "Space") state.targetPressure = 1;
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space" && !state.down) state.targetPressure = 0;
+    });
+
+    resize();
+    const start = performance.now();
+    function frame(now) {
+      state.pressure += (state.targetPressure - state.pressure) * 0.08;
+      state.velocity[0] *= 0.90;
+      state.velocity[1] *= 0.90;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform2f(uniforms.velocity, state.velocity[0], state.velocity[1]);
+      gl.uniform1f(uniforms.time, (now - start) * 0.001);
+      gl.uniform1f(uniforms.pressure, state.pressure);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

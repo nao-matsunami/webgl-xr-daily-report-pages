@@ -1,0 +1,197 @@
+{
+  "date": "2026-08-06",
+  "headline": "glTF interactivity の ref と event をシェーダー演出の状態機械にする",
+  "headlineEn": "Turning glTF interactivity refs and events into a shader state machine",
+  "summary": "Babylon.js の KHR_interactivity 更新、WebGPU-XR Phase 4A、three.js DirectRenderPipeline / OCULUS_multiview / 3D texture readback、PlayCanvas の MRT clear と JSDoc 型整備、Codrops の制作事例を、前日の per-eye clear scope から「ref / event / guard / clear の可視化」へ接続した。",
+  "summaryEn": "Today connects Babylon.js KHR_interactivity updates and WebGPU-XR Phase 4A, three.js DirectRenderPipeline / OCULUS_multiview / 3D texture readback, PlayCanvas MRT clear and JSDoc type hardening, and Codrops production cases, extending yesterday's per-eye clear scope into visualization of refs, events, guards, and clears.",
+  "links": [
+    {
+      "label": "Babylon.js PR: KHR_interactivity importer update",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18615"
+    },
+    {
+      "label": "Babylon.js PR: WebGPU-XR Phase 4A",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18773"
+    },
+    {
+      "label": "three.js PR: DirectRenderPipeline",
+      "url": "https://github.com/mrdoob/three.js/pull/34166"
+    },
+    {
+      "label": "three.js PR: OCULUS_multiview",
+      "url": "https://github.com/mrdoob/three.js/pull/34147"
+    },
+    {
+      "label": "PlayCanvas PR: per-attachment MRT clear",
+      "url": "https://github.com/playcanvas/engine/pull/9142"
+    },
+    {
+      "label": "PlayCanvas PR: integer attachment clear",
+      "url": "https://github.com/playcanvas/engine/pull/9143"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Babylon.js PR #18615 は KHR_interactivity importer を最新仕様へ寄せ、opaque ref、pointer/get、event reference、event cancellation、pointer selection / hover / visibility、math ops を FlowGraph に接続する大型更新。これは glTF 内のノード参照とイベントを、実行時の見える状態として扱える方向に進めるもの。2. Babylon.js PR #18773 は WebGPU-XR Phase 4A として、XR graphics binding の再利用と Raw Camera Access の WebGPU XR 無効化を整理した。昨日の per-eye clear から一歩進み、使えない機能を曖昧に失敗させず、具体的な guard state として露出する設計が重要。3. three.js PR #34166 DirectRenderPipeline は継続更新中で、native WebGPU XR output target と direct MSAA を含む直通経路が焦点。PR #34147 は Quest で OCULUS_multiview provider を認識する方向の WebGLBackend multiview 対応、PR #34124 は WebGL backend の 3D/array texture readback ゼロ問題を扱う。4. PlayCanvas PR #9142/#9143 は MRT の attachment ごとに clear color / integer clear を扱うための基礎。昨日の clear failure を、複数 attachment の状態差として色分けできる。5. Codrops は Cerebrium、Dash、ZERO、Trionn など、WebGL を抽象概念や物語を触れる構造にする事例が続いており、今日の interactivity graph 表現と相性がよい。",
+      "bodyEn": "1. Babylon.js PR #18615 updates the KHR_interactivity importer toward the latest spec, connecting opaque refs, pointer/get, event references, event cancellation, pointer selection / hover / visibility, and math ops into FlowGraph. It moves glTF node references and events toward visible runtime state. 2. Babylon.js PR #18773, WebGPU-XR Phase 4A, organizes XR graphics binding reuse and disables Raw Camera Access on WebGPU XR. After yesterday's per-eye clear topic, the key shift is exposing unsupported features as explicit guard states instead of vague failures. 3. three.js PR #34166 DirectRenderPipeline remains active, focusing on a direct path that includes native WebGPU XR output targets and direct MSAA. PR #34147 handles OCULUS_multiview provider recognition on Quest, and PR #34124 addresses silent zero readback for 3D/array textures in the WebGL backend. 4. PlayCanvas PR #9142/#9143 lay groundwork for per-attachment MRT clear colors and integer attachment clearing. Yesterday's clear failure can now be split into per-attachment state colors. 5. Codrops continues to surface examples such as Cerebrium, Dash, ZERO, and Trionn where WebGL turns abstract ideas and narratives into explorable structures, which fits today's interactivity graph direction.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18615",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18615"
+        },
+        {
+          "label": "Babylon.js PR #18773",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18773"
+        },
+        {
+          "label": "three.js PR #34166",
+          "url": "https://github.com/mrdoob/three.js/pull/34166"
+        },
+        {
+          "label": "three.js PR #34147",
+          "url": "https://github.com/mrdoob/three.js/pull/34147"
+        },
+        {
+          "label": "PlayCanvas PR #9142",
+          "url": "https://github.com/playcanvas/engine/pull/9142"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は、Babylon.js の KHR_interactivity PR にある ref と event の扱い。通常は glTF importer の内部実装に見えるが、制作視点では「モデル内の参照、選択、hover、イベント停止、math 変換がひとつの可視グラフになる」点が面白い。Codrops の Cerebrium がインフラを触れる 3D 構造へ変換していたのと同じく、asset 内の不可視な関係性を光る経路として見せられる。例えば、選択された mesh ref から material ref、animation ref、event ref へ線が流れ、stopPropagation が発火した場所で光が遮断される表現にすると、技術説明でありながら体験として成立する。",
+      "bodyEn": "Today's notable case is how Babylon.js' KHR_interactivity PR treats refs and events. It looks like internal glTF importer work, but from a production standpoint the interesting part is that model references, selection, hover, event cancellation, and math transforms can become one visible graph. Similar to how Codrops' Cerebrium case turns infrastructure into an explorable 3D structure, invisible asset relationships can be shown as glowing routes. A selected mesh ref can send light toward material refs, animation refs, and event refs, while stopPropagation visibly blocks the flow, making the technical explanation work as an experience.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18615",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18615"
+        },
+        {
+          "label": "Codrops: Building Cerebrium",
+          "url": "https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「Interactivity Ref Event Scope」。画面上に4つのノードを置き、ポインタに近いノードを selected ref として強調する。1 は ref grid、2 は event flow と stopPropagation、3 は MRT attachment clear、4 は WebGPU XR Raw Camera guard を強調する。ドラッグはイベントの流れる方向、クリック/Space はイベント停止圧として使う。中長期では、この疑似状態を実 glTF interactivity の pointer selection / hover / event receive ログ、Babylon WebXR feature attach warning、PlayCanvas MRT debug texture、three.js texture readback の検証結果に置き換える。",
+      "bodyEn": "The short-term idea is Interactivity Ref Event Scope. Four nodes sit on screen, and the node nearest the pointer becomes the selected ref. Key 1 emphasizes the ref grid, 2 event flow and stopPropagation, 3 MRT attachment clear, and 4 the WebGPU XR Raw Camera guard. Dragging changes the event flow direction, while click or Space acts as event cancellation pressure. Longer term, replace the synthetic state with real glTF interactivity pointer selection / hover / event receive logs, Babylon WebXR feature attach warnings, PlayCanvas MRT debug textures, and three.js texture readback verification results.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "KHR_interactivity 系は、ref をただの文字列として扱わず、JSON Pointer 風の安定 ID としてログ・可視化・テストに流すとよい。event cancellation は見えない分岐なので、停止地点を shader uniform や debug texture に出すと制作時の理解が速い。WebGPU-XR では Raw Camera Access のように runtime capability で意図的に無効化される機能を、generic error ではなく feature-specific warning と guard channel に分ける。three.js DirectRenderPipeline のような直通経路では、framebuffer sampling を前提にした postprocess は成立しない場合があるため、素材側 shader へ寄せるか、別 capture pass を明示する。PlayCanvas の per-attachment clear は、color/id/depth-risk/event-state のような複数レーンを同じ画面で検査する基盤になる。",
+      "bodyEn": "For KHR_interactivity, treat refs not as plain strings but as stable JSON Pointer-like IDs that can flow into logs, visualization, and tests. Event cancellation is an invisible branch, so exposing the stop point as a shader uniform or debug texture speeds up production understanding. In WebGPU-XR, intentionally disabled runtime capabilities such as Raw Camera Access should split into feature-specific warnings and guard channels instead of generic errors. With a direct path like three.js DirectRenderPipeline, postprocess relying on framebuffer sampling may no longer fit, so move expression into material shaders or make a separate capture pass explicit. PlayCanvas per-attachment clear provides the basis for inspecting multiple lanes such as color, id, depth risk, and event state on one screen.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18773",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18773"
+        },
+        {
+          "label": "three.js PR #34166",
+          "url": "https://github.com/mrdoob/three.js/pull/34166"
+        },
+        {
+          "label": "PlayCanvas PR #9143",
+          "url": "https://github.com/playcanvas/engine/pull/9143"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "Babylon.js は #18615 KHR_interactivity、#18773 以降の WebGPU-XR Phase 4、#18766 transmission opaque texture layerMask、#18767 RawCubeTexture invertY WebGPU crash、次の 9.19.x リリース。three.js は #34166 DirectRenderPipeline、#34153 single-pass WebXR、#34147 OCULUS_multiview の扱い、#34124 3D/array texture readback、r186 milestone。PlayCanvas は #9151 JSDoc/型整備、#9142/#9143 MRT clear の downstream、#9148 Firefox/Windows WebGPU GSplat workaround の継続。Codrops は WebGL / WebGPU / Three.js のケーススタディと Creative Hub のデモ追加。",
+      "bodyEn": "Watch Babylon.js #18615 KHR_interactivity, WebGPU-XR Phase 4 after #18773, #18766 transmission opaque texture layerMask, #18767 RawCubeTexture invertY WebGPU crash, and the next 9.19.x release. Watch three.js #34166 DirectRenderPipeline, #34153 single-pass WebXR, #34147 OCULUS_multiview handling, #34124 3D/array texture readback, and the r186 milestone. Watch PlayCanvas #9151 JSDoc/type hardening, downstream effects of #9142/#9143 MRT clear, and the #9148 Firefox/Windows WebGPU GSplat workaround. Watch Codrops for new WebGL / WebGPU / Three.js case studies and Creative Hub demos.",
+      "links": [
+        {
+          "label": "three.js r186 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/99"
+        },
+        {
+          "label": "PlayCanvas PR #9151",
+          "url": "https://github.com/playcanvas/engine/pull/9151"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、glTF interactivity の ref / event / cancel を本物の importer に入る前に、1枚の WebGL fragment shader で状態機械として可視化する。依存なしで、選択、hover、event propagation、guard、MRT clear を同じ画面に並べられる。操作は 1 refs、2 events、3 MRT clear、4 raw camera guard、ドラッグで flow bias、クリック/Space で stopPropagation。",
+      "bodyEn": "If trying one thing today, visualize glTF interactivity refs, events, and cancellation as a state machine in one WebGL fragment shader before wiring a real importer. With no dependencies, selection, hover, event propagation, guard states, and MRT clear can be staged on one screen. Controls are 1 refs, 2 events, 3 MRT clear, 4 raw camera guard, drag for flow bias, and click or Space for stopPropagation.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Babylon.js #18615/#18773/#18766/#18767、three.js #34166/#34147/#34124、PlayCanvas #9142/#9143/#9148/#9151、Codrops Articles/Creative Hub を収集。アイデア検討: 継続案件は per-eye clear、DirectRenderPipeline、MRT clear、WGSL compatibility、diagnostic art。新規案件は KHR_interactivity ref graph、event cancellation glow、Raw Camera guard lane、3D/array texture readback layer marker。寝かせる案件はカードUI、重い実 glTF interactivity asset、実 Quest カメラ画像入力、本格 WebGPU 実装。サンプル実装: `outputs/2026-08-06_interactivity_ref_event_scope.html` を追加。結果の検証: JSON parse、gallery build、upsert/publish、HTTP 確認を行う。",
+      "bodyEn": "Research: collected Babylon.js #18615/#18773/#18766/#18767, three.js #34166/#34147/#34124, PlayCanvas #9142/#9143/#9148/#9151, and Codrops Articles/Creative Hub. Ideation: continuing tracks are per-eye clear, DirectRenderPipeline, MRT clear, WGSL compatibility, and diagnostic art. New tracks are KHR_interactivity ref graph, event cancellation glow, Raw Camera guard lane, and 3D/array texture readback layer markers. Parked tracks are card UI, heavy real glTF interactivity assets, real Quest camera image input, and full WebGPU implementation. Prototype: added `outputs/2026-08-06_interactivity_ref_event_scope.html`. Verification: JSON parse, gallery build, upsert/publish, and HTTP checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、Gaussian Splatting や XR の派手な機能追加よりも、内部状態の見える化が作品と検証の両方に効いていること。clear、attachment、ref、event、guard、readback、compiler workaround は、普段は開発者だけが見る層だが、色・線・遮断・流れに変換すると体験の文法になる。昨日の per-eye clear scope は render pass の境界、今日の interactivity ref event scope は asset/event の境界を扱う。両者を組み合わせると、入力イベントがどの attachment を clear し、どの XR feature を guard し、どの direct path に流れるかを一枚で見せる中長期テーマになる。",
+      "bodyEn": "The recent pattern is that making internal state visible helps both expression and verification more than flashy new Gaussian Splatting or XR features alone. Clear, attachments, refs, events, guards, readback, and compiler workarounds are usually developer-only layers, but when translated into color, lines, blocks, and flows they become an interaction vocabulary. Yesterday's per-eye clear scope covered render-pass boundaries; today's interactivity ref event scope covers asset/event boundaries. Combining them suggests a mid- to long-term theme: one view showing which input event clears which attachment, guards which XR feature, and flows into which direct path.",
+      "links": [
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-08-05_per_eye_clear_ndc_scope.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「Interactivity Ref Event Scope」。作成ファイルは `outputs/2026-08-06_interactivity_ref_event_scope.html`。raw WebGL fragment shader で、選択 ref ノード、event propagation、stopPropagation の遮断リング、MRT attachment clear の3レーン、Raw Camera Access guard を発光レイヤーとして重ねる。次に足すなら、Babylon KHR_interactivity の実イベントログ、glTF node/material/animation ref の JSON Pointer 表示、PlayCanvas MRT の実 clear texture、three.js layered texture readback の slice marker、Web Audio による event pressure 駆動。",
+      "bodyEn": "The selected prototype is Interactivity Ref Event Scope. The created file is `outputs/2026-08-06_interactivity_ref_event_scope.html`. A raw WebGL fragment shader layers selected ref nodes, event propagation, a stopPropagation blocking ring, three MRT attachment clear lanes, and a Raw Camera Access guard as glowing state. Next additions are real Babylon KHR_interactivity event logs, JSON Pointer display for glTF node/material/animation refs, real PlayCanvas MRT clear textures, three.js layered texture readback slice markers, and Web Audio-driven event pressure.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-06_interactivity_ref_event_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは pointer、selected node、flow bias、pressure、mode を入力にし、ref graph、event packet、stop gate、attachment clear、guard lane を描画状態として持つ。この入力と状態をログ化すると、ユーザーがどのノードに注意を向け、どこでイベントが止まり、どの機能が無効化されるかを時系列データとして扱える。音と組み合わせるなら、低域を event pressure、中域を ref selection、高域を guard flicker に割り当てる。MediaPipe と組み合わせるなら、手の開閉で stopPropagation、顔の向きで flow bias、視線で selected ref を切り替える。展示では、来場者の操作で見えないデータ構造が光る回路として立ち上がる。WebGL ケーススタディでは、ブランドや物語の背後にある関係性を、単なる説明図ではなく触れる状態機械として見せられる。",
+      "bodyEn": "Today's sample uses pointer, selected node, flow bias, pressure, and mode as inputs, with ref graph, event packets, stop gates, attachment clear, and guard lanes as render state. Logging those inputs and states turns attention, event interruption, and disabled capability into time-series data. With audio, bass can drive event pressure, mids ref selection, and highs guard flicker. With MediaPipe, hand opening can control stopPropagation, face direction flow bias, and gaze selected refs. In an installation, invisible data structure emerges as a glowing circuit through visitor action. In a WebGL case study, relationships behind a brand or story can appear as an interactive state machine rather than a static diagram."
+    }
+  ]
+}
