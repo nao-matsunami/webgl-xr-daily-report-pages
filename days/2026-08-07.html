@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XR と透明表現の capability 境界を光るレイヤーとして扱う | 2026-08-07</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.07</p>
+      <h1>XR と透明表現の capability 境界を光るレイヤーとして扱う</h1>
+      <p class="hero-subtitle">Treating XR and transparent rendering capability boundaries as glowing layers</p>
+      <p>Babylon.js 9.20.0、three.js の WebGPU render object refresh と HTMLMesh form support、PlayCanvas の XrMenu hidden-state 修正、Codrops の WebGL 事例を、前日の ref/event guard から「内部状態と見た目の不一致を作品化する」方向へ接続した。</p>
+      <p class="en-copy">Today connects Babylon.js 9.20.0, three.js WebGPU render object refresh and HTMLMesh form support, PlayCanvas XrMenu hidden-state fix, and Codrops WebGL cases, extending yesterday's ref/event guard topic into turning mismatches between internal state and visible output into an expressive layer.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-07_capability_layer_prism.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-06.html">← 2026.08.06</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Capability Layer Prism - 2026-08-07</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-07_capability_layer_prism.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. Babylon.js 9.20.0 が公開され、WebGPU-XR の graphics binding 再利用と Raw Camera Access 無効化、per-eye clear / upright rendering / half-Z NDC、RawCubeTexture invertY の WebGPU crash、transmission opaque texture の camera layerMask 対応がひとまとまりで入った。前日までの clear/guard 系トピックがリリース境界として確定した点が重要。2. Babylon.js PR #18776 は Babylon Native で ES module source を URL と誤解する失敗を、説明可能な unsupported state に変える。これは「失敗を作品上の guard channel として見せる」方針と相性がよい。3. three.js PR #34162 は WebGPURenderer の render object refresh を細分化し、共有 UBO だけを更新するような軽い refresh を扱えるようにした。PR #34172 は HTMLMesh の checkbox など form controls 更新漏れを直す。4. PlayCanvas PR #9155 は XrMenu が XR session 外で world origin に見えてしまう問題を修正し、内部状態は hidden なのに scene graph は visible という不一致を潰した。5. Codrops の Cerebrium / Dash / ZERO / Trionn などは、見えない構造、商流、物語、音の同期を WebGL で触れる構造にしている。今日の技術トピックも、内部状態の可視化をそのまま演出に転用できる。</p>
+          <p class="en-copy">1. Babylon.js 9.20.0 landed with WebGPU-XR graphics binding reuse and Raw Camera Access disablement, per-eye clear / upright rendering / half-Z NDC fixes, a RawCubeTexture invertY WebGPU crash fix, and camera layerMask support for transmission opaque textures. The clear and guard topics from the last few days have now become a release boundary. 2. Babylon.js PR #18776 turns Babylon Native's mistaken treatment of ES module source as a URL into an explicit unsupported state. That matches the direction of exposing failures as guard channels in the artwork. 3. three.js PR #34162 makes WebGPURenderer render object refresh more granular, including lighter updates for shared UBOs, while PR #34172 fixes missed updates in HTMLMesh form controls such as checkboxes. 4. PlayCanvas PR #9155 fixes XrMenu appearing at world origin outside XR sessions, resolving a mismatch where internal state said hidden while the scene graph remained visible. 5. Codrops cases such as Cerebrium, Dash, ZERO, and Trionn turn invisible structure, commerce, narrative, and audio sync into explorable WebGL systems. Today's engine topics can similarly turn internal state visualization directly into expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.20.0" target="_blank" rel="noreferrer">Babylon.js 9.20.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18776" target="_blank" rel="noreferrer">Babylon.js PR #18776</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34162" target="_blank" rel="noreferrer">three.js PR #34162</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9155" target="_blank" rel="noreferrer">PlayCanvas PR #9155</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日一番面白いのは、PlayCanvas PR #9155 の「hidden なのに見えている」問題。XR session 外で XrMenu が world origin に残るのは単なるバグだが、表現として見ると、内部状態、scene graph、opacity、session active の4層が同期していない瞬間が可視化されている。これを制作に転用すると、UI や 3D オブジェクトが「本来見えないが、状態不一致のときだけ幽霊のように現れる」演出になる。Codrops の Cerebrium がインフラ構造を触れる空間にしたように、render engine の hidden state も作品の素材になる。</p>
+          <p class="en-copy">The most interesting case today is PlayCanvas PR #9155's hidden-but-visible problem. An XrMenu remaining at world origin outside an XR session is a bug, but as an expression it reveals a moment where internal state, scene graph, opacity, and session activity are out of sync. Reused deliberately, UI or 3D objects can appear like ghosts only when state mismatches occur. Just as Codrops' Cerebrium turns infrastructure into a tangible space, render engine hidden state can become raw material for an experience.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9155" target="_blank" rel="noreferrer">PlayCanvas PR #9155</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/07/23/building-cerebrium-making-serverless-infrastructure-tangible/" target="_blank" rel="noreferrer">Codrops: Building Cerebrium</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「Capability Layer Prism」。XR per-eye clear、transmission layerMask、RawCubeTexture guard、XR menu hidden state を4つの可視レーンにする。1 は左右眼 clear と half-Z NDC、2 は透明面の layerMask と inspection lens、3 は cube reflection の invertY crash guard、4 は XR session 外に残る menu ghost と immediate hide を強調する。ドラッグは layer mask のずれ、クリック/Space は hidden-state pressure。中長期では、この疑似レーンを Babylon WebGPU-XR ログ、three.js WebGPU refresh type、PlayCanvas XrMenu state、実透明パスの layerMask に差し替える。</p>
+          <p class="en-copy">The short-term idea is Capability Layer Prism. It turns XR per-eye clear, transmission layerMask, RawCubeTexture guard, and XR menu hidden state into four visible lanes. Key 1 emphasizes left/right-eye clear and half-Z NDC, 2 the transparent surface layerMask and inspection lens, 3 cube reflection invertY crash guard, and 4 the menu ghost outside XR sessions plus immediate hide. Dragging shears the layer mask, and click or Space adds hidden-state pressure. Longer term, replace the synthetic lanes with Babylon WebGPU-XR logs, three.js WebGPU refresh types, PlayCanvas XrMenu state, and real layer masks from a transparent render pass.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>XR や透明表現では、capability と visibility を別チャンネルで持つのがよい。Raw Camera Access のように WebGPU-XR で明示的に無効化されるものは、単に feature unavailable と出すだけでなく、画面上の guard lane にする。transmission opaque texture の camera layerMask は、透明面が何を透過対象にしているかを mask texture として見せるとデバッグと演出が兼ねられる。three.js の render object refresh type は、フル refresh、shared UBO refresh、per-object refresh を色分けすると WebGPU の更新粒度を説明しやすい。PlayCanvas XrMenu のような session 外 UI は、container enabled、element opacity、target opacity、xr.active を同時にログ化すると、見た目と状態のズレを検出できる。</p>
+          <p class="en-copy">For XR and transparent rendering, keep capability and visibility as separate channels. Features explicitly disabled in WebGPU-XR, such as Raw Camera Access, should become on-screen guard lanes rather than only feature-unavailable messages. The camera layerMask for transmission opaque textures can be displayed as a mask texture, serving both debugging and expression. three.js render object refresh types become easier to explain when full refresh, shared UBO refresh, and per-object refresh are color-coded. For session-bound UI such as PlayCanvas XrMenu, logging container enabled, element opacity, target opacity, and xr.active together exposes mismatches between visual output and state.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18766" target="_blank" rel="noreferrer">Babylon.js PR #18766</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34162" target="_blank" rel="noreferrer">three.js PR #34162</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9155" target="_blank" rel="noreferrer">PlayCanvas PR #9155</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>Babylon.js は 9.20.x 後続、WebGPU-XR Phase 4B 以降、KHR_interactivity #18615、Babylon Native の ES module unsupported handling、Gaussian Splatting loader と SPZ 周辺を継続監視。three.js は #34166 DirectRenderPipeline、#34153 single-pass WebXR、#34162 refresh type の後続、#34172 HTMLMesh と WebXR UI の接続、r186 milestone。PlayCanvas は #9155 の downstream、XrMenu example、web-components の XR UI、MRT clear / independent blending / GSplat Firefox Windows WebGPU の継続。Codrops は Creative Hub の WebGL / WebGPU / Three.js / Web Audio 事例を継続。</p>
+          <p class="en-copy">Watch Babylon.js follow-ups after 9.20.x, WebGPU-XR Phase 4B and later, KHR_interactivity #18615, Babylon Native ES module unsupported handling, and Gaussian Splatting loader / SPZ issues. Watch three.js #34166 DirectRenderPipeline, #34153 single-pass WebXR, follow-ups to #34162 refresh types, #34172 HTMLMesh connections to WebXR UI, and the r186 milestone. Watch PlayCanvas downstream effects of #9155, the XrMenu example, XR UI in web-components, and the continuing MRT clear / independent blending / GSplat Firefox Windows WebGPU track. Continue watching Codrops Creative Hub for WebGL / WebGPU / Three.js / Web Audio cases.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://playcanvas.vercel.app/#/xr/xr-menu" target="_blank" rel="noreferrer">PlayCanvas XrMenu example</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、capability、visibility、opacity、mask を同じ shader 上の4レーンとして並べる。リリースノートや PR の内容をただ読むのではなく、機能が有効な層、描画される層、隠れるべき層、guard される層を色分けすると、XR や透明表現の複雑さが体験として理解しやすくなる。実装は raw WebGL だけで十分で、後から実 engine log を uniform や texture に置き換えられる。</p>
+          <p class="en-copy">If trying one thing today, place capability, visibility, opacity, and mask as four lanes in the same shader. Rather than just reading release notes and PRs, color-coding the enabled layer, rendered layer, hidden layer, and guarded layer makes XR and transparent-rendering complexity easier to understand as an experience. Raw WebGL is enough for the first version, and real engine logs can later replace the synthetic uniforms or textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: Babylon.js 9.20.0 / #18773 / #18688 / #18766 / #18767 / #18776、three.js #34162 / #34172 / #34173、PlayCanvas #9155、Codrops Articles / Creative Hub を収集。アイデア検討: 継続案件は per-eye clear、guard lane、MRT/attachment、KHR_interactivity ref/event graph、DirectRenderPipeline。新規案件は hidden-but-visible XR menu、transmission layerMask prism、render object refresh type visualizer、Babylon Native unsupported ES module guard。寝かせる案件はカード UI、本格 XR device 検証、実 camera access、重い three.js/PlayCanvas サンプル依存。サンプル実装: `outputs/2026-08-07_capability_layer_prism.html` を追加。結果の検証: JSON parse、gallery build、upsert/publish、ローカルと公開 URL の HTTP 確認を行う。</p>
+          <p class="en-copy">Research: collected Babylon.js 9.20.0 / #18773 / #18688 / #18766 / #18767 / #18776, three.js #34162 / #34172 / #34173, PlayCanvas #9155, and Codrops Articles / Creative Hub. Ideation: continuing tracks are per-eye clear, guard lanes, MRT/attachments, KHR_interactivity ref/event graphs, and DirectRenderPipeline. New tracks are hidden-but-visible XR menu, transmission layerMask prism, render object refresh type visualizer, and Babylon Native unsupported ES module guard. Parked tracks are card UI, real XR device testing, real camera access, and heavy three.js/PlayCanvas sample dependencies. Prototype: added `outputs/2026-08-07_capability_layer_prism.html`. Verification: JSON parse, gallery build, upsert/publish, and local/public HTTP checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日は、XR、WebGPU、MRT、glTF interactivity、GSplat のような大きな技術そのものより、それらの境界にある clear、guard、mask、ref、event、hidden state、refresh type が表現の核になっている。これは短期的には QA overlay として便利で、中長期的には「見えない実行状態を美術化する」シリーズに育てられる。前日の ref/event scope は asset と interaction の境界、今日の capability prism は session と visibility の境界。次は両者をつなぎ、イベントがどの capability を開閉し、どの layerMask を変え、どの render refresh を誘発するかを一枚で見せると面白い。</p>
+          <p class="en-copy">Over the last few days, the expressive core has been less the big technologies themselves, such as XR, WebGPU, MRT, glTF interactivity, and GSplat, and more their boundaries: clear, guard, mask, ref, event, hidden state, and refresh type. Short term, this is useful as a QA overlay. Mid to long term, it can become a series that aestheticizes invisible runtime state. Yesterday's ref/event scope covered the boundary between asset and interaction; today's capability prism covers the boundary between session and visibility. The next interesting step is to connect them: show which event opens or closes which capability, changes which layerMask, and triggers which render refresh.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-06_interactivity_ref_event_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Capability Layer Prism」。作成ファイルは `outputs/2026-08-07_capability_layer_prism.html`。raw WebGL fragment shader で、XR per-eye clear、transmission layerMask、RawCubeTexture guard、XR menu hidden-state ghost を重ねる。1-4 でレーン切替、ドラッグで mask shear、クリック/Space で hidden-state pressure。次に足すなら、Babylon の実 WebGPU-XR capability warning、three.js refresh type のログ、PlayCanvas XrMenu の container/opacity/xr.active の時系列、透明 pass の layerMask texture、Web Audio で pressure を駆動する入力。</p>
+          <p class="en-copy">The selected prototype is Capability Layer Prism. The created file is `outputs/2026-08-07_capability_layer_prism.html`. A raw WebGL fragment shader layers XR per-eye clear, transmission layerMask, RawCubeTexture guard, and XR menu hidden-state ghosts. Keys 1-4 switch lanes, drag shears the mask, and click or Space adds hidden-state pressure. Next additions are real Babylon WebGPU-XR capability warnings, three.js refresh type logs, PlayCanvas XrMenu container / opacity / xr.active timelines, layerMask textures from a transparent pass, and Web Audio-driven pressure input.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは pointer、velocity、pressure、mode を入力にし、XR clear、transparent mask、cube guard、menu ghost を描画状態として持つ。これをデータとして見ると、ユーザーがどの capability 境界を検査したか、どこで hidden-state pressure が高まったか、mask がどの方向にずれたかを時系列で扱える。音と組み合わせるなら、低域で hidden pressure、中域で layerMask shear、高域で RawCube guard を点滅させる。画像や video texture と組み合わせるなら、透明面の mask 内だけ映像を透過させ、guard lane が立つと映像が遮断される。WebXR と組み合わせるなら、実 session start/end、feature availability、controller hover を同じ prism に流せる。展示やブランド演出では、通常は見えない品質保証や互換性の層を、製品の信頼性や精密さを表す発光構造として見せられる。</p>
+          <p class="en-copy">Today's sample uses pointer, velocity, pressure, and mode as inputs, with XR clear, transparent mask, cube guard, and menu ghost as render state. As data, it can track which capability boundary the user inspected, where hidden-state pressure increased, and how the mask shifted over time. With audio, bass can drive hidden pressure, mids layerMask shear, and highs RawCube guard flicker. With image or video textures, the transparent mask can reveal video only inside its region, while guard lanes cut it off. With WebXR, real session start/end, feature availability, and controller hover can feed the same prism. In installations or brand experiences, invisible QA and compatibility layers can appear as luminous structures that communicate precision and reliability.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.20.0" target="_blank" rel="noreferrer">Babylon.js 9.20.0 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18773" target="_blank" rel="noreferrer">Babylon.js PR #18773 WebGPU-XR Phase 4A</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18766" target="_blank" rel="noreferrer">Babylon.js PR #18766 transmission layerMask</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18767" target="_blank" rel="noreferrer">Babylon.js PR #18767 RawCubeTexture WebGPU crash</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34162" target="_blank" rel="noreferrer">three.js PR #34162 render object refresh types</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34172" target="_blank" rel="noreferrer">three.js PR #34172 HTMLMesh form controls</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9155" target="_blank" rel="noreferrer">PlayCanvas PR #9155 XrMenu outside XR sessions</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+            <li><a href="../outputs/2026-08-07_capability_layer_prism.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-07_capability_layer_prism.html" loading="lazy" title="Capability Layer Prism - 2026-08-07"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
