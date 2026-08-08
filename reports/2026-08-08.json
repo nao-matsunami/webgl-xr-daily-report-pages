@@ -1,0 +1,197 @@
+{
+  "date": "2026-08-08",
+  "headline": "GPU リソース寿命と描画トポロジーを可視レーンにする",
+  "headlineEn": "Turning GPU resource lifetime and render topology into visible lanes",
+  "summary": "Babylon.js の WebGPU texture view cache、Lite Viewer device-lost recovery、WebGPU XR depth / quad layer / AR clear、three.js DirectRenderPipeline と TSL storage buffer、PlayCanvas UI image topology 修正案を、前日の capability prism から「復帰・寿命・トポロジーのズレを表現にする」方向へ接続した。",
+  "summaryEn": "Today connects Babylon.js WebGPU texture view caching, Lite Viewer device-lost recovery, WebGPU XR depth / quad layer / AR clear, three.js DirectRenderPipeline and TSL storage buffers, and PlayCanvas UI image topology work, extending yesterday's capability prism into visualizing recovery, lifetime, and topology mismatches.",
+  "links": [
+    {
+      "label": "Babylon.js PR #18784 texture view leak",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18784"
+    },
+    {
+      "label": "Babylon.js PR #18785 Lite Viewer device-lost recovery",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18785"
+    },
+    {
+      "label": "Babylon.js PR #18782 WebGPU CPU depth sensing",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18782"
+    },
+    {
+      "label": "Babylon.js PR #18779 WebGPU quad layer",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18779"
+    },
+    {
+      "label": "three.js PR #34166 DirectRenderPipeline",
+      "url": "https://github.com/mrdoob/three.js/pull/34166"
+    },
+    {
+      "label": "three.js PR #34181 TSL struct storage buffers",
+      "url": "https://github.com/mrdoob/three.js/pull/34181"
+    },
+    {
+      "label": "PlayCanvas PR #9156 indexed UI quads",
+      "url": "https://github.com/playcanvas/engine/pull/9156"
+    },
+    {
+      "label": "Codrops Ridgeline case study",
+      "url": "https://tympanus.net/codrops/2026/07/22/building-ridgeline-engineering-a-real-time-3d-experience-in-webflow/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Babylon.js PR #18784 は WebGPU render-target bind ごとの `GPUTexture.createView()` を cache 化し、texture view の増殖を抑える。昨日の capability guard から一歩進み、今日は resource lifetime を画面上の熱量として扱う価値が見えた。2. Babylon.js PR #18785 は Babylon Lite Viewer に WebGPU device-lost recovery をつなぎ、GPU reset や tab backgrounding 後の blank/frozen canvas を復帰対象にした。3. Babylon.js PR #18782 / #18779 / #18778 は WebGPU XR に CPU depth sensing、quad layer path、AR projection texture clear を追加・修正しており、depth、compositor layer、clear が同時に進んでいる。4. three.js PR #34166 は DirectRenderPipeline を merge し、中間 framebuffer と output pass を避ける opt-in 経路を入れた。PR #34181 は TSL struct storage buffer の1要素/複数要素で WGSL interface が変わる問題を、常に array として扱う方向にしている。5. PlayCanvas PR #9156 は UI image の triangle strip を indexed triangles に変える提案。特定 Android GPU で quad の片側だけ UV が壊れる話は、トポロジーと driver artifact をそのまま視覚表現にできる。",
+      "bodyEn": "1. Babylon.js PR #18784 caches WebGPU texture views instead of calling `GPUTexture.createView()` on every render-target bind, reducing runaway resource churn. After yesterday's capability guards, resource lifetime itself becomes a useful visual signal. 2. Babylon.js PR #18785 wires WebGPU device-lost recovery into the Lite Viewer, addressing blank or frozen canvases after GPU reset or memory pressure. 3. Babylon.js PRs #18782 / #18779 / #18778 advance WebGPU XR CPU depth sensing, quad layers, and AR projection texture clearing. 4. three.js PR #34166 merged DirectRenderPipeline as an opt-in path that avoids the intermediate framebuffer and output pass, while #34181 works on keeping TSL struct storage buffers array-shaped even at length one. 5. PlayCanvas PR #9156 proposes replacing UI image triangle strips with indexed triangles. A one-half UV corruption on a specific Android GPU is exactly the kind of topology / driver artifact that can become an expressive diagnostic.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18784",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18784"
+        },
+        {
+          "label": "Babylon.js PR #18785",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18785"
+        },
+        {
+          "label": "three.js PR #34166",
+          "url": "https://github.com/mrdoob/three.js/pull/34166"
+        },
+        {
+          "label": "PlayCanvas PR #9156",
+          "url": "https://github.com/playcanvas/engine/pull/9156"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "PlayCanvas PR #9156 の面白さは、バグの形が非常に視覚的なこと。triangle strip の2枚目だけ UV 補間が壊れ、quad の対角線沿いに smear が出る。これは単なる UI 修正ではなく、「同じ四角形でも topology が違うと GPU 上の意味が変わる」ことを見せる教材になる。Codrops の Ridgeline が DEM 地形を live Three.js mesh として見せたように、抽象的な実装構造を触れる表面に変換する方向で使える。",
+      "bodyEn": "PlayCanvas PR #9156 is interesting because the bug has a clear visual shape: only the second triangle of a strip corrupts UV interpolation, producing a diagonal smear across the quad. This is more than a UI fix; it is a teaching artifact showing that the same rectangle has different GPU meaning depending on topology. Like Codrops' Ridgeline turns DEM terrain into a live Three.js surface, this turns abstract implementation structure into something inspectable.",
+      "links": [
+        {
+          "label": "PlayCanvas PR #9156",
+          "url": "https://github.com/playcanvas/engine/pull/9156"
+        },
+        {
+          "label": "Codrops Ridgeline",
+          "url": "https://tympanus.net/codrops/2026/07/22/building-ridgeline-engineering-a-real-time-3d-experience-in-webflow/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "短期案は「Resource Lifetime Topology Scope」。4レーンを用意し、1 は texture view leak と cache gate、2 は device-lost recovery の復帰波、3 は DirectRenderPipeline の中間 framebuffer bypass、4 は triangle strip の対角 smear と indexed triangles の安定化を表す。ドラッグで lifetime lane を曲げ、クリック/Space で pressure を注入する。中長期では、Babylon の texture view cache hit/miss、WebGPU device-lost event、three.js direct path on/off、PlayCanvas topology type を実ログとして流し込む。",
+      "bodyEn": "The short-term idea is Resource Lifetime Topology Scope. Four lanes represent texture-view leaks and cache gates, device-lost recovery waves, DirectRenderPipeline bypassing an intermediate framebuffer, and triangle-strip diagonal smear versus indexed-triangle stability. Drag bends the lifetime lanes, and click or Space injects pressure. Longer term, feed it real Babylon texture-view cache hits/misses, WebGPU device-lost events, three.js direct-path state, and PlayCanvas topology types.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "WebGPU の resource lifetime は、フレーム単位の見た目には出にくいが、長時間体験や展示では最重要の品質になる。texture view、sampler、bind group、pipeline の cache hit/miss をカウンタ化し、一定値を超えたら visual heat として出すと、作品の演出と QA が重なる。device-lost recovery は、復帰前後の asset reload / rebind / shader warmup を段階表示にするとユーザーに不安を与えにくい。DirectRenderPipeline は速く見える一方、blending と framebuffer sampling の制約を持つので、postprocess 前提の作品では bypass lane と fallback lane を明示する。triangle strip 問題は、UI だけでなく glTF `mode: 5` のような geometry import でも watch 対象にできる。",
+      "bodyEn": "WebGPU resource lifetime rarely appears in a single frame, but it is critical for long-running experiences and installations. Count cache hits and misses for texture views, samplers, bind groups, and pipelines; when a threshold is crossed, expose it as visual heat so expression and QA overlap. Device-lost recovery can be shown in stages: asset reload, rebind, and shader warmup. DirectRenderPipeline can be faster, but blending and framebuffer-sampling constraints mean postprocess-heavy work should expose bypass and fallback lanes. Triangle-strip issues are worth watching not only in UI but also in imported geometry such as glTF `mode: 5`.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18784",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18784"
+        },
+        {
+          "label": "three.js PR #34166",
+          "url": "https://github.com/mrdoob/three.js/pull/34166"
+        },
+        {
+          "label": "PlayCanvas PR #9156",
+          "url": "https://github.com/playcanvas/engine/pull/9156"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "Babylon.js は #18774 Gaussian Splatting LOD stream as compound mesh、9.20.x 後続 release、WebGPU XR depth / quad layer / Space Warp disable の後続を監視。three.js は #34181 の merge 可否、#33950 Gaussian Splat TSL loader、#34147 OCULUS_multiview の再開または代替、DirectRenderPipeline の example 拡大を追う。PlayCanvas は #9156 の実機確認、#9151 JSDoc/types hardening、XrMenu 修正の downstream、v2.21.4 release を見る。制作事例は Codrops の Ridgeline / Cerebrium / Shopify Everywhere のような「実装構造を体験化する」記事を継続。",
+      "bodyEn": "Watch Babylon.js #18774 Gaussian Splatting LOD streaming in a compound mesh, follow-up 9.20.x releases, and the WebGPU XR depth / quad layer / Space Warp disable track. Watch whether three.js #34181 merges, the #33950 Gaussian Splat TSL loader, any return or replacement for #34147 OCULUS_multiview, and more DirectRenderPipeline examples. Watch PlayCanvas #9156 hardware validation, #9151 JSDoc/types hardening, downstream XrMenu fixes, and a v2.21.4 release. For creative cases, keep tracking Codrops pieces like Ridgeline, Cerebrium, and Shopify Everywhere where implementation structure becomes experience.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18774",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18774"
+        },
+        {
+          "label": "three.js PR #33950",
+          "url": "https://github.com/mrdoob/three.js/pull/33950"
+        },
+        {
+          "label": "PlayCanvas PR #9151",
+          "url": "https://github.com/playcanvas/engine/pull/9151"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、GPU の内部状態を「漏れる点」「回復する線」「迂回する線」「壊れる三角形」の4つに分けて shader で見せる。実装は raw WebGL で十分。重要なのは、engine PR の技術語を UI テキストにするのではなく、ユーザーが見て触る発光構造に変換すること。特に triangle strip の diagonal smear は短時間で視覚化しやすく、カード UI ではないインタラクション表現として使いやすい。",
+      "bodyEn": "If trying one thing today, split GPU internals into four shader-visible states: leaking points, recovering lines, bypassing lines, and broken triangles. Raw WebGL is enough. The key is not turning engine PR terminology into UI text, but translating it into luminous structures the user can see and touch. The triangle-strip diagonal smear is especially quick to visualize and works well as non-card interaction expression.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Babylon.js #18784 / #18785 / #18782 / #18779 / #18778 / #18774、three.js #34166 / #34181 / #33950 / #34147、PlayCanvas #9156 / #9151、Codrops Ridgeline を収集。アイデア検討: 継続案件は capability prism、guard lane、KHR_interactivity ref/event、DirectRenderPipeline、GSplat LOD/stream。新規案件は texture view lifetime heat、device-lost recovery wave、topology smear visualizer、TSL buffer shape stability。寝かせる案件はカード UI、実 XR device capture、重い framework 依存、完全な WebGPU 実装。サンプル実装: `outputs/2026-08-08_resource_lifetime_topology_scope.html` を追加。結果の検証: JSON parse、HTML 構文の簡易確認、gallery build、publish、公開 URL の HTTP 確認を行う。",
+      "bodyEn": "Research: collected Babylon.js #18784 / #18785 / #18782 / #18779 / #18778 / #18774, three.js #34166 / #34181 / #33950 / #34147, PlayCanvas #9156 / #9151, and Codrops Ridgeline. Ideation: continuing tracks are capability prism, guard lanes, KHR_interactivity refs/events, DirectRenderPipeline, and GSplat LOD/streaming. New tracks are texture-view lifetime heat, device-lost recovery waves, topology-smear visualizers, and TSL buffer-shape stability. Parked tracks are card UI, real XR device capture, heavy framework dependencies, and a full WebGPU implementation. Prototype: added `outputs/2026-08-08_resource_lifetime_topology_scope.html`. Verification: JSON parse, basic HTML checks, gallery build, publish, and public HTTP checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、WebGPU/XR/GSplat そのものより、その周辺の「壊れ方」と「復帰の仕方」が表現素材になっていること。clear、guard、mask、hidden state に続き、今日は cache、device-lost、direct path、topology が加わった。組み合わせると面白いのは、KHR_interactivity の pointer event が capability を開閉し、DirectRenderPipeline が bypass/fallback を切り替え、texture view cache heat が背景の粒度を変え、triangle topology が UI や画像面の歪みとして出る構成。中長期で育てる価値が高いテーマは「runtime diagnostics as visual language」。単なる debug overlay ではなく、作品やブランド演出の品質感を支える視覚文法にできる。",
+      "bodyEn": "The recent trend is that the failures and recovery behavior around WebGPU, XR, and GSplat are becoming stronger expressive material than the big technologies themselves. After clear, guard, mask, and hidden state, today's additions are cache, device-lost, direct path, and topology. A promising combination is KHR_interactivity pointer events opening and closing capabilities, DirectRenderPipeline toggling bypass and fallback, texture-view cache heat changing background density, and triangle topology appearing as distortion on UI or image surfaces. The high-value mid-term theme is runtime diagnostics as visual language: not just a debug overlay, but a visual grammar that supports the perceived quality of an artwork or branded experience.",
+      "links": [
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-08-07_capability_layer_prism.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「Resource Lifetime Topology Scope」。作成ファイルは `outputs/2026-08-08_resource_lifetime_topology_scope.html`。raw WebGL fragment shader で、texture view leak/cache、device-lost recovery、DirectRenderPipeline の framebuffer bypass、triangle strip artifact を同じ画面に重ねる。1-4 で注目レーンを切り替え、ドラッグでレーンを曲げ、クリック/Space で pressure を入れる。次に足すなら、実際の cache hit/miss counter、WebGPU `device.lost` promise の状態、three.js direct path の on/off、PlayCanvas mesh primitive type を入力にする。",
+      "bodyEn": "The selected prototype is Resource Lifetime Topology Scope. The created file is `outputs/2026-08-08_resource_lifetime_topology_scope.html`. A raw WebGL fragment shader layers texture-view leak/cache, device-lost recovery, DirectRenderPipeline framebuffer bypass, and triangle-strip artifacts in one view. Keys 1-4 switch focus lanes, dragging bends lanes, and click or Space injects pressure. Next additions are real cache hit/miss counters, WebGPU `device.lost` promise state, three.js direct-path on/off state, and PlayCanvas mesh primitive type inputs.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは pointer、mode、pressure を入力にし、leak dots、cache gate、recovery wave、direct path、topology smear を描画状態として持つ。これをデータとして見ると、ユーザーがどの故障モードを観察したか、どの pressure で artifact が強くなったか、復帰波がどのタイミングで見えるかを記録できる。音反応では低域を device recovery、中域を cache heat、高域を triangle smear に割り当てると、ライブ演出として成立しやすい。画像や video texture と組み合わせるなら、topology smear を実映像の片側だけに掛け、cache gate が開いた瞬間だけ解像感を戻す。WebXR では session start/end、depth availability、layer availability、device-lost recovery を空間上のレーンとして配置できる。展示では、長時間稼働の安定性を「消えない・戻る・漏れない」光の振る舞いとして見せられる。",
+      "bodyEn": "Today's sample uses pointer, mode, and pressure as inputs, with leak dots, cache gates, recovery waves, direct paths, and topology smear as render states. As data, it can record which failure mode the user inspected, how artifacts strengthen under pressure, and when recovery waves appear. For audio reaction, map bass to device recovery, mids to cache heat, and highs to triangle smear. With image or video textures, apply topology smear to only one half of the footage and restore clarity when the cache gate opens. In WebXR, session start/end, depth availability, layer availability, and device-lost recovery can become spatial lanes. In installations, long-running stability can be presented as light behavior that does not disappear, recovers cleanly, and does not leak."
+    }
+  ]
+}

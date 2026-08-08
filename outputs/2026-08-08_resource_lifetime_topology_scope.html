@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resource Lifetime Topology Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #07080b;
+      color: #dfe8ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 18px auto auto 18px;
+      max-width: min(560px, calc(100vw - 36px));
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      line-height: 1.45;
+      text-shadow: 0 0 22px rgba(62, 191, 255, 0.35);
+    }
+    .title {
+      font-size: 12px;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .meta {
+      font-size: 10px;
+      color: rgba(220, 235, 255, 0.72);
+    }
+    .mode {
+      position: fixed;
+      inset: auto 18px 18px auto;
+      font-size: 10px;
+      color: rgba(220, 235, 255, 0.72);
+      text-align: right;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div class="title">Resource Lifetime Topology Scope</div>
+    <div class="meta">1 texture-view cache / 2 device recovery / 3 direct path / 4 quad topology</div>
+    <div class="meta">Drag to bend lifetime lanes. Hold click or Space to inject pressure.</div>
+  </div>
+  <div class="mode" id="modeLabel">mode 1</div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    const modeLabel = document.getElementById("modeLabel");
+
+    if (!gl) {
+      document.body.innerHTML = "<p>WebGL is not available.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vert = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pressure;
+      uniform float mode;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float line(float v, float width) {
+        return 1.0 - smoothstep(0.0, width, abs(v));
+      }
+
+      float band(vec2 uv, float center, float width) {
+        return smoothstep(width, 0.0, abs(uv.y - center));
+      }
+
+      float capsule(vec2 p, vec2 a, vec2 b, float r) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        return 1.0 - smoothstep(r, r + 0.015, length(pa - ba * h));
+      }
+
+      vec3 palette(float x) {
+        vec3 a = vec3(0.05, 0.08, 0.11);
+        vec3 b = vec3(0.12, 0.62, 0.94);
+        vec3 c = vec3(0.95, 0.24, 0.78);
+        vec3 d = vec3(1.0, 0.78, 0.24);
+        return mix(mix(a, b, smoothstep(0.0, 0.45, x)), mix(c, d, smoothstep(0.55, 1.0, x)), smoothstep(0.35, 0.9, x));
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
+        vec2 p = pointer * 2.0 - 1.0;
+        p.x *= resolution.x / resolution.y;
+        float t = time * 0.001;
+        float active = mode / 4.0;
+
+        vec3 col = vec3(0.015, 0.018, 0.026);
+        float vignette = smoothstep(1.55, 0.15, length(uv));
+        col += vec3(0.02, 0.05, 0.08) * vignette;
+
+        vec2 warped = uv;
+        warped.x += 0.14 * sin(uv.y * 5.0 + t) * (0.35 + pressure);
+        warped.y += 0.08 * sin(uv.x * 3.0 - t * 0.8);
+
+        for (int i = 0; i < 4; i++) {
+          float fi = float(i);
+          float y = -0.54 + fi * 0.36;
+          float lane = band(warped, y, 0.052);
+          float pulse = 0.5 + 0.5 * sin(t * (1.25 + fi * 0.19) + fi * 1.7);
+          float selected = 1.0 - smoothstep(0.08, 0.2, abs(active - (fi + 1.0) / 4.0));
+          float ticks = line(fract((warped.x + 1.4 + fi * 0.13) * (9.0 + fi * 2.0) - t * (0.5 + fi * 0.17)) - 0.5, 0.06);
+          vec3 laneColor = palette((fi + 0.5) / 4.0);
+          col += laneColor * lane * (0.18 + selected * 0.6);
+          col += laneColor * ticks * lane * (0.18 + pulse * 0.35 + pressure * 0.3);
+        }
+
+        float leak = 0.0;
+        for (int i = 0; i < 34; i++) {
+          float fi = float(i);
+          vec2 c = vec2(-1.25 + mod(fi, 17.0) * 0.15, 0.66 + floor(fi / 17.0) * 0.1);
+          c.x += 0.06 * sin(t + fi);
+          float d = length(uv - c);
+          leak += smoothstep(0.032, 0.0, d) * (0.35 + 0.65 * hash(vec2(fi, 4.0)));
+        }
+        float cacheGate = smoothstep(0.04, 0.0, abs(uv.y - 0.67)) * smoothstep(-1.15, -0.35, uv.x) * smoothstep(0.45, -0.25, uv.x);
+        col += vec3(0.15, 0.72, 1.0) * leak * (0.12 + 0.75 * smoothstep(0.1, 1.0, pressure));
+        col += vec3(0.2, 1.0, 0.76) * cacheGate * (0.25 + 0.55 * sin(t * 3.0) * sin(t * 3.0));
+
+        float recovery = capsule(uv, vec2(-0.8, -0.18), vec2(0.9, -0.18), 0.024);
+        float resetWave = smoothstep(0.025, 0.0, abs(length(uv - vec2(-0.05, -0.18)) - fract(t * 0.22 + pressure * 0.3) * 1.2));
+        col += vec3(0.98, 0.24, 0.72) * recovery * (0.45 + pressure);
+        col += vec3(1.0, 0.55, 0.18) * resetWave * 0.7;
+
+        float directPath = capsule(uv, vec2(-1.1, 0.18), vec2(1.1, 0.18), 0.018);
+        float framebuffer = smoothstep(0.022, 0.0, abs(abs(uv.x) - 0.42)) * smoothstep(0.28, 0.0, abs(uv.y - 0.18));
+        col += vec3(0.2, 0.56, 1.0) * directPath * (0.55 + 0.45 * sin(t * 2.0));
+        col += vec3(0.9, 0.16, 1.0) * framebuffer * (0.35 + 0.65 * (1.0 - smoothstep(0.0, 0.9, pressure)));
+
+        vec2 q = uv - vec2(0.0, -0.58);
+        float triA = capsule(q, vec2(-0.42, -0.08), vec2(0.42, -0.08), 0.012) + capsule(q, vec2(-0.42, -0.08), vec2(0.42, 0.12), 0.012) + capsule(q, vec2(0.42, -0.08), vec2(0.42, 0.12), 0.012);
+        float triB = capsule(q, vec2(-0.42, -0.08), vec2(-0.42, 0.12), 0.012) + capsule(q, vec2(-0.42, 0.12), vec2(0.42, 0.12), 0.012) + capsule(q, vec2(0.42, -0.08), vec2(-0.42, 0.12), 0.012);
+        float smear = smoothstep(0.045, 0.0, abs(q.y - (0.12 - (q.x + 0.42) * 0.238))) * smoothstep(-0.45, 0.2, q.x) * smoothstep(0.45, -0.1, q.x);
+        col += vec3(0.95, 0.7, 0.18) * triA * 0.8;
+        col += vec3(1.0, 0.18, 0.28) * triB * 0.65;
+        col += vec3(1.0, 0.28, 0.1) * smear * (0.15 + pressure * 0.85);
+
+        float lens = smoothstep(0.34, 0.0, length(uv - p));
+        float grain = noise(gl_FragCoord.xy * 0.65 + t * 18.0);
+        col += lens * vec3(0.05, 0.12, 0.18);
+        col += vec3(grain) * 0.025;
+        col *= 0.72 + vignette * 0.45;
+        col = pow(col, vec3(0.82));
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pressure: gl.getUniformLocation(program, "pressure"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    let pointer = [0.5, 0.5];
+    let down = false;
+    let keyPressure = false;
+    let mode = 1;
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    addEventListener("resize", resize);
+    addEventListener("pointermove", (event) => {
+      pointer = [event.clientX / innerWidth, 1 - event.clientY / innerHeight];
+    });
+    addEventListener("pointerdown", () => { down = true; });
+    addEventListener("pointerup", () => { down = false; });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") keyPressure = true;
+      const n = Number(event.key);
+      if (n >= 1 && n <= 4) {
+        mode = n;
+        modeLabel.textContent = `mode ${mode}`;
+      }
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space") keyPressure = false;
+    });
+
+    resize();
+    function frame(now) {
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.time, now);
+      gl.uniform1f(uniforms.pressure, down || keyPressure ? 1 : 0);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
