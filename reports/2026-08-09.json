@@ -1,0 +1,205 @@
+{
+  "date": "2026-08-09",
+  "headline": "SOG LOD atlas と低コスト backdrop blur を同じ表現面にする",
+  "headlineEn": "Turning SOG LOD atlases and low-cost backdrop blur into one expressive surface",
+  "summary": "Babylon.js の Gaussian Splatting LOD stream compound mesh、GPU particle gradient lookup texture の in-place rebake、three.js の WebGPU backdrop blur 最適化と Gaussian Splat TSL loader merge、PlayCanvas の UI topology / JSDoc 継続を、前日の resource lifetime scope から「shared atlas / compaction / blur budget / gradient rebake を可視化する」方向へ接続した。",
+  "summaryEn": "Today connects Babylon.js Gaussian Splatting LOD streaming inside compound meshes, in-place GPU particle gradient texture rebaking, three.js WebGPU backdrop blur optimization and merged Gaussian Splat TSL loader, plus ongoing PlayCanvas UI topology and JSDoc work, extending yesterday's resource lifetime scope into visualizing shared atlases, compaction, blur budgets, and gradient rebakes.",
+  "links": [
+    {
+      "label": "Babylon.js PR #18774 Gaussian Splatting LOD compound stream",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18774"
+    },
+    {
+      "label": "Babylon.js PR #18787 GPU particles gradient rebake",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18787"
+    },
+    {
+      "label": "three.js PR #34092 webgpu_backdrop_area hashBlur optimization",
+      "url": "https://github.com/mrdoob/three.js/pull/34092"
+    },
+    {
+      "label": "three.js PR #33950 Gaussian Splat renderer / loader using TSL",
+      "url": "https://github.com/mrdoob/three.js/pull/33950"
+    },
+    {
+      "label": "three.js PR #34188 DepthOfFieldNode render target leak fix",
+      "url": "https://github.com/mrdoob/three.js/pull/34188"
+    },
+    {
+      "label": "PlayCanvas PR #9156 indexed UI image triangles",
+      "url": "https://github.com/playcanvas/engine/pull/9156"
+    },
+    {
+      "label": "PlayCanvas PR #9151 JSDoc and published types hardening",
+      "url": "https://github.com/playcanvas/engine/pull/9151"
+    },
+    {
+      "label": "Codrops Wave Propagation Cube Grid",
+      "url": "https://tympanus.net/codrops/2026/07/09/building-an-interactive-wave-propagation-cube-grid-with-three-js/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Babylon.js PR #18774 は PlayCanvas-style SOG LOD stream を `GaussianSplattingCompoundMesh` の一部として保持し、static splat と streamed splat を shared atlas / single sort / single interleaved pass に寄せる提案。昨日の texture view cache / device-lost recovery から、今日は「長時間流れるデータをどの帯に置き、いつ詰め直すか」が主題になった。2. Babylon.js PR #18787 は GPU particles の gradient lookup texture を value edit 時に in-place で再 bake する提案。色や alpha の LUT をイベントごとに再作成するのではなく、既存 texture の中身を更新する発想は、演出上も「色の記憶が再発火する」素材になる。3. three.js PR #34092 は `webgpu_backdrop_area` の `hashBlur()` repeats を下げ、見た目の差を抑えながら FPS を 32 から 54 へ上げる観察を含む。重い blur を増やすより、低反復 blur を演出の文法として使う方向が現実的。4. three.js PR #33950 は Gaussian Splat renderer / loader using TSL for WebGPU/WebGL + glTF import が merge 済みになり、TSL / WebGPU / WebGL を跨いだ splat path が r186 に向けて具体化した。5. PlayCanvas は #9156 UI triangle strip 問題と #9151 JSDoc/types hardening が継続。実装の topology と API surface を、人間だけでなく LLM や生成コードが読み違えないようにする流れとして見ると重要。",
+      "bodyEn": "1. Babylon.js PR #18774 proposes keeping a PlayCanvas-style SOG LOD stream as part of a `GaussianSplattingCompoundMesh`, moving static and streamed splats toward a shared atlas, single sort, and single interleaved pass. After yesterday's texture-view cache and device-lost recovery, today's topic is where long-running data bands live and when they compact. 2. Babylon.js PR #18787 proposes rebaking GPU particle gradient lookup textures in place when values are edited. Updating the texture contents instead of recreating the resource can also become an expressive material: color memory reigniting. 3. three.js PR #34092 observes that lowering `hashBlur()` repeats in `webgpu_backdrop_area` can raise performance from 32 to 54 FPS with little quality loss. Low-repeat blur as a visual grammar is more practical than simply adding heavy blur. 4. three.js PR #33950, Gaussian Splat renderer / loader using TSL for WebGPU/WebGL + glTF import, has merged, making the r186 splat path concrete across TSL, WebGPU, and WebGL. 5. PlayCanvas #9156 and #9151 continue: topology and API surfaces matter because humans, LLMs, and generated code all need to read them correctly.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18774",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18774"
+        },
+        {
+          "label": "Babylon.js PR #18787",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18787"
+        },
+        {
+          "label": "three.js PR #34092",
+          "url": "https://github.com/mrdoob/three.js/pull/34092"
+        },
+        {
+          "label": "three.js PR #33950",
+          "url": "https://github.com/mrdoob/three.js/pull/33950"
+        },
+        {
+          "label": "PlayCanvas PR #9156",
+          "url": "https://github.com/playcanvas/engine/pull/9156"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "今日いちばん面白いのは Babylon.js PR #18774。Gaussian Splatting の streaming LOD を別 mesh / 別 worker / 別 draw call として扱うのではなく、compound mesh の atlas 内に row-aligned reserved region として住まわせる設計になっている。表現面では、スプラットがただ増減するのではなく、「空いている帯へ流れ込む」「tombstone で穴が残る」「compactAtlas() で記憶が詰め直される」という時間構造をそのまま可視化できる。Codrops の Wave Grid が mouse trail texture で波を伝播させたように、ここでは shared atlas の帯を波・地層・記憶領域として扱える。",
+      "bodyEn": "The strongest item today is Babylon.js PR #18774. Instead of treating Gaussian Splatting streaming LOD as a separate mesh, worker, and draw call, it hosts the stream inside a compound mesh atlas as a row-aligned reserved region. Expressively, splats do not merely appear and disappear: they flow into reserved bands, leave tombstone gaps, and get re-packed by `compactAtlas()`. Like Codrops' Wave Grid propagates waves through a mouse-trail texture, a shared atlas can become a wave field, sediment layer, or memory region.",
+      "links": [
+        {
+          "label": "Babylon.js PR #18774",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18774"
+        },
+        {
+          "label": "Codrops Wave Propagation Cube Grid",
+          "url": "https://tympanus.net/codrops/2026/07/09/building-an-interactive-wave-propagation-cube-grid-with-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "短期案は「SOG Atlas Backdrop Blur Field」。画面を shared atlas の水平帯として扱い、流入する LOD chunk、tombstone、compaction line、in-place gradient rebake、低反復 backdrop blur を shader で重ねる。ドラッグで atlas band を曲げ、クリック/Space で memory pressure を入れる。前日の Resource Lifetime Topology Scope の texture view / recovery / topology lane を、今日は splat atlas / blur budget / gradient LUT へ置き換える。中長期では、実 SOG chunk load state、Babylon compound mesh の reserved rows、three.js Gaussian Splat loader の glTF import 状態、PlayCanvas の primitive topology を同じ RGBA diagnostic texture に流す。",
+      "bodyEn": "The short-term idea is SOG Atlas Backdrop Blur Field. Treat the screen as horizontal bands in a shared atlas and layer streaming LOD chunks, tombstones, compaction lines, in-place gradient rebakes, and low-repeat backdrop blur in a shader. Drag bends atlas bands; click or Space injects memory pressure. Yesterday's Resource Lifetime Topology Scope used texture-view, recovery, and topology lanes; today swaps those for splat atlases, blur budgets, and gradient LUTs. Longer term, feed real SOG chunk load state, Babylon compound mesh reserved rows, three.js Gaussian Splat glTF import state, and PlayCanvas primitive topology into one RGBA diagnostic texture.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "Gaussian Splatting の streaming は、見た目の LOD だけでなく memory layout の設計問題として扱うと強い。shared atlas を使うなら、row reservation、active LOD range、tombstone、compaction、GPU defrag を debug overlay ではなく演出パラメータにできる。three.js の backdrop blur 最適化からは、postprocess は品質を一律に上げるより repeats / radius / sample direction を interaction に応じて変えた方がよい、という示唆がある。DepthOfFieldNode の render target leak fix も含め、ポスト処理は見た目の気持ちよさと resource lifetime が近い。GPU particle gradient LUT は、色変化を uniform 配列で押すより texture update として扱うと、音反応や状態遷移を「焼き直される色帯」として見せやすい。",
+      "bodyEn": "Gaussian Splatting streaming becomes stronger when treated as memory layout, not only visual LOD. With a shared atlas, row reservation, active LOD ranges, tombstones, compaction, and GPU defrag can become expressive parameters instead of just debug overlays. The three.js backdrop blur optimization suggests that postprocessing should vary repeats, radius, and sample direction by interaction instead of uniformly increasing quality. The DepthOfFieldNode render target leak fix reinforces that postprocess aesthetics and resource lifetime sit close together. GPU particle gradient LUTs are also useful as texture updates: audio reaction or state transitions can become color bands being rebaked.",
+      "links": [
+        {
+          "label": "three.js PR #34092",
+          "url": "https://github.com/mrdoob/three.js/pull/34092"
+        },
+        {
+          "label": "three.js PR #34188",
+          "url": "https://github.com/mrdoob/three.js/pull/34188"
+        },
+        {
+          "label": "Babylon.js PR #18787",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18787"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "Babylon.js は #18774 の review / merge、#18787 の GPU particles gradient rebake、9.20.0 後続 release、WebGPU XR depth / quad layer / AR clear 周辺の regression を継続監視。three.js は r186 milestone、#33950 の examples / docs 展開、#34092 の代替最適化、#34188 以降の render target lifetime 修正、DirectRenderPipeline の example 拡大を見る。PlayCanvas は #9156 の実機検証、#9151 の LLM-readable API surface、v2.21.4 release、GSplat streaming / layer event leak / integer attachment clear の後続を追う。制作事例は Codrops の Wave Grid、Ridgeline、The Sleepers のように、軽量 shader と状態管理を視覚体験に変換するものを継続。",
+      "bodyEn": "Watch Babylon.js #18774 review and merge progress, #18787 GPU particle gradient rebakes, follow-up 9.20.0 releases, and WebGPU XR depth / quad layer / AR clear regressions. For three.js, track the r186 milestone, #33950 examples and docs, any replacement optimization for #34092, render target lifetime fixes after #34188, and more DirectRenderPipeline examples. For PlayCanvas, watch #9156 hardware validation, #9151 LLM-readable API surfaces, a v2.21.4 release, and follow-ups around GSplat streaming, layer event leaks, and integer attachment clears. For creative cases, keep following Codrops Wave Grid, Ridgeline, and The Sleepers: lightweight shaders and state management turned into visual experience.",
+      "links": [
+        {
+          "label": "three.js r186 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/99"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Codrops The Sleepers",
+          "url": "https://tympanus.net/codrops/2026/07/10/the-sleepers-creating-an-atmospheric-webgl-experience-with-lightweight-techniques/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、shared atlas の帯を作品の主役にする。横方向に流れる LOD chunk、削除された tombstone、compact で移動する発光線、blur repeats が下がった lens、gradient LUT の再焼き込みを同じ fragment shader で出す。実装は raw WebGL で十分で、重い SOG loader や WebGPU 実装はまだ不要。ポイントは、メモリ最適化・ポスト処理予算・粒子色更新を別々の technical note にせず、同じ画面の時間変化として扱うこと。",
+      "bodyEn": "If trying one thing today, make shared atlas bands the main subject. Show horizontally streaming LOD chunks, deleted tombstones, compaction glow lines, a low-repeat blur lens, and gradient LUT rebakes in one fragment shader. Raw WebGL is enough; a heavy SOG loader or full WebGPU implementation is not needed yet. The key is to avoid treating memory optimization, postprocess budget, and particle color updates as separate technical notes; make them one temporal surface.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Babylon.js #18774 / #18787 / 9.20.0、three.js #34092 / #33950 / #34188 / r186 milestone、PlayCanvas #9156 / #9151、Codrops Wave Grid / Ridgeline / The Sleepers を収集。アイデア検討: 継続案件は resource lifetime lanes、DirectRenderPipeline bypass、GSplat/SOG format pressure、KHR_interactivity refs/events。新規案件は shared atlas band、tombstone compaction、backdrop blur sample budget、gradient LUT rebake。寝かせる案件はカード UI、実 XR headset capture、完全な SOG parser、WebGPU compute 依存の重い試作。サンプル実装: `outputs/2026-08-09_sog_atlas_backdrop_blur_field.html` を追加。結果の検証: JSON parse、HTML 構文の簡易確認、gallery build、publish、公開 URL の HTTP 確認を行う。",
+      "bodyEn": "Research: collected Babylon.js #18774 / #18787 / 9.20.0, three.js #34092 / #33950 / #34188 / r186 milestone, PlayCanvas #9156 / #9151, and Codrops Wave Grid / Ridgeline / The Sleepers. Ideation: continuing tracks are resource lifetime lanes, DirectRenderPipeline bypass, GSplat/SOG format pressure, and KHR_interactivity refs/events. New tracks are shared atlas bands, tombstone compaction, backdrop blur sample budgets, and gradient LUT rebakes. Parked tracks are card UI, real XR headset capture, a complete SOG parser, and heavy WebGPU compute prototypes. Prototype: added `outputs/2026-08-09_sog_atlas_backdrop_blur_field.html`. Verification: JSON parse, basic HTML syntax checks, gallery build, publish, and public HTTP checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、「高機能な WebGPU / XR / GSplat」より、その周辺にある resource lifetime、layout、fallback、typing、sample budget が表現素材になってきたこと。8/6 の KHR_interactivity ref/event、8/7 の capability layer、8/8 の resource lifetime/topology、そして今日の shared atlas/blur budget は、どれも内部状態の可視化という同じ線上にある。組み合わせ候補は、pointer event が atlas の reservation を開き、cache heat が blur repeats を下げ、gradient LUT が音で再 bake され、tombstone がユーザーの通った跡として残る構成。育てる価値が高いテーマは「runtime memory as choreography」。メモリ管理を裏側の最適化に閉じず、流入・削除・復帰・詰め直しを動きの設計にする。",
+      "bodyEn": "The recent trend is that resource lifetime, layout, fallback, typing, and sample budgets around WebGPU / XR / GSplat are becoming more expressive than the big feature labels themselves. The 8/6 KHR_interactivity ref/event work, 8/7 capability layer, 8/8 resource lifetime/topology, and today's shared atlas / blur budget all sit on the same line: visible internal state. A promising combination is pointer events opening atlas reservations, cache heat lowering blur repeats, gradient LUTs rebaking from audio, and tombstones remaining as traces of user movement. The high-value theme is runtime memory as choreography: memory management becomes motion design through inflow, deletion, recovery, and compaction.",
+      "links": [
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「SOG Atlas Backdrop Blur Field」。作成ファイルは `outputs/2026-08-09_sog_atlas_backdrop_blur_field.html`。raw WebGL fragment shader で、SOG LOD shared atlas、tombstone / compact line、低反復 backdrop blur lens、GPU particle gradient rebake 風の色帯を表示する。1-4 で表示 mode を切り替え、ドラッグで atlas band を曲げ、クリック/Space で memory pressure を注入する。次に足すなら、実 SOG chunk の load/unload log、Babylon compound mesh の reserved row count、three.js Gaussian Splat loader の import progress、Web Audio の周波数帯を gradient LUT に接続する。",
+      "bodyEn": "The selected prototype is SOG Atlas Backdrop Blur Field. The created file is `outputs/2026-08-09_sog_atlas_backdrop_blur_field.html`. A raw WebGL fragment shader shows SOG LOD shared atlases, tombstone / compaction lines, a low-repeat backdrop blur lens, and GPU-particle-gradient-rebake style color bands. Keys 1-4 switch modes, dragging bends atlas bands, and click or Space injects memory pressure. Next additions are real SOG chunk load/unload logs, Babylon compound mesh reserved row counts, three.js Gaussian Splat loader import progress, and Web Audio frequency bands driving the gradient LUT.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは pointer、mode、pressure、time を入力にし、atlas band、chunk density、tombstone line、blur lens、gradient particle を描画状態として持つ。データとして見ると、ユーザーがどの帯を曲げたか、pressure を入れた瞬間にどの chunk が発火したか、blur repeats の少なさをどこまで演出にできるかを記録できる。音反応では低域を compaction、中域を atlas chunk、高域を gradient rebake に割り当てると、ライブ VJ や展示向けに扱いやすい。画像や video texture と組み合わせるなら、backdrop blur lens の内側だけ低反復 blur にし、外側を SOG atlas の粒で侵食する。WebXR では streamed splat の reserved rows を空間上の層として置き、近づくほど tombstone が見える構成が面白い。中長期では、runtime diagnostics を鑑賞可能な HUD ではなく、作品そのものの地形・霞・粒子・音の振る舞いへ溶かす方向で育てたい。",
+      "bodyEn": "Today's sample uses pointer, mode, pressure, and time as inputs, with atlas bands, chunk density, tombstone lines, blur lenses, and gradient particles as render states. As data, it can record which band users bend, which chunks ignite under pressure, and how far a low blur-repeat count can be used expressively. For audio reaction, map bass to compaction, mids to atlas chunks, and highs to gradient rebakes. With image or video textures, apply low-repeat blur only inside the lens while the outside erodes into SOG atlas particles. In WebXR, streamed splat reserved rows can become spatial layers, with tombstones becoming visible as the user approaches. Mid-term, runtime diagnostics should dissolve into the artwork's terrain, haze, particles, and sound behavior instead of remaining a separate HUD."
+    }
+  ]
+}
