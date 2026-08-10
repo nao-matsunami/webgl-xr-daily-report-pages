@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Backdrop blur を checker budget と atlas 演出へ置き換える | 2026-08-10</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.10</p>
+      <h1>Backdrop blur を checker budget と atlas 演出へ置き換える</h1>
+      <p class="hero-subtitle">Replacing backdrop blur with checker budgets and atlas-driven expression</p>
+      <p>three.js の `webgpu_backdrop_area` を高コスト blur から checker effect へ寄せる提案、Babylon.js の SOG LOD compound stream merge、three.js の large skeleton bone texture fallback、PlayCanvas の UI topology / JSDoc 継続、Codrops の PX PUSH / Chems Studio 事例を、前日の shared atlas / blur budget から「低コストな量子化・チェック柄・予算表示を作品の表情にする」方向へ接続した。</p>
+      <p class="en-copy">Today connects the three.js proposal to move `webgpu_backdrop_area` from costly blur toward a checker effect, the merged Babylon.js SOG LOD compound stream, three.js large-skeleton bone texture fallback, ongoing PlayCanvas UI topology and JSDoc work, and Codrops PX PUSH / Chems Studio case studies, extending yesterday's shared atlas / blur budget track into low-cost quantization, checker patterns, and budget visualization as expressive material.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-10_checker_budget_atlas_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-09.html">← 2026.08.09</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-10 Checker Budget Atlas Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-10_checker_budget_atlas_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34195 は `webgpu_backdrop_area` の初期 preset を重い `hashBlur()` 系から checker effect へ変える提案。Pixel 8a や Mac mini M2 Pro で blur が 30-35 FPS 程度、checker が 60 FPS とされており、表現上も「ぼかす」より「予算を見せる」方向が強い。2. Babylon.js PR #18774 は 2026-08-09 UTC に merge 済み。SOG LOD stream が compound mesh の shared atlas に入り、single sort / single interleaved pass / tombstone / compactAtlas まで一続きになった。昨日の主題が実装として一段進んだ。3. three.js PR #34194 は large skeleton 向けに SkinningNode の bone texture fallback を足す提案。多数ボーンを uniform で押し切れない環境を texture lane へ逃がす話で、SOG atlas と同じく「データをテクスチャ化して描画パスへ流す」流れにある。4. three.js PR #33286 は native equirect / quad media layer rendering の XR media layer 方向で更新が続いている。Babylon WebGPU XR quad layer と合わせると、動画・全天球・UI 面を別レイヤーで扱う時代が近い。5. PlayCanvas は #9156 UI image topology と #9151 JSDoc/types hardening が継続。派手な shader ではないが、生成コードや LLM が読む API surface と primitive topology の安定化として重要。</p>
+          <p class="en-copy">1. three.js PR #34195 proposes changing the default preset of `webgpu_backdrop_area` from costly `hashBlur()` to a checker effect. It cites roughly 30-35 FPS for blur and 60 FPS for checker on tested Mac mini M2 Pro and Pixel 8a devices, making 'show the budget' more compelling than 'blur everything'. 2. Babylon.js PR #18774 was merged on 2026-08-09 UTC. The SOG LOD stream now lives in a compound mesh shared atlas with single sort, a single interleaved pass, tombstones, and `compactAtlas()`, advancing yesterday's topic into merged implementation. 3. three.js PR #34194 adds a SkinningNode bone texture fallback for large skeletons. It is another case of moving data that cannot fit comfortably in uniforms into texture lanes, similar to SOG atlases. 4. three.js PR #33286 continues native equirect / quad media layer rendering for XR. Together with Babylon WebGPU XR quad layers, video, panoramic media, and UI planes are moving toward separate layers. 5. PlayCanvas #9156 and #9151 continue to matter as topology and API surfaces become inputs for both people and generated code.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34195" target="_blank" rel="noreferrer">three.js PR #34195</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18774" target="_blank" rel="noreferrer">Babylon.js PR #18774</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34194" target="_blank" rel="noreferrer">three.js PR #34194</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33286" target="_blank" rel="noreferrer">three.js PR #33286</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9156" target="_blank" rel="noreferrer">PlayCanvas PR #9156</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日いちばん表現に効くのは three.js PR #34195。背景を美しくぼかすのではなく、checker effect を preset にする判断は、制約を隠さずデザインへ転用する発想として使える。blur の sample count を削って劣化に見せるより、checker / dither / quantized cell として最初から意匠化すると、WebGPU デモの軽さと未来感が両立する。Codrops 側では 2026-08-07 の PX PUSH が、古い機械が常時動くという governing idea を Nuxt / Three.js stack と組み合わせた事例として出ている。これは今日の checker budget と相性がよく、GPU 予算や stream pressure を「機械の計器盤」ではなく画面そのものの運転音・揺れ・チェック柄にできる。</p>
+          <p class="en-copy">The most expressive item today is three.js PR #34195. Choosing a checker effect instead of a beautiful blur is useful as a design move: expose the constraint and turn it into style. Rather than reducing blur samples and making the result look degraded, make checker, dither, and quantized cells intentional from the start. On Codrops, the 2026-08-07 PX PUSH article frames a website around an old, always-on machine running underneath a modern Nuxt / Three.js stack. That pairs well with today's checker budget: GPU budgets and stream pressure can become the screen's operating rhythm, not just a dashboard.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34195" target="_blank" rel="noreferrer">three.js PR #34195</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops PX PUSH article</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「Checker Budget Atlas Scope」。画面を checker cell の集合として扱い、pointer 付近だけ dither / checker の density を変える。昨日の SOG atlas band はそのまま mode 3 に残し、mode 1 で blur budget を checker に置換、mode 2 で bone texture fallback を骨格線として、mode 4 で XR equirect / quad media layer を円形レイヤーとして描く。ドラッグで cell の曲がり、クリック/Space で stream pressure を入れる。中長期では、この checker cell を実フレーム時間、postprocess sample count、SOG chunk residency、XR layer count、bone texture upload 量へ接続する。</p>
+          <p class="en-copy">The short-term idea is Checker Budget Atlas Scope. Treat the screen as checker cells and change dither / checker density around the pointer. Yesterday's SOG atlas bands remain as mode 3; mode 1 replaces blur budget with checkers, mode 2 renders bone texture fallback as skeletal lines, and mode 4 turns XR equirect / quad media layers into circular layer fields. Drag bends cells, and click or Space injects stream pressure. Longer term, map these cells to real frame time, postprocess sample count, SOG chunk residency, XR layer count, and bone texture upload volume.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>blur は高級感を出しやすいが、WebGPU example 全体の中で最重になるなら、表現の前提を変えた方がよい。checker / ordered dither / Bayer matrix / low-res cell は、サンプル数削減を画質低下ではなく「量子化された現実」として見せられる。SkinningNode の bone texture fallback からは、uniform limit にぶつかる状態を texture atlas として解く発想を得られる。SOG atlas、bone texture、gradient LUT、media layer は別機能に見えるが、実装上は「連続値や構造を GPU が読みやすい面へ詰める」点で共通している。PlayCanvas の triangle strip から indexed triangles への修正も、見た目の乱れが topology の選択から来ることを示しており、debug overlay ではなく演出上の破綻線として扱える。</p>
+          <p class="en-copy">Blur easily creates polish, but if it becomes the heaviest WebGPU example, changing the expressive premise is better. Checker, ordered dither, Bayer matrices, and low-resolution cells can make sample reduction feel like quantized reality instead of degraded quality. The SkinningNode bone texture fallback suggests solving uniform limits by moving structured data into texture atlases. SOG atlases, bone textures, gradient LUTs, and media layers look like separate features, but all pack continuous values or structures into GPU-readable surfaces. PlayCanvas' move from triangle strips to indexed triangles also shows how visual artifacts can come from topology choices; those artifacts can become intentional fault lines.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34195" target="_blank" rel="noreferrer">three.js PR #34195</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34194" target="_blank" rel="noreferrer">three.js PR #34194</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9156" target="_blank" rel="noreferrer">PlayCanvas PR #9156</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は #34195 が checker preset として merge されるか、あるいは blur 改善案に戻るかを見る。#34194 の large skeleton fallback、#33286 の XR media layer、r186 milestone の Gaussian Splat / WebGPU / WebXR 周辺も継続。Babylon.js は merge 済み #18774 の release 反映、#18787 gradient rebake、#18775 systematic core scan、WebGPU XR clear / quad / depth sensing の後続を見る。PlayCanvas は #9156 / #9151 が次 release に入るか、GSplat WebGPU / topology / layer leak 修正の次の波を追う。Codrops は PX PUSH、Chems Studio、Cerebrium のように、抽象的なシステムを可視体験へ変換する記事を継続監視する。</p>
+          <p class="en-copy">For three.js, watch whether #34195 lands as a checker preset or shifts back toward blur optimization. Also track #34194 large skeleton fallback, #33286 XR media layers, and r186 milestone items around Gaussian Splat, WebGPU, and WebXR. For Babylon.js, watch release inclusion of merged #18774, #18787 gradient rebakes, #18775 systematic core scan, and follow-ups to WebGPU XR clear / quad / depth sensing. For PlayCanvas, watch whether #9156 / #9151 enter the next release and whether more GSplat WebGPU, topology, or layer leak fixes appear. For Codrops, keep tracking PX PUSH, Chems Studio, and Cerebrium-style articles that turn abstract systems into visible experiences.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18787" target="_blank" rel="noreferrer">Babylon.js PR #18787</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、blur を捨てて checker を主役にする。postprocess の品質を上げるのではなく、サンプル予算・フレーム時間・stream pressure を checker cell の密度、発光、歪みにする。実装は raw WebGL fragment shader で十分。pointer 付近だけ checker を dither 化し、クリック時に SOG atlas band と compaction line を混ぜると、昨日の atlas memory と今日の backdrop budget が一枚につながる。</p>
+          <p class="en-copy">If trying one thing today, drop blur and make checker patterns the main subject. Do not increase postprocess quality; turn sample budget, frame time, and stream pressure into cell density, glow, and distortion. A raw WebGL fragment shader is enough. Dither only around the pointer and blend in SOG atlas bands plus compaction lines on click, connecting yesterday's atlas memory with today's backdrop budget.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34195 / #34194 / #33286 / r186 milestone、Babylon.js #18774 / #18787 / #18775、PlayCanvas #9156 / #9151、Codrops PX PUSH / Chems Studio / Cerebrium を収集。アイデア検討: 継続案件は shared atlas、resource lifetime topology、SOG compaction、gradient rebake。新規案件は checker budget、bone texture fallback、XR media layer、governing-machine metaphor。寝かせる案件はカード UI、実 XR headset capture、完全な SOG parser、大規模依存の WebGPU compute。サンプル実装: `outputs/2026-08-10_checker_budget_atlas_scope.html` を追加。結果の検証: JSON parse、HTML 構文の簡易確認、gallery build、publish、公開 URL の HTTP 確認を行う。</p>
+          <p class="en-copy">Research: collected three.js #34195 / #34194 / #33286 / r186 milestone, Babylon.js #18774 / #18787 / #18775, PlayCanvas #9156 / #9151, and Codrops PX PUSH / Chems Studio / Cerebrium. Ideation: continuing tracks are shared atlas, resource lifetime topology, SOG compaction, and gradient rebake. New tracks are checker budgets, bone texture fallback, XR media layers, and the governing-machine metaphor. Parked tracks are card UI, real XR headset capture, a full SOG parser, and heavy WebGPU compute dependencies. Prototype: added `outputs/2026-08-10_checker_budget_atlas_scope.html`. Verification: JSON parse, basic HTML syntax check, gallery build, publish, and public HTTP checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、豪華なエフェクトを増やすより、実装上の制約を見た目の文法へ変える方向が強い。8/8 は resource lifetime、8/9 は shared atlas / blur budget、今日は checker budget / bone texture fallback。どれも、GPU が内部で抱えている面・帯・寿命・上限を可視化する線上にある。組み合わせ候補は、SOG chunk の residency を checker cell に、bone texture fallback を骨格線に、XR media layer を円形 lens に、Web Audio を pressure pulse に割り当てる構成。育てる価値が高いテーマは「budget as texture」。性能予算を非表示の制約ではなく、作品が呼吸する粒度・格子・明滅として扱う。</p>
+          <p class="en-copy">The recent trend is not adding richer effects, but turning implementation constraints into visual grammar. 8/8 focused on resource lifetime, 8/9 on shared atlas / blur budget, and today on checker budget / bone texture fallback. All visualize GPU surfaces, bands, lifetimes, and limits. A promising combination maps SOG chunk residency to checker cells, bone texture fallback to skeletal lines, XR media layers to circular lenses, and Web Audio to pressure pulses. The high-value theme is budget as texture: performance budget becomes grain, grid, and flicker that the artwork breathes through.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-09_sog_atlas_backdrop_blur_field.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Checker Budget Atlas Scope」。作成ファイルは `outputs/2026-08-10_checker_budget_atlas_scope.html`。raw WebGL fragment shader で checker budget cell、pointer dither lens、bone texture fallback 風 skeletal line、SOG atlas merge band、XR media layer 風 circular / quad overlay を表示する。1-4 で mode を切り替え、ドラッグで checker / atlas の曲がり、クリック/Space で stream pressure を注入する。次に足すなら、実 FPS / frame time を checker density に、Web Audio 低域を pressure pulse に、SOG chunk load log を atlas band に、XR media の動画 texture を mode 4 の layer 内に接続する。</p>
+          <p class="en-copy">The selected prototype is Checker Budget Atlas Scope. The created file is `outputs/2026-08-10_checker_budget_atlas_scope.html`. A raw WebGL fragment shader shows checker budget cells, a pointer dither lens, bone-texture-fallback skeletal lines, SOG atlas merge bands, and XR-media-layer circular / quad overlays. Keys 1-4 switch modes, dragging bends checker / atlas fields, and click or Space injects stream pressure. Next additions are real FPS / frame time driving checker density, Web Audio bass driving pressure pulses, SOG chunk load logs driving atlas bands, and video texture inside the mode 4 XR layer.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは pointer、mode、pressure、time を入力にし、checker cell、dither lens、skeletal line、atlas band、media layer ring を描画状態として持つ。データとして見ると、ユーザーがどの cell 密度を触ったか、pressure 時にどの atlas band が発火したか、checker と blur の代替がどの程度視覚的に成立するかを記録できる。展示やライブ演出では、音の低域で cell を粗く、中域で atlas band を開閉し、高域で dither lens を明滅させると扱いやすい。WebXR では equirect layer を背景、quad layer を手元 UI、SOG atlas を空間の記憶帯として配置できる。ブランド演出では、loading や fallback を隠すのではなく、常時動く機械のような checker budget として見せると、性能制約が世界観になる。</p>
+          <p class="en-copy">Today's sample uses pointer, mode, pressure, and time as inputs, with checker cells, dither lenses, skeletal lines, atlas bands, and media-layer rings as render states. As data, it can record which cell density users touched, which atlas bands fired under pressure, and whether checker can replace blur convincingly. For installations or live visuals, map bass to coarser cells, mids to atlas band gates, and highs to dither lens flicker. In WebXR, use an equirect layer as background, a quad layer as hand UI, and SOG atlas bands as spatial memory strips. In brand work, do not hide loading and fallback; show them as an always-running checker budget machine so performance constraints become world-building.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34195" target="_blank" rel="noreferrer">three.js PR #34195 backdrop area checker preset</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18774" target="_blank" rel="noreferrer">Babylon.js PR #18774 merged SOG LOD compound stream</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34194" target="_blank" rel="noreferrer">three.js PR #34194 bone texture fallback for large skeletons</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33286" target="_blank" rel="noreferrer">three.js PR #33286 native equirect and quad media layers</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9156" target="_blank" rel="noreferrer">PlayCanvas PR #9156 indexed UI image triangles</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9151" target="_blank" rel="noreferrer">PlayCanvas PR #9151 JSDoc and published types hardening</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+            <li><a href="../outputs/2026-08-10_checker_budget_atlas_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-10_checker_budget_atlas_scope.html" loading="lazy" title="2026-08-10 Checker Budget Atlas Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
