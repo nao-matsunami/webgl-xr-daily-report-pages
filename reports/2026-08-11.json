@@ -1,0 +1,193 @@
+{
+  "date": "2026-08-11",
+  "headline": "距離ではなく誤差で LOD 予算を動かす",
+  "headlineEn": "Driving LOD budget by error instead of distance",
+  "summary": "PlayCanvas の streamed SOG LOD error metadata による GSplat budget allocation、three.js の Gaussian Splat loader / fflate 分割 / GLSL Transpiler 更新、Babylon.js の particle gradient order / WebGPU pipeline cache / KTX2 修正を、直近の shared atlas と checker budget から「error as budget signal」へ接続した。",
+  "summaryEn": "Today connects PlayCanvas streamed SOG LOD error metadata for GSplat budget allocation, three.js Gaussian Splat loader / fflate split / GLSL Transpiler updates, and Babylon.js particle gradient ordering / WebGPU pipeline cache / KTX2 fixes to the recent shared-atlas and checker-budget thread, reframing it as error as budget signal.",
+  "links": [
+    {
+      "label": "PlayCanvas PR #9157 Error-driven GSplat budget allocation",
+      "url": "https://github.com/playcanvas/engine/pull/9157"
+    },
+    {
+      "label": "three.js PR #34205 Optimize Gaussian Splat loading",
+      "url": "https://github.com/mrdoob/three.js/pull/34205"
+    },
+    {
+      "label": "three.js PR #34210 Simplify and split fflate module",
+      "url": "https://github.com/mrdoob/three.js/pull/34210"
+    },
+    {
+      "label": "three.js PR #34206 GLSL preprocessor support",
+      "url": "https://github.com/mrdoob/three.js/pull/34206"
+    },
+    {
+      "label": "three.js PR #34208 GLSL array support",
+      "url": "https://github.com/mrdoob/three.js/pull/34208"
+    },
+    {
+      "label": "Babylon.js PR #18794 Particle gradient order",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18794"
+    },
+    {
+      "label": "Babylon.js PR #18791 WebGPU vertex layout pipeline cache collisions",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18791"
+    },
+    {
+      "label": "Codrops WebGL tag",
+      "url": "https://tympanus.net/codrops/tag/webgl/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas PR #9157 は streamed SOG の LOD 選択を、距離 bucket だけでなく lod-meta.json の per-node approximation error で配分する提案。前日の checker budget を、実際に「どこへ予算を使うべきか」の信号へ進められる。2. three.js PR #34205 は Gaussian Splat loaders の読み込み経路を最適化し、手動 clamp や indirection を減らす。PR #34210 は fflate を zip/unzip/shared に分け、SPZLoader のような解凍だけの利用で bundle を軽くする方向。3. three.js PR #34206/#34208 は GLSL Transpiler に preprocessor directive / macro と GLSL ES 3.0 array constructor / initializer を足す。既存 GLSL 資産を TSL/WebGPU 側へ移す準備として重要。4. Babylon.js PR #18794 は Inspector v2 の particle gradient stop を refresh 前に owning array 側で sort する修正。#18787 の gradient lookup texture in-place rebake と合わせると、編集 UI の順序と GPU texture の寿命が表現上の安定性に直結する。5. Babylon.js PR #18791 は WebGPU vertex layout pipeline cache key の衝突修正。目立つ新機能ではないが、同じ buffer に見えるものの offset/merge boundary が違う問題を可視化対象にできる。",
+      "bodyEn": "1. PlayCanvas PR #9157 proposes selecting streamed SOG LOD by per-node approximation errors in lod-meta.json, not only by distance buckets. This turns yesterday's checker budget into a real signal for where quality should be spent. 2. three.js PR #34205 optimizes Gaussian Splat loader paths by reducing clamp work and indirection. PR #34210 splits fflate into zip, unzip, and shared modules so unzip-only users such as SPZLoader can ship less code. 3. three.js PR #34206/#34208 add GLSL preprocessor / macro support and GLSL ES 3.0 array constructors / initializers to the Transpiler, helping existing GLSL assets move toward TSL/WebGPU workflows. 4. Babylon.js PR #18794 sorts particle gradient stops before refresh in Inspector v2. Together with #18787, editor order and GPU texture lifetime become directly tied to visual stability. 5. Babylon.js PR #18791 fixes WebGPU vertex layout pipeline cache key collisions, a quiet but important issue where offsets and merge boundaries change what the GPU actually sees.",
+      "links": [
+        {
+          "label": "PlayCanvas PR #9157",
+          "url": "https://github.com/playcanvas/engine/pull/9157"
+        },
+        {
+          "label": "three.js PR #34205",
+          "url": "https://github.com/mrdoob/three.js/pull/34205"
+        },
+        {
+          "label": "Babylon.js PR #18794",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18794"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の中心は PlayCanvas #9157。距離で LOD を落とすだけだと、細部が多いノードと近似しやすいノードを同じ扱いにしてしまう。error / cost / coverage で Pareto frontier を作る考え方は、レンダリングの最適化であると同時に、画面の中で「どこが情報を失っているか」を演出する方法になる。Codrops の WebGL タグでは Endless Interactive Glass Xylophone のような音と 3D 反応の事例が継続して見えるので、error priority を音階、打鍵、残響の強さへ割り当てると、品質配分が単なるデバッグ表示ではなく演奏可能な UI になる。",
+      "bodyEn": "The key example is PlayCanvas #9157. Distance-only LOD treats a detail-heavy node and a near-duplicate node too similarly. Building a Pareto frontier from error, cost, and coverage is not just an optimization; it can become a way to show where information is being lost. Codrops' WebGL tag continues to surface audio-reactive 3D work such as the Endless Interactive Glass Xylophone, suggesting that error priority could map to pitch, strikes, and resonance so quality allocation becomes playable rather than merely diagnostic.",
+      "links": [
+        {
+          "label": "PlayCanvas PR #9157",
+          "url": "https://github.com/playcanvas/engine/pull/9157"
+        },
+        {
+          "label": "Codrops WebGL tag",
+          "url": "https://tympanus.net/codrops/tag/webgl/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「Error Budget LOD Field」。画面を 5x4 の SOG node に分け、各 node に cost / error / coverage を持たせる。pointer に近いほど coverage が上がり、クリックや Space で budget pressure が入り、error/cost の高い node が発光して frontier line を描く。mode 2 は Gaussian Splat loader の fast path を帯状 stream として、mode 3 は particle gradient stop の sort を色点の整列として、mode 4 は GLSL Transpiler の preprocessor / array / loop をコード構造のリングとして描く。中長期では実 lod-meta.json、frame time、audio band、camera motion を同じ priority field に流す。",
+      "bodyEn": "The short-term idea is Error Budget LOD Field. Split the screen into 5x4 SOG nodes, each carrying cost, error, and coverage. Pointer proximity raises coverage; click or Space injects budget pressure; high error/cost nodes glow and draw frontier lines. Mode 2 renders Gaussian Splat loader fast paths as streaming bands, mode 3 sorts particle gradient stops as colored control points, and mode 4 renders GLSL Transpiler preprocessor / array / loop structures as code rings. Longer term, feed real lod-meta.json, frame time, audio bands, and camera motion into the same priority field.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "SOG LOD の error metadata は、品質を距離だけでなく「その node を粗くすると何を失うか」で扱える点が強い。実装では cost と error の frontier を作り、coverage * benefit / cost を priority にする発想が使える。three.js 側の #34205/#34210 は、splat 表現を見せる前のロード時間と bundle size を削る話で、体験設計では最初の数秒の密度・欠落・補間の見せ方に直結する。GLSL Transpiler の #34206/#34208 は、#define、#ifdef、配列 palette など、古い fragment shader で多用される構文を保ったまま移植しやすくする。Babylon の gradient sort は、UI 上の stop 順序と GPU LUT のピクセル順がずれると見た目が破綻するという、小さいが制作現場では大きい論点。",
+      "bodyEn": "SOG LOD error metadata is powerful because quality is no longer only distance-based; it can represent what is lost when a node becomes coarse. In implementation terms, build cost/error frontiers and rank upgrades by coverage * benefit / cost. three.js #34205/#34210 reduce load time and bundle size before splats are even visible, which affects how the first seconds of density, gaps, and interpolation feel. GLSL Transpiler #34206/#34208 make it easier to carry old fragment shader habits like #define, #ifdef, and array palettes forward. Babylon's gradient sort shows a small but production-critical issue: if editor stop order diverges from GPU LUT pixel order, the image breaks.",
+      "links": [
+        {
+          "label": "three.js PR #34210",
+          "url": "https://github.com/mrdoob/three.js/pull/34210"
+        },
+        {
+          "label": "three.js PR #34206",
+          "url": "https://github.com/mrdoob/three.js/pull/34206"
+        },
+        {
+          "label": "Babylon.js PR #18787",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18787"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvas は #9157 が splat-transform 側の lod-meta.json と一緒に進むか、fallback の distance allocator と error allocator の切り替え条件を見る。three.js は #34210 の fflate 分割が SPZLoader へどう入るか、#34204 bounding sphere fast path、#34205 splat loader optimization、#34206/#34208 Transpiler 系、r186 milestone を継続。Babylon.js は #18794/#18787 の particle gradient 編集、#18791 WebGPU pipeline cache、#18793 KTX2 Zstd UASTC、#18775 systematic core scan を見る。Codrops は WebGL タグの音/物理/反応系事例を、error priority の演奏化という観点で追う。",
+      "bodyEn": "For PlayCanvas, watch whether #9157 advances together with splat-transform lod-meta.json and how it switches between fallback distance allocation and error allocation. For three.js, track #34210 fflate splitting into SPZLoader, #34204 bounding sphere fast paths, #34205 splat loader optimization, #34206/#34208 Transpiler work, and the r186 milestone. For Babylon.js, track #18794/#18787 particle gradient editing, #18791 WebGPU pipeline cache, #18793 KTX2 Zstd UASTC, and #18775 systematic core scan. For Codrops, watch audio/physics/reactive WebGL cases as references for making error priority playable.",
+      "links": [
+        {
+          "label": "three.js r186 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/99"
+        },
+        {
+          "label": "PlayCanvas PR #9157",
+          "url": "https://github.com/playcanvas/engine/pull/9157"
+        },
+        {
+          "label": "Babylon.js PR #18793",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18793"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、checker budget の cell を error/cost/coverage node に置き換える。実データがなくても、疑似 cost と error を node ごとに持たせ、pointer coverage と pressure で priority を変えるだけで、どこに品質を使うべきかが見える。見た目としては debug heatmap に寄せすぎず、frontier line、発光 node、stream band、gradient stop を同じ舞台上の演出にする。",
+      "bodyEn": "If trying one thing today, replace checker-budget cells with error/cost/coverage nodes. Even without real data, assign synthetic cost and error to each node and let pointer coverage plus pressure change priority. Keep it from becoming a plain debug heatmap by treating frontier lines, glowing nodes, stream bands, and gradient stops as parts of the same scene.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas #9157、three.js #34205/#34210/#34206/#34208/#34204、Babylon.js #18794/#18791/#18793/#18787、Codrops WebGL タグを収集。アイデア検討: 継続案件は budget as texture、shared atlas、gradient rebake、resource lifetime。新規案件は error as budget signal、frontier line、loader fast path as stream、GLSL migration field。寝かせる案件はカード UI、完全な SOG parser、実 headset capture、大規模 WebGPU compute。サンプル実装: `outputs/2026-08-11_error_budget_lod_field.html` を追加。結果の検証: JSON parse、HTML parse、gallery build、publish、公開 URL の確認まで行う。",
+      "bodyEn": "Research: collected PlayCanvas #9157, three.js #34205/#34210/#34206/#34208/#34204, Babylon.js #18794/#18791/#18793/#18787, and the Codrops WebGL tag. Ideation: continuing tracks are budget as texture, shared atlas, gradient rebake, and resource lifetime. New tracks are error as budget signal, frontier lines, loader fast path as stream, and GLSL migration fields. Parked tracks are card UI, a full SOG parser, real headset capture, and heavy WebGPU compute. Prototype: added `outputs/2026-08-11_error_budget_lod_field.html`. Verification: JSON parse, HTML parse, gallery build, publish, and public URL checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、8/8 の resource lifetime、8/9 の shared atlas、8/10 の checker budget、そして今日の error budget へ進んでいる。つまり GPU 内部の寿命・面・帯・予算を見せるだけでなく、どの品質がなぜ選ばれるかを表現にできる段階に来た。組み合わせ候補は、SOG node error を発光密度に、loader fast path を導線に、gradient stop order を色の旋律に、GLSL Transpiler の macro/array をコード模様にする構成。育てる価値が高いテーマは「quality allocation as performance」。最適化の結果ではなく、最適化の判断そのものを観客が触れるようにする。",
+      "bodyEn": "The recent sequence moves from 8/8 resource lifetime, to 8/9 shared atlas, to 8/10 checker budget, to today's error budget. We are not only showing GPU lifetimes, surfaces, bands, and budgets; we can now express why a quality choice is made. A strong combination maps SOG node error to glow density, loader fast paths to guide lines, gradient stop order to color melody, and GLSL Transpiler macros/arrays to code patterns. The theme worth growing is quality allocation as performance: not just the result of optimization, but the optimization decision itself as something the audience can touch.",
+      "links": [
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-08-10_checker_budget_atlas_scope.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「Error Budget LOD Field」。作成ファイルは `outputs/2026-08-11_error_budget_lod_field.html`。raw WebGL fragment shader で SOG node の error/cost/coverage priority、Gaussian Splat loader fast path stream、particle gradient stop sort、GLSL Transpiler の preprocessor/array/loop 構造を描く。1-4 で mode 切替、ドラッグで coverage 中心を移動、クリック/Space で budget pressure を注入する。次に足すなら、実 lod-meta.json を読み込んで node error にする、frame time を pressure にする、Web Audio の低域を budget、高域を gradient stop flicker にする、splat の progressive loading 状態を stream band に接続する。",
+      "bodyEn": "The selected prototype is Error Budget LOD Field. The created file is `outputs/2026-08-11_error_budget_lod_field.html`. A raw WebGL fragment shader renders SOG node error/cost/coverage priority, Gaussian Splat loader fast-path streams, particle gradient stop sorting, and GLSL Transpiler preprocessor/array/loop structures. Keys 1-4 switch modes, dragging moves coverage, and click or Space injects budget pressure. Next additions are reading real lod-meta.json into node errors, mapping frame time to pressure, mapping Web Audio bass to budget and highs to gradient-stop flicker, and connecting progressive splat loading state to stream bands.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは pointer、mode、pressure、time を入力にし、node priority、frontier line、stream band、gradient stop、code ring を描画状態として持つ。データとして見ると、ユーザーがどの node に coverage を与えたか、pressure 時にどの error/cost の組が選ばれたか、gradient stop がどの程度秩序化されたかを記録できる。展示では、観客の位置を coverage、音量を budget、映像の動き量を error にして、空間全体が品質配分を演奏する構成にできる。WebXR では、視線中心の node だけ error frontier を上げ、周辺は粒度を下げる foveated 演出へつなげられる。ブランド/エンタメでは、loading や LOD を隠す代わりに、優先度が走査して素材が選ばれていく「制作機械の内側」として見せると相性が良い。",
+      "bodyEn": "Today's sample uses pointer, mode, pressure, and time as inputs, with node priority, frontier lines, stream bands, gradient stops, and code rings as render states. As data, it can record which nodes received coverage, which error/cost pairs were selected under pressure, and how strongly gradient stops became ordered. In installations, audience position can drive coverage, volume can drive budget, and video motion can drive error so the space performs quality allocation. In WebXR, raise the error frontier around gaze and lower peripheral granularity for a foveated expression. For brand or entertainment work, instead of hiding loading and LOD, show priorities scanning and choosing assets as the inside of a production machine."
+    }
+  ]
+}

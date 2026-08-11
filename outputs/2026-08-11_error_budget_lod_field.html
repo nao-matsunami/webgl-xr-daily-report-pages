@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-08-11 Error Budget LOD Field</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #050609;
+      color: #eafcff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      pointer-events: none;
+      color: rgba(230, 250, 255, 0.84);
+      font-size: 11px;
+      line-height: 1.5;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(0, 220, 255, 0.35);
+    }
+
+    .hud strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .modes {
+      color: rgba(175, 235, 245, 0.76);
+      text-align: right;
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        grid-template-columns: 1fr;
+        font-size: 10px;
+      }
+
+      .modes {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="hud">
+    <div>
+      <strong>ERROR BUDGET LOD FIELD</strong><br>
+      Drag moves coverage. Hold / Space spends splat budget into high-error nodes.
+    </div>
+    <div class="modes">1 Error frontier / 2 Loader fast path / 3 Gradient order / 4 Shader transpiler</div>
+  </div>
+
+  <script id="vertex" type="x-shader/x-vertex">
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 u_resolution;
+    uniform vec2 u_pointer;
+    uniform float u_time;
+    uniform float u_pressure;
+    uniform float u_mode;
+
+    #define PI 3.14159265359
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 17.17);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                 mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+    }
+
+    float line(float v, float w) {
+      return smoothstep(w, 0.0, abs(v));
+    }
+
+    float ring(vec2 p, float r, float w) {
+      return line(length(p) - r, w);
+    }
+
+    vec3 palette(float t) {
+      vec3 a = vec3(0.03, 0.78, 1.0);
+      vec3 b = vec3(0.78, 0.2, 0.96);
+      vec3 c = vec3(1.0, 0.76, 0.22);
+      return mix(mix(a, b, smoothstep(0.05, 0.62, t)), c, smoothstep(0.55, 1.0, t));
+    }
+
+    vec3 baseField(vec2 uv) {
+      vec2 p = uv - 0.5;
+      float mist = noise(uv * 4.0 + vec2(u_time * 0.025, -u_time * 0.04));
+      float stars = pow(noise(uv * 190.0 + u_time * 0.03), 24.0);
+      vec3 col = mix(vec3(0.012, 0.016, 0.026), vec3(0.025, 0.04, 0.05), mist);
+      col += vec3(0.0, 0.25, 0.22) * exp(-length(p * vec2(1.0, 1.35)) * 4.0);
+      col += vec3(0.55, 0.9, 1.0) * stars;
+      return col;
+    }
+
+    float nodeShape(vec2 uv, vec2 center, float radius) {
+      vec2 p = (uv - center) * vec2(1.12, 0.86);
+      return smoothstep(radius, radius * 0.18, length(p));
+    }
+
+    vec3 errorFrontier(vec2 uv, vec2 pointer) {
+      vec3 col = baseField(uv) * 0.72;
+      vec2 grid = vec2(5.0, 4.0);
+      vec2 cell = floor(uv * grid);
+      vec2 local = fract(uv * grid);
+      vec2 center = (cell + 0.5) / grid;
+      float id = cell.x + cell.y * grid.x;
+      float cost = 0.18 + 0.78 * hash(cell + 2.0);
+      float error = 0.12 + 0.88 * hash(cell * 1.7 + 9.0);
+      float coverage = smoothstep(0.68, 0.04, distance(center, pointer));
+      float priority = coverage * error / (0.18 + cost);
+      float chosen = smoothstep(0.34 + 0.2 * sin(u_time * 0.35), 0.9, priority + u_pressure * 0.34);
+      float n = nodeShape(uv, center, 0.108 + 0.018 * sin(id + u_time));
+      vec3 nodeCol = mix(vec3(0.02, 0.12, 0.14), palette(priority), 0.35 + chosen * 0.65);
+      col += nodeCol * n * (0.35 + chosen * 1.15);
+      col += palette(fract(error + u_time * 0.03)) * ring((uv - center) * vec2(1.12, 0.86), 0.11 + cost * 0.035, 0.006) * (0.5 + chosen);
+
+      float frontier = line(local.y - (1.0 - error * 0.78), 0.025);
+      float costTick = line(local.x - cost, 0.018);
+      col += vec3(0.08, 0.85, 1.0) * frontier * 0.55;
+      col += vec3(1.0, 0.68, 0.18) * costTick * (0.35 + chosen);
+
+      vec2 lp = (uv - pointer) * vec2(1.2, 0.86);
+      col += vec3(0.1, 0.95, 1.0) * ring(lp, 0.24 + u_pressure * 0.08, 0.006);
+      col += palette(fract(u_time * 0.07)) * smoothstep(0.26, 0.0, length(lp)) * 0.16;
+      return col;
+    }
+
+    vec3 loaderFastPath(vec2 uv, vec2 pointer) {
+      vec3 col = baseField(uv) * 0.62;
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float y = 0.13 + fi * 0.092;
+        float wave = sin(uv.x * 11.0 + fi * 0.8 + u_time * 1.1) * 0.012;
+        float direct = smoothstep(0.22, 0.92, uv.x + u_pressure * 0.18);
+        float lane = line(uv.y - y - wave, 0.012);
+        float blocks = step(0.48, noise(vec2(floor(uv.x * 46.0), fi * 6.0)));
+        vec3 c = mix(vec3(0.04, 0.22, 0.26), palette(fract(fi * 0.12 + uv.x * 0.2)), direct);
+        col += c * lane * (0.22 + blocks * 0.85);
+        col += vec3(1.0, 0.78, 0.22) * lane * line(uv.x - fract(0.06 + fi * 0.09 + u_time * 0.18), 0.012) * (0.9 + u_pressure);
+      }
+      float pointerGate = smoothstep(0.34, 0.0, distance(uv, pointer));
+      col += vec3(0.1, 0.95, 1.0) * pointerGate * 0.22;
+      return col;
+    }
+
+    vec3 gradientOrder(vec2 uv, vec2 pointer) {
+      vec3 col = baseField(uv) * 0.58;
+      for (int i = 0; i < 7; i++) {
+        float fi = float(i);
+        float x = 0.13 + fi * 0.12 + sin(u_time * 0.4 + fi) * 0.018;
+        float unsortedY = 0.28 + 0.25 * sin(fi * 2.1 + u_time * 0.75);
+        float sortedY = 0.18 + fi * 0.09;
+        float sortMix = smoothstep(0.2, 0.86, pointer.x + u_pressure * 0.25);
+        vec2 pos = vec2(x, mix(unsortedY, sortedY, sortMix));
+        float stop = smoothstep(0.04, 0.0, distance(uv, pos));
+        float vertical = line(uv.x - x, 0.004) * smoothstep(0.08, 0.72, uv.y) * smoothstep(0.96, 0.28, uv.y);
+        col += palette(fi / 7.0) * stop * (0.9 + u_pressure);
+        col += palette(fi / 7.0) * vertical * 0.22;
+      }
+      float ramp = smoothstep(0.08, 0.92, uv.x);
+      col += palette(ramp) * line(uv.y - 0.82 - sin(uv.x * 18.0 + u_time) * 0.018, 0.025) * 0.9;
+      col += vec3(1.0, 0.25, 0.55) * ring((uv - pointer) * vec2(1.0, 0.75), 0.19, 0.006);
+      return col;
+    }
+
+    vec3 shaderTranspiler(vec2 uv, vec2 pointer) {
+      vec3 col = baseField(uv) * 0.64;
+      vec2 p = uv - 0.5;
+      float pre = line(fract((uv.y + u_time * 0.08) * 17.0) - 0.5, 0.03);
+      float arrayCell = step(0.52, hash(floor((uv + vec2(u_time * 0.02, 0.0)) * vec2(20.0, 12.0))));
+      float loop = ring(p * vec2(1.25, 0.8), 0.18 + 0.07 * sin(u_time + atan(p.y, p.x) * 3.0), 0.008);
+      float branch = line(abs(p.x) - 0.24 + sin(uv.y * 16.0 + u_time) * 0.01, 0.006);
+      col += vec3(0.06, 0.75, 1.0) * pre * 0.32;
+      col += palette(fract(uv.x + uv.y + u_time * 0.06)) * arrayCell * smoothstep(0.38, 0.0, distance(uv, pointer)) * 0.45;
+      col += vec3(1.0, 0.7, 0.16) * loop * (0.7 + u_pressure);
+      col += vec3(0.9, 0.18, 0.85) * branch;
+      return col;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      vec2 pointer = u_pointer;
+      uv.x *= u_resolution.x / u_resolution.y;
+      pointer.x *= u_resolution.x / u_resolution.y;
+
+      vec3 col;
+      float mode = floor(u_mode + 0.5);
+      if (mode < 1.5) {
+        col = errorFrontier(uv, pointer);
+      } else if (mode < 2.5) {
+        col = loaderFastPath(uv, pointer);
+      } else if (mode < 3.5) {
+        col = gradientOrder(uv, pointer);
+      } else {
+        col = shaderTranspiler(uv, pointer);
+      }
+
+      vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+      float vignette = smoothstep(1.08, 0.12, length(p));
+      col *= vignette;
+      col += vec3(0.014, 0.034, 0.038) * sin((uv.y + u_time * 0.08) * 760.0);
+      col = pow(max(col, 0.0), vec3(0.86));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById('stage');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    const state = {
+      pointer: [0.52, 0.48],
+      pressure: 0,
+      targetPressure: 0,
+      mode: 1,
+      dragging: false,
+      start: performance.now()
+    };
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, document.getElementById('vertex').textContent));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, document.getElementById('fragment').textContent));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1,
+      -1, 1, 1, -1, 1, 1
+    ]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, 'position');
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'u_resolution'),
+      pointer: gl.getUniformLocation(program, 'u_pointer'),
+      time: gl.getUniformLocation(program, 'u_time'),
+      pressure: gl.getUniformLocation(program, 'u_pressure'),
+      mode: gl.getUniformLocation(program, 'u_mode')
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(window.innerWidth * dpr);
+      const height = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = (event.clientX - rect.left) / rect.width;
+      state.pointer[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    canvas.addEventListener('pointerdown', (event) => {
+      state.dragging = true;
+      state.targetPressure = 1;
+      canvas.setPointerCapture(event.pointerId);
+      setPointer(event);
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+      setPointer(event);
+    });
+
+    canvas.addEventListener('pointerup', () => {
+      state.dragging = false;
+      state.targetPressure = 0;
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.targetPressure = 1;
+    });
+
+    window.addEventListener('keyup', (event) => {
+      if (event.code === 'Space' && !state.dragging) state.targetPressure = 0;
+    });
+
+    function frame(now) {
+      resize();
+      state.pressure += (state.targetPressure - state.pressure) * 0.08;
+
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.time, (now - state.start) * 0.001);
+      gl.uniform1f(uniforms.pressure, state.pressure);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
