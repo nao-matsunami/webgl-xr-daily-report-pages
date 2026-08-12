@@ -1,0 +1,209 @@
+{
+  "date": "2026-08-12",
+  "headline": "視点で変わる Splat の艶を品質予算に接続する",
+  "headlineEn": "Connecting view-dependent splat sheen to quality budgets",
+  "summary": "three.js の View-dependent Gaussian Splatting via Spherical Harmonics、Babylon.js の WebGPU simultaneous light budget clamp / glTF texture identity 修正、three.js WebGPU BatchedMesh offset 修正を、直近の error budget / shared atlas / resource lifetime の流れへ接続した。",
+  "summaryEn": "Today connects three.js view-dependent Gaussian Splatting via spherical harmonics, Babylon.js WebGPU simultaneous-light budget clamping / glTF texture identity fixes, and a three.js WebGPU BatchedMesh draw-offset fix to the recent error-budget, shared-atlas, and resource-lifetime thread.",
+  "links": [
+    {
+      "label": "three.js PR #34215 View-dependent Gaussian Splatting via Spherical Harmonics",
+      "url": "https://github.com/mrdoob/three.js/pull/34215"
+    },
+    {
+      "label": "three.js live WebGPU Gaussian Splatting example from PR #34215",
+      "url": "https://rawcdn.githack.com/mrdoob/three.js/cda74101ee2fc5f3e59bdd2252310b7d9dca97b1/examples/webgpu_gaussian_splatting.html"
+    },
+    {
+      "label": "three.js PR #34212 WebGPURenderer BatchedMesh draw offsets",
+      "url": "https://github.com/mrdoob/three.js/pull/34212"
+    },
+    {
+      "label": "three.js issue #34211 BatchedMesh WebGPU offset repro",
+      "url": "https://github.com/mrdoob/three.js/issues/34211"
+    },
+    {
+      "label": "Babylon.js PR #18797 WebGPU uniform buffer light budget clamp",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18797"
+    },
+    {
+      "label": "Babylon.js issue #18792 WebGPU high maxSimultaneousLights black render",
+      "url": "https://github.com/BabylonJS/Babylon.js/issues/18792"
+    },
+    {
+      "label": "Babylon.js PR #18798 Unique glTF root URL",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18798"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34215 は Gaussian Splatting に spherical harmonics を読み込み、視点依存の白い Fresnel / sheen 風 fringe を出す提案。WebGPU では per-splat SH contribution を pre-pass で計算し、WebGL fallback では vertex shader 側で 4 頂点分計算する構成。昨日の error/cost/coverage priority に、今日は view direction / material response という表現軸を足せる。2. Babylon.js PR #18797 は WebGPU の maxUniformBuffersPerShaderStage が 12 で、scene/mesh/material に加えて light UBO が増えると 10 lights 付近で黒画面化する問題に対し、上限を警告し clamp する提案。予算超過を「壊れる」から「削られるが見える」へ変える重要な UX 修正。3. Babylon.js PR #18798 は data: / file: glTF の embedded texture URL が同じ millisecond timestamp で衝突し、別 GLB の texture が混ざる問題を直す提案。キャッシュキーや root URL は見えないが、ビジュアル制作では素材同一性そのもの。4. three.js PR #34212 は WebGPURenderer の BatchedMesh draw offset が Uint16 から Uint32 へ変換された後に半分ずれる問題を修正。WebGL と WebGPU の同一 scene 差分を、描画検証レイヤーとして見せる題材になる。5. Codrops の直近記事群は Chems Studio / PX PUSH / Cerebrium など、映像・3D・WebGL をサイトの雰囲気ではなく構造として使う事例が続く。",
+      "bodyEn": "1. three.js PR #34215 proposes loading spherical harmonics for Gaussian Splatting so splats gain view-dependent white Fresnel / sheen-like fringes. WebGPU uses a pre-pass for per-splat SH contribution, while the WebGL fallback computes it in the vertex shader for the four splat vertices. This adds view direction and material response to yesterday's error/cost/coverage priority axis. 2. Babylon.js PR #18797 addresses black frames when WebGPU's maxUniformBuffersPerShaderStage limit of 12 is exceeded by scene, mesh, material, and per-light UBOs. It warns and clamps rather than letting the frame disappear. 3. Babylon.js PR #18798 fixes data: / file: glTF embedded texture URL collisions caused by millisecond timestamp identity. Cache keys are invisible, but in visual production they define material identity. 4. three.js PR #34212 fixes a WebGPURenderer BatchedMesh draw-offset mismatch after Uint16 indices are converted to Uint32, a useful WebGL/WebGPU parity-diff case. 5. Recent Codrops articles around Chems Studio, PX PUSH, and Cerebrium continue to show video, 3D, and WebGL as structural parts of sites, not only atmospheric styling.",
+      "links": [
+        {
+          "label": "three.js PR #34215",
+          "url": "https://github.com/mrdoob/three.js/pull/34215"
+        },
+        {
+          "label": "Babylon.js PR #18797",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18797"
+        },
+        {
+          "label": "Babylon.js PR #18798",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18798"
+        },
+        {
+          "label": "three.js PR #34212",
+          "url": "https://github.com/mrdoob/three.js/pull/34212"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "最も面白いのは three.js #34215。Gaussian Splat は点群的な密度表現として見られがちだが、SH が入ると「位置と色の集合」から「見る角度で性格が変わる素材」へ寄る。PR では Lion の回転時に白い fringe が正しく見えること、SH degree ごとの bytes per splat、WebGPU pre-pass と WebGL fallback の違いまで書かれている。これは昨日の error budget に接続しやすい。高 error node を単に明るくするのではなく、視線に対して sheen が立つ node を優先し、鑑賞者が動くほど品質配分が変わる演出にできる。",
+      "bodyEn": "The strongest example is three.js #34215. Gaussian Splats are often read as point-density representation, but with SH they become materials whose character changes with view angle. The PR documents the Lion's white fringe during rotation, bytes per splat by SH degree, and the WebGPU pre-pass versus WebGL fallback split. This connects directly to yesterday's error budget: instead of simply brightening high-error nodes, prioritize nodes whose sheen responds to the viewer, so quality allocation changes as the audience moves.",
+      "links": [
+        {
+          "label": "three.js PR #34215",
+          "url": "https://github.com/mrdoob/three.js/pull/34215"
+        },
+        {
+          "label": "Live example from PR #34215",
+          "url": "https://rawcdn.githack.com/mrdoob/three.js/cda74101ee2fc5f3e59bdd2252310b7d9dca97b1/examples/webgpu_gaussian_splatting.html"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「View Sheen Budget Scope」。疑似 splat 群に view vector を与え、pointer drag で視点方向を変える。spherical harmonics 風の係数は本物ではなく、簡易 dot / pow で白い sheen と色相変化を出す。mode 2 では Babylon #18797 の light clamp を 13 個の light lane と 9 本目の budget line で表示し、Hold / Space で超過分を赤く落とす。mode 3 は three.js #34212/#34211 の BatchedMesh offset mismatch を WebGPU / WebGL parity lane として、mode 4 は Babylon #18798 の texture identity collision を embedded texture panel として描く。中長期では実 SH degree、実 maxUniformBuffersPerShaderStage、実 GLB cache key を同じ診断テクスチャに流す。",
+      "bodyEn": "The short-term idea is View Sheen Budget Scope. Give a pseudo-splat cluster a view vector and let pointer dragging change view direction. Instead of real spherical harmonics, use simple dot / pow terms to create white sheen and hue shifts. Mode 2 visualizes Babylon #18797 as 13 light lanes and a ninth-light budget line, dropping overflow lights in red when holding or pressing Space. Mode 3 turns three.js #34212/#34211 into WebGPU/WebGL parity lanes for BatchedMesh offset mismatch. Mode 4 renders Babylon #18798 as embedded texture panels with identity collisions. Longer term, feed real SH degree, real maxUniformBuffersPerShaderStage, and real GLB cache keys into one diagnostic texture.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "SH splat は、見た目の豊かさだけでなく loader / memory / backend 分岐の設計にも関わる。PR #34215 では SH degree が上がるほど bytes per splat が増え、WebGPU pre-pass では ellipsoid 全体で一定の view dependency を先に計算し、WebGL fallback では vertex shader で複数回計算する。つまり、表現側では「艶が出る」だが、実装側では「どこで一回だけ計算できるか」が重要。Babylon #18797 は light count を artist-facing な slider にする場合、WebGPU caps を越えた瞬間に黒画面化させず、警告・clamp・可視化する必要を示す。#18798 は data URL / file URL のような名前を持たない素材でも、キャッシュキーに一意性を持たせることが texture mix-up 防止に直結する。three.js #34212 は byte offset と element offset の単位を記録する重要性を示している。",
+      "bodyEn": "SH splats affect not only visual richness but also loader, memory, and backend design. In PR #34215, bytes per splat increase with SH degree; the WebGPU path precomputes view dependency once per ellipsoid, while the WebGL fallback repeats the work in the vertex shader. Visually this means sheen, but implementation-wise the question is where a value can be computed once. Babylon #18797 shows that artist-facing light-count sliders need WebGPU-cap awareness, warning, clamping, and visualization rather than black frames. #18798 shows that even nameless data/file sources need unique cache keys to prevent texture mix-ups. three.js #34212 highlights the need to preserve byte-versus-element offset units.",
+      "links": [
+        {
+          "label": "three.js PR #34215",
+          "url": "https://github.com/mrdoob/three.js/pull/34215"
+        },
+        {
+          "label": "Babylon.js PR #18797",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18797"
+        },
+        {
+          "label": "Babylon.js PR #18798",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18798"
+        },
+        {
+          "label": "three.js PR #34212",
+          "url": "https://github.com/mrdoob/three.js/pull/34212"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js は #34215 が r186 milestone でどうレビューされるか、WebGL fallback の計算コスト、GLTFGaussianSplatLoaderExtension / SPZLoader / KSPLATLoader の SH packing がどう安定するかを見る。#34213 の CSMShadowNode frame-late bug は、shadow cascade の更新順序を可視化する次の候補。Babylon.js は #18797 の clamp 方針、#18798 の unique root URL、#18787 particle gradient in-place rebake、#18775 systematic core scan を継続。PlayCanvas は #9157 error-driven GSplat budget allocation と #9151 JSDoc/types hardening を継続し、#9056 dependency major update は開発基盤の破壊的変更として軽く追う。Codrops は映像アーカイブ / old machine / infrastructure tangible 系の事例を、内部状態の可視化という視点で見る。",
+      "bodyEn": "For three.js, watch how #34215 progresses in the r186 milestone, the cost of the WebGL fallback, and the stabilization of SH packing across GLTFGaussianSplatLoaderExtension, SPZLoader, and KSPLATLoader. #34213's CSMShadowNode frame-late bug is a next candidate for visualizing shadow cascade update order. For Babylon.js, keep tracking #18797 clamp behavior, #18798 unique root URL, #18787 particle gradient in-place rebake, and #18775 systematic core scan. For PlayCanvas, continue #9157 error-driven GSplat budget allocation and #9151 JSDoc/types hardening, with #9056 dependency major updates as infrastructure risk. For Codrops, read video archives, old-machine motifs, and tangible infrastructure cases as ways to expose internal state.",
+      "links": [
+        {
+          "label": "three.js PR #34213",
+          "url": "https://github.com/mrdoob/three.js/pull/34213"
+        },
+        {
+          "label": "PlayCanvas PR #9157",
+          "url": "https://github.com/playcanvas/engine/pull/9157"
+        },
+        {
+          "label": "Codrops Articles",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、昨日の error node に view-dependent sheen を足す。実 SH を実装しなくても、pointer を view vector と見立て、node normal と view direction の dot を pow で立てるだけで、視線に応じて重要度が変わる感じは出せる。品質配分の優先度を error/cost/coverage だけでなく sheen visibility にも反応させると、最適化表示が鑑賞者の動きに同期する。",
+      "bodyEn": "If trying one thing today, add view-dependent sheen to yesterday's error nodes. Even without real SH, treating the pointer as a view vector and applying pow(dot(nodeNormal, viewDirection)) gives the sense that importance changes with view angle. If quality priority responds to sheen visibility as well as error/cost/coverage, optimization feedback becomes synchronized with the viewer's movement.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+        },
+        {
+          "label": "Yesterday's sample",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34215/#34212/#34213、Babylon.js #18797/#18798/#18787、PlayCanvas #9157/#9151、Codrops Articles を収集。アイデア検討: 継続案件は error as budget signal、quality allocation as performance、shared atlas、resource lifetime。新規案件は view-dependent splat sheen、light budget clamp as stage lighting、texture identity collision、BatchedMesh parity offset。寝かせる案件はカード UI、完全な SH loader 実装、実 glTF cache の再現、大規模 WebGPU compute。サンプル実装: `outputs/2026-08-12_view_sheen_budget_scope.html` を追加。結果の検証: JSON parse、HTML parse、gallery build、publish、公開 URL 確認まで行う。",
+      "bodyEn": "Research: collected three.js #34215/#34212/#34213, Babylon.js #18797/#18798/#18787, PlayCanvas #9157/#9151, and Codrops Articles. Ideation: continuing tracks are error as budget signal, quality allocation as performance, shared atlas, and resource lifetime. New tracks are view-dependent splat sheen, light budget clamp as stage lighting, texture identity collision, and BatchedMesh parity offset. Parked tracks are card UI, a full SH loader, exact glTF cache reproduction, and large WebGPU compute. Prototype: added `outputs/2026-08-12_view_sheen_budget_scope.html`. Verification: JSON parse, HTML parse, gallery build, publish, and public URL checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/8 resource lifetime、8/9 shared atlas、8/10 checker budget、8/11 error budget と来て、今日は view-dependent material response が入った。これで「GPU 内部状態を見せる」だけでなく、「見る人の位置によって、どの品質に予算を使うべきかが変わる」方向へ進める。組み合わせ候補は、SOG node error を空間密度に、SH sheen を視線反応に、light clamp を舞台照明の本数制限に、texture identity を素材の記憶に、BatchedMesh offset を WebGPU/WebGL parity trace にする構成。育てる価値が高いテーマは「viewer-driven quality allocation」。視線・距離・音・カメラ入力に応じて、画面のどこに情報と艶が現れるかを演出する。",
+      "bodyEn": "The recent line moved from 8/8 resource lifetime, to 8/9 shared atlas, 8/10 checker budget, 8/11 error budget, and now view-dependent material response. This shifts from merely showing GPU internal state to changing where quality should be spent based on the viewer's position. A strong combination maps SOG node error to spatial density, SH sheen to gaze response, light clamps to stage-light limits, texture identity to material memory, and BatchedMesh offsets to WebGPU/WebGL parity traces. The theme worth growing is viewer-driven quality allocation: where information and sheen appear based on gaze, distance, audio, and camera input.",
+      "links": [
+        {
+          "label": "2026-08-08 Resource Lifetime Topology Scope",
+          "url": "../outputs/2026-08-08_resource_lifetime_topology_scope.html"
+        },
+        {
+          "label": "2026-08-11 Error Budget LOD Field",
+          "url": "../outputs/2026-08-11_error_budget_lod_field.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「View Sheen Budget Scope」。作成ファイルは `outputs/2026-08-12_view_sheen_budget_scope.html`。raw WebGL fragment shader の単体 HTML で、1: 疑似 Gaussian Splat 群に view vector を当てて白い sheen を出す、2: WebGPU uniform buffer budget を 13 light lane と 9 light clamp line で可視化する、3: BatchedMesh offset mismatch を WebGPU/WebGL parity lane として見せる、4: glTF embedded texture identity collision を texture panel として描く。操作は 1-4 で mode 切替、ドラッグで view vector、クリック/Space で予算超過 pressure。次に足すなら、昨日の error/cost/coverage node と今日の sheen visibility を同じ priority 計算に入れる、Web Audio の高域を sheen、低域を light pressure に割り当てる、実 three.js SH splat demo の camera angle と同期する。",
+      "bodyEn": "The selected prototype is View Sheen Budget Scope. The created file is `outputs/2026-08-12_view_sheen_budget_scope.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 applies a view vector to pseudo Gaussian Splats for white sheen, mode 2 visualizes WebGPU uniform-buffer budget as 13 light lanes and a ninth-light clamp line, mode 3 shows BatchedMesh offset mismatch as WebGPU/WebGL parity lanes, and mode 4 renders glTF embedded texture identity collision as texture panels. Keys 1-4 switch modes, dragging controls the view vector, and click/Space injects budget-overflow pressure. Next additions are combining yesterday's error/cost/coverage nodes with today's sheen visibility in one priority score, mapping Web Audio highs to sheen and lows to light pressure, and synchronizing with the real three.js SH splat demo camera angle.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-12_view_sheen_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは pointer、mode、pressure、time を入力にし、view vector、sheen intensity、light clamp state、offset parity、texture identity collision を描画状態として持つ。データとして見ると、視線方向ごとの sheen peak、予算超過時に落とされた light、WebGPU/WebGL 差分の発生位置、texture collision の発生 panel をログ化できる。展示では観客位置を view vector、音量を light pressure、カメラ映像の motion を texture identity noise にして、素材が視線と音で変質する空間演出にできる。WebXR では gaze 中心だけ SH degree を上げ、周辺は error budget を優先する foveated splat へ発展できる。ブランド/エンタメでは、商品素材の艶、舞台照明の本数制限、読み込み中の texture identity を隠さず、体験の「内部制約が美しく露出する」方向に使える。",
+      "bodyEn": "Today's sample uses pointer, mode, pressure, and time as inputs, with view vector, sheen intensity, light clamp state, offset parity, and texture identity collision as render states. As data, it can log sheen peaks by view direction, dropped lights under budget overflow, WebGPU/WebGL difference positions, and panels affected by texture collision. In an installation, audience position can drive the view vector, audio volume can drive light pressure, and camera motion can drive texture identity noise so materials transform with gaze and sound. In WebXR, raise SH degree near gaze and prioritize error budget in the periphery for foveated splats. For brand and entertainment work, material sheen, stage-light limits, and texture identity during loading can become visible constraints rather than hidden implementation details."
+    }
+  ]
+}
