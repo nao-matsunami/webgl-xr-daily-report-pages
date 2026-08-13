@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>圧縮 Splat、空、影、アップスケールを同じ品質予算に載せる | 2026-08-13</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.13</p>
+      <h1>圧縮 Splat、空、影、アップスケールを同じ品質予算に載せる</h1>
+      <p class="hero-subtitle">Putting compressed splats, sky, shadows, and upscaling on one quality budget</p>
+      <p>three.js の SPZ v4 対応、SunLight / Cascaded Shadow Maps 提案、NodeMaterial compile 整備、Babylon.js の FSR 1 WebGL2/Native 対応、PlayCanvas の procedural sky / float blend capability / indirect draw 修正を、昨日の view-dependent quality allocation から「複数の見た目コストを一枚の診断スコープに集める」方向へ接続した。</p>
+      <p class="en-copy">Today connects three.js SPZ v4 support, the SunLight / Cascaded Shadow Maps proposal, NodeMaterial compile work, Babylon.js FSR 1 WebGL2/Native support, and PlayCanvas procedural sky / float blend capability / indirect draw fixes to yesterday's view-dependent quality allocation by gathering multiple visual costs into one diagnostic scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-12.html">← 2026.08.12</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-13 SPZ Sky Upscale Budget Scope</h3>
+              <p>WebGL is not available in this browser.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34222 は SPZLoader に SPZ version 4 対応を追加し、#34187 のクラッシュを解消した。PR 本文では SPZ v4 が v3 より小さく速いこと、zstd 圧縮と layout 変更、Tomatoes の specular reflection 付きテスト例が示されている。昨日の SH sheen と合わせると、圧縮形式は単なる転送効率ではなく「視点で光る素材をどれだけ速く届けるか」という表現予算になる。2. three.js PR #34221 は WebGLRenderer に SunLight / SunLightShadow と Cascaded Shadow Maps を追加する提案。4 cascade を 1 atlas に詰め、frustum fitting、texel snapping、cascade boundary blend、maximum distance fade を扱う。影の品質を atlas 上の区画として可視化する題材になる。3. Babylon.js PR #18723 は FSR 1 の EASU upscale + RCAS sharpen pipeline を WebGPU だけでなく WebGL2 / Babylon Native でも動かす提案。textureGather を 4 回の texelFetch に置き換える発想は、バックエンド差分を見た目の崩れではなく「復元段の質感」として演出できる。4. PlayCanvas PR #9161 は procedural sky script、#9160 は 32-bit float render target への blending capability を全 backend で問い合わせ可能にする修正、#9159 は indirect / multi-draw と instancing count の優先順位を明確化する修正。空、加算合成、描画数の source of truth が同日に並び、runtime capability を作品側 UI に露出させる流れが強い。</p>
+          <p class="en-copy">1. three.js PR #34222 adds SPZ version 4 support to SPZLoader and fixes the #34187 crash. The PR points to smaller/faster SPZ v4 data, zstd compression and layout changes, and a Tomatoes test asset with specular reflection. Combined with yesterday's SH sheen, compression becomes not just transfer efficiency but a visual budget for how quickly view-dependent material arrives. 2. three.js PR #34221 proposes SunLight / SunLightShadow with Cascaded Shadow Maps in WebGLRenderer. Four cascades are packed into one atlas with frustum fitting, texel snapping, boundary blending, and maximum-distance fade. Shadow quality can be treated as atlas territory. 3. Babylon.js PR #18723 brings FSR 1 EASU upscale + RCAS sharpen beyond WebGPU to WebGL2 / Babylon Native. Replacing textureGather with four texelFetch calls turns backend difference into a recoverable texture stage. 4. PlayCanvas PR #9161 adds a procedural sky script, #9160 exposes float render-target blend capability across backends, and #9159 clarifies indirect/multi-draw versus instancing precedence. Sky, additive accumulation, and draw-count truth all point toward exposing runtime capability in the experience itself.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34222" target="_blank" rel="noreferrer">three.js PR #34222</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34221" target="_blank" rel="noreferrer">three.js PR #34221</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18723" target="_blank" rel="noreferrer">Babylon.js PR #18723</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9161" target="_blank" rel="noreferrer">PlayCanvas PR #9161</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9160" target="_blank" rel="noreferrer">PlayCanvas PR #9160</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9159" target="_blank" rel="noreferrer">PlayCanvas PR #9159</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の中心は three.js #34222。SPZ v4 対応は loader の地味な修正に見えるが、Gaussian Splat の実用化では「何が読めるか」がそのまま表現の入口になる。PR には Tomatoes の live example があり、specular reflection が camera に追従することが見せ場になっている。昨日の spherical harmonics / view-dependent sheen と接続すると、圧縮 splat は low-fi な placeholder ではなく、視点依存の質感を保ったまま素早く場に出る素材になる。ここに SunLight の cascade atlas、FSR の upscale/sharpen、PlayCanvas の float blend capability を足すと、作品内で「圧縮、影、解像度、加算合成のどこに予算を使っているか」を一枚のビジュアルとして見せられる。</p>
+          <p class="en-copy">The central item is three.js #34222. SPZ v4 support looks like loader maintenance, but for Gaussian Splat adoption, what the loader can read is the entrance to expression. The PR includes a Tomatoes live example where specular reflection follows the camera. Connected to yesterday's spherical harmonics / view-dependent sheen, compressed splats stop being low-fi placeholders and become materials that arrive quickly while preserving view-dependent character. Adding SunLight cascade atlases, FSR upscale/sharpen, and PlayCanvas float-blend capability suggests a single visual layer that shows where compression, shadow, resolution, and accumulation budgets are being spent.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34222" target="_blank" rel="noreferrer">three.js PR #34222</a></li>
+          
+            <li><a href="https://rawcdn.githack.com/mrdoob/three.js/b415d788733c5bacfd990580a5e979081c6c444b/examples/webgpu_gaussian_splatting.html" target="_blank" rel="noreferrer">three.js live WebGPU Gaussian Splatting example from PR #34222</a></li>
+          
+            <li><a href="https://www.nianticspatial.com/en/blog/spz4" target="_blank" rel="noreferrer">Niantic Spatial SPZ v4 announcement</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「SPZ Sky Upscale Budget Scope」。画面中央の疑似 splat 群を SPZ v4 の圧縮された素材、4 つの影 atlas を SunLight CSM、低解像度の輪郭復元を FSR EASU + RCAS、夕空と粒子の加算を procedural sky + textureFloatBlendable として描く。pointer drag は quality vector と見なし、どの見た目を優先するかを曲げる。Hold / Space は pressure として、圧縮率、cascade shimmer、sharpen、float blend fallback を強める。中長期案は、実 SPZ loader の byte size / decode time、shadow cascade split、FSR scale factor、float32-blendable capability を uniform texture にして、品質配分の状態そのものを演出にする。</p>
+          <p class="en-copy">The short-term idea is SPZ Sky Upscale Budget Scope. The central pseudo-splat cluster stands for compressed SPZ v4 material, four shadow atlases stand for SunLight CSM, low-resolution contour recovery stands for FSR EASU + RCAS, and the evening sky with particles stands for procedural sky plus textureFloatBlendable. Pointer drag is a quality vector that bends which visual layer is prioritized. Hold / Space acts as pressure, amplifying compression, cascade shimmer, sharpen, and float-blend fallback. Longer term, real SPZ byte size / decode time, shadow cascade split, FSR scale factor, and float32-blendable capability can be packed into a uniform texture and made part of the show.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>SPZ v4 対応では、loader の format branch、zstd、layout 差分、versioned test asset を必ず分けて考える。視点依存の艶を持つ splat ほど、decode が遅れると違和感が強いので、最初に出す低密度 splat でも specular / sheen の方向性は維持したい。CSM は 4 cascade を 1 atlas に入れるため、cascade split、texel snapping、boundary blend を debug overlay にすると、影の揺れがバグか演出か判断しやすい。FSR 1 は EASU と RCAS を分けると、低解像度化で失った構造をどこで拾い、どこで sharpen しているか説明しやすい。textureFloatBlendable は WebGL2 では EXT_float_blend、WebGPU では float32-blendable feature に依存するので、粒子・bloom・accumulation を使う作品では fallback color を設計しておく価値がある。NodeMaterial compile / WebGLNodesHandler の文脈では、事前 compile が scene / camera / lights / fog / environment のどこまで見るべきかを明示することが、ロード中の黒画面や初回 frame hitch を減らす。</p>
+          <p class="en-copy">For SPZ v4 support, keep loader format branches, zstd, layout differences, and versioned test assets separate. Splats with view-dependent sheen become visually wrong if decoding lags, so even the first low-density pass should preserve the direction of specular / sheen response. For CSM, packing four cascades into one atlas makes cascade split, texel snapping, and boundary blending useful debug overlays. For FSR 1, separating EASU and RCAS makes it easier to explain where low-resolution structure is recovered and where sharpening happens. textureFloatBlendable depends on EXT_float_blend in WebGL2 and float32-blendable in WebGPU, so particle, bloom, and accumulation-heavy work should design fallback colors. In the NodeMaterial compile / WebGLNodesHandler context, being explicit about scene, camera, lights, fog, and environment dependencies helps reduce black first frames and initial hitching.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34217" target="_blank" rel="noreferrer">three.js PR #34217</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34219" target="_blank" rel="noreferrer">three.js PR #34219</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9160" target="_blank" rel="noreferrer">PlayCanvas PR #9160</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18723" target="_blank" rel="noreferrer">Babylon.js PR #18723</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は #34222 の SPZ v4 が r186 にどう入るか、#34221 の SunLight CSM が WebGLRenderer の標準 light とどう共存するか、#34217/#34219 の NodeMaterial compile と light collection reuse、#34216 の Inspector Color Grading extension を追う。Babylon.js は #18723 FSR 1 の WebGL2/Native 対応、#18797 light UBO budget clamp、#18787 GPU particle gradient rebake を継続。PlayCanvas は #9161 procedural sky がどのサンプル/Editor 文脈に入るか、#9160 float blend capability、#9159 indirect draw precedence、#9163 StandardMaterial type fix を継続。Codrops は WebGL tag / Creative Hub で、Cerebrium、Dash、Trionn、The Sleepers のように内部制約を体験の骨格にした事例を追う。</p>
+          <p class="en-copy">For three.js, watch how #34222 SPZ v4 lands toward r186, how #34221 SunLight CSM coexists with standard WebGLRenderer lights, #34217/#34219 NodeMaterial compile and light collection reuse, and #34216 Inspector Color Grading. For Babylon.js, keep tracking #18723 FSR 1 WebGL2/Native support, #18797 light UBO budget clamp, and #18787 GPU particle gradient rebake. For PlayCanvas, watch where #9161 procedural sky is used, plus #9160 float blend capability, #9159 indirect draw precedence, and #9163 StandardMaterial type fixes. For Codrops, follow the WebGL tag / Creative Hub for cases like Cerebrium, Dash, Trionn, and The Sleepers where internal constraints become the structure of the experience.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34216" target="_blank" rel="noreferrer">three.js PR #34216</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18797" target="_blank" rel="noreferrer">Babylon.js PR #18797</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9163" target="_blank" rel="noreferrer">PlayCanvas PR #9163</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、昨日の view sheen budget に「decode / shadow / upscale / blend」の 4 レーンを足す。実 SPZ v4 を読む前でも、splat density を低く始めて徐々に増やし、影 atlas の cascade line、低解像度からの sharpen、float blend fallback color を同時に出せば、品質配分の絵として意味が出る。短時間では raw WebGL の疑似表現で十分。次段階では、実 loader の byte count と decode time を一つ目の uniform、実 FPS / render scale を二つ目の uniform、blend capability を三つ目の boolean に置き換える。</p>
+          <p class="en-copy">If trying one thing today, add four lanes to yesterday's view sheen budget: decode, shadow, upscale, and blend. Even before loading real SPZ v4, a pseudo field can start with low splat density, then reveal cascade atlas lines, sharpening from low resolution, and float-blend fallback colors. That already works as an image of quality allocation. The next step is replacing the first uniform with real loader byte count / decode time, the second with real FPS / render scale, and the third with a blend capability boolean.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="../outputs/2026-08-12_view_sheen_budget_scope.html" target="_blank" rel="noreferrer">Yesterday's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34222/#34221/#34217/#34219/#34216、Babylon.js #18723/#18797/#18787、PlayCanvas #9161/#9160/#9159/#9163、Codrops WebGL tag を収集。アイデア検討: 継続案件は viewer-driven quality allocation、error as budget signal、shared atlas、resource lifetime。新規案件は SPZ v4 compressed material arrival、SunLight cascade atlas as stage shadow、FSR upscale recovery layer、float blend capability as particle fallback、procedural sky as low-cost spatial mood。寝かせる案件はカード UI、完全な SPZ parser 実装、実 CSM renderer、FSR 本実装、WebGPU subgroup-size-control shader pinning。サンプル実装: `outputs/2026-08-13_spz_sky_upscale_budget_scope.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish、公開 URL 確認まで行う。</p>
+          <p class="en-copy">Research: collected three.js #34222/#34221/#34217/#34219/#34216, Babylon.js #18723/#18797/#18787, PlayCanvas #9161/#9160/#9159/#9163, and the Codrops WebGL tag. Ideation: continuing tracks are viewer-driven quality allocation, error as budget signal, shared atlas, and resource lifetime. New tracks are SPZ v4 compressed material arrival, SunLight cascade atlas as stage shadow, FSR upscale recovery layer, float blend capability as particle fallback, and procedural sky as low-cost spatial mood. Parked tracks are card UI, a full SPZ parser, a real CSM renderer, full FSR implementation, and WebGPU subgroup-size-control shader pinning. Prototype: added `outputs/2026-08-13_spz_sky_upscale_budget_scope.html`. Verification: HTML parse, JSON parse, gallery build, publish, and public URL checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>8/8 resource lifetime、8/9 shared atlas、8/10 checker budget、8/11 error budget、8/12 view-dependent sheen と来て、今日は compressed arrival / shadow atlas / upscale recovery / blend capability が加わった。最近の傾向は、エンジン内部の制約が「黒画面を防ぐための保険」から「表現を制御する入力値」へ移っていること。組み合わせると面白いのは、SOG/SPZ の decode priority を splat density、SH sheen を視線反応、CSM atlas を舞台影、FSR sharpen を解像度の回復波、float blend fallback を粒子の色変化にする構成。育てる価値が高いテーマは「quality budget as visible choreography」。品質を隠れて落とすのではなく、圧縮、影、解像度、合成がどこで働いているかを観客が感じられるようにする。</p>
+          <p class="en-copy">The recent line moved from 8/8 resource lifetime, to 8/9 shared atlas, 8/10 checker budget, 8/11 error budget, 8/12 view-dependent sheen, and now compressed arrival / shadow atlas / upscale recovery / blend capability. The broader trend is engine constraints shifting from insurance against black frames into inputs that control expression. A promising combination maps SOG/SPZ decode priority to splat density, SH sheen to gaze response, CSM atlas to stage shadows, FSR sharpening to resolution recovery waves, and float-blend fallback to particle color changes. The high-value theme is quality budget as visible choreography: rather than silently degrading quality, let the audience feel where compression, shadow, resolution, and blending are working.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-11_error_budget_lod_field.html" target="_blank" rel="noreferrer">2026-08-11 Error Budget LOD Field</a></li>
+          
+            <li><a href="../outputs/2026-08-12_view_sheen_budget_scope.html" target="_blank" rel="noreferrer">2026-08-12 View Sheen Budget Scope</a></li>
+          
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「SPZ Sky Upscale Budget Scope」。作成ファイルは `outputs/2026-08-13_spz_sky_upscale_budget_scope.html`。raw WebGL fragment shader の単体 HTML で、1: SPZ v4 風の圧縮 splat と specular/sheen、2: SunLight CSM 風の 4 cascade atlas と shadow shimmer、3: FSR 1 風の低解像度 EASU + RCAS 復元、4: procedural sky と float blend capability / fallback 粒子を表示する。操作は 1-4 で mode 切替、ドラッグで quality vector、クリック/Space で pressure。次に足すなら、実 three.js SPZ v4 example の camera angle と decode progress、実 renderScale、WebGL2 EXT_float_blend / WebGPU float32-blendable の検出値、Web Audio の低域を pressure、高域を RCAS sharpen に割り当てる。</p>
+          <p class="en-copy">The selected prototype is SPZ Sky Upscale Budget Scope. The created file is `outputs/2026-08-13_spz_sky_upscale_budget_scope.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows SPZ v4-like compressed splats with specular/sheen, mode 2 shows a SunLight CSM-like four-cascade atlas and shadow shimmer, mode 3 shows FSR 1-like low-resolution EASU + RCAS recovery, and mode 4 shows procedural sky plus float-blend capability / fallback particles. Keys 1-4 switch modes, dragging controls the quality vector, and click/Space injects pressure. Next additions are real camera angle and decode progress from the three.js SPZ v4 example, real renderScale, real WebGL2 EXT_float_blend / WebGPU float32-blendable detection, and Web Audio lows driving pressure while highs drive RCAS sharpen.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは pointer、mode、pressure、time を入力にし、splat density、compression band、cascade split、upscale sharpen、float blend fallback、sky horizon を描画状態として持つ。データとして見ると、decode pressure、shadow shimmer、render scale recovery、blend capability の有無をログ化できる。展示では観客位置を quality vector、音量を compression/upscale pressure、照明センサーを cascade split、カメラの明暗を sky horizon に接続できる。WebXR では gaze 中心の splat density と shadow cascade を上げ、周辺は FSR recover に任せる。ブランド/エンタメでは、商品スキャンの splat が到着する過程、舞台影の区画、解像度復元、粒子 fallback を隠さず演出にすることで、重い 3D 体験のロードや端末差を「状態が変化する演出」として見せられる。</p>
+          <p class="en-copy">Today's sample uses pointer, mode, pressure, and time as inputs, with splat density, compression bands, cascade split, upscale sharpening, float-blend fallback, and sky horizon as render states. As data, it can log decode pressure, shadow shimmer, render-scale recovery, and blend capability. In an installation, audience position can drive the quality vector, audio volume can drive compression/upscale pressure, lighting sensors can drive cascade split, and camera brightness can drive the sky horizon. In WebXR, splat density and shadow cascades can rise around gaze while the periphery relies on FSR recovery. For brand and entertainment work, the arrival of product-scan splats, stage-shadow zones, resolution recovery, and particle fallback can be visible state changes rather than hidden loading or device differences.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34222" target="_blank" rel="noreferrer">three.js PR #34222 SPZ v4 support in SPZLoader</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34187" target="_blank" rel="noreferrer">three.js issue #34187 SPZ v4 crashes in SPZLoader</a></li>
+          
+            <li><a href="https://www.nianticspatial.com/en/blog/spz4" target="_blank" rel="noreferrer">Niantic Spatial SPZ v4 announcement</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34221" target="_blank" rel="noreferrer">three.js PR #34221 SunLight with cascaded shadow maps</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34217" target="_blank" rel="noreferrer">three.js PR #34217 WebGLRenderer compile Node Materials</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18723" target="_blank" rel="noreferrer">Babylon.js PR #18723 FSR 1 render pipeline</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9161" target="_blank" rel="noreferrer">PlayCanvas PR #9161 Procedural sky script</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9160" target="_blank" rel="noreferrer">PlayCanvas PR #9160 textureFloatBlendable capability</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9159" target="_blank" rel="noreferrer">PlayCanvas PR #9159 instancing/draw-commands mismatch</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" loading="lazy" title="2026-08-13 SPZ Sky Upscale Budget Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

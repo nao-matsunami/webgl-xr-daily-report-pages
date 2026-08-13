@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-08-13 SPZ Sky Upscale Budget Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #03060a;
+      color: #edfaff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      touch-action: none;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      pointer-events: none;
+      color: rgba(235, 250, 255, 0.82);
+      font-size: 11px;
+      line-height: 1.5;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(85, 225, 255, 0.32);
+    }
+
+    .hud strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .modes {
+      color: rgba(177, 232, 245, 0.76);
+      text-align: right;
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        grid-template-columns: 1fr;
+        font-size: 10px;
+      }
+
+      .modes {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="hud">
+    <div>
+      <strong>SPZ SKY UPSCALE BUDGET SCOPE</strong><br>
+      Drag bends the quality vector. Hold / Space increases compression, cascade, and upscale pressure.
+    </div>
+    <div class="modes">1 SPZ v4 splat / 2 Sun CSM atlas / 3 FSR EASU+RCAS / 4 Sky + float blend caps</div>
+  </div>
+
+  <script id="vertex" type="x-shader/x-vertex">
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 u_resolution;
+    uniform vec2 u_pointer;
+    uniform float u_time;
+    uniform float u_pressure;
+    uniform float u_mode;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(131.7, 281.3));
+      p += dot(p, p + 27.19);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                 mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+    }
+
+    mat2 rot(float a) {
+      float s = sin(a);
+      float c = cos(a);
+      return mat2(c, -s, s, c);
+    }
+
+    float line(float v, float w) {
+      return smoothstep(w, 0.0, abs(v));
+    }
+
+    float ring(vec2 p, float r, float w) {
+      return line(length(p) - r, w);
+    }
+
+    float box(vec2 p, vec2 b, float w) {
+      vec2 d = abs(p) - b;
+      return 1.0 - smoothstep(0.0, w, length(max(d, 0.0)) + min(max(d.x, d.y), 0.0));
+    }
+
+    vec3 palette(float t) {
+      vec3 a = vec3(0.02, 0.82, 1.0);
+      vec3 b = vec3(0.9, 0.22, 0.78);
+      vec3 c = vec3(1.0, 0.74, 0.18);
+      return mix(mix(a, b, smoothstep(0.1, 0.62, t)), c, smoothstep(0.58, 1.0, t));
+    }
+
+    vec3 background(vec2 uv) {
+      vec2 p = uv - 0.5;
+      float n = noise(uv * 4.0 + vec2(u_time * 0.018, -u_time * 0.027));
+      float stars = pow(noise(uv * 190.0 + u_time * 0.035), 24.0);
+      vec3 col = mix(vec3(0.006, 0.01, 0.018), vec3(0.014, 0.026, 0.038), n);
+      col += vec3(0.0, 0.18, 0.22) * exp(-length(p * vec2(0.9, 1.3)) * 3.7);
+      col += vec3(0.84, 0.96, 1.0) * stars;
+      return col;
+    }
+
+    float splat(vec2 p, vec2 c, vec2 ax, float a) {
+      vec2 q = rot(a) * (p - c);
+      return exp(-dot(q / ax, q / ax));
+    }
+
+    vec3 spzSplat(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.58;
+      vec2 p = uv - 0.5;
+      vec2 qv = normalize((pointer - 0.5) * vec2(1.7, 1.0) + vec2(0.16, 0.22));
+      float zstdBand = 0.0;
+
+      for (int i = 0; i < 42; i++) {
+        float fi = float(i);
+        float a = fi * 2.399 + 0.28 * sin(u_time * 0.16 + fi * 0.37);
+        float r = 0.04 + 0.35 * sqrt((fi + 0.5) / 42.0);
+        vec2 c = vec2(cos(a) * r * 0.82, sin(a) * r * 0.55);
+        c += 0.018 * vec2(sin(u_time * 0.31 + fi), cos(u_time * 0.27 + fi * 1.6));
+        float codec = hash(vec2(fi, 4.0));
+        float v4 = smoothstep(0.18, 0.95, pointer.x + 0.25 * sin(fi));
+        vec2 ax = mix(vec2(0.045, 0.018), vec2(0.032, 0.012), 0.55 + 0.35 * v4);
+        float s = splat(p, c, ax, a + codec);
+        float sheen = pow(max(0.0, dot(normalize(c + vec2(0.12, 0.24)), qv)), 9.0);
+        col += palette(fract(codec + fi * 0.021)) * s * (0.34 + 0.62 * v4);
+        col += vec3(1.0, 0.94, 0.78) * s * sheen * (0.8 + 0.8 * u_pressure);
+        zstdBand += line(uv.y - 0.13 - 0.014 * sin(fi + uv.x * 15.0 + u_time * 1.6), 0.0025) * s;
+      }
+
+      col += vec3(0.1, 0.85, 1.0) * ring(p * vec2(1.05, 0.75), 0.39, 0.006);
+      col += vec3(0.58, 0.92, 1.0) * zstdBand * 0.18;
+      col += vec3(1.0, 0.66, 0.16) * line(dot(p, qv) - 0.07 * sin(u_time), 0.006) * 0.82;
+      return col;
+    }
+
+    vec3 sunCascades(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.56;
+      vec2 p = uv - 0.5;
+      vec2 sun = normalize((pointer - 0.5) * vec2(1.7, 1.0) + vec2(0.2, 0.38));
+
+      for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        float x0 = 0.13 + fi * 0.19;
+        vec2 cell = vec2(x0, 0.68);
+        vec2 local = (uv - cell) / vec2(0.075, 0.12);
+        float atlas = box(local, vec2(0.88), 0.08);
+        float texel = line(fract((local.x + 1.0) * 8.0) - 0.5, 0.045) + line(fract((local.y + 1.0) * 8.0) - 0.5, 0.045);
+        float split = ring((p + sun * (0.07 + fi * 0.055)) * vec2(1.04, 0.72), 0.12 + fi * 0.09, 0.006);
+        float shimmer = line(dot(p, sun) + 0.14 - fi * 0.08 + 0.014 * sin(u_time * 4.0 + fi * 2.0), 0.004 + u_pressure * 0.008);
+        col += palette(fi / 4.0) * atlas * (0.12 + texel * 0.09);
+        col += palette(fi / 4.0) * split * (0.72 - fi * 0.08);
+        col += vec3(1.0, 0.78, 0.28) * shimmer * (0.38 + u_pressure * 0.65);
+      }
+
+      col += vec3(1.0, 0.86, 0.42) * smoothstep(0.11, 0.0, distance(uv, pointer)) * 1.2;
+      col += vec3(0.0, 0.82, 1.0) * line(dot(p, vec2(-sun.y, sun.x)), 0.004) * 0.55;
+      return col;
+    }
+
+    vec3 fsrScope(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.5;
+      vec2 low = floor(uv * vec2(64.0, 36.0)) / vec2(64.0, 36.0);
+      float edge = line(length((low - 0.5) * vec2(1.5, 1.0)) - 0.22, 0.012);
+      float diagonal = line((low.x - low.y) + 0.12 * sin(u_time), 0.01);
+      float source = noise(low * 18.0 + u_time * 0.18);
+      float easu = edge + diagonal + smoothstep(0.55, 0.9, source);
+      float gather = 0.0;
+      for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        vec2 off = vec2(mod(fi, 2.0), floor(fi * 0.5)) / u_resolution * 10.0;
+        gather += smoothstep(0.72, 1.0, noise((low + off) * 26.0 + fi));
+      }
+      float rcas = line(easu - 0.5, 0.08) + gather * 0.09;
+      float lens = smoothstep(0.28, 0.0, distance(uv, pointer));
+      vec3 before = vec3(0.05, 0.18, 0.22) + palette(source) * easu * 0.55;
+      vec3 after = before + vec3(1.0, 0.82, 0.32) * rcas * (0.28 + u_pressure * 0.5);
+      col += mix(before, after, smoothstep(0.0, 0.95, uv.x + lens * 0.24));
+      col += vec3(0.15, 0.95, 1.0) * line(fract(uv.x * 64.0) - 0.5, 0.015) * 0.12;
+      col += vec3(1.0, 0.22, 0.42) * line(uv.x - 0.5, 0.006) * 0.7;
+      col += vec3(0.78, 0.96, 1.0) * ring((uv - pointer) * vec2(1.3, 0.9), 0.25, 0.006);
+      return col;
+    }
+
+    vec3 skyBlendCaps(vec2 uv, vec2 pointer) {
+      vec2 p = uv - 0.5;
+      float horizon = smoothstep(-0.28, 0.32, p.y + 0.16 * sin(p.x * 3.0 + u_time * 0.2));
+      vec3 sky = mix(vec3(0.015, 0.055, 0.085), vec3(0.42, 0.13, 0.42), horizon);
+      sky += vec3(0.96, 0.62, 0.18) * exp(-abs(p.y + 0.08 + 0.08 * sin(p.x * 2.0)) * 9.0) * 0.32;
+      vec3 col = sky;
+      float cap = step(0.5, pointer.x);
+
+      for (int i = 0; i < 18; i++) {
+        float fi = float(i);
+        vec2 c = vec2(0.5 + 0.34 * sin(fi * 2.1), 0.46 + 0.22 * cos(fi * 1.7 + u_time * 0.4));
+        float particle = smoothstep(0.034, 0.0, distance(uv, c));
+        float blendOk = cap * (0.6 + 0.4 * sin(fi + u_time));
+        vec3 ok = vec3(0.06, 0.82, 1.0);
+        vec3 fallback = vec3(1.0, 0.2, 0.28);
+        col += mix(fallback, ok, blendOk) * particle * (0.42 + 0.75 * u_pressure);
+      }
+
+      for (int i = 0; i < 7; i++) {
+        float fi = float(i);
+        float y = 0.18 + fi * 0.095;
+        float lane = line(uv.y - y - 0.018 * sin(u_time + fi + uv.x * 3.0), 0.005);
+        col += mix(vec3(1.0, 0.18, 0.28), vec3(0.12, 0.9, 1.0), cap) * lane * 0.32;
+      }
+
+      col += vec3(1.0, 0.78, 0.28) * ring((uv - pointer) * vec2(1.2, 0.85), 0.2, 0.006);
+      return col;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      uv.x = (uv.x - 0.5) * (u_resolution.x / u_resolution.y) + 0.5;
+      vec2 pointer = u_pointer;
+      pointer.x = (pointer.x - 0.5) * (u_resolution.x / u_resolution.y) + 0.5;
+
+      vec3 col;
+      if (u_mode < 1.5) {
+        col = spzSplat(uv, pointer);
+      } else if (u_mode < 2.5) {
+        col = sunCascades(uv, pointer);
+      } else if (u_mode < 3.5) {
+        col = fsrScope(uv, pointer);
+      } else {
+        col = skyBlendCaps(uv, pointer);
+      }
+
+      vec2 centered = gl_FragCoord.xy / u_resolution.xy - 0.5;
+      col += vec3(0.05, 0.72, 1.0) * line(centered.x, 0.0015) * 0.16;
+      col += vec3(0.05, 0.72, 1.0) * line(centered.y, 0.0015) * 0.16;
+      col *= 0.72 + 0.28 * smoothstep(0.92, 0.25, length(centered));
+      col = col / (1.0 + col);
+      col = pow(col, vec3(0.78));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("stage");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    const pointer = { x: 0.62, y: 0.58 };
+    let mode = 1;
+    let pressure = 0;
+    let pressing = false;
+
+    if (!gl) {
+      document.body.innerHTML = "<p>WebGL is not available in this browser.</p>";
+      throw new Error("WebGL unavailable");
+    }
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, document.getElementById("vertex").textContent));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, document.getElementById("fragment").textContent));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "u_resolution"),
+      pointer: gl.getUniformLocation(program, "u_pointer"),
+      time: gl.getUniformLocation(program, "u_time"),
+      pressure: gl.getUniformLocation(program, "u_pressure"),
+      mode: gl.getUniformLocation(program, "u_mode")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.floor(window.innerWidth * dpr);
+      const height = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = (event.clientX - rect.left) / rect.width;
+      pointer.y = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("resize", resize);
+    canvas.addEventListener("pointerdown", (event) => {
+      pressing = true;
+      setPointer(event);
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointermove", setPointer);
+    canvas.addEventListener("pointerup", () => {
+      pressing = false;
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") mode = Number(event.key);
+      if (event.code === "Space") pressing = true;
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "Space") pressing = false;
+    });
+
+    function frame(now) {
+      resize();
+      pressure += ((pressing ? 1 : 0) - pressure) * 0.08;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform1f(uniforms.pressure, pressure);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
