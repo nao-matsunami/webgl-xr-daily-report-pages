@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSAAサンプル、scene depth、Splat sortを後段シェーダーの演出入力にする | 2026-08-14</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.14</p>
+      <h1>MSAAサンプル、scene depth、Splat sortを後段シェーダーの演出入力にする</h1>
+      <p class="hero-subtitle">Turning MSAA samples, scene depth, and splat sorting into downstream shader inputs</p>
+      <p>PlayCanvas の multisampled render target sampling / scene texture 書き込み、three.js の GaussianSplatMesh counting sort / sort invalidation、WebGPU Inspector virtual scrolling、Babylon.js の editor dynamic import 正規化を、前回の品質予算スコープから「内部バッファを見せる演出」へ接続した。</p>
+      <p class="en-copy">Today connects PlayCanvas multisampled render-target sampling and scene-texture writes, three.js GaussianSplatMesh counting sort and sort invalidation, WebGPU Inspector virtual scrolling, and Babylon.js editor dynamic-import normalization to yesterday's quality-budget scope by treating internal buffers as visible performance choreography.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-13.html">← 2026.08.13</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-14 MSAA Depth Resolve Choreography</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas PR #9167 は WebGPU で multisampled render target をユーザーシェーダーから textureLoad できるようにする提案。hardware box resolve では表現できない custom MSAA resolve をアプリ側で書けるため、アンチエイリアスの品質差を隠すのではなく、サンプル単位の光跡や粒子の残像として見せられる。2. PlayCanvas PR #9166 は forward pass から scene texture に追加情報を書けるようにする変更。特に Gaussian splats が depth prepass では出せない depth を postprocess へ渡せる点が重要で、前回の「品質予算」から「内部バッファを演出入力にする」方向へ進められる。3. three.js PR #34235 は GaussianSplatMesh の CountingSort 用 PrefixSum を高速化し、#34233 は transform 変化時の sort invalidation を修正する提案。Splat の描画順は見た目の alpha の正しさだけでなく、動きの違和感を減らす振付パラメータとして扱える。4. Babylon.js PR #18801 は Inspector v2 と GUI / node editor 系の dynamic import 形状を build config 間で揃える提案。ツールが必要な瞬間に正しく開くことは制作速度だけでなく、ライブ編集・展示時の復旧性にも効く。5. three.js #34230 の WebGPU Inspector Timeline virtual scrolling と Babylon #18797 の light UBO budget clamp は、内部リストや制限値を見える形にして、大規模シーンを壊さず観察する流れとして接続できる。</p>
+          <p class="en-copy">1. PlayCanvas PR #9167 proposes sampling multisampled render targets from user shaders on WebGPU via textureLoad. This enables custom MSAA resolves that hardware box resolve cannot express, turning sample-level quality differences into visible light trails or particle afterimages. 2. PlayCanvas PR #9166 lets the forward pass write additional scene textures. The key point is that Gaussian splats can provide depth to post-processing where a depth prepass cannot, moving yesterday's quality budget toward internal buffers as expressive inputs. 3. three.js PR #34235 improves PrefixSum for GaussianSplatMesh CountingSort, while #34233 fixes sort invalidation for transforms. Splat order is not only alpha correctness; it can be treated as a choreography parameter for reducing motion artifacts. 4. Babylon.js PR #18801 normalizes Inspector v2 dynamic imports for GUI and node editors across build configurations. Reliable tool loading affects live editing and recovery during installations, not just developer convenience. 5. three.js #34230 WebGPU Inspector Timeline virtual scrolling and Babylon #18797 light UBO budget clamping both point toward making internal lists and limits observable without breaking large scenes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9166" target="_blank" rel="noreferrer">PlayCanvas PR #9166</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js PR #34235</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18801" target="_blank" rel="noreferrer">Babylon.js PR #18801</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の中心は PlayCanvas #9167 と #9166 の組み合わせ。MSAA sample を後段で読む、forward pass で scene depth を書く、という2つは、通常ならレンダリング品質・ポストエフェクトの内部実装だが、表現側から見ると「光の複数候補」と「深度の告白」を素材化できる。特に Gaussian Splat は triangle mesh と違い、prepass / collider / navmesh とズレやすい。だから depth を後段に渡せること自体が、霧、被写界深度、遮蔽、フォーカス演出の信頼度を上げる。ここに three.js の Splat sort 高速化と invalidation 修正を重ねると、画面上の破綻を単に避けるだけでなく、sort の残差を heat / shimmer / wake として制御する作品化が見えてくる。</p>
+          <p class="en-copy">The central combination is PlayCanvas #9167 and #9166. Reading MSAA samples later and writing scene depth from the forward pass are normally rendering-quality internals, but for expression they materialize multiple light candidates and a confession of depth. Gaussian splats drift away from triangle-mesh assumptions around prepasses, colliders, and navmeshes, so passing depth downstream increases the reliability of fog, depth of field, occlusion, and focus effects. Combining this with three.js splat-sort improvements suggests not just avoiding visual failure but controlling sort residue as heat, shimmer, and wake.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9166" target="_blank" rel="noreferrer">PlayCanvas PR #9166</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34233" target="_blank" rel="noreferrer">three.js PR #34233</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期案は「MSAA Depth Resolve Choreography」。4つのサンプル位置を発光レーンにして、pointer が resolve の重みと位相を動かす。scene depth は等高線と霧の帯として重ね、Gaussian splat sort / PrefixSum はバー列と掃引光として表示する。Babylon の dynamic import は、GUI / Node Editor / Inspector の遅延読込パケットとして抽象化し、ツールが開く・開かないを空間演出の状態遷移にする。中長期では、実際の MSAA sample count、scene depth format、Splat sort time、Inspector timeline row count、editor lazy-load duration を telemetry texture にまとめ、作品が自分のレンダリング状態を発光パターンとして喋るようにする。</p>
+          <p class="en-copy">The short-term idea is MSAA Depth Resolve Choreography. Four sample positions become glowing lanes, and the pointer changes resolve weights and phase. Scene depth is drawn as contours and fog bands, while Gaussian splat sort / PrefixSum becomes bar columns and a sweep light. Babylon dynamic imports are abstracted as delayed GUI / Node Editor / Inspector packets, turning tool availability into a spatial state transition. Longer term, real MSAA sample count, scene depth format, splat-sort time, Inspector timeline row count, and editor lazy-load duration can be packed into a telemetry texture so the work speaks its own rendering state through light patterns.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>PlayCanvas #9167 の肝は `bindMultisampled` を有効にした render target から multisampled color attachment を取得し、WGSL 側で `texture_multisampled_2d` / `texture_depth_multisampled_2d` を `textureLoad(pixel, sampleIndex)` すること。これは WebGL2 の通常パイプラインではそのまま再現しにくいので、WebGL 側では複数 offset sampling の疑似 resolve として試すのが現実的。#9166 の scene texture 書き込みは、postprocess が depth prepass だけに依存しない設計に効く。Splat や透明物が depth / coverage / id を出せると、fog、DOF、selection、outline の破綻が減る。three.js #34235 は subgroup 非対応時の fallback も含む PrefixSum 改善で、計算そのものの速さと capability 分岐を同時に見たい。Babylon #18801 のような dynamic import 正規化は、制作ツールを本番体験に組み込む時の module shape drift を潰す話として重要。</p>
+          <p class="en-copy">The key in PlayCanvas #9167 is enabling `bindMultisampled` on a render target, obtaining the multisampled color attachment, and reading `texture_multisampled_2d` / `texture_depth_multisampled_2d` in WGSL with `textureLoad(pixel, sampleIndex)`. Since WebGL2 cannot mirror that exact flow easily, a practical WebGL prototype can simulate it with multiple offset samples. #9166 makes post-processing less dependent on depth prepasses; when splats and transparent objects can output depth / coverage / id, fog, DOF, selection, and outlines fail less often. three.js #34235 is worth watching for both PrefixSum speed and capability fallback behavior. Babylon #18801 matters as module-shape drift prevention when production tools are part of a live experience.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9166" target="_blank" rel="noreferrer">PlayCanvas PR #9166</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js PR #34235</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18801" target="_blank" rel="noreferrer">Babylon.js PR #18801</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は r186 milestone、#34235 PrefixSum、#34233 sort invalidation、#34221/#34228 SunLight CSM、#34219 WebGLNodesHandler scene walk reuse、#34216 Color Grading Inspector を継続。Babylon.js は #18801 editor module resolution、#18723 FSR 1、#18797 light UBO clamp、#18787 GPU particle gradient rebake、KTX2 / Zstd 周辺を継続。PlayCanvas は #9167 multisampled render target sampling、#9166 scene texture write、#9165 depth map encoding、#9164 blendable HDR format、#9163 StandardMaterial type fix を継続。事例側は Codrops WebGL tag、Three.js Conf Paris の TSL / HTML-in-Canvas / Web Audio / MediaPipe 文脈を追う。</p>
+          <p class="en-copy">For three.js, keep watching the r186 milestone, #34235 PrefixSum, #34233 sort invalidation, #34221/#34228 SunLight CSM, #34219 WebGLNodesHandler scene-walk reuse, and #34216 Color Grading Inspector. For Babylon.js, track #18801 editor module resolution, #18723 FSR 1, #18797 light UBO clamp, #18787 GPU particle gradient rebake, and KTX2 / Zstd work. For PlayCanvas, follow #9167 multisampled render-target sampling, #9166 scene-texture writes, #9165 depth-map encoding, #9164 blendable HDR format, and #9163 StandardMaterial type fixes. On the creative side, keep watching Codrops WebGL and the Three.js Conf Paris threads around TSL, HTML-in-Canvas, Web Audio, and MediaPipe.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="https://threejs.paris/" target="_blank" rel="noreferrer">Three.js Conf Paris 2026</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、MSAA resolve を1枚の発光スコープにする。実 WebGPU で multisampled texture を読む前に、WebGL fragment shader で4つの sample offset を置き、pointer で重みを変えるだけでも、hardware resolve と custom resolve の違いを視覚化できる。そこへ疑似 scene depth contour と Splat sort sweep を足すと、品質・深度・順序が同じ画面で見える。次の段階では PlayCanvas #9167 の実 API、#9166 の scene texture、実 GSplat sort time をそれぞれ uniform に置き換える。</p>
+          <p class="en-copy">If trying one thing today, make MSAA resolve a glowing scope. Before reading real multisampled textures in WebGPU, a WebGL fragment shader can place four sample offsets and let the pointer change their weights, which already visualizes the difference between hardware resolve and custom resolve. Add pseudo scene-depth contours and a splat-sort sweep, and quality, depth, and order become visible in one frame. The next step is replacing the uniforms with the real PlayCanvas #9167 API, #9166 scene textures, and real GSplat sort time.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas #9167/#9166/#9165/#9164、three.js #34235/#34233/#34230/#34219、Babylon.js #18801/#18797/#18723、Codrops WebGL、Three.js Conf Paris を収集。アイデア検討: 継続案件は quality budget as visible choreography、resource lifetime、shared atlas、view-dependent sheen。新規案件は custom MSAA resolve as light choreography、scene depth from splats、sort residue heat、tool lazy-load packets。寝かせる案件はカード UI、完全な WebGPU multisampled texture 実装、実 Inspector clone、Babylon editor 本体組み込み。サンプル実装: `outputs/2026-08-14_msaa_depth_resolve_choreography.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish、公開 URL 確認まで行う。</p>
+          <p class="en-copy">Research: collected PlayCanvas #9167/#9166/#9165/#9164, three.js #34235/#34233/#34230/#34219, Babylon.js #18801/#18797/#18723, Codrops WebGL, and Three.js Conf Paris. Ideation: continuing tracks are quality budget as visible choreography, resource lifetime, shared atlas, and view-dependent sheen. New tracks are custom MSAA resolve as light choreography, scene depth from splats, sort-residue heat, and tool lazy-load packets. Parked tracks are card UI, a full WebGPU multisampled-texture implementation, an actual Inspector clone, and embedding Babylon editor packages. Prototype: added `outputs/2026-08-14_msaa_depth_resolve_choreography.html`. Verification: HTML parse, JSON parse, gallery build, publish, and public URL checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>8/8 以降の流れは、resource lifetime、shared atlas、checker budget、error budget、view sheen、compressed arrival と来て、今日は sample/depth/sort/tool-loading へ広がった。傾向として、エンジン内部の「一度だけ正しく処理されればよいもの」が、制作・展示・デバッグの全段階で観察可能な信号になりつつある。組み合わせ候補は、MSAA sample を音の高域、scene depth を低域、Splat sort heat を視線移動、editor lazy-load を展示スタッフの操作ログへつなぐ構成。育てる価値が高いテーマは「rendering internals as stage telemetry」。内部バッファを隠さず、作品の呼吸や緊張として使う。</p>
+          <p class="en-copy">Since 8/8 the thread has moved through resource lifetime, shared atlas, checker budget, error budget, view sheen, compressed arrival, and now sample/depth/sort/tool-loading. The broader trend is that engine internals that once only needed to be correct once are becoming observable signals across production, exhibition, and debugging. A promising combination maps MSAA samples to high audio bands, scene depth to lows, splat-sort heat to gaze movement, and editor lazy-load to operator logs. The theme worth growing is rendering internals as stage telemetry: do not hide internal buffers; use them as the work's breathing and tension.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-13_spz_sky_upscale_budget_scope.html" target="_blank" rel="noreferrer">2026-08-13 SPZ Sky Upscale Budget Scope</a></li>
+          
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「MSAA Depth Resolve Choreography」。作成ファイルは `outputs/2026-08-14_msaa_depth_resolve_choreography.html`。raw WebGL fragment shader の単体 HTML で、1: custom MSAA resolve 風の4 sample lane、2: forward scene texture / depth contour、3: GaussianSplatMesh PrefixSum / sort sweep、4: Babylon Inspector / editor dynamic import packet を表示する。操作は 1-4 で mode 切替、ドラッグで sample phase と depth flow、クリック/Space で resolve pressure。次に足すなら、PlayCanvas #9167 の実 `bindMultisampled` API、#9166 の scene depth texture、three.js の実 sort time、Web Audio 低域/高域による pressure と sharpen を接続する。</p>
+          <p class="en-copy">The selected prototype is MSAA Depth Resolve Choreography. The created file is `outputs/2026-08-14_msaa_depth_resolve_choreography.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows custom-MSAA-resolve-like four sample lanes, mode 2 shows forward scene-texture / depth contours, mode 3 shows GaussianSplatMesh PrefixSum / sort sweep, and mode 4 shows Babylon Inspector / editor dynamic-import packets. Keys 1-4 switch modes, dragging controls sample phase and depth flow, and click/Space injects resolve pressure. Next additions are the real PlayCanvas #9167 `bindMultisampled` API, #9166 scene depth texture, real three.js sort time, and Web Audio lows/highs driving pressure and sharpening.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>このサンプルの pointer、mode、pressure、4 sample lane、depth contour、sort sweep、lazy-load packet を時系列データとして保存すると、展示中のレンダリング状態ログや鑑賞者の操作ログをそのままビジュアル演出に戻せる。音と組み合わせるなら、低域を depth fog、中域を sort sweep、高域を sample sparkle に割り当てる。カメラや MediaPipe と組み合わせるなら、手の開閉を sample count、視線や顔向きを sort invalidation pressure にする。WebXR では左右眼の resolve 差分を2色の lane にし、体験者がどちらの眼で負荷を作っているかを抽象的に見せられる。ブランド演出では、製品の品質保証や製造検査ログを depth / resolve / packet の3層に変換し、裏側の検査工程を未来的なステージ映像にできる。</p>
+          <p class="en-copy">If the sample's pointer, mode, pressure, four sample lanes, depth contours, sort sweep, and lazy-load packets are stored as time-series data, rendering-state logs and visitor interactions can be fed back into the visual performance. With audio, lows can drive depth fog, mids can drive sort sweep, and highs can drive sample sparkle. With camera or MediaPipe, hand openness can control sample count and gaze or face direction can drive sort-invalidation pressure. In WebXR, left/right-eye resolve differences can become two colored lanes. For brand experiences, QA or manufacturing inspection logs can be mapped into depth / resolve / packet layers, turning hidden validation workflows into a futuristic stage visual.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167 Allow sampling multisampled render targets on WebGPU</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9166" target="_blank" rel="noreferrer">PlayCanvas PR #9166 Support writing the scene textures from the forward pass</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js PR #34235 Counting Sort: Improve PrefixSum implementation</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34233" target="_blank" rel="noreferrer">three.js PR #34233 GaussianSplatMesh: Fix sort invalidation for transforms</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34230" target="_blank" rel="noreferrer">three.js PR #34230 Inspector: Optimize Timeline tab rendering with virtual scrolling</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18801" target="_blank" rel="noreferrer">Babylon.js PR #18801 Normalize editor module resolution across all build configs</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18797" target="_blank" rel="noreferrer">Babylon.js PR #18797 Fix WebGPU light uniform buffer budget</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="https://threejs.paris/" target="_blank" rel="noreferrer">Three.js Conf Paris 2026</a></li>
+          
+            <li><a href="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-14_msaa_depth_resolve_choreography.html" loading="lazy" title="2026-08-14 MSAA Depth Resolve Choreography"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
