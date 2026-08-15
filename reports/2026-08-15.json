@@ -1,0 +1,221 @@
+{
+  "date": "2026-08-15",
+  "headline": "MRT clear、soft splat depth、IBL fallbackを舞台照明の信号にする",
+  "headlineEn": "Turning MRT clear, soft splat depth, and IBL fallback into stage-light telemetry",
+  "summary": "three.js の MRT attachment 別 clear と WebGPU timestamp query 修正、PlayCanvas の scene pass depth / GSplat soft depth、Babylon.js 9.21.2 の IBL・caps・particle async 修正を、前日の MSAA/depth/sort スコープから「attachment と fallback を見せる演出」へ接続した。",
+  "summaryEn": "Today connects three.js per-attachment MRT clear and WebGPU timestamp-query fixes, PlayCanvas scene-pass depth and GSplat soft depth, and Babylon.js 9.21.2 IBL/caps/particle async fixes to yesterday's MSAA/depth/sort scope by treating attachments and fallbacks as visible performance choreography.",
+  "links": [
+    {
+      "label": "three.js PR #34250 MRTNode: Allow clear colors per attachment",
+      "url": "https://github.com/mrdoob/three.js/pull/34250"
+    },
+    {
+      "label": "three.js PR #34236 WebGPURenderer: Fix timestamp query limits",
+      "url": "https://github.com/mrdoob/three.js/pull/34236"
+    },
+    {
+      "label": "three.js PR #34239 WebGLRenderer: Prepare shadow maps without rendering during compile()",
+      "url": "https://github.com/mrdoob/three.js/pull/34239"
+    },
+    {
+      "label": "PlayCanvas PR #9174 Render scene depth from the scene pass",
+      "url": "https://github.com/playcanvas/engine/pull/9174"
+    },
+    {
+      "label": "PlayCanvas PR #9175 Gaussian splats write the scene depth",
+      "url": "https://github.com/playcanvas/engine/pull/9175"
+    },
+    {
+      "label": "PlayCanvas PR #9167 Allow sampling multisampled render targets on WebGPU",
+      "url": "https://github.com/playcanvas/engine/pull/9167"
+    },
+    {
+      "label": "Babylon.js 9.21.2 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.21.2"
+    },
+    {
+      "label": "Babylon.js PR #18804 Native caps and depth/stencil metadata",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18804"
+    },
+    {
+      "label": "Babylon.js PR #18803 IBL rendering fixes",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18803"
+    },
+    {
+      "label": "Babylon.js PR #18802 Particle node material async shader creation",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18802"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34250 は MRTNode に attachment 別の clear color を持たせる変更。G-buffer / ID / depth-adjacent buffer / effect mask を同時に扱う時、初期値を一色で塗るのではなく、各 attachment の意味を色として分けられる。2. PlayCanvas PR #9174 は scene pass から追加 attachment として depth を生成し、可能な場合は depth prepass を置き換える。#9175 は Gaussian splats が transmittance weighted depth を scene depth texture に書く変更で、fog / DOF / SSAO が proxy mesh なしで splat に反応できる。3. Babylon.js 9.21.2 は NativeEngine の alpha sentinel、caps、depth/stencil metadata、IBL、particle node material async build をまとめて補修した。表現面では「壊れた fallback」ではなく、capability と async state を見える演出信号として使う余地が増える。4. three.js #34236 の timestamp query limit 修正は、Inspector や GPU 計測を長時間回す展示・ツールで重要。測定バッファ自体が破綻しないことは、performance telemetry を作品に混ぜる前提になる。5. Codrops Creative Hub では 8/11 Geometry Painter、8/12 Interactive 3D Cluster など TSL / WebGPU / WebGL 系の新作が続き、ツール的な描画状態をそのまま体験にする方向と相性がよい。",
+      "bodyEn": "1. three.js PR #34250 adds per-attachment clear colors to MRTNode. For G-buffers, IDs, depth-adjacent buffers, and effect masks, clear values can now reflect the meaning of each attachment instead of starting from one flat color. 2. PlayCanvas PR #9174 produces depth as an extra scene-pass attachment and replaces the depth prepass where possible. #9175 lets Gaussian splats write transmittance-weighted depth into the scene depth texture, so fog, DOF, and SSAO can respond to splats without proxy meshes. 3. Babylon.js 9.21.2 repairs NativeEngine alpha sentinel handling, caps, depth/stencil metadata, IBL, and particle node material async builds. Expressively, capability and async state can become visible signals instead of broken fallbacks. 4. three.js #34236 fixes timestamp query limits, which matters for long-running installations and tools that mix GPU measurements into the experience. 5. Codrops Creative Hub continues to publish TSL / WebGPU / WebGL works such as Geometry Painter and Interactive 3D Cluster, matching the direction of turning tool-like render state into the experience itself.",
+      "links": [
+        {
+          "label": "three.js PR #34250",
+          "url": "https://github.com/mrdoob/three.js/pull/34250"
+        },
+        {
+          "label": "PlayCanvas PR #9174",
+          "url": "https://github.com/playcanvas/engine/pull/9174"
+        },
+        {
+          "label": "PlayCanvas PR #9175",
+          "url": "https://github.com/playcanvas/engine/pull/9175"
+        },
+        {
+          "label": "Babylon.js 9.21.2",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.21.2"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の核は PlayCanvas #9174/#9175。従来の depth prepass は opaque mesh に強く、splat のような半透明雲には硬すぎる。forward pass の premultiplied blending と同時に depth を積むと、色だけでなく soft depth も得られる。これは「写っているのに霧やDOFには存在しない」問題を減らすだけでなく、半透明の存在感を depth contour、fog gate、selection halo として演出できる。three.js #34250 の attachment 別 clear は、この depth / id / mask / color を別々の初期色で舞台装置化する入口になる。",
+      "bodyEn": "The core item is PlayCanvas #9174/#9175. A traditional depth prepass works well for opaque meshes but is too hard for semi-transparent splat clouds. Accumulating depth during the forward premultiplied blend yields soft depth alongside color. This does more than fix the issue where splats are visible but absent to fog or DOF; it lets semi-transparent presence become depth contours, fog gates, and selection halos. three.js #34250's per-attachment clear colors become an entry point for staging depth, ID, mask, and color buffers as separate lighting channels.",
+      "links": [
+        {
+          "label": "PlayCanvas PR #9175",
+          "url": "https://github.com/playcanvas/engine/pull/9175"
+        },
+        {
+          "label": "three.js PR #34250",
+          "url": "https://github.com/mrdoob/three.js/pull/34250"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「MRT Depth IBL Telemetry」。4つの attachment を縦の発光プレートとして出し、clear 色、depth contour、IBL caps、particle async packet を 1-4 キーで切り替える。pointer は attachment の位相と soft depth の流れを曲げ、Space / hold は budget pressure を入れる。中長期では、実 WebGPU timestamp query、MRT clear color、scene depth producer、IBL fallback、particle material build state を同じ telemetry texture に詰める。鑑賞者には抽象的な舞台照明に見えるが、裏では実際のレンダリング状態を反映している、という構造に育てたい。",
+      "bodyEn": "The short-term idea is MRT Depth IBL Telemetry. Four attachments become vertical glowing plates, and keys 1-4 switch between clear color, depth contours, IBL caps, and particle async packets. The pointer bends attachment phase and soft-depth flow, while Space / hold injects budget pressure. Longer term, real WebGPU timestamp queries, MRT clear colors, scene-depth producer choice, IBL fallback state, and particle material build state can be packed into one telemetry texture. To viewers it reads as abstract stage lighting, while underneath it reflects actual rendering state.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "three.js #34250 は `MRTNode.setClearColor()` で attachment ごとに clear 色を定義し、未指定時は既存の default clear policy に戻る。ID buffer は黒、normal/velocity は中立値、effect mask は明示色、といった制作時の可視化に使える。PlayCanvas #9174 は postprocess だけが depth を消費する場合に scene pass 由来の depth producer を選び、材料や shading 中 SSAO が早い段階で depth を必要とする場合は prepass を残す。#9175 の GSplat depth は単一 hard depth ではなく transmittance weighted depth なので、raymarched fog や DOF と相性がよい。Babylon #18804 の caps 修正は `colorBufferFloat`、`blendFloat`、`texelFetch`、depth/stencil metadata など、fallback 判定の入力が正しくなる点が重要。#18802 は particle node material の async build 完了を待つ修正で、空 shader fallback を防ぐ。",
+      "bodyEn": "three.js #34250 uses `MRTNode.setClearColor()` to define clear colors per attachment, falling back to the existing default clear policy when unspecified. This is useful for production visualization such as black ID buffers, neutral normal/velocity buffers, and explicit effect-mask colors. PlayCanvas #9174 selects scene-pass depth when only post-processing consumes depth, while retaining a prepass when materials or shading-time SSAO need it earlier. #9175 writes transmittance-weighted GSplat depth rather than a single hard depth, which suits raymarched fog and DOF. Babylon #18804 matters because fallback inputs such as `colorBufferFloat`, `blendFloat`, `texelFetch`, and depth/stencil metadata become accurate. #18802 waits for particle node material async builds and prevents empty-shader fallbacks.",
+      "links": [
+        {
+          "label": "three.js PR #34250",
+          "url": "https://github.com/mrdoob/three.js/pull/34250"
+        },
+        {
+          "label": "PlayCanvas PR #9174",
+          "url": "https://github.com/playcanvas/engine/pull/9174"
+        },
+        {
+          "label": "Babylon.js PR #18804",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18804"
+        },
+        {
+          "label": "Babylon.js PR #18802",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18802"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続ウォッチは three.js #34250 MRT clear、#34236 timestamp query、#34239 shadow map compile allocation、#34233 GaussianSplatMesh sort invalidation、#34235 PrefixSum。PlayCanvas は #9167 multisampled render target sampling がまだ open なので、#9174/#9175 と接続して custom resolve + soft depth の実装ルートを見る。Babylon.js は #18806 single-file prefiltered cube container、#18804 caps/depth metadata、#18803 IBL fix、#18802 particle async、9.21.x のリリース差分を追う。事例側は Codrops の Interactive 3D Cluster、Geometry Painter、Interactive Glass Xylophone を、TSL/WebGPU と WebGL fallback の見せ方として見る。",
+      "bodyEn": "Continue watching three.js #34250 MRT clear, #34236 timestamp query, #34239 shadow-map compile allocation, #34233 GaussianSplatMesh sort invalidation, and #34235 PrefixSum. For PlayCanvas, #9167 multisampled render-target sampling remains open, so watch how it connects with #9174/#9175 into a custom-resolve plus soft-depth implementation path. For Babylon.js, track #18806 single-file prefiltered cube containers, #18804 caps/depth metadata, #18803 IBL fixes, #18802 particle async, and 9.21.x release diffs. On the creative side, watch Codrops Interactive 3D Cluster, Geometry Painter, and Interactive Glass Xylophone as examples of TSL/WebGPU work and WebGL-facing presentation.",
+      "links": [
+        {
+          "label": "three.js PR #34239",
+          "url": "https://github.com/mrdoob/three.js/pull/34239"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18806",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18806"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、MRT attachment の clear 色をただの初期化ではなく、各 buffer の意味を表すライトとして描く。WebGL 単体では本物の MRT を使わず、1枚の fragment shader 内で color / depth / caps / async の4状態を疑似化するだけで十分。次に PlayCanvas の scene depth texture、three.js の MRTNode、Babylon の caps 情報を uniform に差し替えると、診断表示から演出へ自然に進められる。",
+      "bodyEn": "If trying one thing today, draw MRT attachment clear colors as lights that represent each buffer's meaning rather than as simple initialization. In a standalone WebGL prototype, it is enough to fake color / depth / caps / async states inside one fragment shader without real MRT. The next step is replacing those values with PlayCanvas scene depth textures, three.js MRTNode data, and Babylon caps information, moving naturally from diagnostics to performance.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34250/#34236/#34239、PlayCanvas #9174/#9175/#9167、Babylon.js 9.21.2/#18804/#18803/#18802/#18806、Codrops Creative Hub を収集。アイデア検討: 継続案件は rendering internals as stage telemetry、quality budget、MSAA/depth/sort scope。新規案件は attachment clear light、soft splat depth contour、IBL fallback aura、particle async packet。寝かせる案件はカードUI、完全な engine 組み込み、実 WebGPU MRT/timestamp capture、Babylon Native 実機検証。サンプル実装: `outputs/2026-08-15_mrt_depth_ibl_telemetry.html` を追加。結果の検証: JSON parse、HTML parse、gallery build、publish、公開 URL 確認まで行う。",
+      "bodyEn": "Research: collected three.js #34250/#34236/#34239, PlayCanvas #9174/#9175/#9167, Babylon.js 9.21.2/#18804/#18803/#18802/#18806, and Codrops Creative Hub. Ideation: continuing tracks are rendering internals as stage telemetry, quality budget, and MSAA/depth/sort scope. New tracks are attachment clear light, soft splat depth contours, IBL fallback aura, and particle async packets. Parked tracks are card UI, full engine integration, real WebGPU MRT/timestamp capture, and Babylon Native device validation. Prototype: added `outputs/2026-08-15_mrt_depth_ibl_telemetry.html`. Verification: JSON parse, HTML parse, gallery build, publish, and public URL checks.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/8 以降は resource lifetime、shared atlas、budget、error、view sheen、compressed arrival、MSAA/depth/sort と来て、今日は attachment/fallback/async state に焦点が移った。大きな傾向は、レンダリングエンジンの安定化PRが「見えないバグ修正」ではなく、実は作品側の演出データを増やしていること。組み合わせると面白いのは、MRT clear を章立て、soft splat depth を空気、IBL fallback を照明の体調、particle async を裏方の移動として扱う構成。育てる価値が高いテーマは、引き続き「内部バッファを隠さず、空間演出の譜面にする」こと。",
+      "bodyEn": "Since 8/8 the thread has moved through resource lifetime, shared atlas, budget, error, view sheen, compressed arrival, MSAA/depth/sort, and now attachment/fallback/async state. The larger trend is that engine-stability PRs are not merely invisible bug fixes; they increase the set of expressive data available to a work. A promising combination treats MRT clear as chapters, soft splat depth as air, IBL fallback as lighting health, and particle async as backstage movement. The theme worth growing remains: do not hide internal buffers; turn them into a score for spatial performance.",
+      "links": [
+        {
+          "label": "2026-08-14 MSAA Depth Resolve Choreography",
+          "url": "../outputs/2026-08-14_msaa_depth_resolve_choreography.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「MRT Depth IBL Telemetry」。作成ファイルは `outputs/2026-08-15_mrt_depth_ibl_telemetry.html`。raw WebGL fragment shader の単体HTMLで、1: MRT attachment clear light、2: GSplat soft depth contour、3: IBL caps / fallback aura、4: particle node material async packet を表示する。操作は 1-4 で mode 切替、ドラッグで位相と depth flow、クリック/Space で budget pressure。次に足すなら、本物の MRT attachment ごとの clear color、PlayCanvas scene depth texture、Babylon caps と particle build promise、three.js timestamp query の値を uniform に入れる。",
+      "bodyEn": "The selected prototype is MRT Depth IBL Telemetry. The created file is `outputs/2026-08-15_mrt_depth_ibl_telemetry.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows MRT attachment clear light, mode 2 shows GSplat soft-depth contours, mode 3 shows IBL caps / fallback aura, and mode 4 shows particle node material async packets. Keys 1-4 switch modes, dragging controls phase and depth flow, and click/Space injects budget pressure. Next additions are real per-attachment MRT clear colors, PlayCanvas scene depth textures, Babylon caps and particle build promises, and three.js timestamp query values as uniforms.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "このサンプルの mode、pointer、pressure、attachment lane、depth contour、cap gate、async packet を時系列データとして保存すると、レンダリング状態ログと鑑賞者操作ログを同じ可視化に戻せる。音と組み合わせるなら、低域を soft depth fog、中域を attachment clear sweep、高域を IBL sparkle / particle packet に割り当てる。カメラや MediaPipe と組み合わせるなら、手の開閉を attachment count、顔向きを IBL fallback の方向、視線移動を particle async flow にする。WebXR では左右眼ごとの scene depth producer や timestamp query を2つの色相に分けられる。展示やブランド演出では、QAログ、製造検査、サーバーメトリクスを attachment / depth / caps / async の4レーンに置き換えると、裏側のシステム状態を未来的な舞台照明として見せられる。",
+      "bodyEn": "If the sample's mode, pointer, pressure, attachment lanes, depth contours, cap gates, and async packets are saved as time-series data, rendering-state logs and visitor interaction logs can feed back into the same visualization. With audio, lows can drive soft-depth fog, mids can drive attachment clear sweeps, and highs can drive IBL sparkle / particle packets. With camera or MediaPipe, hand openness can control attachment count, face direction can steer IBL fallback, and gaze movement can drive particle async flow. In WebXR, per-eye scene-depth producers or timestamp queries can split into two hues. For installations and brand experiences, QA logs, manufacturing inspection, and server metrics can be mapped into attachment / depth / caps / async lanes, exposing hidden system state as futuristic stage lighting."
+    }
+  ]
+}

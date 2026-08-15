@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-08-15 MRT Depth IBL Telemetry</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #020507;
+      color: #eefbff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      pointer-events: none;
+      color: rgba(230, 250, 255, 0.82);
+      font-size: 11px;
+      line-height: 1.5;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(67, 218, 255, 0.32);
+    }
+
+    .hud strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .modes {
+      text-align: right;
+      color: rgba(178, 236, 245, 0.75);
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        grid-template-columns: 1fr;
+        font-size: 10px;
+      }
+
+      .modes {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="hud">
+    <div>
+      <strong>MRT DEPTH IBL TELEMETRY</strong><br>
+      Drag bends attachment clear color, soft splat depth, and IBL fallback. Hold / Space injects budget pressure.
+    </div>
+    <div class="modes">1 MRT clear / 2 splat depth / 3 IBL caps / 4 particle async</div>
+  </div>
+
+  <script id="vertex" type="x-shader/x-vertex">
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 u_resolution;
+    uniform vec2 u_pointer;
+    uniform float u_time;
+    uniform float u_pressure;
+    uniform float u_mode;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(123.34, 456.21));
+      p += dot(p, p + 45.32);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                 mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+    }
+
+    mat2 rot(float a) {
+      float s = sin(a);
+      float c = cos(a);
+      return mat2(c, -s, s, c);
+    }
+
+    float line(float v, float w) {
+      return smoothstep(w, 0.0, abs(v));
+    }
+
+    float ring(vec2 p, float r, float w) {
+      return line(length(p) - r, w);
+    }
+
+    float box(vec2 p, vec2 b, float w) {
+      vec2 d = abs(p) - b;
+      float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+      return 1.0 - smoothstep(0.0, w, dist);
+    }
+
+    vec3 palette(float t) {
+      vec3 a = vec3(0.02, 0.84, 1.0);
+      vec3 b = vec3(0.92, 0.15, 0.92);
+      vec3 c = vec3(1.0, 0.78, 0.25);
+      return mix(mix(a, b, smoothstep(0.18, 0.68, t)), c, smoothstep(0.62, 1.0, t));
+    }
+
+    vec3 background(vec2 uv) {
+      vec2 p = uv - 0.5;
+      float n = noise(uv * 5.0 + vec2(u_time * 0.018, -u_time * 0.012));
+      float stars = pow(noise(uv * 240.0 + u_time * 0.03), 24.0);
+      float scan = line(fract((uv.y + u_time * 0.012) * 110.0) - 0.5, 0.012);
+      vec3 col = mix(vec3(0.006, 0.01, 0.014), vec3(0.018, 0.026, 0.028), n);
+      col += vec3(0.0, 0.18, 0.2) * exp(-length(p * vec2(0.9, 1.25)) * 3.0);
+      col += vec3(0.9, 1.0, 1.0) * stars;
+      col += vec3(0.015, 0.08, 0.09) * scan;
+      return col;
+    }
+
+    float splatField(vec2 p) {
+      float f = 0.0;
+      for (int i = 0; i < 30; i++) {
+        float fi = float(i);
+        float a = fi * 2.399 + u_time * (0.045 + hash(vec2(fi, 7.0)) * 0.04);
+        vec2 c = vec2(cos(a) * 0.34, sin(a * 1.21) * 0.24);
+        vec2 q = rot(a + 0.7) * (p - c);
+        f += exp(-dot(q / vec2(0.042, 0.018), q / vec2(0.042, 0.018))) * (0.5 + 0.5 * hash(vec2(fi)));
+      }
+      return f;
+    }
+
+    vec3 mrtClear(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.48;
+      vec2 p = uv - 0.5;
+      float sweep = sin(u_time * 0.55 + pointer.x * 4.0) * 0.34;
+
+      for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        vec2 center = vec2(-0.33 + fi * 0.22, 0.02 * sin(u_time + fi));
+        vec2 q = p - center;
+        float plate = box(q, vec2(0.082, 0.33), 0.012);
+        float clearPulse = smoothstep(-0.45, 0.42, p.y + 0.18 * sin(u_time + fi + pointer.y * 3.0));
+        float lane = line(q.x + 0.03 * sin(q.y * 12.0 + u_time + fi), 0.006);
+        col += palette(fi / 3.0) * plate * (0.14 + clearPulse * 0.45);
+        col += palette(fi / 3.0) * lane * (0.52 + u_pressure * 0.48);
+        col += vec3(1.0, 0.82, 0.28) * line(q.y - sweep * (0.4 + fi * 0.08), 0.008) * plate;
+      }
+
+      col += vec3(0.12, 0.9, 1.0) * ring(p * vec2(1.15, 0.84), 0.43, 0.006);
+      return col;
+    }
+
+    vec3 softDepth(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.5;
+      vec2 p = (uv - 0.5) * vec2(u_resolution.x / u_resolution.y, 1.0);
+      float field = splatField(p + (pointer - 0.5) * 0.18);
+      float alpha = smoothstep(0.18, 1.8, field);
+      float softDepthValue = 0.45 + 0.25 * sin(p.x * 3.6 + p.y * 2.4 + u_time * 0.45) + alpha * 0.22;
+      float contour = line(fract(softDepthValue * 15.0) - 0.5, 0.035);
+      float fogGate = smoothstep(0.28, 0.9, softDepthValue);
+      col += vec3(0.06, 0.18, 0.2) * field * 0.22;
+      col += vec3(0.08, 0.86, 1.0) * contour * (0.52 + alpha);
+      col += vec3(1.0, 0.58, 0.18) * alpha * (0.22 + u_pressure * 0.35);
+      col += vec3(0.75, 0.22, 0.95) * fogGate * 0.35;
+      col += vec3(0.9, 1.0, 1.0) * ring((uv - pointer) * vec2(1.2, 0.9), 0.2, 0.006);
+      return col;
+    }
+
+    vec3 iblCaps(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.45;
+      vec2 p = uv - 0.5;
+      vec2 q = rot(pointer.x * 2.8 - 1.4) * p;
+      float env = noise(q * 7.0 + u_time * 0.12);
+      float bands = line(fract((atan(q.y, q.x) / 6.28318 + length(q) * 1.8 + u_time * 0.05) * 18.0) - 0.5, 0.05);
+      float capGate = step(0.5, fract(floor((uv.x + 0.03 * sin(u_time)) * 10.0) * 0.37));
+      float irradiance = smoothstep(0.18, 0.84, env) * (0.45 + capGate * 0.55);
+      col += mix(vec3(0.0, 0.12, 0.18), vec3(0.85, 0.17, 0.88), irradiance) * 0.7;
+      col += vec3(1.0, 0.76, 0.22) * bands * (0.35 + u_pressure);
+      col += vec3(0.1, 0.92, 1.0) * ring(q, 0.28 + 0.08 * sin(u_time), 0.006);
+      col += vec3(0.9, 1.0, 1.0) * line(q.x, 0.004) * 0.5;
+      return col;
+    }
+
+    vec3 particleAsync(vec2 uv, vec2 pointer) {
+      vec3 col = background(uv) * 0.5;
+      vec2 p = uv - 0.5;
+      float flow = 0.0;
+      for (int i = 0; i < 42; i++) {
+        float fi = float(i);
+        float t = fract(u_time * (0.055 + 0.002 * fi) + hash(vec2(fi, 2.0)));
+        vec2 c = vec2(-0.44 + t * 0.88, 0.28 * sin(fi * 1.7 + t * 6.28 + pointer.y * 3.0));
+        float packet = ring((p - c) * vec2(1.4, 1.0), 0.012 + 0.018 * hash(vec2(fi)), 0.01);
+        flow += packet;
+        col += palette(fract(fi * 0.21)) * packet * (0.45 + u_pressure * 0.45);
+      }
+      float buildLine = line(p.y - 0.22 * sin(p.x * 8.0 + u_time * 0.8), 0.006 + u_pressure * 0.012);
+      float fail = smoothstep(0.92, 1.5, splatField(p * 1.2 + pointer * 0.12));
+      col += vec3(0.04, 0.85, 1.0) * buildLine;
+      col += vec3(1.0, 0.22, 0.35) * fail * 0.35;
+      col += vec3(1.0, 0.8, 0.24) * flow * 0.18;
+      return col;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / u_resolution;
+      vec2 pointer = u_pointer;
+      float m = floor(u_mode + 0.5);
+      vec3 col = mrtClear(uv, pointer);
+      if (m == 2.0) col = softDepth(uv, pointer);
+      if (m == 3.0) col = iblCaps(uv, pointer);
+      if (m == 4.0) col = particleAsync(uv, pointer);
+
+      vec2 p = uv - 0.5;
+      float vignette = smoothstep(0.78, 0.18, length(p * vec2(0.85, 1.15)));
+      col *= 0.72 + 0.45 * vignette;
+      col = pow(col, vec3(0.88));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script>
+    const canvas = document.getElementById("stage");
+    const gl = canvas.getContext("webgl", { antialias: true });
+    const pointer = { x: 0.55, y: 0.48, down: false };
+    let mode = 1;
+    let pressure = 0;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const vertex = compile(gl.VERTEX_SHADER, document.getElementById("vertex").textContent);
+    const fragment = compile(gl.FRAGMENT_SHADER, document.getElementById("fragment").textContent);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "u_resolution"),
+      pointer: gl.getUniformLocation(program, "u_pointer"),
+      time: gl.getUniformLocation(program, "u_time"),
+      pressure: gl.getUniformLocation(program, "u_pressure"),
+      mode: gl.getUniformLocation(program, "u_mode")
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = (event.clientX - rect.left) / rect.width;
+      pointer.y = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    window.addEventListener("resize", resize);
+    canvas.addEventListener("pointermove", setPointer);
+    canvas.addEventListener("pointerdown", (event) => {
+      pointer.down = true;
+      setPointer(event);
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointerup", () => {
+      pointer.down = false;
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") mode = Number(event.key);
+      if (event.code === "Space") pointer.down = true;
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "Space") pointer.down = false;
+    });
+
+    resize();
+    const start = performance.now();
+    function frame(now) {
+      const target = pointer.down ? 1 : 0;
+      pressure += (target - pressure) * 0.08;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.time, (now - start) * 0.001);
+      gl.uniform1f(uniforms.pressure, pressure);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
