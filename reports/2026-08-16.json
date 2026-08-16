@@ -1,0 +1,209 @@
+{
+  "date": "2026-08-16",
+  "headline": "Raymarch step、OIT、MSAA sample、camera presetを空間演出の軌道にする",
+  "headlineEn": "Turning raymarch steps, OIT, MSAA samples, and camera presets into spatial performance orbits",
+  "summary": "three.js の RaymarchingBox stepSize、OITPassNode、GaussianSplatMesh の packed color / bounds、PlayCanvas の multisampled render target sampling、Babylon.js Sandbox camera preset を、昨日の MRT/depth/IBL telemetry から「透明層・サンプル履歴・視点軌道を見せる演出」へ接続した。",
+  "summaryEn": "Today connects three.js RaymarchingBox stepSize, OITPassNode, GaussianSplatMesh packed color / bounds, PlayCanvas multisampled render-target sampling, and Babylon.js Sandbox camera presets to yesterday's MRT/depth/IBL telemetry by turning transparent layers, sample history, and camera orbits into visible performance signals.",
+  "links": [
+    {
+      "label": "three.js PR #34257 TSL: Pass stepSize to RaymarchingBox callback",
+      "url": "https://github.com/mrdoob/three.js/pull/34257"
+    },
+    {
+      "label": "three.js PR #34253 OITPassNode",
+      "url": "https://github.com/mrdoob/three.js/pull/34253"
+    },
+    {
+      "label": "three.js PR #34255 GaussianSplatMesh packed RGBA8 colors",
+      "url": "https://github.com/mrdoob/three.js/pull/34255"
+    },
+    {
+      "label": "three.js PR #34254 GaussianSplatMesh bounds and culling",
+      "url": "https://github.com/mrdoob/three.js/pull/34254"
+    },
+    {
+      "label": "three.js PR #34259 WebGPURenderer SunLight support",
+      "url": "https://github.com/mrdoob/three.js/pull/34259"
+    },
+    {
+      "label": "PlayCanvas PR #9167 Allow sampling multisampled render targets on WebGPU",
+      "url": "https://github.com/playcanvas/engine/pull/9167"
+    },
+    {
+      "label": "Babylon.js PR #18807 Add camera presets to the Sandbox",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18807"
+    },
+    {
+      "label": "Codrops WebGL tag",
+      "url": "https://tympanus.net/codrops/tag/webgl/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34257 は TSL の RaymarchingBox callback に `stepSize` を渡す変更。volume accumulation、attenuation、transmittance を「何歩進んだか」ではなく「どれだけ距離を積んだか」で制御できる。2. three.js PR #34253 は WebGPURenderer に Weighted Blended OIT の `OITPassNode` を追加した。MRT、attachment 別 blend/clear、shared depth、custom render object functions が揃ったことで、透明物をソート失敗の妥協ではなく合成レイヤーとして扱いやすくなる。3. GaussianSplatMesh では PR #34255 が RGBA8 color を uint32 packed のまま storage buffer に保持する提案、#34254 が per-mesh bounds / frustum culling を追加した。色・境界・sort の扱いが、巨大 splat scene の視覚品質だけでなくメモリ演出の入力にもなる。4. PlayCanvas PR #9167 は WebGPU の multisampled render target を shader で sample 可能にする継続案件。hardware box resolve では出せない sample ごとの発光、輪郭、ノイズ分離が狙える。5. Babylon.js PR #18807 は Sandbox camera preset。大規模 scene を見るための near plane / radius / viewpoint が保存可能になり、camera state を作品内の bookmark / route / rehearsal cue として扱える。",
+      "bodyEn": "1. three.js PR #34257 passes `stepSize` to the TSL RaymarchingBox callback, so volume accumulation, attenuation, and transmittance can depend on actual marched distance rather than iteration count. 2. three.js PR #34253 adds `OITPassNode`, a Weighted Blended OIT pass for WebGPURenderer. With MRT, per-attachment blend/clear, shared depth, and custom render-object functions in place, transparency becomes a compositing layer rather than a sorting compromise. 3. For GaussianSplatMesh, PR #34255 proposes keeping RGBA8 colors packed as uint32 in storage buffers, while #34254 adds per-mesh bounds and frustum culling. Color, bounds, and sorting now become inputs for both visual quality and memory choreography in large splat scenes. 4. PlayCanvas PR #9167 continues the work of sampling WebGPU multisampled render targets in shaders, opening custom sample glow, contours, and noise separation that a hardware box resolve cannot express. 5. Babylon.js PR #18807 adds Sandbox camera presets. Near plane, radius, and viewpoint settings for large scenes become savable camera state, which can double as bookmarks, routes, and rehearsal cues inside an experience.",
+      "links": [
+        {
+          "label": "three.js PR #34257",
+          "url": "https://github.com/mrdoob/three.js/pull/34257"
+        },
+        {
+          "label": "three.js PR #34253",
+          "url": "https://github.com/mrdoob/three.js/pull/34253"
+        },
+        {
+          "label": "three.js PR #34255",
+          "url": "https://github.com/mrdoob/three.js/pull/34255"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18807",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18807"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は three.js #34253 と #34257 の組み合わせ。OIT は透明物を順序問題から解放し、RaymarchingBox の `stepSize` は volume の濃度を距離ベースに戻す。これを合わせると、半透明の霧、splat、ガラス、ビームを「深度順に正しく見せる」だけでなく、「透明層がどれだけ移動・蓄積・減衰したか」を観客に見せる表現にできる。Codrops の WebGL / Three.js / TSL 系事例が DOM と WebGL、音、スクロール、3D cluster を混ぜている流れとも相性がよく、内部 renderer state をそのまま演出に載せる方向を補強している。",
+      "bodyEn": "The strongest combination today is three.js #34253 with #34257. OIT frees transparent objects from strict ordering problems, while RaymarchingBox `stepSize` brings volume density back to distance-based accumulation. Together, fog, splats, glass, and beams can do more than render in a plausible order; they can expose how transparent layers move, accumulate, and attenuate. This also fits the recent Codrops WebGL / Three.js / TSL examples that mix DOM, WebGL, sound, scrolling, and 3D clusters, reinforcing the direction of putting internal renderer state directly on stage.",
+      "links": [
+        {
+          "label": "three.js PR #34253",
+          "url": "https://github.com/mrdoob/three.js/pull/34253"
+        },
+        {
+          "label": "three.js PR #34257",
+          "url": "https://github.com/mrdoob/three.js/pull/34257"
+        },
+        {
+          "label": "Codrops WebGL tag",
+          "url": "https://tympanus.net/codrops/tag/webgl/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期案は「Raymarch OIT Sample Orbit Scope」。raymarch の stepSize を volume の発光粒度、OIT の revealage を透明層の残像、MSAA sample を4本の微細な sample lane、camera preset を軌道上の bookmark として描く。1-4 キーで step / OIT / MSAA / camera を切り替え、drag で位相と視点、Space/click で pressure を入れる。中長期では、実 three.js OITPassNode の accumulation/revealage、PlayCanvas の multisampled sampleIndex、Babylon Sandbox の camera preset、GaussianSplatMesh の packed color / bounds を同じ telemetry texture に入れたい。",
+      "bodyEn": "The short-term idea is Raymarch OIT Sample Orbit Scope. Raymarch `stepSize` becomes volume glow granularity, OIT revealage becomes transparent afterimage, MSAA samples become four fine sample lanes, and camera presets become bookmarks on an orbit. Keys 1-4 switch between step / OIT / MSAA / camera, dragging controls phase and viewpoint, and Space/click injects pressure. Longer term, real three.js OITPassNode accumulation/revealage, PlayCanvas multisampled `sampleIndex`, Babylon Sandbox camera presets, and GaussianSplatMesh packed color / bounds should feed one telemetry texture.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "RaymarchingBox の callback に `stepSize` が来ると、固定回数ループの見た目を frame rate や scene scale から切り離しやすい。fog density は `density * stepSize`、absorption は `exp(-sigma * stepSize)` のように距離単位で扱える。Weighted Blended OIT は accumulation と revealage の2系統を持つので、作品用には revealage を「見え残り」、accumulation を「光の蓄積」として可視化できる。PlayCanvas #9167 の `bindMultisampled` は WebGPU の multisampled color attachment を後段 shader で `textureLoad(..., sampleIndex)` できるルートで、resolve 前の sample variance を演出データにできる。Babylon #18807 の camera preset は、large scene の near/radius/viewpoint を保存するだけでなく、演出上のカメラキューや比較用 viewpoint set として使える。",
+      "bodyEn": "Once RaymarchingBox callbacks receive `stepSize`, fixed-iteration looks can be decoupled from frame rate and scene scale. Fog density can use `density * stepSize`, and absorption can use `exp(-sigma * stepSize)` in distance units. Weighted Blended OIT has separate accumulation and revealage channels; for creative work, revealage can be visualized as remaining visibility and accumulation as stored light. PlayCanvas #9167's `bindMultisampled` route lets a later WebGPU shader `textureLoad(..., sampleIndex)` a multisampled color attachment, making pre-resolve sample variance usable as expressive data. Babylon #18807's camera presets are not only saved near/radius/viewpoint settings for large scenes; they are also camera cues and viewpoint sets for comparison.",
+      "links": [
+        {
+          "label": "three.js PR #34257",
+          "url": "https://github.com/mrdoob/three.js/pull/34257"
+        },
+        {
+          "label": "three.js PR #34253",
+          "url": "https://github.com/mrdoob/three.js/pull/34253"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18807",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18807"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続ウォッチは three.js #34235 PrefixSum、#34255 packed RGBA8、#34259 WebGPURenderer SunLight、#34239 shadow map compile allocation、PlayCanvas #9167 multisampled render target sampling、#9157 error-driven GSplat budget、Babylon.js #18807 Sandbox camera preset、#18806 single-file prefiltered cube container。新規に見る価値があるのは、OITPassNode の example / docs 化、GaussianSplatMesh の raycasting 追随、SunLight cascade atlas の WebGPU parity、camera preset が large scene debugging から presentation / inspection workflow へ広がるかどうか。",
+      "bodyEn": "Continue watching three.js #34235 PrefixSum, #34255 packed RGBA8, #34259 WebGPURenderer SunLight, #34239 shadow-map compile allocation, PlayCanvas #9167 multisampled render-target sampling, #9157 error-driven GSplat budget, Babylon.js #18807 Sandbox camera presets, and #18806 single-file prefiltered cube containers. Newly important follow-ups are OITPassNode examples/docs, GaussianSplatMesh raycasting, WebGPU parity for SunLight cascade atlases, and whether camera presets expand from large-scene debugging into presentation and inspection workflows.",
+      "links": [
+        {
+          "label": "three.js PR #34235",
+          "url": "https://github.com/mrdoob/three.js/pull/34235"
+        },
+        {
+          "label": "three.js PR #34259",
+          "url": "https://github.com/mrdoob/three.js/pull/34259"
+        },
+        {
+          "label": "Babylon.js PR #18806",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18806"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、raymarch の1歩ごとの距離を色や太さに反映する。実 OIT や WebGPU MSAA を組まなくても、fragment shader 内で stepSize、透明 ring、4 sample offset、camera bookmark を疑似化すれば、透明層と sample 履歴を鑑賞可能な画にできる。次に実装を進めるなら、three.js OITPassNode の accumulation/revealage texture、PlayCanvas の multisampled color buffer、Babylon Sandbox preset JSON を入力に差し替える。",
+      "bodyEn": "If trying one thing today, map raymarch step distance to color and thickness. Even without real OIT or WebGPU MSAA, a fragment shader can fake stepSize, transparent rings, four sample offsets, and camera bookmarks, turning transparent layers and sample history into a viewable image. The next implementation step is replacing the fake inputs with three.js OITPassNode accumulation/revealage textures, PlayCanvas multisampled color buffers, and Babylon Sandbox preset JSON.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34257/#34253/#34255/#34254/#34259/#34235、PlayCanvas #9167/#9175/#9174、Babylon.js #18807/#18806/#18803/#18804/#18802、Codrops WebGL tag を確認。アイデア検討: 継続案件は rendering internals as stage telemetry、quality budget、MRT/depth/IBL、MSAA resolve。新規案件は stepSize-based volume、OIT revealage layer、camera preset orbit、packed color memory aura。寝かせる案件は 3MF Beam Lattice loader、完全な engine 組み込み、実 WebGPU OIT/MSAA capture、Sandbox 実 UI 操作検証。サンプル実装: `outputs/2026-08-16_raymarch_oit_sample_orbit.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish を実施する。",
+      "bodyEn": "Research: checked three.js #34257/#34253/#34255/#34254/#34259/#34235, PlayCanvas #9167/#9175/#9174, Babylon.js #18807/#18806/#18803/#18804/#18802, and the Codrops WebGL tag. Ideation: continuing tracks are rendering internals as stage telemetry, quality budget, MRT/depth/IBL, and MSAA resolve. New tracks are stepSize-based volume, OIT revealage layers, camera preset orbits, and packed-color memory aura. Parked tracks are 3MF Beam Lattice loader, full engine integration, real WebGPU OIT/MSAA capture, and live Sandbox UI validation. Prototype: added `outputs/2026-08-16_raymarch_oit_sample_orbit.html`. Verification: run HTML parse, JSON parse, gallery build, and publish.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/8 以降の流れは resource lifetime、atlas、budget、error、view sheen、compressed arrival、MSAA/depth/sort、MRT/depth/IBL と来て、今日は step / transparency / sample / camera に広がった。傾向として、最近の PR は「出力画像をきれいにする」よりも、rendering state を細かいチャンネルに分解し、あとから選べるようにしている。組み合わせ候補は、OIT revealage を霧、MSAA sample を粒子の位相、camera preset を観客導線、packed splat color を記憶容量の光として扱うこと。育てる価値が高いテーマは、内部バッファをスコア化するだけでなく、視点の保存と sample 履歴を含めた「再演可能なレンダリング演出」にすること。",
+      "bodyEn": "Since 8/8 the thread has moved through resource lifetime, atlas, budget, error, view sheen, compressed arrival, MSAA/depth/sort, MRT/depth/IBL, and now step / transparency / sample / camera. The trend is that recent PRs do not merely make final pixels prettier; they split rendering state into finer selectable channels. Promising combinations are OIT revealage as fog, MSAA samples as particle phase, camera presets as audience routes, and packed splat color as memory light. The theme worth growing is not only scoring internal buffers, but making rendering performance repeatable through saved viewpoints and sample history.",
+      "links": [
+        {
+          "label": "2026-08-15 MRT Depth IBL Telemetry",
+          "url": "../outputs/2026-08-15_mrt_depth_ibl_telemetry.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「Raymarch OIT Sample Orbit Scope」。作成ファイルは `outputs/2026-08-16_raymarch_oit_sample_orbit.html`。raw WebGL fragment shader の単体 HTML で、1: raymarch stepSize volume、2: weighted blended OIT 風 accumulation/revealage ring、3: custom MSAA resolve 風 4 sample lane、4: Babylon Sandbox camera preset 風 orbit bookmark を表示する。操作は 1-4 で mode 切替、ドラッグで位相と視点、クリック/Space で pressure。次に足すなら、実 OIT の accumulation/revealage texture、PlayCanvas の multisampled color sample、Babylon の preset JSON、GaussianSplatMesh の bounds / packed color stats を uniform に入れる。",
+      "bodyEn": "The selected prototype is Raymarch OIT Sample Orbit Scope. The created file is `outputs/2026-08-16_raymarch_oit_sample_orbit.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows raymarch stepSize volume, mode 2 shows weighted blended OIT-style accumulation/revealage rings, mode 3 shows custom MSAA resolve-style four sample lanes, and mode 4 shows Babylon Sandbox camera-preset-like orbit bookmarks. Keys 1-4 switch modes, dragging controls phase and viewpoint, and click/Space injects pressure. Next additions are real OIT accumulation/revealage textures, PlayCanvas multisampled color samples, Babylon preset JSON, and GaussianSplatMesh bounds / packed-color stats as uniforms.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-16_raymarch_oit_sample_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "このサンプルの mode、pointer、pressure、stepSize、OIT ring、sample lane、camera bookmark を時系列で保存すると、鑑賞者がどの透明層や視点を選んだかを再演できる。音と組み合わせるなら、低域を stepSize / fog density、中域を OIT revealage、高域を MSAA sample sparkle に割り当てる。カメラや MediaPipe なら手の開閉を pressure、顔向きを camera preset orbit、視線を sample lane selection にできる。WebXR では左右眼で異なる revealage / sample lane を出し、視点 preset を空間内の waypoint として置ける。展示やブランド演出では、製品検査ログやサーバーメトリクスを透明層、sample variance、camera route に変換すると、システムの内部履歴を美しい軌道として見せられる。",
+      "bodyEn": "If the sample's mode, pointer, pressure, stepSize, OIT rings, sample lanes, and camera bookmarks are saved as time-series data, the visitor's chosen transparent layers and viewpoints can be replayed. With audio, lows can drive stepSize / fog density, mids can drive OIT revealage, and highs can drive MSAA sample sparkle. With camera or MediaPipe, hand openness can control pressure, face direction can steer camera preset orbits, and gaze can select sample lanes. In WebXR, each eye can receive different revealage / sample lanes, and presets can become spatial waypoints. For installations and brand experiences, product inspection logs or server metrics can be converted into transparent layers, sample variance, and camera routes, exposing internal system history as elegant orbits."
+    }
+  ]
+}

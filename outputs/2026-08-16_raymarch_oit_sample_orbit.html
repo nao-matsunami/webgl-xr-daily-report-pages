@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Raymarch OIT Sample Orbit Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #07090c;
+      color: #dce8ff;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      left: 18px;
+      top: 16px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(220, 232, 255, .76);
+      text-shadow: 0 1px 18px rgba(67, 228, 255, .22);
+    }
+    .hud b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .hud span {
+      opacity: .68;
+    }
+    .modes {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div><b>Raymarch OIT Sample Orbit</b><br><span>drag phase / click or space pressure</span></div>
+    <div class="modes"><b id="mode">mode 1</b><br><span>1 step / 2 oit / 3 msaa / 4 camera</span></div>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const modeLabel = document.getElementById("mode");
+    const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false });
+    if (!gl) document.body.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pressure;
+      uniform float mode;
+
+      mat2 rot(float a) {
+        float s = sin(a), c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float sdBox(vec3 p, vec3 b) {
+        vec3 q = abs(p) - b;
+        return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+      }
+
+      float mapField(vec3 p) {
+        p.xy *= rot(time * .12 + pointer.x * 1.7);
+        p.yz *= rot(pointer.y * 1.2);
+        float shell = length(p) - 1.05;
+        float lattice = sdBox(fract(p * 3.0 + .5) - .5, vec3(.035 + .015 * pressure));
+        float tunnel = abs(length(p.xy) - .58) - .035;
+        return min(max(shell, -tunnel), lattice);
+      }
+
+      vec3 palette(float t) {
+        vec3 a = vec3(.08, .12, .18);
+        vec3 b = vec3(.18, .72, .96);
+        vec3 c = vec3(.95, .30, .75);
+        vec3 d = vec3(1.00, .74, .22);
+        return mix(mix(a, b, smoothstep(.0, .52, t)), mix(c, d, smoothstep(.42, 1.0, t)), smoothstep(.22, .96, t));
+      }
+
+      vec3 raymarchLane(vec2 uv, vec3 ro, vec3 rd) {
+        float t = .05;
+        vec3 acc = vec3(0.0);
+        float alpha = 0.0;
+        for (int i = 0; i < 72; i++) {
+          vec3 p = ro + rd * t;
+          float d = mapField(p);
+          float stepSize = clamp(abs(d) * .62 + .012, .012, .09);
+          float density = exp(-18.0 * abs(d)) * stepSize * (1.2 + pressure);
+          vec3 col = palette(t * .34 + float(i) * .011 + pressure * .25);
+          acc += (1.0 - alpha) * col * density * 2.1;
+          alpha += (1.0 - alpha) * density * .55;
+          t += stepSize;
+          if (t > 5.0 || alpha > .96) break;
+        }
+        return acc;
+      }
+
+      vec3 oitLane(vec2 uv) {
+        vec3 accum = vec3(0.0);
+        float reveal = 1.0;
+        for (int i = 0; i < 9; i++) {
+          float fi = float(i);
+          vec2 q = uv;
+          q.x += sin(fi * 1.9 + time * .42) * .12;
+          q *= rot(fi * .31 + pointer.x);
+          float band = exp(-16.0 * abs(length(q) - (.22 + fi * .075)));
+          float alpha = clamp(band * (.16 + .035 * fi) * (1.0 + pressure * .45), 0.0, .75);
+          float weight = alpha * (1.0 + fi * .35);
+          accum += palette(fi / 8.0 + pressure * .18) * weight;
+          reveal *= 1.0 - alpha * .62;
+        }
+        vec3 resolved = accum / max(.001, 3.4 - reveal * 2.2);
+        return resolved + vec3(.04, .10, .13) * (1.0 - reveal);
+      }
+
+      vec3 msaaLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        vec2 offsets[4];
+        offsets[0] = vec2(-.35, -.18);
+        offsets[1] = vec2(.24, -.32);
+        offsets[2] = vec2(-.18, .31);
+        offsets[3] = vec2(.33, .22);
+        for (int i = 0; i < 4; i++) {
+          vec2 q = uv + offsets[i] / resolution.y * (14.0 + pressure * 30.0);
+          float lane = exp(-28.0 * abs(q.y - sin(q.x * 5.0 + time + float(i)) * .08));
+          float sparkle = smoothstep(.82, 1.0, hash(floor((q + float(i)) * 28.0 + time)));
+          col += palette(float(i) / 3.0) * (lane + sparkle * .18);
+        }
+        float grid = smoothstep(.018, .0, abs(fract((uv.x + uv.y + time * .08) * 8.0) - .5));
+        return col * .42 + grid * vec3(.15, .36, .42);
+      }
+
+      vec3 cameraLane(vec2 uv) {
+        vec3 col = vec3(.01, .02, .035);
+        for (int i = 0; i < 6; i++) {
+          float fi = float(i);
+          float a = fi * 1.047 + time * (.16 + .02 * fi);
+          vec2 c = vec2(cos(a), sin(a * .83)) * (.24 + .07 * fi);
+          float r = length(uv - c);
+          float bookmark = exp(-34.0 * r);
+          float orbit = exp(-90.0 * abs(r - (.07 + .012 * fi)));
+          col += palette(fi / 5.0 + pointer.x * .2) * (bookmark * 1.1 + orbit * .35);
+        }
+        float nearPlane = smoothstep(.012, .0, abs(uv.y + .42 + sin(time + pointer.y) * .045));
+        float radiusGate = smoothstep(.02, .0, abs(length(uv) - (.72 + pressure * .12)));
+        return col + nearPlane * vec3(.9, .58, .2) + radiusGate * vec3(.15, .65, 1.0);
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / resolution.y;
+        vec2 p = pointer * 2.0 - 1.0;
+        vec3 ro = vec3(0.0, 0.0, 2.85);
+        vec3 rd = normalize(vec3(uv, -1.75));
+        ro.xz *= rot(p.x * .6 + time * .08);
+        rd.xz *= rot(p.x * .6 + time * .08);
+        ro.yz *= rot(p.y * .34);
+        rd.yz *= rot(p.y * .34);
+
+        vec3 base = raymarchLane(uv, ro, rd);
+        vec3 layer = base;
+        if (mode > 1.5 && mode < 2.5) layer = oitLane(uv);
+        if (mode > 2.5 && mode < 3.5) layer = msaaLane(uv);
+        if (mode > 3.5) layer = cameraLane(uv);
+
+        vec3 hybrid = base * .38 + oitLane(uv) * .24 + msaaLane(uv) * .18 + cameraLane(uv) * .20;
+        vec3 col = mix(hybrid, layer, .72);
+        float vignette = smoothstep(1.35, .15, length(uv));
+        float scan = .94 + .06 * sin(gl_FragCoord.y * 1.7 + time * 8.0);
+        col *= vignette * scan;
+        col += pow(max(0.0, 1.0 - length(uv)), 5.0) * vec3(.08, .16, .22);
+        gl_FragColor = vec4(pow(col, vec3(.82)), 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pressure: gl.getUniformLocation(program, "pressure"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    let pointer = [0.58, 0.44];
+    let targetPressure = 0;
+    let pressureValue = 0;
+    let mode = 1;
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      pointer = [event.clientX / innerWidth, 1 - event.clientY / innerHeight];
+    }
+
+    addEventListener("pointermove", setPointer);
+    addEventListener("pointerdown", (event) => { setPointer(event); targetPressure = 1; });
+    addEventListener("pointerup", () => { targetPressure = 0; });
+    addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") {
+        mode = Number(event.key);
+        modeLabel.textContent = "mode " + mode;
+      }
+      if (event.code === "Space") targetPressure = 1;
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space") targetPressure = 0;
+    });
+
+    function frame(ms) {
+      resize();
+      pressureValue += (targetPressure - pressureValue) * 0.08;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.time, ms * 0.001);
+      gl.uniform1f(uniforms.pressure, pressureValue);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
