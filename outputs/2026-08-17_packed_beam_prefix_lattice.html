@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Packed Beam Prefix Lattice</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #05070a;
+      color: #d9f6ff;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 16px 18px auto 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(217, 246, 255, .74);
+      text-shadow: 0 1px 18px rgba(48, 214, 255, .24);
+    }
+    .hud b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .hud span {
+      opacity: .68;
+    }
+    .modes {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div><b>Packed Beam Prefix Lattice</b><br><span>drag orbit / click or space pulse</span></div>
+    <div class="modes"><b id="mode">mode 1</b><br><span>1 packed / 2 beam / 3 prefix / 4 orbit</span></div>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const modeLabel = document.getElementById("mode");
+    const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false });
+    if (!gl) document.body.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pulse;
+      uniform float mode;
+
+      mat2 rot(float a) {
+        float s = sin(a), c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      vec4 pack4x8(vec2 cell) {
+        vec4 lanes = fract(vec4(cell.x, cell.y, cell.x + cell.y, cell.x * 1.7 - cell.y) * vec4(.071, .113, .037, .053) + time * vec4(.03, .021, .047, .011));
+        lanes = floor(lanes * 16.0) / 15.0;
+        return lanes;
+      }
+
+      vec3 palette(float t) {
+        vec3 a = vec3(.02, .05, .09);
+        vec3 b = vec3(.06, .62, .92);
+        vec3 c = vec3(.95, .18, .58);
+        vec3 d = vec3(.98, .80, .25);
+        return mix(mix(a, b, smoothstep(.05, .50, t)), mix(c, d, smoothstep(.48, 1.0, t)), smoothstep(.20, .92, t));
+      }
+
+      float beam(vec2 p, vec2 a, vec2 b, float width) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        return exp(-width * length(pa - ba * h));
+      }
+
+      vec3 packedLane(vec2 uv) {
+        vec2 grid = floor((uv + 1.0) * vec2(11.0, 7.0));
+        vec2 local = fract((uv + 1.0) * vec2(11.0, 7.0)) - .5;
+        vec4 lanes = pack4x8(grid);
+        float box = smoothstep(.48, .40, max(abs(local.x), abs(local.y)));
+        float cross = exp(-38.0 * min(abs(local.x), abs(local.y)));
+        vec3 col = palette(lanes.x) * box * .55;
+        col += vec3(lanes.y, lanes.z, lanes.w) * cross * (.26 + pulse * .55);
+        col += palette(dot(lanes, vec4(.25))) * exp(-22.0 * length(local)) * .25;
+        return col;
+      }
+
+      vec3 beamLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        for (int i = 0; i < 18; i++) {
+          float fi = float(i);
+          float a = fi * 2.399 + time * (.08 + .002 * fi);
+          float b = fi * 1.137 - time * .10;
+          vec2 p0 = vec2(cos(a), sin(a * .73)) * (.18 + .034 * fi);
+          vec2 p1 = vec2(cos(b), sin(b * 1.19)) * (.80 - .022 * fi);
+          float tube = beam(uv, p0, p1, 42.0 - pulse * 15.0);
+          float joint = exp(-34.0 * length(uv - p0)) + exp(-34.0 * length(uv - p1));
+          col += palette(fract(fi * .071 + pulse * .20)) * (tube * .32 + joint * .13);
+        }
+        return col;
+      }
+
+      vec3 prefixLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        for (int i = 0; i < 20; i++) {
+          float fi = float(i);
+          float x = -1.05 + fi * .11;
+          float h = .18 + .52 * smoothstep(.0, 1.0, fract(fi * .173 + sin(time * .22 + fi) * .07 + pointer.x * .18));
+          float bar = smoothstep(.035, .0, abs(uv.x - x)) * smoothstep(-.74, -.70, uv.y) * smoothstep(h, h - .035, uv.y + .72);
+          float scan = exp(-22.0 * abs(uv.y + .70 - h * fract(time * .18 + fi * .031 + pulse * .2)));
+          col += palette(fi / 19.0) * (bar * .56 + bar * scan * .75);
+        }
+        float sweep = exp(-18.0 * abs(uv.x - (fract(time * .18 + pointer.x * .25) * 2.2 - 1.1)));
+        return col + sweep * vec3(.18, .54, .70) * smoothstep(-.85, .78, uv.y);
+      }
+
+      vec3 orbitLane(vec2 uv) {
+        vec3 col = vec3(.01, .015, .028);
+        for (int i = 0; i < 8; i++) {
+          float fi = float(i);
+          float a = fi * .785 + time * .13 + pointer.x * 1.4;
+          vec2 c = vec2(cos(a), sin(a + pointer.y)) * (.18 + .07 * fi);
+          float dotp = exp(-40.0 * length(uv - c));
+          float ring = exp(-95.0 * abs(length(uv - c) - (.045 + .009 * fi)));
+          col += palette(fi / 7.0) * (dotp + ring * .42);
+        }
+        float gate = exp(-65.0 * abs(length(uv) - (.72 + pulse * .12)));
+        return col + gate * vec3(.12, .45, .75);
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / resolution.y;
+        uv *= rot((pointer.x - .5) * .38);
+        uv.y += (pointer.y - .5) * .16;
+
+        vec3 hybrid = packedLane(uv) * .30 + beamLane(uv) * .30 + prefixLane(uv) * .22 + orbitLane(uv) * .18;
+        vec3 layer = packedLane(uv);
+        if (mode > 1.5 && mode < 2.5) layer = beamLane(uv);
+        if (mode > 2.5 && mode < 3.5) layer = prefixLane(uv);
+        if (mode > 3.5) layer = orbitLane(uv);
+
+        vec3 col = mix(hybrid, layer, .70);
+        float vignette = smoothstep(1.38, .12, length(uv));
+        float scan = .94 + .06 * sin(gl_FragCoord.y * 1.45 + time * 7.0);
+        col *= vignette * scan;
+        col += pow(max(0.0, 1.0 - length(uv)), 4.0) * vec3(.04, .12, .16);
+        gl_FragColor = vec4(pow(col, vec3(.84)), 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pulse: gl.getUniformLocation(program, "pulse"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [0.5, 0.5],
+      pulse: 0,
+      mode: 1,
+      start: performance.now()
+    };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = (event.clientX - rect.left) / rect.width;
+      state.pointer[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    addEventListener("pointermove", setPointer);
+    addEventListener("pointerdown", (event) => {
+      setPointer(event);
+      state.pulse = 1;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") {
+        state.mode = Number(event.key);
+        modeLabel.textContent = `mode ${state.mode}`;
+      }
+      if (event.code === "Space") state.pulse = 1;
+    });
+
+    function frame(now) {
+      resize();
+      state.pulse *= 0.94;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.time, (now - state.start) / 1000);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

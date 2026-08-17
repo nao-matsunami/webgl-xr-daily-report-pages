@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4x8 packing、Beam Lattice、PrefixSumを可視化の骨格にする | 2026-08-17</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.17</p>
+      <h1>4x8 packing、Beam Lattice、PrefixSumを可視化の骨格にする</h1>
+      <p class="hero-subtitle">Turning 4x8 packing, Beam Lattice, and PrefixSum into a visualization skeleton</p>
+      <p>three.js の TSL 4x8 pack/unpack、3MF Beam Lattice、GaussianSplatMesh PrefixSum 継続、TrackballControls multi-touch rotate を、前日の step / transparency / sample / camera orbit から「圧縮されたレンダリング情報が格子・梁・累積分布として立ち上がる」方向へ接続した。</p>
+      <p class="en-copy">Today connects three.js TSL 4x8 pack/unpack, 3MF Beam Lattice, the ongoing GaussianSplatMesh PrefixSum work, and TrackballControls multi-touch rotate to yesterday's step / transparency / sample / camera orbit theme by treating compact rendering data as lattices, beams, and cumulative distributions.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-17_packed_beam_prefix_lattice.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-16.html">← 2026.08.16</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Packed Beam Prefix Lattice</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-17_packed_beam_prefix_lattice.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34263 は TSL に `4x8` pack/unpack 関数を追加。RGBA8 や 4 lane の小さな状態を shader node の中で扱いやすくし、昨日の GaussianSplatMesh packed color の流れをより一般的な「小さい値の束」へ広げる。2. three.js PR #34267 は 3MFLoader に Beam Lattice の基本対応を追加。3D プリント由来の梁・節点構造を Web 表現の線骨格として読み込める可能性が出た。3. three.js PR #34235 は GaussianSplatMesh の CountingSort 向け PrefixSum 実装が更新され続けており、高い binCount での sort / histogram / offset を表現データとして見る価値が高い。4. TrackballControls の multi-touch rotate #34249 は、大規模 splat や lattice をタッチで回す鑑賞体験の入力面を補強する。5. PlayCanvas は v2.21.4 と #9167 multisampled render target sampling が継続、Babylon.js は Sandbox camera preset #18807 が継続で、sample / camera / preset を後段の演出入力にする流れはまだ強い。</p>
+          <p class="en-copy">1. three.js PR #34263 adds `4x8` pack/unpack functions to TSL, making RGBA8-like or four-lane compact state easier to handle inside shader nodes and extending yesterday's GaussianSplatMesh packed-color thread into a general bundle of small values. 2. three.js PR #34267 adds basic Beam Lattice support to 3MFLoader, opening a path for 3D-print-derived beam and node structures to become line skeletons for web visuals. 3. three.js PR #34235 continues to update a PrefixSum implementation for GaussianSplatMesh CountingSort, making high-bin-count sort / histogram / offset data worth treating as visual material. 4. TrackballControls multi-touch rotate #34249 strengthens the input side for touch-based inspection of large splats and lattices. 5. PlayCanvas v2.21.4 and #9167 multisampled render-target sampling continue, while Babylon.js Sandbox camera presets #18807 remain active, keeping sample / camera / preset state relevant as downstream performance input.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34263" target="_blank" rel="noreferrer">three.js PR #34263</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34267" target="_blank" rel="noreferrer">three.js PR #34267</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js PR #34235</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.4" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.4</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18807" target="_blank" rel="noreferrer">Babylon.js PR #18807</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>今日の注目は 4x8 packing と Beam Lattice の組み合わせ。packing は色や小さな状態を 4 lane に圧縮する技術、Beam Lattice は点と梁で空間構造を作る技術なので、両者を合わせると「圧縮された情報が骨格として見える」演出にできる。Codrops の WebGL Creative Hub では Three.js の grid、scroll path、WebGPU transition など、構造や軌道を前面に出す事例が多い。そこに engine 内部の pack / prefix / sort のような低レベル状態を載せると、単なる抽象背景ではなく、データが組み上がっていく舞台装置になる。</p>
+          <p class="en-copy">The notable combination today is 4x8 packing with Beam Lattice. Packing compresses color and small state into four lanes; Beam Lattice turns points and beams into spatial structure. Together, compressed information can become a visible skeleton. The Codrops WebGL Creative Hub has many Three.js examples foregrounding grids, scroll paths, and WebGPU transitions. Adding low-level engine state such as pack / prefix / sort makes the result less like a generic abstract background and more like a stage where data assembles itself.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/hub/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL Creative Hub</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/3d-wave-grid/" target="_blank" rel="noreferrer">Codrops 3D Wave Grid</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>短期案は「Packed Beam Prefix Lattice」。画面を小さな pack cell に分け、各 cell の 4 lane を色、発光、梁の太さ、bin の高さに割り当てる。Beam Lattice は節点と梁のネットワークとして表示し、PrefixSum は下部の累積 bar と scan sweep として出す。1-4 キーで packed / beam / prefix / orbit を切り替え、drag で orbit、click / Space で pulse。中長期では実 3MF Beam Lattice を読み込み、GaussianSplatMesh の sort bin、PlayCanvas MSAA sample variance、Babylon camera preset を同じ lattice の属性にする。</p>
+          <p class="en-copy">The short-term idea is Packed Beam Prefix Lattice. Split the screen into compact pack cells and map each cell's four lanes to color, glow, beam thickness, and bin height. Beam Lattice appears as a node-and-beam network; PrefixSum becomes cumulative bars and a scan sweep. Keys 1-4 switch packed / beam / prefix / orbit, dragging controls orbit, and click / Space injects a pulse. Longer term, real 3MF Beam Lattice data, GaussianSplatMesh sort bins, PlayCanvas MSAA sample variance, and Babylon camera presets should become attributes on the same lattice.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>`4x8` pack/unpack は、4 つの 0-255 相当の値を 1 つの扱いやすい単位に寄せる考え方として使える。WebGL だけで試す場合も、`floor(value * 16.0) / 15.0` のような粗い量子化で「byte lane らしさ」は再現できる。Beam Lattice は mesh surface ではなく graph として考えると扱いやすく、node は pulse、edge は beam、edge weight は thickness / emission に割り当てられる。PrefixSum は histogram の累積なので、rendering の内部処理であると同時に、鑑賞者が選んだ密度や視点の履歴を bar / sweep / contour で見せる UI 以外の可視化にもなる。multi-touch rotate はスマホでの「両指で構造をひねる」演出に直結する。</p>
+          <p class="en-copy">`4x8` pack/unpack can be treated as a way to move four 0-255-like values as one convenient unit. Even in plain WebGL, coarse quantization such as `floor(value * 16.0) / 15.0` recreates the feel of byte lanes. Beam Lattice is easier to use as a graph than as a surface: nodes become pulses, edges become beams, and edge weights become thickness / emission. PrefixSum is cumulative histogram data, so it is both an internal rendering step and a non-UI visualization of density or viewpoint history through bars, sweeps, and contours. Multi-touch rotate directly suggests a mobile gesture where two fingers twist the structure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34263" target="_blank" rel="noreferrer">three.js PR #34263</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34267" target="_blank" rel="noreferrer">three.js PR #34267</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34249" target="_blank" rel="noreferrer">three.js PR #34249</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続ウォッチは three.js r186 milestone、#34235 PrefixSum、#34259 WebGPURenderer SunLight、#34239 shadow map compile allocation、#34263 4x8 pack/unpack の利用先、#34267 Beam Lattice の example 化、PlayCanvas #9167 multisampled render target sampling、#9175 Gaussian splats scene depth、Babylon.js #18807 Sandbox camera preset、#18806 single-file prefiltered cube container。新規では、Beam Lattice が 3MF から three.js example / editor / WebGPU 表現へ広がるか、4x8 packing が splat / postprocess / material node のどこに入るかを見る。</p>
+          <p class="en-copy">Continue watching the three.js r186 milestone, #34235 PrefixSum, #34259 WebGPURenderer SunLight, #34239 shadow-map compile allocation, where #34263 4x8 pack/unpack is used, whether #34267 Beam Lattice gains examples, PlayCanvas #9167 multisampled render-target sampling, #9175 Gaussian splats scene depth, Babylon.js #18807 Sandbox camera presets, and #18806 single-file prefiltered cube containers. Newly, watch whether Beam Lattice moves from 3MF loading into three.js examples / editor / WebGPU visuals, and where 4x8 packing enters splats, postprocess, or material nodes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/99" target="_blank" rel="noreferrer">three.js r186 milestone</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9175" target="_blank" rel="noreferrer">PlayCanvas PR #9175</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18806" target="_blank" rel="noreferrer">Babylon.js PR #18806</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、4 lane の値を shader 内で疑似 pack し、それを梁の色・太さ・発光・bin 高さに展開する。実 3MF や TSL を使わなくても、fragment shader だけで pack cell、beam network、prefix histogram を同時に描ける。次に実装を進めるなら、3MF Beam Lattice の node/edge、GaussianSplatMesh の bin offset、PlayCanvas の sampleIndex 別 variance、Babylon camera preset の waypoint を同じ JSON schema にする。</p>
+          <p class="en-copy">If trying one thing today, fake four-lane packed values in a shader and expand them into beam color, thickness, emission, and bin height. Even without real 3MF or TSL, a fragment shader can draw pack cells, a beam network, and a prefix histogram together. The next implementation step is one JSON schema that holds 3MF Beam Lattice nodes/edges, GaussianSplatMesh bin offsets, PlayCanvas per-sample variance, and Babylon camera-preset waypoints.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34263/#34267/#34235/#34249/#34259、PlayCanvas v2.21.4/#9167/#9175、Babylon.js #18807/#18806、Codrops WebGL Creative Hub を確認。アイデア検討: 継続案件は rendering internals as stage telemetry、quality budget、sample/camera orbit、packed color memory aura。新規案件は byte lane lattice、3MF Beam Lattice graph、PrefixSum histogram choreography、multi-touch structural twist。寝かせる案件は実 3MF asset import、実 TSL node 化、WebGPU storage buffer の可視化、Babylon Sandbox UI の実操作検証。サンプル実装: `outputs/2026-08-17_packed_beam_prefix_lattice.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish を実施する。</p>
+          <p class="en-copy">Research: checked three.js #34263/#34267/#34235/#34249/#34259, PlayCanvas v2.21.4/#9167/#9175, Babylon.js #18807/#18806, and the Codrops WebGL Creative Hub. Ideation: continuing tracks are rendering internals as stage telemetry, quality budget, sample/camera orbit, and packed-color memory aura. New tracks are byte-lane lattices, 3MF Beam Lattice graphs, PrefixSum histogram choreography, and multi-touch structural twisting. Parked tracks are real 3MF asset import, real TSL node integration, WebGPU storage-buffer visualization, and live Babylon Sandbox UI validation. Prototype: added `outputs/2026-08-17_packed_beam_prefix_lattice.html`. Verification: run HTML parse, JSON parse, gallery build, and publish.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>8/10 以降の流れは checker budget、error-driven LOD、view-dependent sheen、compressed arrival、MSAA/depth/sort、MRT/depth/IBL、raymarch/OIT/sample/camera、そして今日の packed/beam/prefix へ進んだ。傾向として、最近の実装は final pixel よりも、その手前の表現単位を細かく分解している。組み合わせ候補は、4x8 pack を色と状態、Beam Lattice を空間骨格、PrefixSum を密度履歴、camera preset を演出ルートとして同じ作品に載せること。育てる価値が高いテーマは「圧縮・累積・梁構造」を見せることで、巨大な splat / scene / asset がブラウザ内で組み上がる過程そのものを作品化する方向。</p>
+          <p class="en-copy">Since 8/10 the thread has moved through checker budget, error-driven LOD, view-dependent sheen, compressed arrival, MSAA/depth/sort, MRT/depth/IBL, raymarch/OIT/sample/camera, and now packed/beam/prefix. The trend is that recent implementations split the stages before final pixels into finer expressive units. A strong combination is 4x8 pack as color and state, Beam Lattice as spatial skeleton, PrefixSum as density history, and camera presets as performance routes. The theme worth growing is showing compression, accumulation, and beam structure so the process of a huge splat / scene / asset assembling in the browser becomes the work itself.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-16_raymarch_oit_sample_orbit.html" target="_blank" rel="noreferrer">2026-08-16 sample</a></li>
+          
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Packed Beam Prefix Lattice」。作成ファイルは `outputs/2026-08-17_packed_beam_prefix_lattice.html`。raw WebGL fragment shader の単体 HTML で、1: 4x8 pack 風 cell、2: Beam Lattice 風 node/edge network、3: PrefixSum 風 histogram sweep、4: camera/preset orbit 風 waypoint を表示する。操作は 1-4 で mode 切替、drag で orbit、click/Space で pulse。次に足すなら、実 3MF Beam Lattice の node/edge、three.js TSL pack/unpack の実装、GaussianSplatMesh sort bin、PlayCanvas MSAA sample variance を uniform / texture 入力に差し替える。</p>
+          <p class="en-copy">The selected prototype is Packed Beam Prefix Lattice. The created file is `outputs/2026-08-17_packed_beam_prefix_lattice.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows 4x8-pack-like cells, mode 2 shows a Beam-Lattice-like node/edge network, mode 3 shows a PrefixSum-like histogram sweep, and mode 4 shows camera/preset-orbit-like waypoints. Keys 1-4 switch modes, dragging controls orbit, and click/Space injects a pulse. Next additions are real 3MF Beam Lattice nodes/edges, actual three.js TSL pack/unpack logic, GaussianSplatMesh sort bins, and PlayCanvas MSAA sample variance as uniform / texture inputs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>このサンプルの mode、pointer、pulse、pack lane、beam node、prefix bar、orbit waypoint を時系列で保存すると、鑑賞者がどの圧縮状態や骨格を選んだかを再演できる。音と組み合わせるなら、低域を beam thickness、中域を prefix sweep、高域を pack lane sparkle に割り当てる。カメラや MediaPipe なら、手の開閉を pulse、両手の角度を lattice twist、顔向きを orbit waypoint にできる。WebXR では Beam Lattice の節点を空間内に置き、片目に packed state、もう片目に prefix / sort heat を重ねると、検査と鑑賞の中間になる。展示やブランド演出では、製品の工程ログ、ネットワーク経路、AI 推論 token、splat sort bin を梁構造として表示し、内部処理が積み上がる様子を見せられる。</p>
+          <p class="en-copy">If the sample's mode, pointer, pulse, pack lanes, beam nodes, prefix bars, and orbit waypoints are saved as time-series data, the visitor's chosen compressed state and skeleton can be replayed. With audio, lows can drive beam thickness, mids can drive prefix sweeps, and highs can drive pack-lane sparkle. With camera or MediaPipe, hand openness can control pulse, two-hand angle can twist the lattice, and face direction can choose orbit waypoints. In WebXR, Beam Lattice nodes can be placed in space, with one eye seeing packed state and the other seeing prefix / sort heat, sitting between inspection and performance. For installations and brand experiences, production logs, network routes, AI inference tokens, or splat sort bins can appear as beam structures, showing internal processing as a visible accumulation.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34263" target="_blank" rel="noreferrer">three.js PR #34263 TSL: Add 4x8 pack/unpack functions</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34267" target="_blank" rel="noreferrer">three.js PR #34267 3MFLoader: Basic support of Beam Lattice</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js PR #34235 Counting Sort: Alternate PrefixSum implementation</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34249" target="_blank" rel="noreferrer">three.js PR #34249 TrackballControls: multi-touch rotate</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.21.4" target="_blank" rel="noreferrer">PlayCanvas Engine v2.21.4</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18807" target="_blank" rel="noreferrer">Babylon.js PR #18807 Add camera presets to the Sandbox</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-08-17_packed_beam_prefix_lattice.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-17_packed_beam_prefix_lattice.html" loading="lazy" title="Packed Beam Prefix Lattice"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
