@@ -1,0 +1,201 @@
+{
+  "date": "2026-08-18",
+  "headline": "XR の shared uniform、FrustumArray、depth debug を演出状態として見る",
+  "headlineEn": "Treating XR shared uniforms, FrustumArray, and depth debug as expressive state",
+  "summary": "three.js の WebGPURenderer shared uniform buffer 更新、WebGLRenderer FrustumArray、OIT/PLY Gaussian Splat 継続、PlayCanvas の CameraFrame scene depth debug と sRGB/animation path 修正、Babylon.js の Sandbox camera preset と Native IBL 修正を、昨日の packed / beam / prefix から「カメラ行列、視錐台、深度、IBL の整合性が作品のリズムになる」方向へ接続した。",
+  "summaryEn": "Today connects three.js WebGPURenderer shared uniform-buffer refresh, WebGLRenderer FrustumArray, continued OIT/PLY Gaussian Splat work, PlayCanvas CameraFrame scene-depth debug plus sRGB/animation-path fixes, and Babylon.js Sandbox camera presets plus Native IBL fixes to yesterday's packed / beam / prefix thread by treating camera matrices, frusta, depth, and IBL consistency as the rhythm of the piece.",
+  "links": [
+    {
+      "label": "three.js PR #34283 WebGPURenderer: Refresh shared uniform buffers",
+      "url": "https://github.com/mrdoob/three.js/pull/34283"
+    },
+    {
+      "label": "three.js PR #34275 WebGLRenderer: Support FrustumArray",
+      "url": "https://github.com/mrdoob/three.js/pull/34275"
+    },
+    {
+      "label": "three.js PR #34278 PLYGaussianSplatLoader",
+      "url": "https://github.com/mrdoob/three.js/pull/34278"
+    },
+    {
+      "label": "PlayCanvas PR #9182 CameraFrame scene depth debug",
+      "url": "https://github.com/playcanvas/engine/pull/9182"
+    },
+    {
+      "label": "PlayCanvas PR #9180 Load color textures with srgb:true across examples",
+      "url": "https://github.com/playcanvas/engine/pull/9180"
+    },
+    {
+      "label": "PlayCanvas PR #9187 AnimComponentBinder entity name guard",
+      "url": "https://github.com/playcanvas/engine/pull/9187"
+    },
+    {
+      "label": "Babylon.js PR #18807 Add camera presets to the Sandbox",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18807"
+    },
+    {
+      "label": "Babylon.js PR #18809 Fix IBL correctness on Native",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18809"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34283 は WebXR camera matrix array に使われる shared NodeUniformBuffer の更新漏れを直す提案。XR セッションは進んでいるのに描画だけ凍る、という状態を camera/uniform の同期問題として捉えられる。2. three.js PR #34275 は WebGLRenderer に FrustumArray 対応を入れる提案で、複数 frustum をひとつの視覚装置として扱う方向に接続できる。3. three.js PR #34278 は Gaussian splat PLY 専用 loader が merged 済みで、昨日までの packed splat / prefix / bounds の入力形式が増える。4. PlayCanvas PR #9182 は CameraFrame debug rendering に scene depth mode を追加、#9180 は examples 全体の color texture sRGB 指定を揃える提案。深度と色空間を「見せる QA」として使いやすい。5. Babylon.js PR #18807 の Sandbox camera preset は継続、PR #18809 は Native の IBL correctness 修正で、camera preset と lighting consistency を同じ検証演出に載せられる。",
+      "bodyEn": "1. three.js PR #34283 proposes fixing missed updates for shared NodeUniformBuffer bindings used by WebXR camera matrix arrays. It frames the case where an XR session keeps running but rendering freezes as a camera/uniform synchronization problem. 2. three.js PR #34275 proposes FrustumArray support in WebGLRenderer, making multiple frusta usable as one visual instrument. 3. three.js PR #34278 merged a dedicated Gaussian-splat PLY loader, adding another input format to the packed splat / prefix / bounds thread. 4. PlayCanvas PR #9182 adds a scene-depth mode to CameraFrame debug rendering, while #9180 aligns color textures with srgb:true across examples, making depth and color space easier to use as visible QA. 5. Babylon.js PR #18807 camera presets continue, and PR #18809 addresses Native IBL correctness, so camera presets and lighting consistency can share one validation performance.",
+      "links": [
+        {
+          "label": "three.js PR #34283",
+          "url": "https://github.com/mrdoob/three.js/pull/34283"
+        },
+        {
+          "label": "three.js PR #34275",
+          "url": "https://github.com/mrdoob/three.js/pull/34275"
+        },
+        {
+          "label": "PlayCanvas PR #9182",
+          "url": "https://github.com/playcanvas/engine/pull/9182"
+        },
+        {
+          "label": "Babylon.js PR #18809",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18809"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "今日の注目は engine 内部の「同期が取れているか」をそのまま演出状態にすること。WebXR camera matrix、FrustumArray、scene depth、IBL Y-flip は普通ならバグ修正や QA の対象だが、表現側から見ると、両眼の行列が揃う瞬間、複数視錐台が重なる瞬間、深度 contour が立ち上がる瞬間、環境光の上下反転が戻る瞬間がそれぞれ時間表現になる。Codrops では 8/15 の HAOQI.DESIGN 記事が DOM/CSS/WebGL の同居、8/17 の OFF+BRAND 記事が大きな Web canvas 上の storytelling を扱っており、低レベル状態を表に出す方向と相性が良い。",
+      "bodyEn": "The notable angle today is turning internal synchronization into expressive state. WebXR camera matrices, FrustumArray, scene depth, and IBL Y-flip are usually QA or bug-fix concerns, but creatively they become moments: stereo matrices locking, multiple frusta overlapping, depth contours emerging, and environment lighting flipping back into correctness. Codrops' Aug 15 HAOQI.DESIGN article covers DOM/CSS/WebGL sharing a stage, and the Aug 17 OFF+BRAND article discusses storytelling on large web canvases, both matching the idea of surfacing low-level state.",
+      "links": [
+        {
+          "label": "Inside HAOQI.DESIGN",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        },
+        {
+          "label": "OFF+BRAND. Story",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "短期案は「XR Uniform Frustum Depth Scope」。左右の eye matrix を水平の uniform lane として表示し、同期が外れると赤く漂い、クリックや Space で再同期 pulse が走る。FrustumArray は複数の視錐台を扇状の beam にし、scene depth debug は奥行き contour と fog、IBL correctness は上下反転する環境光 band として扱う。昨日の pack lane / beam / prefix から、今日は matrix lane / frustum beam / depth contour へ語彙を拡張する。",
+      "bodyEn": "The short-term idea is XR Uniform Frustum Depth Scope. Left and right eye matrices appear as horizontal uniform lanes; when synchronization drifts they turn red and float, and click or Space sends a resync pulse. FrustumArray becomes fan-shaped frustum beams, scene-depth debug becomes depth contours and fog, and IBL correctness becomes vertically flipping lighting bands. Yesterday's pack lane / beam / prefix vocabulary expands into matrix lane / frustum beam / depth contour.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "WebXR の camera matrix array は、フレームごとに正しく GPU 側へ更新されて初めて両眼の描画が生きる。実装時は render object の再構築に頼らず、shared uniform buffer の dirty/update 経路を見える化するとデバッグにも演出にも使える。FrustumArray は複数 camera / cascade / multiview をひとつの配列として見せる発想と相性が良い。scene depth debug は postprocess の fog、outline、particle occlusion の元データになる。sRGB 指定と IBL Y-flip は色の正しさだけでなく、WebGL/WebGPU/Native 間で「同じ絵に戻る」確認用の visual checksum として使える。",
+      "bodyEn": "WebXR camera matrix arrays only keep stereo rendering alive when GPU-side data is refreshed every frame. In implementation, visualizing the shared uniform-buffer dirty/update path, instead of relying on full render-object rebuilds, helps both debugging and expression. FrustumArray maps well to showing multiple cameras, cascades, or multiview frusta as one array. Scene-depth debug feeds fog, outlines, and particle occlusion. sRGB flags and IBL Y-flip are not only about color correctness; they can act as visual checksums that confirm WebGL, WebGPU, and Native are converging on the same image.",
+      "links": [
+        {
+          "label": "three.js PR #34283",
+          "url": "https://github.com/mrdoob/three.js/pull/34283"
+        },
+        {
+          "label": "PlayCanvas PR #9180",
+          "url": "https://github.com/playcanvas/engine/pull/9180"
+        },
+        {
+          "label": "Babylon.js PR #18809",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18809"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続ウォッチは three.js #34283 shared uniform buffer、#34275 FrustumArray、#34235 PrefixSum、#34274 OIT MSAA、#34278 PLYGaussianSplatLoader の example/loader 周辺、PlayCanvas #9167 multisampled render target sampling、#9180 sRGB examples、#9182 scene depth debug、#9187 animation path guard、Babylon.js #18807 Sandbox camera preset、#18806 single-file prefiltered cube container、#18809 Native IBL correctness。新規では、XR / multiview の matrix 更新と scene depth debug を同じ live overlay で見せる方法を探る。",
+      "bodyEn": "Continue watching three.js #34283 shared uniform buffers, #34275 FrustumArray, #34235 PrefixSum, #34274 OIT MSAA, the example/loader implications around #34278 PLYGaussianSplatLoader, PlayCanvas #9167 multisampled render-target sampling, #9180 sRGB examples, #9182 scene-depth debug, #9187 animation path guards, Babylon.js #18807 Sandbox camera presets, #18806 single-file prefiltered cube containers, and #18809 Native IBL correctness. Newly, explore one live overlay that shows XR / multiview matrix refresh and scene-depth debug together.",
+      "links": [
+        {
+          "label": "three.js r186 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/99"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18806",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18806"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、XR camera matrix の更新状態を 2 本の eye lane として描き、同期ズレを drift、再同期を pulse として見せる。実 XR なしでも、uniform 更新の概念を可視化できる。次に実装を進めるなら、WebXR session の pose matrix、multiview/frustum index、scene depth texture、IBL mip/face 情報を texture か JSON log として読み込み、今回の shader の lane / beam / contour / band に差し替える。",
+      "bodyEn": "If trying one thing today, draw XR camera-matrix refresh state as two eye lanes, with sync drift shown as motion and resync shown as a pulse. Even without real XR, the concept of uniform refresh becomes visible. The next implementation step is to read WebXR session pose matrices, multiview/frustum indices, scene-depth textures, and IBL mip/face data as textures or JSON logs, then feed them into this shader's lanes, beams, contours, and bands.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34283/#34275/#34278/#34274/#34235、PlayCanvas #9182/#9180/#9187/#9167、Babylon.js #18807/#18809/#18806、Codrops Articles を確認。アイデア検討: 継続案件は rendering internals as stage telemetry、sample/camera orbit、packed/beam/prefix lattice、camera preset route。新規案件は XR uniform resync lane、FrustumArray beam fan、depth debug contour、IBL flip checksum。寝かせる案件は実 XR headset 検証、実 WebGPU bind group cache 表示、実 PLY splat loader 入力、Babylon Native 環境での IBL 比較。サンプル実装: `outputs/2026-08-18_xr_uniform_frustum_depth_scope.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish を実施する。",
+      "bodyEn": "Research: checked three.js #34283/#34275/#34278/#34274/#34235, PlayCanvas #9182/#9180/#9187/#9167, Babylon.js #18807/#18809/#18806, and Codrops Articles. Ideation: continuing tracks are rendering internals as stage telemetry, sample/camera orbit, packed/beam/prefix lattice, and camera-preset routes. New tracks are XR uniform resync lanes, FrustumArray beam fans, depth-debug contours, and IBL flip checksums. Parked tracks are real XR headset validation, actual WebGPU bind-group cache visualization, real PLY splat loader input, and Babylon Native IBL comparison. Prototype: added `outputs/2026-08-18_xr_uniform_frustum_depth_scope.html`. Verification: run HTML parse, JSON parse, gallery build, and publish.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/10 以降は checker budget、error-driven LOD、view-dependent sheen、compressed arrival、MSAA/depth/sort、MRT/depth/IBL、raymarch/OIT/sample/camera、packed/beam/prefix、そして今日の XR uniform/frustum/depth へ進んだ。傾向として、最終ピクセルではなく、その手前の状態配列や更新タイミングが表現対象になっている。組み合わせ候補は、XR の左右 matrix lane を camera preset route に載せ、FrustumArray を Beam Lattice と重ね、scene depth contour を PrefixSum histogram と合成し、IBL flip checksum を色空間 QA として常時表示すること。育てる価値が高いテーマは「同期・視錐台・深度・照明整合性」をライブ演出にする方向。",
+      "bodyEn": "Since 8/10 the thread has moved through checker budget, error-driven LOD, view-dependent sheen, compressed arrival, MSAA/depth/sort, MRT/depth/IBL, raymarch/OIT/sample/camera, packed/beam/prefix, and now XR uniform/frustum/depth. The trend is that arrays of state and refresh timing before final pixels are becoming the expressive subject. Strong combinations include putting XR left/right matrix lanes on camera-preset routes, overlaying FrustumArray with Beam Lattice, merging scene-depth contours with PrefixSum histograms, and always showing IBL flip checksums as color-space QA. The theme worth growing is live performance out of synchronization, frusta, depth, and lighting consistency.",
+      "links": [
+        {
+          "label": "2026-08-17 sample",
+          "url": "../outputs/2026-08-17_packed_beam_prefix_lattice.html"
+        },
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した試作は「XR Uniform Frustum Depth Scope」。作成ファイルは `outputs/2026-08-18_xr_uniform_frustum_depth_scope.html`。raw WebGL fragment shader の単体 HTML で、1: XR shared uniform resync lane、2: FrustumArray beam fan、3: scene depth debug contour、4: IBL Y-flip checksum band を表示する。操作は 1-4 で mode 切替、drag で camera matrix 風の角度調整、click/Space で resync pulse。次に足すなら、実 WebXR pose matrix、PlayCanvas depth texture、Babylon camera preset JSON、IBL face/mip metadata を入力化する。",
+      "bodyEn": "The selected prototype is XR Uniform Frustum Depth Scope. The created file is `outputs/2026-08-18_xr_uniform_frustum_depth_scope.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows XR shared-uniform resync lanes, mode 2 shows a FrustumArray beam fan, mode 3 shows scene-depth debug contours, and mode 4 shows IBL Y-flip checksum bands. Keys 1-4 switch modes, dragging adjusts a camera-matrix-like angle, and click/Space injects a resync pulse. Next additions are real WebXR pose matrices, PlayCanvas depth textures, Babylon camera-preset JSON, and IBL face/mip metadata as inputs.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "このサンプルの mode、pointer、pulse、matrix lane drift、frustum fan、depth contour、IBL band を時系列で保存すると、鑑賞者がどの同期状態を見ていたかを再演できる。音と組み合わせるなら、低域を depth fog、中域を frustum spread、高域を uniform resync sparkle に割り当てる。カメラや MediaPipe なら、顔向きを matrix lane、手の角度を frustum fan、手の開閉を resync pulse にできる。WebXR では片目に matrix freshness、もう片目に depth/IBL checksum を重ねると、デバッグ HUD と舞台照明の中間になる。展示やブランド演出では、配信遅延、AI 推論 step、マルチカメラ撮影、物流/都市データの同期状態を、この lane / fan / contour / band の構造で見せられる。",
+      "bodyEn": "If the sample's mode, pointer, pulse, matrix-lane drift, frustum fan, depth contour, and IBL bands are stored over time, it can replay which synchronization state a visitor inspected. With audio, lows can drive depth fog, mids can drive frustum spread, and highs can trigger uniform-resync sparkle. With camera or MediaPipe, face direction can drive matrix lanes, hand angle can control frustum fans, and hand openness can fire resync pulses. In WebXR, showing matrix freshness in one eye and depth/IBL checksums in the other would sit between a debug HUD and stage lighting. For installations or brand work, streaming latency, AI inference steps, multi-camera shoots, or logistics/city-data synchronization can be shown with this lane / fan / contour / band structure."
+    }
+  ]
+}

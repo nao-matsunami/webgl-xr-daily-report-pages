@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XR Uniform Frustum Depth Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #06080b;
+      color: #dff8ff;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 16px 18px auto 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(223, 248, 255, .75);
+      text-shadow: 0 1px 18px rgba(49, 210, 255, .24);
+    }
+    .hud b {
+      color: #fff;
+      font-weight: 700;
+    }
+    .hud span {
+      opacity: .68;
+    }
+    .modes {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div><b>XR Uniform Frustum Depth Scope</b><br><span>drag camera matrix / click or space resync</span></div>
+    <div class="modes"><b id="mode">mode 1</b><br><span>1 uniform / 2 frustum / 3 depth / 4 ibl</span></div>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const modeLabel = document.getElementById("mode");
+    const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false });
+    if (!gl) document.body.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pulse;
+      uniform float mode;
+
+      mat2 rot(float a) {
+        float s = sin(a), c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float beam(vec2 p, vec2 a, vec2 b, float width) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), .0001), 0.0, 1.0);
+        return exp(-width * length(pa - ba * h));
+      }
+
+      vec3 palette(float t) {
+        vec3 ink = vec3(.015, .025, .035);
+        vec3 cyan = vec3(.02, .66, .96);
+        vec3 coral = vec3(1.0, .18, .28);
+        vec3 lime = vec3(.72, .92, .35);
+        return mix(mix(ink, cyan, smoothstep(.05, .46, t)), mix(coral, lime, smoothstep(.42, 1.0, t)), smoothstep(.22, .92, t));
+      }
+
+      float ring(vec2 p, vec2 c, float r, float w) {
+        return exp(-w * abs(length(p - c) - r));
+      }
+
+      vec3 uniformLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        float stale = smoothstep(.35, .0, pulse) * (.5 + .5 * sin(time * 7.0));
+        for (int eye = 0; eye < 2; eye++) {
+          float fe = float(eye);
+          vec2 offset = vec2((fe - .5) * .72, 0.0);
+          for (int i = 0; i < 7; i++) {
+            float fi = float(i);
+            float y = -.56 + fi * .18;
+            float drift = stale * sin(fi * 1.7 + time * .6 + fe) * .11;
+            vec2 a = offset + vec2(-.22 + drift, y);
+            vec2 b = offset + vec2(.22 + drift * .25, y + sin(time + fi) * .025);
+            float line = beam(uv, a, b, 78.0);
+            float node = exp(-46.0 * length(uv - a)) + exp(-46.0 * length(uv - b));
+            col += mix(vec3(.05, .45, .95), vec3(1.0, .18, .20), stale) * (line * .32 + node * .09);
+          }
+          col += ring(uv, offset, .44 + pulse * .05, 38.0) * vec3(.10, .35, .48);
+        }
+        float sync = exp(-18.0 * abs(uv.x - (pointer.x * 2.2 - 1.1)));
+        return col + sync * vec3(.08, .52, .78) * smoothstep(.9, -.8, abs(uv.y));
+      }
+
+      vec3 frustumLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        for (int i = 0; i < 9; i++) {
+          float fi = float(i);
+          float angle = (fi / 9.0 - .5) * 1.45 + (pointer.x - .5) * .7;
+          float spread = .20 + fi * .065 + pulse * .06;
+          vec2 tip = vec2(sin(time * .18 + fi) * .07, -.62 + fi * .02);
+          vec2 left = vec2(cos(angle) * spread, .72 - fi * .035);
+          vec2 right = vec2(cos(angle + .38) * -spread, .72 - fi * .035);
+          float l = beam(uv, tip, left, 54.0) + beam(uv, tip, right, 54.0) + beam(uv, left, right, 70.0);
+          float plane = smoothstep(.015, .0, abs(uv.y - mix(tip.y, left.y, .55))) * smoothstep(.08, .78, abs(uv.x));
+          col += palette(fi / 8.0) * (l * .28 + plane * .035);
+        }
+        return col;
+      }
+
+      vec3 depthLane(vec2 uv) {
+        vec3 col = vec3(.0);
+        vec2 p = uv;
+        p.x += sin(p.y * 8.0 + time * .6) * .035;
+        float horizon = smoothstep(.08, -.08, p.y + .25 + pointer.y * .34);
+        for (int i = 0; i < 12; i++) {
+          float fi = float(i);
+          float z = fi / 11.0;
+          float y = -.78 + pow(z, 1.55) * 1.5;
+          float contour = exp(-80.0 * abs(p.y - y - sin(p.x * 6.0 + fi + time * .35) * .026));
+          col += palette(z) * contour * (.12 + z * .22);
+        }
+        float fog = exp(-1.7 * abs(p.y + .15)) * horizon;
+        float sampleSpark = hash(floor((uv + 1.0) * 54.0));
+        col += vec3(.04, .17, .22) * fog;
+        col += step(.985 - pulse * .04, sampleSpark) * vec3(.8, .95, .65);
+        return col;
+      }
+
+      vec3 iblLane(vec2 uv) {
+        vec2 p = uv;
+        vec3 col = vec3(.01, .015, .026);
+        for (int i = 0; i < 6; i++) {
+          float fi = float(i);
+          float y = -0.75 + fi * .30;
+          float flip = sin((p.y - y) * 18.0 + time * .9 + fi);
+          float band = exp(-18.0 * abs(p.y - y));
+          float cap = smoothstep(.9, .05, abs(p.x + flip * .04));
+          vec3 warm = vec3(.95, .40, .16);
+          vec3 cool = vec3(.03, .55, .92);
+          col += mix(cool, warm, step(0.0, flip)) * band * cap * (.10 + .08 * fi);
+        }
+        float seam = exp(-55.0 * abs(p.y + sin(time * .4 + p.x * 4.0) * .035));
+        col += seam * mix(vec3(1.0, .17, .22), vec3(.15, .75, .95), pulse);
+        return col;
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / resolution.y;
+        uv *= rot((pointer.x - .5) * .46);
+        uv.y += (pointer.y - .5) * .14;
+
+        vec3 hybrid = uniformLane(uv) * .34 + frustumLane(uv) * .24 + depthLane(uv) * .22 + iblLane(uv) * .20;
+        vec3 layer = uniformLane(uv);
+        if (mode > 1.5 && mode < 2.5) layer = frustumLane(uv);
+        if (mode > 2.5 && mode < 3.5) layer = depthLane(uv);
+        if (mode > 3.5) layer = iblLane(uv);
+
+        float grid = max(exp(-28.0 * abs(fract(uv.x * 8.0) - .5)), exp(-28.0 * abs(fract(uv.y * 8.0) - .5))) * .025;
+        vec3 col = mix(hybrid, layer, .72) + grid * vec3(.10, .32, .38);
+        float vignette = smoothstep(1.42, .12, length(uv));
+        float scan = .94 + .06 * sin(gl_FragCoord.y * 1.35 + time * 8.0);
+        col *= vignette * scan;
+        col += pow(max(0.0, 1.0 - length(uv)), 4.0) * vec3(.04, .12, .16);
+        gl_FragColor = vec4(pow(col, vec3(.86)), 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pulse: gl.getUniformLocation(program, "pulse"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [0.5, 0.5],
+      pulse: 0,
+      mode: 1,
+      start: performance.now()
+    };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = (event.clientX - rect.left) / rect.width;
+      state.pointer[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    addEventListener("pointermove", setPointer);
+    addEventListener("pointerdown", (event) => {
+      setPointer(event);
+      state.pulse = 1;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") {
+        state.mode = Number(event.key);
+        modeLabel.textContent = `mode ${state.mode}`;
+      }
+      if (event.code === "Space") state.pulse = 1;
+    });
+
+    function frame(now) {
+      resize();
+      state.pulse *= 0.94;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.time, (now - state.start) / 1000);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
