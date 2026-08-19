@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 62</span>
+        <span>days: 63</span>
         <span>page: 3 / 6</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -309,6 +309,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-26">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.26</p>
+              <h2>KHR glTF splat、SPZ、SOG、8K export を format pressure として統合する</h2>
+              <p class="card-subtitle">Unify KHR glTF splats, SPZ, SOG, and 8K export as format pressure</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-26" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-26 は、PlayCanvas Engine v2.21.0/v2.21.1 の KHR_gaussian_splatting と SPZ 対応、SuperSplat v2.32.2 の 8K render resolution と video muxer finalize 修正、Babylon.js 9.18.0 の Gaussian Splat resize leak 修正、three.js r185 の HTMLTexture / HTML-in-Canvas 更新を、splat 表現の runtime 診断と export pressure として整理しました。追加ミニ試作は単体 WebGL の glTF Splat Format Pressure Scope です。</p>
+          <p class="description en-copy">For 2026-07-26, PlayCanvas Engine v2.21.0/v2.21.1 KHR_gaussian_splatting and SPZ support, SuperSplat v2.32.2 8K render resolution and video muxer finalization fixes, Babylon.js 9.18.0 Gaussian Splat resize leak fixes, and three.js r185 HTMLTexture / HTML-in-Canvas updates are framed as runtime diagnostics and export pressure for splat expression. The added mini prototype is a standalone WebGL glTF Splat Format Pressure Scope.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-07-26.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-07-26_gltf_splat_format_pressure_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-25">
           <div class="card-top">
             <div>
@@ -558,29 +581,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-07-14.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-07-14_semantic_latency_residue_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-13">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.13</p>
-              <h2>splat品質診断を、意味選択と有効マスクへつなぐ</h2>
-              <p class="card-subtitle">Connect splat quality diagnostics to semantic selection and active masks</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-13" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">2026-07-13 は、three.js r185、Babylon.js 9.16.0、PlayCanvas Engine v2.20.6、SuperSplat v2.29.0 が継続して最新であることを確認しつつ、前日の latitude equalized splat scope を「意味で選ぶ splat」「動的シーンで有効な splat」「streaming/picking で壊れやすい splat」を同じ画面で見る方向へ進めました。新しい単体 WebGL サンプルでは、semantic region、active mask boundary、stale/uncertain splat、ポインタの選択レンズを fragment shader だけで可視化します。</p>
-          <p class="description en-copy">For 2026-07-13, I confirmed that three.js r185, Babylon.js 9.16.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0 remain the latest relevant releases, then advanced yesterday's latitude-equalized splat scope toward a shared view of semantically selected splats, active splats in dynamic scenes, and splats at risk during streaming or picking. The new standalone WebGL sample visualizes semantic regions, active-mask boundaries, stale or uncertain splats, and a pointer selection lens in a fragment shader.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-07-13.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-07-13_semantic_splat_mask_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

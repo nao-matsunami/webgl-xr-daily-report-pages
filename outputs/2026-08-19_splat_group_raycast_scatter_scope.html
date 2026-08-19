@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Splat Group Raycast Scatter Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #05070a;
+      color: #e9fbff;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      inset: 16px 18px auto 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(233, 251, 255, .76);
+      text-shadow: 0 1px 18px rgba(0, 190, 255, .24);
+    }
+    .hud b {
+      color: #fff;
+      font-weight: 700;
+    }
+    .hud span {
+      opacity: .68;
+    }
+    .modes {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div><b>Splat Group Raycast Scatter Scope</b><br><span>drag ray / click or space rebuild</span></div>
+    <div class="modes"><b id="mode">mode 1</b><br><span>1 sort / 2 raycast / 3 bounds / 4 scatter</span></div>
+  </div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const modeLabel = document.getElementById("mode");
+    const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false });
+    if (!gl) document.body.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pulse;
+      uniform float mode;
+
+      mat2 rot(float a) {
+        float s = sin(a), c = cos(a);
+        return mat2(c, -s, s, c);
+      }
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.7, 289.3))) * 17311.713);
+      }
+
+      float segment(vec2 p, vec2 a, vec2 b, float width) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), .0001), 0.0, 1.0);
+        return exp(-width * length(pa - ba * h));
+      }
+
+      float ellipse(vec2 p, vec2 c, vec2 r, float angle) {
+        vec2 q = rot(angle) * (p - c);
+        return exp(-dot(q / r, q / r));
+      }
+
+      vec3 ramp(float t) {
+        vec3 deep = vec3(.012, .018, .028);
+        vec3 blue = vec3(.02, .48, .92);
+        vec3 gold = vec3(.98, .72, .20);
+        vec3 rose = vec3(1.00, .20, .34);
+        return mix(mix(deep, blue, smoothstep(.04, .42, t)), mix(gold, rose, smoothstep(.44, 1.0, t)), smoothstep(.25, .96, t));
+      }
+
+      vec3 splatField(vec2 uv, float grouped) {
+        vec3 col = vec3(0.0);
+        for (int layer = 0; layer < 3; layer++) {
+          float fl = float(layer);
+          vec2 base = vec2((fl - 1.0) * .34 + sin(time * .21 + fl) * .05, .05 * cos(time * .33 + fl));
+          for (int i = 0; i < 22; i++) {
+            float fi = float(i);
+            float z = fract(fi * .137 + fl * .29 + time * .018);
+            float a = fi * 2.399 + fl * 1.7;
+            vec2 c = base + vec2(cos(a), sin(a * 1.13)) * (.12 + z * .42);
+            c += vec2(sin(time * .37 + fi), cos(time * .28 + fi * .7)) * .025;
+            vec2 r = vec2(.030 + z * .055, .014 + hash(vec2(fi, fl)) * .030);
+            float e = ellipse(uv, c, r, a + time * .08);
+            float order = grouped > .5 ? z : fract(z + fl * .22);
+            col += ramp(order) * e * (.20 + z * .20);
+          }
+        }
+        return col;
+      }
+
+      vec3 sortScope(vec2 uv) {
+        vec3 col = splatField(uv, 1.0);
+        for (int i = 0; i < 11; i++) {
+          float fi = float(i);
+          float x = -0.95 + fi * .19;
+          float line = segment(uv, vec2(x, -.82), vec2(x + sin(time + fi) * .08, .84), 90.0);
+          float bucket = smoothstep(.018, .0, abs(uv.x - x)) * smoothstep(.72, -.74, abs(uv.y));
+          col += ramp(fi / 10.0) * (line * .20 + bucket * .025);
+        }
+        float split = smoothstep(.015, .0, abs(uv.x));
+        col += split * vec3(1.0, .40, .18) * (.35 + pulse);
+        return col;
+      }
+
+      vec3 raycastScope(vec2 uv) {
+        vec2 ray = vec2(pointer.x * 2.0 - 1.0, pointer.y * 2.0 - 1.0);
+        vec3 col = splatField(uv, 1.0) * .55;
+        float shaft = segment(uv, vec2(-.95, -.78), ray, 64.0);
+        col += shaft * vec3(.05, .80, 1.0);
+        for (int i = 0; i < 8; i++) {
+          float fi = float(i);
+          vec2 c = ray + vec2(cos(fi * .9 + time), sin(fi * 1.4 - time)) * (.05 + .025 * fi);
+          float hit = ellipse(uv, c, vec2(.065 - fi * .004, .018), fi + time);
+          col += hit * mix(vec3(.9, .95, .4), vec3(1.0, .18, .28), fi / 7.0) * (.28 + pulse);
+        }
+        float reticle = exp(-42.0 * abs(length(uv - ray) - .12));
+        return col + reticle * vec3(1.0, .92, .45);
+      }
+
+      vec3 boundsScope(vec2 uv) {
+        vec3 col = splatField(uv, .0) * .42;
+        for (int i = 0; i < 5; i++) {
+          float fi = float(i);
+          vec2 c = vec2((fi - 2.0) * .30 + sin(time * .28 + fi) * .08, sin(time * .19 + fi) * .22);
+          vec2 r = vec2(.18 + .04 * sin(time + fi), .32 + .05 * cos(time * .7 + fi));
+          float box = max(abs(uv.x - c.x) / r.x, abs(uv.y - c.y) / r.y);
+          float edge = exp(-70.0 * abs(box - 1.0));
+          float refill = smoothstep(.97, .90, box) * smoothstep(.18, .0, abs(sin(time * 2.0 + fi) - .2));
+          col += edge * ramp(fi / 4.0) * (.42 + pulse * .45);
+          col += refill * vec3(.05, .45, .75) * .18;
+        }
+        float boundsWave = exp(-12.0 * abs(uv.y - sin(uv.x * 9.0 + time) * .08));
+        return col + boundsWave * vec3(.05, .26, .32);
+      }
+
+      vec3 scatterScope(vec2 uv) {
+        vec3 col = vec3(.006, .010, .018);
+        for (int i = 0; i < 9; i++) {
+          float fi = float(i);
+          float y = -0.76 + fi * .19;
+          float loader = segment(uv, vec2(-.92, y), vec2(.92, y + sin(time + fi) * .035), 72.0);
+          float scatter = exp(-3.3 * abs(uv.y - y)) * pow(max(0.0, 1.0 - abs(uv.x)), 2.0);
+          vec3 skin = mix(vec3(.92, .30, .18), vec3(.99, .82, .34), sin(fi + time * .4) * .5 + .5);
+          col += loader * vec3(.15, .62, .95) * (.20 + .10 * fi);
+          col += scatter * skin * (.020 + .020 * fi) * (1.0 + pulse);
+        }
+        float warn = smoothstep(.045, .0, abs(fract((uv.x + uv.y + time * .12) * 8.0) - .5));
+        col += warn * vec3(1.0, .18, .28) * .035;
+        return col;
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / resolution.y;
+        uv *= rot((pointer.x - .5) * .32);
+        uv.y += (pointer.y - .5) * .12;
+
+        vec3 hybrid = sortScope(uv) * .32 + raycastScope(uv) * .25 + boundsScope(uv) * .23 + scatterScope(uv) * .20;
+        vec3 layer = sortScope(uv);
+        if (mode > 1.5 && mode < 2.5) layer = raycastScope(uv);
+        if (mode > 2.5 && mode < 3.5) layer = boundsScope(uv);
+        if (mode > 3.5) layer = scatterScope(uv);
+
+        float grid = max(exp(-28.0 * abs(fract(uv.x * 9.0) - .5)), exp(-28.0 * abs(fract(uv.y * 9.0) - .5))) * .020;
+        vec3 col = mix(hybrid, layer, .75) + grid * vec3(.12, .34, .38);
+        float rebuild = exp(-22.0 * abs(length(uv) - (.18 + pulse * 1.15)));
+        col += rebuild * vec3(1.0, .55, .18) * pulse;
+        float vignette = smoothstep(1.48, .12, length(uv));
+        float scan = .94 + .06 * sin(gl_FragCoord.y * 1.2 + time * 8.0);
+        gl_FragColor = vec4(pow(col * vignette * scan, vec3(.84)), 1.0);
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      time: gl.getUniformLocation(program, "time"),
+      pulse: gl.getUniformLocation(program, "pulse"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [0.62, 0.48],
+      pulse: 0,
+      mode: 1,
+      start: performance.now()
+    };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = (event.clientX - rect.left) / rect.width;
+      state.pointer[1] = 1 - (event.clientY - rect.top) / rect.height;
+    }
+
+    addEventListener("pointermove", setPointer);
+    addEventListener("pointerdown", (event) => {
+      setPointer(event);
+      state.pulse = 1;
+    });
+    addEventListener("keydown", (event) => {
+      if (event.key >= "1" && event.key <= "4") {
+        state.mode = Number(event.key);
+        modeLabel.textContent = `mode ${state.mode}`;
+      }
+      if (event.code === "Space") state.pulse = 1;
+    });
+
+    function frame(now) {
+      resize();
+      state.pulse *= 0.94;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.time, (now - state.start) / 1000);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

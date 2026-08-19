@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>複数 Gaussian Splat の全体 sort、raycast、bounds、scatter を演出状態にする | 2026-08-19</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.19</p>
+      <h1>複数 Gaussian Splat の全体 sort、raycast、bounds、scatter を演出状態にする</h1>
+      <p class="hero-subtitle">Turning grouped Gaussian Splat sorting, raycast, bounds, and scatter into expressive state</p>
+      <p>three.js の GaussianSplatGroup / GaussianSplatMesh raycasting / GPGPU warning、PlayCanvas の particle bounds 再計算と clustered lights 上限、Babylon.js の shader loader abstraction と KHR_materials_scatter を、8/18 の XR uniform/frustum/depth/IBL から「複数オブジェクトをまたぐ正しさを、触れる診断レイヤーとして見せる」方向へ接続した。</p>
+      <p class="en-copy">Today connects three.js GaussianSplatGroup, GaussianSplatMesh raycasting, and GPGPU warnings, PlayCanvas particle-bounds recalculation and configurable clustered-light limits, and Babylon.js shader-loader abstraction plus KHR_materials_scatter to yesterday's XR uniform/frustum/depth/IBL thread by treating cross-object correctness as a touchable diagnostic layer.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-18.html">← 2026.08.18</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Splat Group Raycast Scatter Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34290 は複数 GaussianSplatMesh を GaussianSplatGroup にまとめ、共有 storage buffer 上で merge / CountingSort / single instanced draw を行う提案。単体 splat では正しいが、重なった複数 splat 間では alpha order が崩れる問題を、scene-level の正しさへ持ち上げている。2. three.js PR #34284 は GaussianSplatMesh raycasting、#34291 は GPGPU Nodes への warning 追加で、splat を眺めるだけでなく触って診断する方向が強い。3. PlayCanvas PR #9192 は particle spawn volume 変更時の local bounds 再計算、#9188 は clustered lights の最大数を設定可能にする変更で、bounds / light budget を演出パラメータ化しやすい。4. Babylon.js PR #18812 は shader loader abstraction、#18810 は KHR_materials_scatter import/export。材質表現と shader 入力の抽象化が、engine 間の試作移植に効く。5. Codrops 側は直近で WebGL 新規記事は少ないが、7/30 の infinite GSAP gallery、7/22 の Ridgeline、7/23 の Cerebrium は、内部状態を体験のリズムへ翻訳する参考として継続価値がある。</p>
+          <p class="en-copy">1. three.js PR #34290 proposes GaussianSplatGroup, merging multiple GaussianSplatMesh instances into shared storage buffers, running CountingSort, and issuing one instanced draw. It lifts a correctness issue that is fine per splat but wrong across overlapping splats into scene-level ordering. 2. three.js PR #34284 adds GaussianSplatMesh raycasting, and #34291 adds warnings to GPGPU Nodes, pushing splats toward touchable diagnostics rather than passive viewing. 3. PlayCanvas PR #9192 recalculates particle local bounds when spawn volume changes, while #9188 makes clustered-light maximums configurable, making bounds and light budget useful expressive parameters. 4. Babylon.js PR #18812 adds a shader-loader abstraction, and #18810 covers KHR_materials_scatter import/export, helping material expression and shader inputs move across prototypes. 5. Codrops has fewer brand-new WebGL articles this week, but the Jul 30 infinite GSAP gallery, Jul 22 Ridgeline, and Jul 23 Cerebrium remain useful references for translating internal state into experiential rhythm.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34290" target="_blank" rel="noreferrer">three.js PR #34290</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34284" target="_blank" rel="noreferrer">three.js PR #34284</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9192" target="_blank" rel="noreferrer">PlayCanvas PR #9192</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18810" target="_blank" rel="noreferrer">Babylon.js PR #18810</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>今日一番面白いのは three.js #34290 の「別々に描くとそれぞれ正しいが、重なると全体として破綻する」問題。これは Gaussian Splat に限らず、複数の映像面、複数の AI 推論結果、複数ユーザーの XR 位置、複数音源の可視化にもそのまま使える構造。PR では WebGPU/TSL compute、storage buffer、atomic、CountingSort、single draw という実装寄りの話だが、表現の観点では「複数の記憶や視点を一度だけ全体 sort して、触れる状態へ変える」演出にできる。</p>
+          <p class="en-copy">The strongest case today is three.js #34290: each splat renders correctly alone, but the whole breaks when overlapping. That structure generalizes beyond Gaussian Splats to multiple video planes, AI inference results, XR user positions, or audio-source visualizations. The PR is implementation-heavy, involving WebGPU/TSL compute, storage buffers, atomics, CountingSort, and one draw call, but creatively it suggests sorting multiple memories or viewpoints once at scene level, then making that ordered state touchable.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34290" target="_blank" rel="noreferrer">three.js GaussianSplatGroup live example link in PR</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>短期案は「Splat Group Raycast Scatter Scope」。複数 splat 群を重ね、mode 1 で global sort の bucket / seam、mode 2 で raycast hit、mode 3 で particle bounds の再計算、mode 4 で shader loader / scatter 材質の入力レーンを見せる。8/18 の matrix lane / frustum beam / depth contour / IBL band から、今日は sort bucket / hit reticle / bounds box / scatter lane へ語彙を増やす。鑑賞者の pointer を ray として扱い、クリックを buffer rebuild や bounds refresh の pulse にする。</p>
+          <p class="en-copy">The short-term idea is Splat Group Raycast Scatter Scope. Multiple splat groups overlap; mode 1 shows global-sort buckets and seams, mode 2 shows raycast hits, mode 3 shows particle-bounds recalculation, and mode 4 shows shader-loader / scatter-material input lanes. Yesterday's matrix lane / frustum beam / depth contour / IBL band vocabulary expands today into sort bucket / hit reticle / bounds box / scatter lane. The viewer's pointer becomes a ray, while clicks become buffer-rebuild or bounds-refresh pulses.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>Gaussian Splat の複数メッシュ合成では、各 mesh が内部で back-to-front に正しく sort されていても、mesh 間の順序は別問題になる。作品では、複数レイヤーを独立 pass で重ねると境界だけ不自然になることがあるため、scene-level order / shared buffer / single draw という観点を早めに設計へ入れるとよい。raycasting は hit 表示だけでなく、splat の密度、SH degree、bounds、sort bucket を inspect する入口になる。PlayCanvas の particle bounds 再計算は、spawn volume や音反応パーティクルを使う場合の clipping / culling 表現に直結する。Babylon の shader loader abstraction と KHR_materials_scatter は、散乱・肌・蝋・霧のような半透明感を engine 依存の実装から少し切り離して考える材料になる。</p>
+          <p class="en-copy">For multiple Gaussian Splat meshes, each mesh can be internally back-to-front sorted while inter-mesh ordering remains wrong. In production, independent passes can create unnatural seams at overlaps, so scene-level order, shared buffers, and single-draw thinking should enter the design early. Raycasting is not just hit display; it can inspect density, SH degree, bounds, and sort buckets. PlayCanvas particle-bounds recalculation maps directly to clipping and culling behavior for spawn-volume or audio-reactive particles. Babylon's shader-loader abstraction and KHR_materials_scatter help think about scattering, skin, wax, and fog-like translucency with less engine-specific coupling.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34290" target="_blank" rel="noreferrer">three.js PR #34290</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9192" target="_blank" rel="noreferrer">PlayCanvas PR #9192</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続ウォッチは three.js #34290 GaussianSplatGroup、#34284 raycasting、#34292 loader rename、#34291 GPGPU warnings、#34295 WorkgroupInfoNode rename、#34283 shared uniform buffer。PlayCanvas は #9167 multisampled render target sampling、#9188 clustered lights limit、#9192 particle bounds、#9151 JSDoc/types。Babylon.js は #18812 shader loader abstraction、#18810 KHR_materials_scatter、#18807 Sandbox camera presets、#18806 Native cube container、#18775 correctness scan。寝かせる対象は、実機 WebGPU での 100 万 splat 超の global sort 実測、WebXR 内 raycast HUD、Babylon Native での scatter/IBL 比較。</p>
+          <p class="en-copy">Continue watching three.js #34290 GaussianSplatGroup, #34284 raycasting, #34292 loader rename, #34291 GPGPU warnings, #34295 WorkgroupInfoNode rename, and #34283 shared uniform buffers. For PlayCanvas, keep #9167 multisampled render-target sampling, #9188 clustered-light limits, #9192 particle bounds, and #9151 JSDoc/types. For Babylon.js, watch #18812 shader-loader abstraction, #18810 KHR_materials_scatter, #18807 Sandbox camera presets, #18806 Native cube containers, and #18775 correctness scan. Park real WebGPU million-plus-splat global-sort measurement, WebXR raycast HUDs, and Babylon Native scatter/IBL comparisons.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pulls</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas engine pulls</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pulls</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、複数 splat の重なりを mode 1 の sort bucket として描き、pointer を raycast にして hit 位置だけ発光させる。実データなしでも、複数レイヤーの order / hit / bounds / material input を同じ画面で扱える。次に足すなら、実 GaussianSplatGroup の children 数、live splat total、bucket count、raycast hit distance、bounds volume、shader warning 数を JSON log で読み、今回の shader uniform に流し込む。</p>
+          <p class="en-copy">If trying one thing today, draw overlapping splats as mode-1 sort buckets, then use the pointer as a raycast and brighten only hit positions. Even without real data, order, hit, bounds, and material input for multiple layers can be handled in one view. Next, read real GaussianSplatGroup child counts, live splat totals, bucket counts, raycast hit distances, bounds volumes, and shader-warning counts from a JSON log and feed them into this shader.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34290/#34284/#34291/#34292/#34295/#34283、PlayCanvas #9192/#9188/#9167/#9151、Babylon.js #18812/#18810/#18807/#18806/#18775、Codrops Tutorials / WebGL tag を確認。アイデア検討: 継続案件は rendering internals as stage telemetry、XR matrix/depth/IBL diagnostic、budget as texture、beam/prefix lattice。新規案件は scene-level splat sort、raycast inspection、particle bounds pulse、scatter material lane。サンプル実装: `outputs/2026-08-19_splat_group_raycast_scatter_scope.html` を追加。結果の検証: HTML parse、JSON parse、gallery build、publish を実施する。寝かせる案件は実 WebGPU compute sort、実 XR headset HUD、実 KHR_materials_scatter asset の import/export 比較。</p>
+          <p class="en-copy">Research: checked three.js #34290/#34284/#34291/#34292/#34295/#34283, PlayCanvas #9192/#9188/#9167/#9151, Babylon.js #18812/#18810/#18807/#18806/#18775, and Codrops Tutorials / WebGL tag. Ideation: continuing tracks are rendering internals as stage telemetry, XR matrix/depth/IBL diagnostics, budget as texture, and beam/prefix lattice. New tracks are scene-level splat sorting, raycast inspection, particle-bounds pulses, and scatter-material lanes. Prototype: added `outputs/2026-08-19_splat_group_raycast_scatter_scope.html`. Verification: run HTML parse, JSON parse, gallery build, and publish. Parked tracks are real WebGPU compute sort, real XR headset HUDs, and KHR_materials_scatter asset import/export comparison.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>8/10 以降の流れは、budget / LOD / sheen / compressed arrival / MSAA resolve / MRT / OIT / prefix / XR uniform から、今日は scene-level splat correctness へ移った。傾向として、単一オブジェクトの派手さより、複数状態を合わせたときの整合性、更新順、メモリ配置、可視境界が表現テーマになっている。組み合わせ候補は、8/18 の FrustumArray beam を今日の raycast ray にし、depth contour を splat hit depth に差し替え、IBL checksum band を scatter 材質の透過感へ接続すること。育てる価値が高いテーマは「複数の視点・粒子・素材を、全体 order と触覚的 inspection でまとめる」方向。</p>
+          <p class="en-copy">Since 8/10 the thread moved from budget, LOD, sheen, compressed arrival, MSAA resolve, MRT, OIT, prefix, and XR uniform into today's scene-level splat correctness. The trend is that consistency, update order, memory placement, and visible seams across multiple states are becoming more important than the spectacle of a single object. Strong combinations include turning yesterday's FrustumArray beams into today's raycast rays, replacing depth contours with splat-hit depth, and connecting IBL checksum bands to scatter-material translucency. The theme worth growing is unifying multiple viewpoints, particles, and materials through global order and tactile inspection.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-18_xr_uniform_frustum_depth_scope.html" target="_blank" rel="noreferrer">2026-08-18 sample</a></li>
+          
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した試作は「Splat Group Raycast Scatter Scope」。作成ファイルは `outputs/2026-08-19_splat_group_raycast_scatter_scope.html`。raw WebGL fragment shader の単体 HTML で、1: global sort bucket、2: raycast hit reticle、3: particle bounds refresh、4: scatter / shader loader lane を表示する。操作は 1-4 で mode 切替、drag で ray / camera 風の角度調整、click/Space で rebuild pulse。次に足すなら、three.js GaussianSplatGroup の実 child count / live splat count、raycast hit distance、PlayCanvas particle bounds volume、Babylon scatter material の係数を入力化する。</p>
+          <p class="en-copy">The selected prototype is Splat Group Raycast Scatter Scope. The created file is `outputs/2026-08-19_splat_group_raycast_scatter_scope.html`. It is a standalone raw WebGL fragment-shader HTML: mode 1 shows global-sort buckets, mode 2 shows raycast hit reticles, mode 3 shows particle-bounds refresh, and mode 4 shows scatter / shader-loader lanes. Keys 1-4 switch modes, dragging adjusts a ray / camera-like angle, and click/Space injects a rebuild pulse. Next additions are real three.js GaussianSplatGroup child counts / live splat counts, raycast hit distance, PlayCanvas particle bounds volume, and Babylon scatter-material coefficients as inputs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>このサンプルの mode、pointer ray、rebuild pulse、sort bucket、hit reticle、bounds box、scatter lane を時系列として保存すると、複数オブジェクトの重なりがどこで破綻し、どこで触られたかを再演できる。音と組み合わせるなら、低域を sort rebuild、中域を bounds expansion、高域を raycast sparkle に割り当てる。カメラや MediaPipe なら、手の向きを ray、手の開閉を rebuild、顔の奥行きを sort depth にできる。WebXR では片手 raycast で splat の hit / density / material lane を空間 HUD として見る方向が良い。展示やエンタメでは、複数人物の記憶、複数都市のデータ、複数ライブカメラの映像片を、scene-level order で一度統合してから鑑賞者が触る構成に発展できる。</p>
+          <p class="en-copy">If the sample's mode, pointer ray, rebuild pulse, sort bucket, hit reticle, bounds box, and scatter lane are stored over time, it can replay where overlapping objects broke and where the viewer touched them. With audio, lows can drive sort rebuild, mids can expand bounds, and highs can add raycast sparkle. With camera or MediaPipe, hand direction can become the ray, hand openness can trigger rebuild, and face depth can drive sort depth. In WebXR, one-hand raycasting into splat hit / density / material lanes as a spatial HUD is promising. For installations or entertainment, memories of multiple people, data from multiple cities, or fragments from multiple live cameras can be globally ordered once, then made touchable for the viewer.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34290" target="_blank" rel="noreferrer">three.js PR #34290 GaussianSplatGroup</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34284" target="_blank" rel="noreferrer">three.js PR #34284 GaussianSplatMesh raycasting</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34291" target="_blank" rel="noreferrer">three.js PR #34291 TSL GPGPU warnings</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9192" target="_blank" rel="noreferrer">PlayCanvas PR #9192 particle local bounds</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9188" target="_blank" rel="noreferrer">PlayCanvas PR #9188 clustered lights limit</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812 shader loader abstraction</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18810" target="_blank" rel="noreferrer">Babylon.js PR #18810 KHR_materials_scatter import/export</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+            <li><a href="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-19_splat_group_raycast_scatter_scope.html" loading="lazy" title="Splat Group Raycast Scatter Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
