@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Depth relighting、RTT resolution、shadow maskを一枚の診断照明にする | 2026-08-20</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.20</p>
+      <h1>Depth relighting、RTT resolution、shadow maskを一枚の診断照明にする</h1>
+      <p class="hero-subtitle">Turning depth relighting, RTT resolution, and shadow masks into one diagnostic lighting surface</p>
+      <p>three.js の RTTNode autoUpdate / resolutionScale、ViewportTextureNode の WebGLRenderer 修正、USD connected material input、PlayCanvas の omni shadow culling / shadowCascadeMask / flat normals、Babylon.js Viewer Lite compatibility、Codrops の depth-map relighting を、8/19 の splat group/raycast/bounds/scatter から「触れる診断レイヤーを、照明と影の制作面へ広げる」方向へ接続した。</p>
+      <p class="en-copy">Today connects three.js RTTNode autoUpdate / resolutionScale, the WebGLRenderer ViewportTextureNode fix, USD connected material inputs, PlayCanvas omni-shadow culling / shadowCascadeMask / flat normals, Babylon.js Viewer Lite compatibility, and Codrops depth-map relighting to yesterday's splat group / raycast / bounds / scatter thread by extending touchable diagnostics into lighting and shadow production surfaces.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-19.html">← 2026.08.19</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Depth Relight Shadow Budget Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34307 は RTTNode に `autoUpdate` と `resolutionScale` を追加し、既定の HalfFloatType を保つ修正も含む。render-to-texture を毎フレーム更新するか、低解像度で予算化するかを表現パラメータにできる。2. three.js PR #34303 は WebGLRenderer + TSL node material で viewportTexture 系が `getCanvasTarget` なしに落ちる問題を直した。backdrop sampling、transmission、refraction を WebGL 側でも試しやすくなる。3. three.js PR #34309 は USDLoader が connected attribute を辿って material input を解決する提案。USDZ / material variants で誤った texture が diffuse に入るような事故を、接続グラフの問題として扱える。4. PlayCanvas PR #9194 は omni light の shadow caster culling を6面それぞれの全走査から一回の分類へ変え、PR #9195 は render component に `shadowCascadeMask` を公開した。影のコストと可視領域を、演出上のマスクとして触れるようになる。5. Babylon.js PR #18814 は Viewer Lite 互換性で、environment blur / rotation、HDR cubemap skybox、shadow-only API、hotspot camera orbit を調整する。Codrops の depth-map relighting 記事は、この照明・影・視点の話を2D画像から動的表面へ広げるよい制作例。</p>
+          <p class="en-copy">1. three.js PR #34307 adds `autoUpdate` and `resolutionScale` to RTTNode while preserving the default HalfFloatType. Render-to-texture update frequency and resolution budget become expressive parameters. 2. three.js PR #34303 fixes WebGLRenderer + TSL node materials that sample the viewport without `getCanvasTarget`, making backdrop sampling, transmission, and refraction more practical on WebGL. 3. three.js PR #34309 lets USDLoader resolve connected material attributes, treating wrong texture assignment in USDZ / material variants as a graph-resolution issue. 4. PlayCanvas PR #9194 changes omni-light shadow-caster culling from six full scans to one classification pass, while PR #9195 exposes `shadowCascadeMask` on render components. Shadow cost and visibility regions become touchable masks. 5. Babylon.js PR #18814 improves Viewer Lite compatibility around environment blur / rotation, HDR cubemap skyboxes, shadow-only API, and hotspot camera orbit. Codrops' depth-map relighting article is a strong creative example for extending lighting, shadow, and viewpoint work from 2D images into dynamic surfaces.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34307" target="_blank" rel="noreferrer">three.js PR #34307</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34303" target="_blank" rel="noreferrer">three.js PR #34303</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9194" target="_blank" rel="noreferrer">PlayCanvas PR #9194</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18814" target="_blank" rel="noreferrer">Babylon.js PR #18814</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/" target="_blank" rel="noreferrer">Codrops depth relighting</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>今日の注目は Codrops の depth-map relighting と three.js #34307/#34303 の組み合わせ。depth map relighting は、写真や平面画像を、法線・自己影・表面の凹凸を持つ動的な照明対象へ変える。そこへ RTTNode の resolutionScale と viewport sampling の安定化を重ねると、画像をただ照らすだけでなく、低解像度の照明 buffer、高解像度の輪郭 buffer、更新頻度の違う shadow buffer を意図的に見せられる。昨日の splat raycast は「どこを触っているか」を可視化したが、今日は「その場所がどの解像度・どの影カスケード・どの環境光で計算されているか」まで見せる方向。</p>
+          <p class="en-copy">The notable combination is Codrops' depth-map relighting with three.js #34307 and #34303. Depth-map relighting turns a photo or flat image into a dynamic lighting target with normals, self-shadowing, and surface relief. Adding RTTNode resolutionScale and stable viewport sampling lets us intentionally expose low-resolution lighting buffers, high-resolution edge buffers, and shadow buffers with different update rates. Yesterday's splat raycast visualized where the viewer touches; today's direction also shows which resolution, shadow cascade, and environment lighting are responsible for that point.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/" target="_blank" rel="noreferrer">Relighting Images with Depth Maps and Three.js</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34307" target="_blank" rel="noreferrer">three.js PR #34307</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>短期案は「Depth Relight Shadow Budget Scope」。depth map 風の起伏を pointer light で照らし、mode 1 は relight、mode 2 は RTT resolutionScale の4段階 plate、mode 3 は omni shadow six-face culling、mode 4 は cascade mask、mode 5 は Viewer Lite 的な環境回転と hotspot orbit を表示する。クリック/Space は pass refresh pulse。中長期では、実画像 + depth map、WebGPU/TSL の RTTNode、PlayCanvas の shadowCascadeMask、Babylon Viewer の environment rotation を同じ uniform set に入れ、2Dビジュアルを照明設計ツール兼作品にする。</p>
+          <p class="en-copy">The short-term idea is Depth Relight Shadow Budget Scope. A depth-map-like relief is lit by pointer light; mode 1 shows relighting, mode 2 shows four RTT resolutionScale plates, mode 3 shows omni-shadow six-face culling, mode 4 shows cascade masks, and mode 5 shows Viewer Lite-style environment rotation and hotspot orbits. Click / Space sends a pass-refresh pulse. Longer term, a real image + depth map, WebGPU/TSL RTTNode, PlayCanvas shadowCascadeMask, and Babylon Viewer environment rotation can share one uniform set, turning a 2D visual into both a lighting-design tool and a piece.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>`RTTNode` の `resolutionScale` は、blur、refraction、shadow-like buffer、lighting cache の品質とコストを1つのパラメータで揃えやすい。`autoUpdate: false` にすると、pointer が止まった時だけ更新する、音のピーク時だけ更新する、視線が入った tile だけ更新する、といった演出に向く。ViewportTextureNode / backdrop sampling は WebGLRenderer 側で落ちないことが重要で、WebGPU 専用に閉じない試作が作りやすくなる。PlayCanvas の omni culling は、全6面を別々に検査する発想から一度分類して各 face へ配る発想へ変わった点が示唆的。影も splat sort と同じく、個別 pass の正しさより全体の分類・配分が効く。glTF normals 欠落時の flat shading は、データ不備を隠すより面の構造を見せる QA 表現として使える。</p>
+          <p class="en-copy">`RTTNode` `resolutionScale` gives one control for quality and cost across blur, refraction, shadow-like buffers, and lighting caches. With `autoUpdate: false`, updates can happen only when the pointer stops, on audio peaks, or for gaze-selected tiles. ViewportTextureNode / backdrop sampling staying stable on WebGLRenderer matters because prototypes do not have to be WebGPU-only. PlayCanvas omni culling is suggestive because it shifts from testing six faces separately to classifying once and distributing to faces. As with splat sorting, shadows benefit from global classification and allocation more than isolated pass correctness. Flat shading for glTF primitives without normals can also become QA expression that reveals face structure instead of hiding bad source data.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34307" target="_blank" rel="noreferrer">three.js PR #34307</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34303" target="_blank" rel="noreferrer">three.js PR #34303</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9194" target="_blank" rel="noreferrer">PlayCanvas PR #9194</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9193" target="_blank" rel="noreferrer">PlayCanvas PR #9193</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件は three.js GaussianSplatGroup #34290 / raycasting #34284 / GPGPU warnings #34291、RTTNode #34307、TSL exports #34310、USDLoader #34309。PlayCanvas は #9167 の multisampled render target sampling がまだ重要で、今日の shadowCascadeMask #9195 / omni culling #9194 と合わせると sample / cascade / face の予算化が見えてくる。Babylon.js は #18812 shader loader abstraction と #18814 Viewer Lite compatibility を継続。Codrops は depth-map relighting 記事を実画像入力・音反応・WebXR billboard へ拡張できるかを追う。寝かせる案件は npm dependency major update のような制作表現に直接つながりにくいもの。</p>
+          <p class="en-copy">Continue watching three.js GaussianSplatGroup #34290 / raycasting #34284 / GPGPU warnings #34291, RTTNode #34307, TSL exports #34310, and USDLoader #34309. For PlayCanvas, multisampled render target sampling #9167 remains important; combined with today's shadowCascadeMask #9195 and omni culling #9194 it points toward budgeting samples, cascades, and faces. For Babylon.js, keep #18812 shader-loader abstraction and #18814 Viewer Lite compatibility active. For Codrops, track whether depth-map relighting can expand into real image inputs, audio response, and WebXR billboards. Put broad dependency-major-update items on hold unless they create a visible production issue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34290" target="_blank" rel="noreferrer">three.js PR #34290</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実画像なしの procedural depth map から始めて、pointer light、contour、resolutionScale plate、cascade mask を同じ shader に入れるのが最短。実装済みサンプルは `outputs/2026-08-20_depth_relight_shadow_budget_scope.html`。1-5 キーで relight / RTT / omni / cascade / viewer を切り替え、ドラッグで照明方向、クリックまたは Space で pass refresh pulse が走る。次に足すなら、実 depth map 画像を texture にし、RTT plate ごとに実際の framebuffer resolution を変える。</p>
+          <p class="en-copy">The best quick test today is to start with a procedural depth map and put pointer light, contours, resolutionScale plates, and cascade masks in one shader. The implemented sample is `outputs/2026-08-20_depth_relight_shadow_budget_scope.html`. Keys 1-5 switch relight / RTT / omni / cascade / viewer, dragging moves the light, and click or Space triggers a pass-refresh pulse. The next addition should be a real depth-map texture and real framebuffer resolution changes per RTT plate.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js RTTNode / ViewportTextureNode / USDLoader / TSL exports、PlayCanvas shadow culling / cascade mask / flat normals、Babylon Viewer Lite、Codrops depth-map relighting。アイデア検討: 8/19 の sort bucket / hit reticle / bounds box / scatter lane を、今日の depth contour / resolution plate / shadow face / cascade band へ接続する。サンプル実装: raw WebGL の Depth Relight Shadow Budget Scope を追加済み。結果の検証: JSON parse、HTML parse、gallery build、publish を実行する。短期は実 depth map texture 化と `resolutionScale` UI。中長期は実 engine telemetry を texture 化し、照明・影・splat・viewport sampling を同じライブ診断面に統合する。</p>
+          <p class="en-copy">Collection: three.js RTTNode / ViewportTextureNode / USDLoader / TSL exports, PlayCanvas shadow culling / cascade mask / flat normals, Babylon Viewer Lite, and Codrops depth-map relighting. Ideation: connect yesterday's sort buckets / hit reticles / bounds boxes / scatter lanes to today's depth contours / resolution plates / shadow faces / cascade bands. Prototype: the raw WebGL Depth Relight Shadow Budget Scope has been added. Verification: run JSON parse, HTML parse, gallery build, and publish. Short-term: use a real depth-map texture and add `resolutionScale` UI. Longer-term: turn real engine telemetry into textures and merge lighting, shadows, splats, and viewport sampling into one live diagnostic surface.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、Gaussian Splat の sort / bounds / raycast、XR uniform / frustum / depth、MRT / OIT / MSAA、そして今日の RTT / shadow / relighting まで、内部 renderer state を隠すより見せる方向に寄っている。組み合わせ候補は、1. splat hit distance を depth relight の光源距離へ入れる、2. shadowCascadeMask を viewer の注視領域や音量で切る、3. RTT resolutionScale を Web Audio の帯域や FPS で変える、4. USD material graph / shader loader pending state を画面の色温度や blur として出す、の4つ。育てる価値が高いテーマは「作品に見える QA surface」。制作中は debug panel、公開時はインタラクション表現として機能する二面性がある。</p>
+          <p class="en-copy">The recent trend runs from Gaussian Splat sort / bounds / raycast, XR uniforms / frusta / depth, MRT / OIT / MSAA, to today's RTT / shadow / relighting: internal renderer state is increasingly useful when surfaced rather than hidden. Promising combinations are: 1. feeding splat hit distance into depth-relight light distance, 2. driving shadowCascadeMask from gaze or audio level, 3. changing RTT resolutionScale from Web Audio bands or FPS, and 4. turning USD material graph or shader-loader pending state into color temperature or blur. The theme worth growing is a QA surface that looks like a piece: a debug panel during production and an interaction layer in public.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34309" target="_blank" rel="noreferrer">three.js PR #34309</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>最有力は「Depth Relight Shadow Budget Scope」。理由は、Codrops の具体的な制作事例があり、three.js #34307/#34303、PlayCanvas #9194/#9195、Babylon #18814 と接続しやすく、依存なし WebGL shader で短時間に動かせるため。作成済みファイルは `outputs/2026-08-20_depth_relight_shadow_budget_scope.html`。動く内容は、procedural depth map の relighting、RTT 解像度 plate、omni shadow 6-face 分類、cascade mask、environment rotation / hotspot orbit 風レイヤー。次に発展させるなら、実画像 + depth map、実 RTT framebuffer、Web Audio 反応、または WebXR quad layer への投影を足す。</p>
+          <p class="en-copy">The strongest candidate is Depth Relight Shadow Budget Scope because Codrops provides a concrete production example, it connects cleanly to three.js #34307/#34303, PlayCanvas #9194/#9195, and Babylon #18814, and it can run quickly as a dependency-free WebGL shader. The created file is `outputs/2026-08-20_depth_relight_shadow_budget_scope.html`. It shows procedural depth-map relighting, RTT resolution plates, omni-shadow six-face classification, cascade masks, and environment-rotation / hotspot-orbit-like layers. Next, add a real image + depth map, real RTT framebuffers, Web Audio response, or projection onto a WebXR quad layer.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、pointer light、depth value、normal gradient、resolution scale、shadow face id、cascade mask、environment rotation、hotspot orbit をすべてデータとして扱える。展示では、来場者の位置や声量で照明解像度と影カスケードが変わる壁面にできる。Web演出では、商品写真やキービジュアルに depth map を足し、スクロールやホバーで照明が変わる hero ではなく、実際の rendering budget が見えるインタラクティブ表面にできる。MediaPipe と組み合わせるなら手の位置を light、顔の向きを environment rotation、音を RTT update pulse に割り当てる。WebXR では quad layer 上の画像を depth relight し、splat / 3D scene の hit distance と shadow mask を同じ表面へ重ねると、2Dポスターと3D空間が同じ照明ルールでつながる。</p>
+          <p class="en-copy">Today's sample can treat pointer light, depth value, normal gradient, resolution scale, shadow face id, cascade mask, environment rotation, and hotspot orbit as data. In an installation, visitor position or voice level could change lighting resolution and shadow cascades on a wall. On the web, a product photo or key visual with a depth map can become an interactive surface that exposes rendering budget, not merely a hover-lit hero. With MediaPipe, hand position can drive the light, face direction can drive environment rotation, and audio can drive RTT update pulses. In WebXR, a quad-layer image can be depth-relit while splat / 3D scene hit distance and shadow masks are overlaid onto the same surface, linking a 2D poster and 3D space through one lighting rule.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/" target="_blank" rel="noreferrer">Codrops depth relighting</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34307" target="_blank" rel="noreferrer">three.js PR #34307 RTTNode autoUpdate and resolutionScale</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34303" target="_blank" rel="noreferrer">three.js PR #34303 WebGLNodesHandler getCanvasTarget fix</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34309" target="_blank" rel="noreferrer">three.js PR #34309 USDLoader connected attribute values</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34310" target="_blank" rel="noreferrer">three.js PR #34310 TSL exports</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9194" target="_blank" rel="noreferrer">PlayCanvas PR #9194 omni shadow culling</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9195" target="_blank" rel="noreferrer">PlayCanvas PR #9195 shadowCascadeMask</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9193" target="_blank" rel="noreferrer">PlayCanvas PR #9193 flat shade glTF primitives without normals</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18814" target="_blank" rel="noreferrer">Babylon.js PR #18814 Viewer Lite compatibility</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/" target="_blank" rel="noreferrer">Codrops: Relighting Images with Depth Maps and Three.js</a></li>
+          
+            <li><a href="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-20_depth_relight_shadow_budget_scope.html" loading="lazy" title="Depth Relight Shadow Budget Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
