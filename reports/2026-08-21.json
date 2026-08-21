@@ -1,0 +1,223 @@
+{
+  "date": "2026-08-21",
+  "headline": "Edge-aware fog、音反応goo、GSplat透過影を低解像度バッファの表現面に束ねる",
+  "headlineEn": "Binding edge-aware fog, music-reactive goo, and transparent GSplat shadows into a low-resolution buffer surface",
+  "summary": "three.js の post-processing volumetric fog/JBU upsampling、Codrops の music-reactive goo、Babylon.js の GSplat IBL shadow opacity、PlayCanvas の WGSL sampler reflection / AABB frustum culling を、8/20 の depth relight / RTT resolutionScale / shadow mask から「低解像度の中間バッファを隠さず、作品と診断を兼ねる表面にする」方向へ接続した。",
+  "summaryEn": "Today connects three.js post-processing volumetric fog with JBU upsampling, Codrops' music-reactive goo, Babylon.js GSplat IBL shadow opacity, and PlayCanvas WGSL sampler reflection / AABB frustum culling to yesterday's depth relight / RTT resolutionScale / shadow-mask thread, treating low-resolution intermediate buffers as surfaces that work as both artwork and diagnostics.",
+  "links": [
+    {
+      "label": "three.js PR #34319 post-processing volumetric fog example",
+      "url": "https://github.com/mrdoob/three.js/pull/34319"
+    },
+    {
+      "label": "three.js PR #34314 NixieFX library listing",
+      "url": "https://github.com/mrdoob/three.js/pull/34314"
+    },
+    {
+      "label": "Codrops: Run Rob Run music-reactive goo",
+      "url": "https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/"
+    },
+    {
+      "label": "Babylon.js PR #18815 non-binary GSplat IBL shadows",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+    },
+    {
+      "label": "Babylon.js PR #18816 half-float GSplat PLY properties",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18816"
+    },
+    {
+      "label": "PlayCanvas PR #9198 WGSL trailing texture sampler reflection",
+      "url": "https://github.com/playcanvas/engine/pull/9198"
+    },
+    {
+      "label": "PlayCanvas PR #9197 AABB frustum culling",
+      "url": "https://github.com/playcanvas/engine/pull/9197"
+    },
+    {
+      "label": "Today's sample",
+      "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34319 は post-processing volumetric fog の例を追加する draft。Joint Bilateral Upsampling を使い、Gaussian blur よりエッジを保ちながら denoise / upsample する比較を示している。8/20 の RTT resolutionScale と直結し、低解像度 fog buffer をどう戻すか自体が表現パラメータになる。2. Codrops の Run Rob Run は Three.js + WebGPU で音解析、custom geometry deformation、scroll-driven morphing、damping、performance optimization を組み合わせた music-reactive goo の制作解説。音反応を単なる波形ではなく、形状の粘性・遅れ・変形記憶として扱う点が強い。3. Babylon.js PR #18815 は Gaussian Splat IBL shadow の voxel occupancy を binary から per-voxel opacity へ変え、trace-time roulette と temporal accumulation で透明・半透明 splat の影を収束させる提案。4. PlayCanvas PR #9198 は WGSL reflection が末尾 texture に phantom sampler binding を作る問題を修正し、PR #9197 は mesh visibility を bounding sphere ではなく AABB frustum test へ寄せる。どちらも「見えない余分なコストや余分な binding」を制作面に引き上げる材料になる。5. three.js PR #34314 は NixieFX を Libraries and Plugins に追加する提案。専用 editor と three.js renderer を持つ particle effects runtime は、日々のミニ試作をパーティクル演出へ広げる候補としてウォッチ継続。",
+      "bodyEn": "1. three.js PR #34319 drafts a post-processing volumetric fog example. It uses Joint Bilateral Upsampling and compares edge-preserving denoise / upsample against Gaussian blur. This connects directly to yesterday's RTT resolutionScale: the way a low-resolution fog buffer is resolved becomes an expressive parameter. 2. Codrops' Run Rob Run explains a Three.js + WebGPU music-reactive goo scene combining music analysis, custom geometry deformation, scroll-driven morphing, damping, and performance optimization. Its key move is treating audio response as viscosity, delay, and deformation memory rather than a plain waveform. 3. Babylon.js PR #18815 changes Gaussian Splat IBL-shadow voxel occupancy from binary to per-voxel opacity, then uses trace-time roulette and temporal accumulation so transparent and partially covering splats converge to softer shadows. 4. PlayCanvas PR #9198 fixes WGSL reflection fabricating a phantom sampler binding for a trailing texture, while PR #9197 moves mesh visibility from bounding spheres to AABB frustum tests. Both are useful for surfacing invisible extra cost or extra binding as production visuals. 5. three.js PR #34314 proposes adding NixieFX to Libraries and Plugins. A particle-effects runtime with a dedicated editor and three.js renderer is worth watching as a bridge from daily shader sketches to authored particle shows.",
+      "links": [
+        {
+          "label": "three.js PR #34319",
+          "url": "https://github.com/mrdoob/three.js/pull/34319"
+        },
+        {
+          "label": "Codrops Run Rob Run",
+          "url": "https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/"
+        },
+        {
+          "label": "Babylon.js PR #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        },
+        {
+          "label": "PlayCanvas PR #9198",
+          "url": "https://github.com/playcanvas/engine/pull/9198"
+        },
+        {
+          "label": "three.js PR #34314",
+          "url": "https://github.com/mrdoob/three.js/pull/34314"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "今日の注目は three.js #34319 と Codrops Run Rob Run の組み合わせ。volumetric fog は通常、低解像度で計算してぼかして戻す「見えない最適化」になりやすいが、JBU のように depth / normal / edge を頼りに戻すと、境界だけが残る霧、音のピーク時だけ粗さが見える霧、スクロール速度で upsample kernel が変わる霧にできる。Run Rob Run の goo は、音の解析値を形状変形と damping に入れているので、fog resolve の kernel radius や temporal accumulation の重みと相性が良い。つまり、音で揺れる物体を照らすだけでなく、音で「低解像度バッファの戻し方」が変わる。",
+      "bodyEn": "The notable combination is three.js #34319 with Codrops' Run Rob Run. Volumetric fog often becomes an invisible optimization: render low-resolution, blur, then resolve. With JBU-style depth / normal / edge guidance, the resolve itself can become expressive: fog that keeps only boundaries, fog whose coarse cells appear on audio peaks, or fog whose upsample kernel changes with scroll velocity. Run Rob Run feeds audio analysis into deformation and damping, which maps naturally to fog kernel radius or temporal accumulation weight. The object is not merely lit by audio; audio changes how the low-resolution buffer returns to the final image.",
+      "links": [
+        {
+          "label": "three.js PR #34319",
+          "url": "https://github.com/mrdoob/three.js/pull/34319"
+        },
+        {
+          "label": "Run Rob Run",
+          "url": "https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "短期案は「Edge-Aware Fog Goo Scope」。procedural depth goo を低解像度 fog grid で覆い、mode 1 は beauty resolve、mode 2 は raw low-res fog、mode 3 は depth-guided resolve、mode 4 は WGSL phantom sampler / stale pass 風の audit map を表示する。pointer は fog light と goo attractor、click / Space は impulse。中長期案は、8/20 の depth relight surface に fog / goo / GSplat opacity を重ね、照明・影・霧・半透明 splat のすべてを「低解像度で一度壊して、どの情報で戻すか」を触る作品にする。カード UI 系ではなく、画面全体を renderer state の流体的な可視化に寄せる。",
+      "bodyEn": "The short-term idea is Edge-Aware Fog Goo Scope. Procedural depth goo is covered by a low-resolution fog grid; mode 1 shows the beauty resolve, mode 2 raw low-res fog, mode 3 depth-guided resolve, and mode 4 a WGSL phantom-sampler / stale-pass style audit map. The pointer controls the fog light and goo attractor, while click / Space sends an impulse. Longer term, layer fog, goo, and GSplat opacity onto yesterday's depth-relight surface so lighting, shadows, fog, and translucent splats all become a work about breaking the image at low resolution and choosing what information reconstructs it. This stays away from card UI and keeps the full screen as fluid renderer-state visualization.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "JBU / edge-aware upsampling の最小要素は、低解像度 buffer、guide になる depth/normal、空間距離 weight、guide 差分 weight の4つ。three.js #34319 の示唆は、fog を高解像度で全部計算するのではなく、低解像度で作って edge-aware に戻すこと。Babylon.js #18815 の示唆は、半透明 splat の影を binary occupancy で固定しないこと。opacity を voxel に残し、sample 時に roulette する発想は、fog density、particle trail、audio grain にも転用できる。PlayCanvas #9198 の phantom sampler は、shader reflection / bind group layout の QA 表現として面白い。末尾 texture だけ余分な sampler が付くようなバグは、画面上では「存在しない resource slot が点滅する」演出に変換できる。PlayCanvas #9197 の AABB culling は、sphere で膨らんだ見えない領域を削る話なので、長い beam / ribbon / fog slab の可視化に効く。",
+      "bodyEn": "The minimum ingredients for JBU / edge-aware upsampling are a low-resolution buffer, depth/normal as a guide, spatial-distance weight, and guide-difference weight. three.js #34319 suggests not calculating all fog at full resolution, but producing low-resolution fog and resolving it edge-aware. Babylon.js #18815 suggests not freezing transparent splat shadows as binary occupancy: storing opacity in voxels and applying roulette at sample time can also apply to fog density, particle trails, and audio grains. PlayCanvas #9198's phantom sampler is useful as shader reflection / bind-group-layout QA expression; a bug where only the trailing texture gets an extra sampler can become a flashing nonexistent resource slot. PlayCanvas #9197's AABB culling removes invisible volume inflated by sphere bounds, which matters for long beams, ribbons, and fog slabs.",
+      "links": [
+        {
+          "label": "three.js PR #34319",
+          "url": "https://github.com/mrdoob/three.js/pull/34319"
+        },
+        {
+          "label": "Babylon.js PR #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        },
+        {
+          "label": "PlayCanvas PR #9198",
+          "url": "https://github.com/playcanvas/engine/pull/9198"
+        },
+        {
+          "label": "PlayCanvas PR #9197",
+          "url": "https://github.com/playcanvas/engine/pull/9197"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は three.js #34319 volumetric fog、#34307 RTTNode autoUpdate / resolutionScale、#34303 viewport sampling、#34290 GaussianSplatGroup、#34314 NixieFX。PlayCanvas は #9167 multisampled render target sampling、#9197 AABB frustum culling、#9198 phantom sampler、#9199 omni shadow cube face culling を継続。Babylon.js は #18815 GSplat IBL shadow opacity、#18816 half-float PLY properties、#18812 shader loader abstraction、#18814 Viewer Lite compatibility を追う。新規案件として Codrops Run Rob Run を音反応 goo / fog resolve の方向で採用。寝かせる案件は PlayCanvas script clone / awaiting order 系で、実装品質として重要だが今日の表現テーマからは一段遠い。",
+      "bodyEn": "Continue watching three.js #34319 volumetric fog, #34307 RTTNode autoUpdate / resolutionScale, #34303 viewport sampling, #34290 GaussianSplatGroup, and #34314 NixieFX. For PlayCanvas, keep #9167 multisampled render-target sampling, #9197 AABB frustum culling, #9198 phantom sampler, and #9199 omni-shadow cube-face culling active. For Babylon.js, track #18815 GSplat IBL shadow opacity, #18816 half-float PLY properties, #18812 shader-loader abstraction, and #18814 Viewer Lite compatibility. Newly adopt Codrops' Run Rob Run for the audio-reactive goo / fog-resolve direction. Put PlayCanvas script clone / awaiting-order fixes on hold for this project: important engine correctness, but farther from today's visual theme.",
+      "links": [
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "PlayCanvas PR #9199",
+          "url": "https://github.com/playcanvas/engine/pull/9199"
+        },
+        {
+          "label": "Babylon.js PR #18816",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18816"
+        },
+        {
+          "label": "three.js PR #34314",
+          "url": "https://github.com/mrdoob/three.js/pull/34314"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら、実 framebuffer を作る前に procedural depth から fog を作り、raw low-res と edge-aware resolve を切り替えるのが最短。実装済みサンプルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。1-4 キーで beauty / low-res fog / edge-aware resolve / sampler audit を切り替え、ドラッグで light / attractor、クリックまたは Space で impulse が走る。次に足すなら Web Audio の周波数帯を fog grid size、JBU kernel、temporal weight に割り当てる。",
+      "bodyEn": "The best quick test today is to start with procedural depth before building real framebuffers, then switch between raw low-res fog and edge-aware resolve. The implemented sample is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. Keys 1-4 switch beauty / low-res fog / edge-aware resolve / sampler audit, dragging controls the light / attractor, and click or Space sends an impulse. The next addition should map Web Audio frequency bands to fog grid size, JBU kernel, and temporal weight.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js volumetric fog/JBU、Codrops music-reactive goo、Babylon GSplat opacity shadow、PlayCanvas WGSL sampler/AABB culling/NixieFX。アイデア検討: 8/20 の depth relight / RTT resolutionScale / shadow mask を、今日の fog resolve / goo damping / opacity voxel / phantom sampler slot へ接続する。サンプル実装: raw WebGL の Edge-Aware Fog Goo Scope を追加済み。結果の検証: HTML の構文、WebGL shader のコンパイル前提、JSON parse、gallery build、publish を確認する。短期は Web Audio 入力と本物の低解像度 framebuffer。中長期は three.js TSL / WebGPU 版、GSplat hit distance と opacity shadow の統合、NixieFX 的な authored particle runtime との接続。",
+      "bodyEn": "Collection: three.js volumetric fog/JBU, Codrops music-reactive goo, Babylon GSplat opacity shadows, and PlayCanvas WGSL sampler / AABB culling / NixieFX. Ideation: connect yesterday's depth relight / RTT resolutionScale / shadow masks to today's fog resolve / goo damping / opacity voxels / phantom sampler slots. Prototype: the raw WebGL Edge-Aware Fog Goo Scope has been added. Verification: check HTML syntax, WebGL shader assumptions, JSON parse, gallery build, and publish. Short-term: add Web Audio input and real low-resolution framebuffers. Longer-term: build a three.js TSL / WebGPU version, integrate GSplat hit distance with opacity shadows, and connect to an authored particle runtime like NixieFX.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、depth relight、RTT resolutionScale、shadow cascade / cube face、splat sort / opacity、volumetric fog upsample が同じ方向を向いている。すべて「内部の近似をどこで許し、どの情報で復元するか」の話。組み合わせ候補は、1. 音量で fog grid size と temporal accumulation を変える、2. splat hit distance を fog の guide depth に混ぜる、3. phantom sampler / shader pending / material graph fallback を画面上の resource slot として可視化する、4. AABB culling の tightness を beam / ribbon の発光密度にする、5. NixieFX の authored particle を低解像度 fog buffer に一度沈めて JBU で戻す、の5つ。育てる価値が高いテーマは「低解像度を美学にする QA surface」。最適化の痕跡を隠すより、触れる制作情報として残すほうが、このプロジェクトの中長期軸に合う。",
+      "bodyEn": "The recent trend across depth relight, RTT resolutionScale, shadow cascades / cube faces, splat sort / opacity, and volumetric fog upsampling points in one direction: where approximations are allowed internally, and what information reconstructs them. Promising combinations are: 1. drive fog grid size and temporal accumulation from loudness, 2. mix splat hit distance into fog guide depth, 3. visualize phantom samplers / shader pending / material graph fallback as on-screen resource slots, 4. turn AABB culling tightness into beam / ribbon emission density, and 5. sink authored NixieFX particles into a low-resolution fog buffer before resolving them with JBU. The theme worth growing is a QA surface that makes low resolution aesthetic. Preserving optimization traces as touchable production information fits this project's mid-term axis better than hiding them.",
+      "links": [
+        {
+          "label": "three.js PR #34319",
+          "url": "https://github.com/mrdoob/three.js/pull/34319"
+        },
+        {
+          "label": "Babylon.js PR #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        },
+        {
+          "label": "NixieFX PR",
+          "url": "https://github.com/mrdoob/three.js/pull/34314"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "最有力は「Edge-Aware Fog Goo Scope」。理由は、three.js #34319 の JBU fog と Codrops の音反応 goo が同じ shader 空間で短時間に結合でき、8/20 の RTT resolutionScale / depth relight surface と継続性が高いから。作成済みファイルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。動く内容は、procedural depth goo、低解像度 fog grid、depth-guided edge-aware resolve、phantom sampler / stale pass 風 audit map。次に発展させるなら、実 framebuffer 2 pass 化、音声入力、three.js TSL 版、WebGPU storage texture / sampler layout の実データ可視化を足す。",
+      "bodyEn": "The strongest candidate is Edge-Aware Fog Goo Scope because three.js #34319's JBU fog and Codrops' audio-reactive goo can be combined quickly in one shader space, and it continues yesterday's RTT resolutionScale / depth-relight surface. The created file is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. It shows procedural depth goo, a low-resolution fog grid, depth-guided edge-aware resolve, and a phantom-sampler / stale-pass style audit map. Next, add real two-pass framebuffers, audio input, a three.js TSL version, or real WebGPU storage-texture / sampler-layout telemetry.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日のサンプルは、pointer、impulse、procedural depth、fog density、edge weight、low-res cell id、phantom sampler flag をデータとして扱える。展示では、来場者の手や声で霧の解像度と復元半径が変わる壁面にできる。Web演出では、製品写真やライブ映像を depth guide として使い、通常時は綺麗な fog resolve、操作時だけ低解像度 grid と resource slot が露出する表現にできる。MediaPipe と組み合わせるなら、手の速度を impulse、顔の向きを light、口の開きや声量を fog density に割り当てる。WebXR では、quad layer 上の billboard を edge-aware fog で覆い、背後の GSplat hit distance や IBL shadow opacity を guide に混ぜると、2D面・splat・空間照明の境界が曖昧になる。NixieFX 的な authored particle を入力にすると、粒子を一度 fog buffer に溶かし、JBU で輪郭だけ戻すような演出が作れる。",
+      "bodyEn": "Today's sample can treat pointer, impulse, procedural depth, fog density, edge weight, low-res cell id, and phantom sampler flag as data. In an installation, hand movement or voice can change fog resolution and reconstruction radius on a wall. On the web, product photos or live video can act as depth guides: normally a clean fog resolve, while interaction exposes the low-resolution grid and resource slots. With MediaPipe, hand speed can drive impulse, face direction can drive light, and mouth opening or voice level can drive fog density. In WebXR, a quad-layer billboard can be covered with edge-aware fog while GSplat hit distance and IBL shadow opacity behind it are mixed into the guide, blurring the boundary between 2D surface, splat, and spatial lighting. With authored particles like NixieFX, particles can dissolve into a fog buffer and return only at their guided edges through JBU.",
+      "links": [
+        {
+          "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        },
+        {
+          "label": "Run Rob Run",
+          "url": "https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/"
+        },
+        {
+          "label": "Babylon.js PR #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        }
+      ]
+    }
+  ]
+}
