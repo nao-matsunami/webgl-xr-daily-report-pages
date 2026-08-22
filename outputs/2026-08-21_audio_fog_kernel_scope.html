@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audio Fog Kernel Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #07080b;
+      color: #eef4f7;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud, .readout {
+      position: fixed;
+      left: 18px;
+      max-width: min(560px, calc(100vw - 36px));
+      color: rgba(235, 243, 246, 0.88);
+      font-size: 12px;
+      line-height: 1.55;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.72);
+      pointer-events: none;
+    }
+    .hud {
+      top: 16px;
+    }
+    .readout {
+      bottom: 16px;
+      color: rgba(235, 243, 246, 0.74);
+    }
+    .hud strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <strong>Audio Fog Kernel Scope</strong>
+    click: start synth analyser / impulse, drag: guide light, keys 1-3: beauty / grid budget / kernel weights
+  </div>
+  <div class="readout" id="readout">audio fallback running</div>
+  <script>
+    const canvas = document.getElementById("gl");
+    const readout = document.getElementById("readout");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL unavailable");
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      varying vec2 vUv;
+      void main() {
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision highp float;
+
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform vec3 bands;
+      uniform float time;
+      uniform float impulse;
+      uniform int mode;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.7, 289.3))) * 39148.231);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+          mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.52;
+        for (int i = 0; i < 5; i++) {
+          v += a * noise(p);
+          p = mat2(1.54, -1.08, 1.08, 1.54) * p + 0.23;
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      float guideDepth(vec2 uv) {
+        vec2 p = uv * 2.0 - 1.0;
+        float bassBend = bands.x * 0.28 + impulse * 0.08;
+        float midTwist = bands.y * 0.8;
+        float ridge = sin(p.x * (4.0 + midTwist) + time * 0.26) * 0.08;
+        ridge += sin((p.x + p.y) * 6.4 - time * 0.18) * 0.05;
+        float blobs = 0.0;
+        for (int i = 0; i < 4; i++) {
+          float fi = float(i);
+          vec2 c = vec2(
+            sin(time * (0.28 + fi * 0.06) + fi * 1.9),
+            cos(time * (0.22 + fi * 0.05) + fi * 2.3)
+          ) * (0.28 + bassBend);
+          c += (pointer * 2.0 - 1.0) * (0.10 + fi * 0.035);
+          float d = length(p - c);
+          blobs += (0.11 + bands.z * 0.045) / (d * d + 0.05 + fi * 0.018);
+        }
+        return clamp(0.14 + ridge + blobs * 0.075 + fbm(uv * 3.2 + time * 0.04) * 0.34, 0.0, 1.0);
+      }
+
+      float fogSource(vec2 uv) {
+        float cellCount = mix(18.0, 76.0, clamp(bands.x * 1.18 + impulse * 0.2, 0.0, 1.0));
+        vec2 cells = vec2(cellCount, cellCount * 0.56);
+        vec2 q = (floor(uv * cells) + 0.5) / cells;
+        float d = guideDepth(q);
+        float grain = fbm(q * (6.0 + bands.y * 12.0) + vec2(time * 0.12, -time * 0.06));
+        return smoothstep(0.24, 1.04, d + grain * (0.32 + bands.z * 0.32));
+      }
+
+      float kernelResolve(vec2 uv) {
+        vec2 px = 1.0 / resolution;
+        float center = guideDepth(uv);
+        float radius = mix(1.0, 5.5, clamp(bands.y * 1.25 + impulse * 0.25, 0.0, 1.0));
+        float sharpness = mix(24.0, 6.0, clamp(bands.z * 1.1, 0.0, 1.0));
+        float total = 0.0;
+        float weightSum = 0.0;
+        for (int y = -3; y <= 3; y++) {
+          for (int x = -3; x <= 3; x++) {
+            vec2 o = vec2(float(x), float(y)) * px * radius;
+            float gd = guideDepth(uv + o);
+            float dw = exp(-abs(gd - center) * sharpness);
+            float sw = 1.0 / (1.0 + dot(vec2(float(x), float(y)), vec2(float(x), float(y))) * 0.32);
+            float w = dw * sw;
+            total += fogSource(uv + o) * w;
+            weightSum += w;
+          }
+        }
+        return total / max(weightSum, 0.0001);
+      }
+
+      vec3 ramp(float t) {
+        vec3 low = vec3(0.06, 0.08, 0.12);
+        vec3 mid = vec3(0.12, 0.58, 0.62);
+        vec3 hot = vec3(1.0, 0.44, 0.20);
+        vec3 high = vec3(0.96, 0.94, 0.72);
+        return mix(mix(low, mid, smoothstep(0.04, 0.55, t)), mix(hot, high, t), smoothstep(0.58, 1.0, t));
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        vec2 p = (uv * 2.0 - 1.0) * vec2(resolution.x / resolution.y, 1.0);
+        float depth = guideDepth(uv);
+        vec2 px = 1.0 / resolution;
+        float edge = abs(guideDepth(uv + vec2(px.x * 2.0, 0.0)) - depth) +
+          abs(guideDepth(uv + vec2(0.0, px.y * 2.0)) - depth);
+        edge = smoothstep(0.018, 0.068, edge * 16.0);
+
+        float rawFog = fogSource(uv);
+        float resolved = kernelResolve(uv);
+        float pulse = 0.5 + 0.5 * sin(time * (2.0 + bands.z * 8.0) + depth * 18.0);
+        vec3 material = ramp(depth + pulse * bands.z * 0.12);
+        vec3 light = vec3((pointer * 2.0 - 1.0) * vec2(resolution.x / resolution.y, 1.0), 0.72);
+        float glow = exp(-length(p - light.xy) * (2.0 + bands.y * 5.0));
+        vec3 fogColor = mix(vec3(0.10, 0.12, 0.18), vec3(0.68, 0.82, 0.88), uv.y + bands.y * 0.15);
+        vec3 color = mix(material + glow * vec3(0.8, 0.36, 0.18), fogColor, resolved * 0.66);
+        color += edge * vec3(0.95, 0.72, 0.38) * (0.22 + bands.z * 0.32);
+
+        if (mode == 2) {
+          float cellCount = mix(18.0, 76.0, clamp(bands.x * 1.18 + impulse * 0.2, 0.0, 1.0));
+          vec2 cells = vec2(cellCount, cellCount * 0.56);
+          vec2 grid = abs(fract(uv * cells) - 0.5);
+          float line = smoothstep(0.462, 0.5, max(grid.x, grid.y));
+          color = mix(vec3(rawFog * 0.18, rawFog * 0.8, rawFog), vec3(1.0, 0.42, 0.2), line);
+        } else if (mode == 3) {
+          float radiusView = smoothstep(0.18, 0.85, bands.y + impulse * 0.45);
+          float sharpView = 1.0 - smoothstep(0.12, 0.8, bands.z);
+          color = vec3(radiusView, resolved, sharpView);
+          color += edge * vec3(0.95);
+        }
+
+        gl_FragColor = vec4(pow(color, vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+    gl.useProgram(program);
+
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "resolution"),
+      pointer: gl.getUniformLocation(program, "pointer"),
+      bands: gl.getUniformLocation(program, "bands"),
+      time: gl.getUniformLocation(program, "time"),
+      impulse: gl.getUniformLocation(program, "impulse"),
+      mode: gl.getUniformLocation(program, "mode")
+    };
+
+    const state = {
+      pointer: [0.58, 0.52],
+      bands: [0.28, 0.34, 0.22],
+      impulse: 0,
+      mode: 1,
+      started: performance.now(),
+      audio: null
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+      const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      state.pointer[1] = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    }
+
+    async function startAudio() {
+      if (state.audio) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.035;
+      const low = ctx.createOscillator();
+      const mid = ctx.createOscillator();
+      const high = ctx.createOscillator();
+      low.type = "sine";
+      mid.type = "triangle";
+      high.type = "sawtooth";
+      low.frequency.value = 54;
+      mid.frequency.value = 143;
+      high.frequency.value = 612;
+      low.connect(gain);
+      mid.connect(gain);
+      high.connect(gain);
+      gain.connect(analyser);
+      analyser.connect(ctx.destination);
+      low.start();
+      mid.start();
+      high.start();
+      state.audio = { ctx, analyser, bins: new Uint8Array(analyser.frequencyBinCount), low, mid, high };
+    }
+
+    window.addEventListener("pointermove", setPointer);
+    window.addEventListener("pointerdown", async (event) => {
+      setPointer(event);
+      await startAudio();
+      state.impulse = 1;
+    });
+    window.addEventListener("keydown", async (event) => {
+      if (event.key >= "1" && event.key <= "3") state.mode = Number(event.key);
+      if (event.code === "Space") {
+        await startAudio();
+        state.impulse = 1;
+      }
+    });
+
+    function sampleBands(t) {
+      if (!state.audio) {
+        return [
+          0.38 + Math.sin(t * 1.4) * 0.18,
+          0.32 + Math.sin(t * 2.1 + 1.2) * 0.16,
+          0.22 + Math.sin(t * 5.7 + 2.4) * 0.12
+        ];
+      }
+      const { analyser, bins, low, mid, high } = state.audio;
+      low.frequency.value = 48 + Math.sin(t * 0.71) * 14;
+      mid.frequency.value = 138 + Math.sin(t * 0.49) * 38;
+      high.frequency.value = 520 + Math.sin(t * 0.83) * 190;
+      analyser.getByteFrequencyData(bins);
+      const ranges = [[1, 8], [9, 28], [29, 78]];
+      return ranges.map(([a, b]) => {
+        let sum = 0;
+        for (let i = a; i < b; i++) sum += bins[i];
+        return Math.min(1, (sum / (b - a)) / 180);
+      });
+    }
+
+    function frame(now) {
+      resize();
+      const t = (now - state.started) * 0.001;
+      const target = sampleBands(t);
+      for (let i = 0; i < 3; i++) {
+        state.bands[i] += (target[i] - state.bands[i]) * 0.12;
+      }
+      state.impulse *= 0.92;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform3f(uniforms.bands, state.bands[0], state.bands[1], state.bands[2]);
+      gl.uniform1f(uniforms.time, t);
+      gl.uniform1f(uniforms.impulse, state.impulse);
+      gl.uniform1i(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      readout.textContent = `mode ${state.mode} / bass grid ${state.bands[0].toFixed(2)} / mid kernel ${state.bands[1].toFixed(2)} / high edge ${state.bands[2].toFixed(2)}${state.audio ? " / synth analyser on" : " / fallback"}`;
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

@@ -36,6 +36,10 @@
     {
       "label": "Today's sample",
       "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+    },
+    {
+      "label": "Today's second sample",
+      "url": "../outputs/2026-08-21_audio_fog_kernel_scope.html"
     }
   ],
   "sections": [
@@ -146,24 +150,32 @@
     {
       "title": "試すならこれ",
       "titleEn": "If you try one thing",
-      "body": "今日試すなら、実 framebuffer を作る前に procedural depth から fog を作り、raw low-res と edge-aware resolve を切り替えるのが最短。実装済みサンプルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。1-4 キーで beauty / low-res fog / edge-aware resolve / sampler audit を切り替え、ドラッグで light / attractor、クリックまたは Space で impulse が走る。次に足すなら Web Audio の周波数帯を fog grid size、JBU kernel、temporal weight に割り当てる。",
-      "bodyEn": "The best quick test today is to start with procedural depth before building real framebuffers, then switch between raw low-res fog and edge-aware resolve. The implemented sample is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. Keys 1-4 switch beauty / low-res fog / edge-aware resolve / sampler audit, dragging controls the light / attractor, and click or Space sends an impulse. The next addition should map Web Audio frequency bands to fog grid size, JBU kernel, and temporal weight.",
+      "body": "今日試すなら、実 framebuffer を作る前に procedural depth から fog を作り、raw low-res と edge-aware resolve を切り替えるのが最短。1本目の実装済みサンプルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。1-4 キーで beauty / low-res fog / edge-aware resolve / sampler audit を切り替え、ドラッグで light / attractor、クリックまたは Space で impulse が走る。さらに「次に足すなら」として、Web Audio の周波数帯を fog grid size、JBU kernel、edge sharpness に割り当てる2本目 `outputs/2026-08-21_audio_fog_kernel_scope.html` も追加した。こちらはクリックで synth analyser を開始し、1-3 キーで beauty / grid budget / kernel weights を切り替える。",
+      "bodyEn": "The best quick test today is to start with procedural depth before building real framebuffers, then switch between raw low-res fog and edge-aware resolve. The first implemented sample is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. Keys 1-4 switch beauty / low-res fog / edge-aware resolve / sampler audit, dragging controls the light / attractor, and click or Space sends an impulse. As the 'next addition', a second sample, `outputs/2026-08-21_audio_fog_kernel_scope.html`, maps Web Audio frequency bands to fog grid size, JBU kernel, and edge sharpness. Click starts the synth analyser, and keys 1-3 switch beauty / grid budget / kernel weights.",
       "links": [
         {
           "label": "Today's sample",
           "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        },
+        {
+          "label": "Today's second sample",
+          "url": "../outputs/2026-08-21_audio_fog_kernel_scope.html"
         }
       ]
     },
     {
       "title": "進行マップ",
       "titleEn": "Progress map",
-      "body": "ネタ収集: three.js volumetric fog/JBU、Codrops music-reactive goo、Babylon GSplat opacity shadow、PlayCanvas WGSL sampler/AABB culling/NixieFX。アイデア検討: 8/20 の depth relight / RTT resolutionScale / shadow mask を、今日の fog resolve / goo damping / opacity voxel / phantom sampler slot へ接続する。サンプル実装: raw WebGL の Edge-Aware Fog Goo Scope を追加済み。結果の検証: HTML の構文、WebGL shader のコンパイル前提、JSON parse、gallery build、publish を確認する。短期は Web Audio 入力と本物の低解像度 framebuffer。中長期は three.js TSL / WebGPU 版、GSplat hit distance と opacity shadow の統合、NixieFX 的な authored particle runtime との接続。",
-      "bodyEn": "Collection: three.js volumetric fog/JBU, Codrops music-reactive goo, Babylon GSplat opacity shadows, and PlayCanvas WGSL sampler / AABB culling / NixieFX. Ideation: connect yesterday's depth relight / RTT resolutionScale / shadow masks to today's fog resolve / goo damping / opacity voxels / phantom sampler slots. Prototype: the raw WebGL Edge-Aware Fog Goo Scope has been added. Verification: check HTML syntax, WebGL shader assumptions, JSON parse, gallery build, and publish. Short-term: add Web Audio input and real low-resolution framebuffers. Longer-term: build a three.js TSL / WebGPU version, integrate GSplat hit distance with opacity shadows, and connect to an authored particle runtime like NixieFX.",
+      "body": "ネタ収集: three.js volumetric fog/JBU、Codrops music-reactive goo、Babylon GSplat opacity shadow、PlayCanvas WGSL sampler/AABB culling/NixieFX。アイデア検討: 8/20 の depth relight / RTT resolutionScale / shadow mask を、今日の fog resolve / goo damping / opacity voxel / phantom sampler slot へ接続する。サンプル実装: raw WebGL の Edge-Aware Fog Goo Scope と、追加実装として Audio Fog Kernel Scope を追加済み。結果の検証: HTML の構文、WebGL shader のコンパイル前提、JSON parse、gallery build、publish を確認する。短期は Audio Fog Kernel Scope を実マイク入力・本物の低解像度 framebuffer へ進める。中長期は three.js TSL / WebGPU 版、GSplat hit distance と opacity shadow の統合、NixieFX 的な authored particle runtime との接続。",
+      "bodyEn": "Collection: three.js volumetric fog/JBU, Codrops music-reactive goo, Babylon GSplat opacity shadows, and PlayCanvas WGSL sampler / AABB culling / NixieFX. Ideation: connect yesterday's depth relight / RTT resolutionScale / shadow masks to today's fog resolve / goo damping / opacity voxels / phantom sampler slots. Prototype: the raw WebGL Edge-Aware Fog Goo Scope and the additional Audio Fog Kernel Scope have been added. Verification: check HTML syntax, WebGL shader assumptions, JSON parse, gallery build, and publish. Short-term: move Audio Fog Kernel Scope toward real microphone input and real low-resolution framebuffers. Longer-term: build a three.js TSL / WebGPU version, integrate GSplat hit distance with opacity shadows, and connect to an authored particle runtime like NixieFX.",
       "links": [
         {
           "label": "Today's sample",
           "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        },
+        {
+          "label": "Today's second sample",
+          "url": "../outputs/2026-08-21_audio_fog_kernel_scope.html"
         }
       ]
     },
@@ -190,11 +202,31 @@
     {
       "title": "今日のミニ試作候補",
       "titleEn": "Today's mini prototype candidate",
-      "body": "最有力は「Edge-Aware Fog Goo Scope」。理由は、three.js #34319 の JBU fog と Codrops の音反応 goo が同じ shader 空間で短時間に結合でき、8/20 の RTT resolutionScale / depth relight surface と継続性が高いから。作成済みファイルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。動く内容は、procedural depth goo、低解像度 fog grid、depth-guided edge-aware resolve、phantom sampler / stale pass 風 audit map。次に発展させるなら、実 framebuffer 2 pass 化、音声入力、three.js TSL 版、WebGPU storage texture / sampler layout の実データ可視化を足す。",
-      "bodyEn": "The strongest candidate is Edge-Aware Fog Goo Scope because three.js #34319's JBU fog and Codrops' audio-reactive goo can be combined quickly in one shader space, and it continues yesterday's RTT resolutionScale / depth-relight surface. The created file is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. It shows procedural depth goo, a low-resolution fog grid, depth-guided edge-aware resolve, and a phantom-sampler / stale-pass style audit map. Next, add real two-pass framebuffers, audio input, a three.js TSL version, or real WebGPU storage-texture / sampler-layout telemetry.",
+      "body": "最有力は「Edge-Aware Fog Goo Scope」。理由は、three.js #34319 の JBU fog と Codrops の音反応 goo が同じ shader 空間で短時間に結合でき、8/20 の RTT resolutionScale / depth relight surface と継続性が高いから。作成済みファイルは `outputs/2026-08-21_edge_aware_fog_goo_scope.html`。動く内容は、procedural depth goo、低解像度 fog grid、depth-guided edge-aware resolve、phantom sampler / stale pass 風 audit map。追加で、出てきたアイデアを実行する2本目として `outputs/2026-08-21_audio_fog_kernel_scope.html` を作成した。これは synth analyser の bass/mid/high を fog grid size / kernel radius / edge sharpness に割り当てる。次に発展させるなら、実 framebuffer 2 pass 化、実マイク入力、three.js TSL 版、WebGPU storage texture / sampler layout の実データ可視化を足す。",
+      "bodyEn": "The strongest candidate is Edge-Aware Fog Goo Scope because three.js #34319's JBU fog and Codrops' audio-reactive goo can be combined quickly in one shader space, and it continues yesterday's RTT resolutionScale / depth-relight surface. The created file is `outputs/2026-08-21_edge_aware_fog_goo_scope.html`. It shows procedural depth goo, a low-resolution fog grid, depth-guided edge-aware resolve, and a phantom-sampler / stale-pass style audit map. As a second implementation that executes one of the generated ideas, `outputs/2026-08-21_audio_fog_kernel_scope.html` was added. It maps synth-analyser bass/mid/high to fog grid size / kernel radius / edge sharpness. Next, add real two-pass framebuffers, real microphone input, a three.js TSL version, or real WebGPU storage-texture / sampler-layout telemetry.",
       "links": [
         {
           "label": "Today's sample",
+          "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
+        },
+        {
+          "label": "Today's second sample",
+          "url": "../outputs/2026-08-21_audio_fog_kernel_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "追加試作: アイデアをその日のうちにもう1本実装する",
+      "titleEn": "Additional prototype: implement one generated idea on the same day",
+      "body": "運用変更として、今後は従来の本命ミニ試作を1本作ったうえで、レポート内の「次に足すなら」または表現アイデアから、短時間で動く2本目も実装する。今日の2本目は `outputs/2026-08-21_audio_fog_kernel_scope.html`。Web Audio の synth analyser を使い、bass は fog grid の粗密、mid は edge-aware kernel radius、high は edge sharpness / glow に割り当てた。開始前も fallback 値で動き、クリックまたは Space で音声エンジンを開始する。これにより、アイデア検討で終わっていた要素をその日の検証段階まで進められる。",
+      "bodyEn": "As an operational change, each run should keep the existing primary mini prototype and also implement a second short prototype from the report's 'next addition' or expression ideas. Today's second prototype is `outputs/2026-08-21_audio_fog_kernel_scope.html`. It uses a Web Audio synth analyser: bass drives fog-grid density, mid drives edge-aware kernel radius, and high drives edge sharpness / glow. It runs with fallback values before audio starts, then click or Space starts the audio engine. This moves ideas that used to stop at ideation into same-day verification.",
+      "links": [
+        {
+          "label": "Audio Fog Kernel Scope",
+          "url": "../outputs/2026-08-21_audio_fog_kernel_scope.html"
+        },
+        {
+          "label": "Primary sample",
           "url": "../outputs/2026-08-21_edge_aware_fog_goo_scope.html"
         }
       ]

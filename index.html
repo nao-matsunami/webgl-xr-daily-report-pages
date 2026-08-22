@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 65</span>
+        <span>days: 66</span>
         <span>page: 1 / 6</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -309,6 +309,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-08-22">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.08.22</p>
+              <h2>TSL分岐キャッシュ、WebGPU stencil、MultiTextureを“内部状態が見える層”として束ねる</h2>
+              <p class="card-subtitle">Binding TSL branch caching, WebGPU stencil, and MultiTexture into visible internal-state layers</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-08-22" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の TSL GPU-native unit tests と TempNode 分岐キャッシュ修正、WebGPU clipping + stencil demo、PlayCanvas の WebGPU alpha-to-coverage / parallax、Babylon.js の MultiTexture / atmosphere WGSL 互換性を、昨日の edge-aware fog / sampler audit から「内部の分岐・layer・clip・coverage を作品の診断面にする」方向へ接続した。</p>
+          <p class="description en-copy">Today connects three.js TSL GPU-native unit tests, TempNode branch-cache fixes, WebGPU clipping + stencil demos, PlayCanvas WebGPU alpha-to-coverage / parallax work, and Babylon.js MultiTexture / atmosphere WGSL compatibility to yesterday's edge-aware fog / sampler-audit thread, treating internal branches, layers, clips, and coverage as visible diagnostic surfaces.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-08-22.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-08-22_branch_cache_layer_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-08-21">
           <div class="card-top">
             <div>
@@ -323,8 +346,8 @@
           </div>
           <p class="description">three.js の post-processing volumetric fog/JBU upsampling、Codrops の music-reactive goo、Babylon.js の GSplat IBL shadow opacity、PlayCanvas の WGSL sampler reflection / AABB frustum culling を、8/20 の depth relight / RTT resolutionScale / shadow mask から「低解像度の中間バッファを隠さず、作品と診断を兼ねる表面にする」方向へ接続した。</p>
           <p class="description en-copy">Today connects three.js post-processing volumetric fog with JBU upsampling, Codrops' music-reactive goo, Babylon.js GSplat IBL shadow opacity, and PlayCanvas WGSL sampler reflection / AABB frustum culling to yesterday's depth relight / RTT resolutionScale / shadow-mask thread, treating low-resolution intermediate buffers as surfaces that work as both artwork and diagnostics.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span><span class="tag">audio</span></div>
           <div class="actions">
             <a class="primary" href="days/2026-08-21.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-21_edge_aware_fog_goo_scope.html">代表サンプル / Sample</a>
@@ -558,29 +581,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-11.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-11_error_budget_lod_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-10">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.10</p>
-              <h2>Backdrop blur を checker budget と atlas 演出へ置き換える</h2>
-              <p class="card-subtitle">Replacing backdrop blur with checker budgets and atlas-driven expression</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-10" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の `webgpu_backdrop_area` を高コスト blur から checker effect へ寄せる提案、Babylon.js の SOG LOD compound stream merge、three.js の large skeleton bone texture fallback、PlayCanvas の UI topology / JSDoc 継続、Codrops の PX PUSH / Chems Studio 事例を、前日の shared atlas / blur budget から「低コストな量子化・チェック柄・予算表示を作品の表情にする」方向へ接続した。</p>
-          <p class="description en-copy">Today connects the three.js proposal to move `webgpu_backdrop_area` from costly blur toward a checker effect, the merged Babylon.js SOG LOD compound stream, three.js large-skeleton bone texture fallback, ongoing PlayCanvas UI topology and JSDoc work, and Codrops PX PUSH / Chems Studio case studies, extending yesterday's shared atlas / blur budget track into low-cost quantization, checker patterns, and budget visualization as expressive material.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-10.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-10_checker_budget_atlas_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

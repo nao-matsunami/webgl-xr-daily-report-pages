@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TSL分岐キャッシュ、WebGPU stencil、MultiTextureを“内部状態が見える層”として束ねる | 2026-08-22</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.22</p>
+      <h1>TSL分岐キャッシュ、WebGPU stencil、MultiTextureを“内部状態が見える層”として束ねる</h1>
+      <p class="hero-subtitle">Binding TSL branch caching, WebGPU stencil, and MultiTexture into visible internal-state layers</p>
+      <p>three.js の TSL GPU-native unit tests と TempNode 分岐キャッシュ修正、WebGPU clipping + stencil demo、PlayCanvas の WebGPU alpha-to-coverage / parallax、Babylon.js の MultiTexture / atmosphere WGSL 互換性を、昨日の edge-aware fog / sampler audit から「内部の分岐・layer・clip・coverage を作品の診断面にする」方向へ接続した。</p>
+      <p class="en-copy">Today connects three.js TSL GPU-native unit tests, TempNode branch-cache fixes, WebGPU clipping + stencil demos, PlayCanvas WebGPU alpha-to-coverage / parallax work, and Babylon.js MultiTexture / atmosphere WGSL compatibility to yesterday's edge-aware fog / sampler-audit thread, treating internal branches, layers, clips, and coverage as visible diagnostic surfaces.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-22_branch_cache_layer_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-21.html">← 2026.08.21</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-22 Branch Cache Layer Scope</h3>
+              <p>1 beauty | 1 beauty / 2 branch cache fault / 3 stencil clip lanes / 4 layered texture mix</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-22_branch_cache_layer_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34339 は TempNode が兄弟 conditional branch でキャッシュ済み値を再利用すると、片方の branch で assignment が実行されず 0 相当を読む問題と、NodeBuilder.addFlowCodeHierarchy の crash をまとめて直す提案。TSL のノードグラフが複雑になるほど、見えない branch scope が描画結果に出る。2. three.js PR #34331 は TSL の GPU-native unit tests。shader node を「見た目が合うか」だけでなく、WebGPU/WebGL 上で数値として検査する流れが強まっている。3. three.js PR #34325 は WebGPURenderer の clipping + stencil demo を追加。clip plane / stencil buffer は、昨日の fog resolve と合わせると、見える領域と演算した領域の差分を演出化できる。4. PlayCanvas PR #9208 は alphaToCoverage を WebGPU render pipeline state に配線し、PR #9207 は parallax mapping の正しさと example 昇格。coverage と視差は、細部の立体感を MSAA / depth / normal のどこで担保するかというテーマに戻る。5. Babylon.js PR #18822 は RawTexture2DArray を使う MultiTexture class、PR #18821 は atmosphere GLSL shader を WebGPU で動かすため sampler-taking function を inline 化する修正。layered texture と sampler 制約が、今日の表現材料になる。</p>
+          <p class="en-copy">1. three.js PR #34339 fixes a TempNode sibling-branch caching issue where an assignment can be emitted only in one conditional branch and read as a default value elsewhere, along with a NodeBuilder.addFlowCodeHierarchy crash. As TSL node graphs become complex, invisible branch scope can surface in rendered output. 2. three.js PR #34331 adds GPU-native unit tests for TSL, shifting shader nodes from visual-only confidence to numeric checks on WebGPU/WebGL. 3. three.js PR #34325 adds a WebGPURenderer clipping + stencil demo; combined with yesterday's fog resolve, clip planes and stencil buffers can visualize the difference between visible areas and computed areas. 4. PlayCanvas PR #9208 wires alphaToCoverage into WebGPU render pipeline state, and PR #9207 fixes parallax mapping correctness and promotes its example. Coverage and parallax both return to the question of whether detail is carried by MSAA, depth, or normals. 5. Babylon.js PR #18822 proposes a MultiTexture class using RawTexture2DArray, while PR #18821 inlines sampler-taking functions so atmosphere GLSL shaders work under WebGPU. Layered textures and sampler constraints become today's expressive material.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34339" target="_blank" rel="noreferrer">three.js PR #34339</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34331" target="_blank" rel="noreferrer">three.js PR #34331</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9208" target="_blank" rel="noreferrer">PlayCanvas PR #9208</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>注目は three.js の TSL unit test 群と Codrops Run Rob Run の組み合わせ。Run Rob Run は音反応を goo の変形・遅れ・質感に入れていたが、今日の TSL 話を重ねると、音で動く shape だけでなく、node graph の branch、cached temp、sampler layout、stencil mask そのものを演出できる。たとえば低域で branch が切り替わり、中域で cached node の再評価範囲が光り、高域で alpha-to-coverage の粒が出る。見た目のエフェクトではなく、描画パイプラインの判断を楽器化する方向が面白い。</p>
+          <p class="en-copy">The notable pairing is the three.js TSL unit-test push with Codrops' Run Rob Run. Run Rob Run uses audio response for goo deformation, delay, and material feel. Adding today's TSL thread suggests animating not only the audio-driven shape, but the node graph's branches, cached temps, sampler layout, and stencil masks. Bass can switch branches, mids can light the cached-node reevaluation region, and highs can expose alpha-to-coverage grains. The interesting move is to turn rendering-pipeline decisions into an instrument rather than just adding an effect.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/" target="_blank" rel="noreferrer">Codrops Run Rob Run</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34331" target="_blank" rel="noreferrer">three.js PR #34331</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>短期案は「Branch Cache Layer Scope」。画面を full-screen shader にし、mode 1 は beauty、mode 2 は sibling branch の cached temp fault、mode 3 は clipping / stencil / alpha coverage lanes、mode 4 は MultiTexture 的な layered mix を表示する。pointer は共有 node vector、click / Space は rebuild pulse。昨日の sampler audit から継続し、今日は「存在しない sampler slot」ではなく「正しい branch で再評価されなかった値」を色で見る。中長期案は、TSL node graph、WebGPU bind group、stencil buffer、texture array layer、GSplat opacity voxel を同じ画面上の resource topology として触れる作品にする。</p>
+          <p class="en-copy">The short-term idea is Branch Cache Layer Scope: a full-screen shader where mode 1 is beauty, mode 2 shows sibling-branch cached-temp faults, mode 3 shows clipping / stencil / alpha-coverage lanes, and mode 4 shows a MultiTexture-like layered mix. The pointer controls a shared node vector; click / Space injects a rebuild pulse. Continuing yesterday's sampler audit, today visualizes not a nonexistent sampler slot but a value not reevaluated in the correct branch. Longer-term, TSL node graphs, WebGPU bind groups, stencil buffers, texture-array layers, and GSplat opacity voxels can become one touchable resource topology.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>TSL / node material の branch bug は、shader authoring で `if` を避ければよい話ではない。共通式を temp に落とす最適化、flow code の emission 位置、条件分岐内の再参照が絡むため、制作ツール側では「どの node がどの branch で評価済みか」を可視化する QA が必要になる。WebGPU clipping + stencil は、clip されたピクセルを消すだけでなく、clip されたが計算済み、visible だが stale、coverage だけ残る、といった状態に分けられる。Babylon.js の MultiTexture は、RawTexture2DArray を使うので WebGL2+ 前提だが、layer index をアニメーションさせるだけで material variation / posterization / glitch にしやすい。PlayCanvas alphaToCoverage は、透明境界を単純な alpha blend ではなく sample coverage に落とすので、粒状の edge 表現に向く。</p>
+          <p class="en-copy">The TSL / node-material branch bug is not just a matter of avoiding `if` in shader authoring. Optimization to shared temps, flow-code emission placement, and repeated references inside conditionals interact, so production tools need QA that shows which node has been evaluated in which branch. WebGPU clipping + stencil is not only about discarding clipped pixels; states such as computed-but-clipped, visible-but-stale, and coverage-only can be separated. Babylon.js MultiTexture uses RawTexture2DArray, so it assumes WebGL2+, but animating layer indices alone can produce material variation, posterization, and glitch. PlayCanvas alphaToCoverage maps transparent boundaries into sample coverage rather than simple alpha blend, making it useful for granular edges.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34339" target="_blank" rel="noreferrer">three.js PR #34339</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34325" target="_blank" rel="noreferrer">three.js PR #34325</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9208" target="_blank" rel="noreferrer">PlayCanvas PR #9208</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件は three.js #34331/#34339 の TSL correctness、#34325 の WebGPU stencil、#34334 の WebGL fallback on demand、昨日からの #34319 volumetric fog / JBU。PlayCanvas は #9167 multisampled render target sampling、#9208 alphaToCoverage、#9207 parallax、script clone 系 #9200-#9204 は engine correctness として軽く追う。Babylon.js は #18822 MultiTexture、#18821 atmosphere WGSL、#18812 shader loader abstraction、#18815/#18816 GSplat opacity / half-float を継続。新規案件は MultiTexture layer を演出パラメータにする方向。寝かせる案件は npm major update や CI rerun など、表現面への接続が薄いもの。</p>
+          <p class="en-copy">Continue watching three.js #34331/#34339 for TSL correctness, #34325 for WebGPU stencil, #34334 for WebGL fallback on demand, and yesterday's #34319 volumetric fog / JBU. For PlayCanvas, keep #9167 multisampled render-target sampling, #9208 alphaToCoverage, #9207 parallax, and lightly watch #9200-#9204 script-clone fixes as engine correctness. For Babylon.js, continue #18822 MultiTexture, #18821 atmosphere WGSL, #18812 shader-loader abstraction, and #18815/#18816 GSplat opacity / half-float. The new thread is using MultiTexture layers as expressive parameters. Put npm major updates and CI reruns to sleep unless they connect to rendering expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34334" target="_blank" rel="noreferrer">three.js PR #34334</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>今日試すなら、実 TSL / WebGPU へ行く前に raw WebGL で branch cache fault を疑似的に可視化するのが最短。実装済みファイルは `outputs/2026-08-22_branch_cache_layer_scope.html`。1-4 キーで beauty / branch cache fault / stencil clip lanes / layered texture mix を切り替え、ドラッグで共有 node vector、クリックまたは Space で rebuild pulse が走る。次に足すなら、実際の TSL node graph JSON、WebGPU bind group layout、texture array layer count、stencil mask capture を uniform / texture として入れる。</p>
+          <p class="en-copy">The fastest useful test today is to mock branch-cache faults in raw WebGL before moving to real TSL / WebGPU. The implemented file is `outputs/2026-08-22_branch_cache_layer_scope.html`. Keys 1-4 switch beauty / branch cache fault / stencil clip lanes / layered texture mix; dragging moves the shared node vector, and click or Space injects a rebuild pulse. Next, feed real TSL node-graph JSON, WebGPU bind-group layout, texture-array layer count, and stencil-mask captures as uniforms or textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js TSL unit tests / TempNode branch fix / WebGPU stencil、PlayCanvas alphaToCoverage / parallax、Babylon MultiTexture / atmosphere WGSL、Codrops の音反応 goo。アイデア検討: 昨日の edge-aware fog / phantom sampler audit を、今日の branch cache / stencil / texture layer / coverage へ接続する。サンプル実装: raw WebGL の Branch Cache Layer Scope を追加済み。結果の検証: HTML 構文、JSON parse、gallery build、publish を確認する。短期は sample に実 framebuffer / Web Audio 反応を足す。中長期は three.js TSL 版で、node graph の評価位置と branch scope を実データとして表示する。</p>
+          <p class="en-copy">Collection: three.js TSL unit tests / TempNode branch fix / WebGPU stencil, PlayCanvas alphaToCoverage / parallax, Babylon MultiTexture / atmosphere WGSL, and Codrops' audio-reactive goo. Ideation: connect yesterday's edge-aware fog / phantom-sampler audit to today's branch cache / stencil / texture layer / coverage. Prototype: the raw WebGL Branch Cache Layer Scope has been added. Verification: check HTML syntax, JSON parse, gallery build, and publish. Short-term: add real framebuffer passes and Web Audio response. Longer-term: build a three.js TSL version that displays node evaluation placement and branch scope as real data.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、fog resolve、sampler reflection、GSplat opacity、TSL branch cache、stencil、alpha coverage がすべて「内部の判断をどう可視化するか」に集まっている。組み合わせ候補は、1. 音で branch scope と layer index を切り替える、2. fog の edge-aware guide depth に stencil mask を混ぜる、3. MultiTexture の layer を GSplat opacity / shadow accumulation の状態色にする、4. alphaToCoverage の sample pattern を粒状 dissolve として使う、5. TSL unit test の pass/fail を shader 上の resource topology として出す。育てる価値が高いテーマは「renderer QA を演出言語にする」こと。昨日の低解像度 QA surface と同じ軸だが、今日は解像度ではなく branch / layer / coverage へ重心が移った。</p>
+          <p class="en-copy">The recent trend across fog resolve, sampler reflection, GSplat opacity, TSL branch caching, stencil, and alpha coverage is converging on how internal renderer decisions become visible. Strong combinations: 1. switch branch scope and layer index from audio, 2. mix stencil masks into fog edge-aware guide depth, 3. use MultiTexture layers as state colors for GSplat opacity / shadow accumulation, 4. use alphaToCoverage sample patterns as granular dissolve, and 5. render TSL unit-test pass/fail as shader resource topology. The theme worth growing is renderer QA as an expressive language. It shares yesterday's low-resolution QA-surface axis, but today shifts from resolution to branch / layer / coverage.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34339" target="_blank" rel="noreferrer">three.js PR #34339</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9208" target="_blank" rel="noreferrer">PlayCanvas PR #9208</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>最有力は「Branch Cache Layer Scope」。理由は、three.js #34339 の TempNode branch cache、#34325 の stencil、Babylon.js #18822 の layered texture、PlayCanvas #9208 の coverage を、1本の fragment shader で短時間に同居させられるから。作成済みファイルは `outputs/2026-08-22_branch_cache_layer_scope.html`。動く内容は、疑似 node branch の正しい値と stale value の差分、clip/stencil lane、alpha coverage grid、MultiTexture 風 layer mix。次に発展させるなら、実 TSL unit test の失敗位置、WebGPU bind group / sampler layout、Web Audio 周波数帯による branch switching、WebXR controller による stencil volume 操作を足す。</p>
+          <p class="en-copy">The strongest candidate is Branch Cache Layer Scope because three.js #34339 TempNode branch caching, #34325 stencil, Babylon.js #18822 layered texture, and PlayCanvas #9208 coverage can coexist in one fragment shader quickly. The created file is `outputs/2026-08-22_branch_cache_layer_scope.html`. It shows the difference between a correct pseudo node branch and a stale value, clip/stencil lanes, an alpha-coverage grid, and a MultiTexture-like layer mix. Next steps are feeding real TSL unit-test failure locations, WebGPU bind-group / sampler layouts, Web Audio-driven branch switching, and WebXR controller manipulation of stencil volumes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、pointer 座標、mode、pulse、branchMask、cacheFault、stencil、layer、alphaCoverage をデータとして取り出せる。展示なら、来場者の手の位置で node graph の評価範囲を動かし、失敗している branch だけが紫に残る QA wall にできる。Web 演出なら、CMS のセクションや画像 layer を MultiTexture 的に束ね、スクロール速度で layer index と stencil をずらす。音反応では、bass を branch switch、mid を stencil rim、high を alpha coverage grain に割り当てると、Run Rob Run の goo 的な粘性と renderer state の診断を接続できる。WebXR では controller で clip volume を持ち、見えている形ではなく「評価された shader 経路」を掴む表現が向く。</p>
+          <p class="en-copy">Today's sample exposes pointer position, mode, pulse, branchMask, cacheFault, stencil, layer, and alphaCoverage as data. For an installation, visitor hand position can move the node-graph evaluation region while failing branches remain purple on a QA wall. For web expression, CMS sections or image layers can be bound like MultiTexture layers, with scroll velocity shifting layer index and stencil. For audio response, map bass to branch switching, mids to stencil rim, and highs to alpha-coverage grain, connecting Run Rob Run-like viscosity with renderer-state diagnostics. In WebXR, a controller can hold the clip volume and let users grab not the visible shape, but the shader path that was evaluated.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/" target="_blank" rel="noreferrer">Codrops Run Rob Run</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34339" target="_blank" rel="noreferrer">three.js PR #34339 TempNode sibling-branch caching</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34331" target="_blank" rel="noreferrer">three.js PR #34331 GPU-native unit tests for TSL</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34325" target="_blank" rel="noreferrer">three.js PR #34325 WebGPU clipping + stencil demo</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9208" target="_blank" rel="noreferrer">PlayCanvas PR #9208 alphaToCoverage in WebGPU pipeline state</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9207" target="_blank" rel="noreferrer">PlayCanvas PR #9207 parallax mapping correctness</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822 MultiTexture class</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18821" target="_blank" rel="noreferrer">Babylon.js PR #18821 atmosphere GLSL shaders under WebGPU</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/" target="_blank" rel="noreferrer">Codrops: Run Rob Run</a></li>
+          
+            <li><a href="../outputs/2026-08-22_branch_cache_layer_scope.html" target="_blank" rel="noreferrer">Today's sample</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-22_branch_cache_layer_scope.html" loading="lazy" title="2026-08-22 Branch Cache Layer Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
