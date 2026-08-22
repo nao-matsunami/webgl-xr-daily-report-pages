@@ -27,15 +27,15 @@
       pointer-events: none;
       text-transform: uppercase;
       letter-spacing: .08em;
-      color: rgba(236, 251, 255, .78);
-      text-shadow: 0 1px 18px rgba(0, 175, 255, .24);
+      color: rgba(236, 251, 255, .82);
+      text-shadow: 0 1px 18px rgba(0, 175, 255, .26);
     }
     .hud b {
       color: #fff;
       font-weight: 700;
     }
     .hud span {
-      opacity: .68;
+      opacity: .72;
     }
     .modes {
       text-align: right;
@@ -52,7 +52,11 @@
     const canvas = document.getElementById("gl");
     const modeLabel = document.getElementById("mode");
     const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false });
-    if (!gl) document.body.textContent = "WebGL is not available.";
+
+    if (!gl) {
+      document.body.textContent = "WebGL is not available.";
+      throw new Error("WebGL unavailable");
+    }
 
     const vert = `
       attribute vec2 position;
@@ -62,7 +66,8 @@
     `;
 
     const frag = `
-      precision highp float;
+      precision mediump float;
+
       uniform vec2 resolution;
       uniform vec2 pointer;
       uniform float time;
@@ -70,7 +75,8 @@
       uniform float mode;
 
       mat2 rot(float a) {
-        float s = sin(a), c = cos(a);
+        float s = sin(a);
+        float c = cos(a);
         return mat2(c, -s, s, c);
       }
 
@@ -92,7 +98,7 @@
       float fbm(vec2 p) {
         float v = 0.0;
         float a = 0.5;
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
           v += noise(p) * a;
           p = rot(0.72) * p * 2.03 + 8.7;
           a *= 0.52;
@@ -107,9 +113,14 @@
         return exp(-width * length(pa - ba * h));
       }
 
+      float boxFill(vec2 p, vec2 c, vec2 r) {
+        vec2 q = abs(p - c) / r;
+        return smoothstep(1.0, 0.92, max(q.x, q.y));
+      }
+
       float boxEdge(vec2 p, vec2 c, vec2 r) {
-        float b = max(abs(p.x - c.x) / r.x, abs(p.y - c.y) / r.y);
-        return exp(-70.0 * abs(b - 1.0));
+        vec2 q = abs(p - c) / r;
+        return exp(-50.0 * abs(max(q.x, q.y) - 1.0));
       }
 
       vec3 ramp(float t) {
@@ -135,7 +146,7 @@
         float dy = depthMap(uv + vec2(0.0, .006)) - depthMap(uv - vec2(0.0, .006));
         vec3 n = normalize(vec3(-dx * 13.0, -dy * 13.0, .75));
         vec2 lp = pointer * 2.0 - 1.0;
-        vec3 l = normalize(vec3(lp - uv, .72 + pulse * .45));
+        vec3 l = normalize(vec3(lp.x - uv.x, lp.y - uv.y, .72 + pulse * .45));
         float shade = max(dot(n, l), 0.0);
         float rim = pow(1.0 - max(dot(n, normalize(vec3(.1, .2, 1.0))), 0.0), 2.2);
         float contour = exp(-28.0 * abs(fract(d * 9.0 + time * .04) - .5));
@@ -146,32 +157,33 @@
         return col;
       }
 
+      vec3 rttPlate(vec2 uv, float index, float scale) {
+        vec2 c = vec2(-.60 + index * .40, sin(time * .30 + index) * .08);
+        float density = 7.0 + scale * 18.0;
+        vec2 cell = floor((uv - c) * density) / density;
+        float mip = fbm(cell * 4.0 + index);
+        float plate = boxEdge(uv, c, vec2(.16, .56));
+        float fill = boxFill(uv, c, vec2(.16, .56));
+        float sweep = exp(-75.0 * abs(uv.y - c.y - sin(time * 1.2 + index) * .32));
+        vec3 col = plate * ramp(scale) * (.45 + pulse * .30);
+        col += fill * ramp(mip) * (.05 + scale * .10);
+        col += sweep * fill * vec3(.04, .68, 1.0) * (.15 + .12 * index);
+        return col;
+      }
+
       vec3 rttScope(vec2 uv) {
         vec3 col = relightScope(uv) * .30;
-        float scales[4];
-        scales[0] = .25;
-        scales[1] = .50;
-        scales[2] = .75;
-        scales[3] = 1.00;
-        for (int i = 0; i < 4; i++) {
-          float fi = float(i);
-          vec2 c = vec2(-.60 + fi * .40, sin(time * .30 + fi) * .08);
-          vec2 cell = floor((uv - c) * (7.0 + scales[i] * 18.0)) / (7.0 + scales[i] * 18.0);
-          float mip = fbm(cell * 4.0 + fi);
-          float plate = boxEdge(uv, c, vec2(.16, .56));
-          float fill = smoothstep(.95, .0, max(abs(uv.x - c.x) / .16, abs(uv.y - c.y) / .56));
-          col += plate * ramp(scales[i]) * (.45 + pulse * .30);
-          col += fill * ramp(mip) * (.05 + scales[i] * .10);
-          float sweep = exp(-75.0 * abs(uv.y - c.y - sin(time * 1.2 + fi) * .32));
-          col += sweep * fill * vec3(.04, .68, 1.0) * (.15 + .12 * fi);
-        }
+        col += rttPlate(uv, 0.0, .25);
+        col += rttPlate(uv, 1.0, .50);
+        col += rttPlate(uv, 2.0, .75);
+        col += rttPlate(uv, 3.0, 1.00);
         float ring = exp(-22.0 * abs(length(uv) - (.22 + pulse * 1.05)));
         return col + ring * vec3(1.0, .55, .22) * pulse;
       }
 
       vec3 omniScope(vec2 uv) {
         vec3 col = vec3(.008, .012, .020);
-        vec2 p = uv * rot(time * .07 + (pointer.x - .5) * .6);
+        vec2 p = rot(time * .07 + (pointer.x - .5) * .6) * uv;
         float cube = max(abs(p.x), abs(p.y));
         col += exp(-26.0 * abs(cube - .62)) * vec3(.10, .55, .90);
         for (int i = 0; i < 6; i++) {
@@ -180,15 +192,12 @@
           vec2 dir = vec2(cos(a), sin(a));
           float face = segment(uv, vec2(0.0), dir * .78, 38.0);
           col += face * ramp(fi / 5.0) * (.28 + .08 * sin(time + fi));
-          for (int j = 0; j < 5; j++) {
-            float fj = float(j);
-            vec2 caster = dir * (.22 + fj * .09) + vec2(-dir.y, dir.x) * sin(fj * 2.1 + time + fi) * .12;
-            float hit = exp(-42.0 * length(uv - caster));
-            col += hit * ramp((fi + fj) / 10.0) * (.35 + pulse * .35);
-          }
+          vec2 caster = dir * (.36 + .08 * sin(time * .7 + fi)) + vec2(-dir.y, dir.x) * sin(fi * 2.1 + time) * .14;
+          float hit = exp(-42.0 * length(uv - caster));
+          col += hit * ramp((fi + 2.0) / 8.0) * (.38 + pulse * .35);
         }
-        float saved = smoothstep(.50, .0, abs(uv.y + .82)) * smoothstep(.92, -.92, abs(uv.x));
-        col += saved * vec3(.04, .90, .52) * (.10 + .28 * sin(time * 3.0) * sin(time * 3.0));
+        float saved = smoothstep(.08, .0, abs(uv.y + .82)) * smoothstep(.95, .65, abs(uv.x));
+        col += saved * vec3(.04, .90, .52) * (.20 + .20 * sin(time * 3.0) * sin(time * 3.0));
         return col;
       }
 
@@ -203,9 +212,9 @@
           col += inside * ramp((fi + 1.0) / 4.0) * (.08 + .22 * mask + .05 * dither);
           col += exp(-80.0 * abs(uv.x - x0)) * ramp(fi / 4.0) * .45;
         }
-        for (int k = 0; k < 9; k++) {
+        for (int k = 0; k < 7; k++) {
           float fk = float(k);
-          vec2 c = vec2(sin(fk * 2.0) * .75, -.62 + fk * .15);
+          vec2 c = vec2(sin(fk * 2.0) * .75, -.50 + fk * .15);
           float flat = exp(-35.0 * abs(length(uv - c) - (.045 + .02 * sin(time + fk))));
           col += flat * mix(vec3(.85, .88, .72), vec3(.05, .45, .86), step(.5, hash(vec2(fk, 2.0)))) * .28;
         }
@@ -216,7 +225,7 @@
         vec3 col = vec3(.006, .010, .018);
         float sky = .5 + .5 * sin(atan(uv.y, uv.x) * 3.0 + time * .35 + pointer.x * 3.0);
         col += mix(vec3(.03, .10, .17), vec3(.75, .60, .34), sky) * smoothstep(1.35, .05, length(uv)) * .42;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 6; i++) {
           float fi = float(i);
           vec2 c = vec2(cos(fi * 2.2 + time * .22), sin(fi * 1.7 - time * .18)) * (.18 + .08 * fi);
           float h = exp(-36.0 * abs(length(uv - c) - .055));
@@ -224,17 +233,16 @@
           col += h * vec3(1.0, .76, .25) * (.35 + pulse);
           col += orbit * vec3(.08, .70, .96) * .22;
         }
-        float blur = fbm(uv * 5.0 + time * .12);
-        col += blur * vec3(.08, .18, .28) * .25;
+        col += fbm(uv * 5.0 + time * .12) * vec3(.08, .18, .28) * .25;
         return col;
       }
 
       void main() {
         vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / resolution.y;
-        uv *= rot((pointer.x - .5) * .22);
+        uv = rot((pointer.x - .5) * .22) * uv;
         uv.y += (pointer.y - .5) * .08;
 
-        vec3 hybrid = relightScope(uv) * .28 + rttScope(uv) * .18 + omniScope(uv) * .20 + cascadeScope(uv) * .18 + viewerScope(uv) * .16;
+        vec3 hybrid = relightScope(uv) * .38 + rttScope(uv) * .18 + omniScope(uv) * .17 + cascadeScope(uv) * .15 + viewerScope(uv) * .12;
         vec3 layer = relightScope(uv);
         if (mode > 1.5 && mode < 2.5) layer = rttScope(uv);
         if (mode > 2.5 && mode < 3.5) layer = omniScope(uv);
@@ -245,7 +253,7 @@
         vec3 col = mix(hybrid, layer, .78) + grid * vec3(.12, .32, .36);
         float vignette = smoothstep(1.54, .10, length(uv));
         float scan = .95 + .05 * sin(gl_FragCoord.y * 1.15 + time * 9.0);
-        gl_FragColor = vec4(pow(col * vignette * scan, vec3(.84)), 1.0);
+        gl_FragColor = vec4(pow(max(col * vignette * scan, vec3(0.0)), vec3(.84)), 1.0);
       }
     `;
 
@@ -253,7 +261,11 @@
       const s = gl.createShader(type);
       gl.shaderSource(s, source);
       gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(s) || "shader compile failed";
+        document.body.insertAdjacentHTML("beforeend", `<pre style="position:fixed;left:16px;right:16px;bottom:16px;white-space:pre-wrap;color:#ffd8d8;background:rgba(20,0,0,.8);padding:12px">${message}</pre>`);
+        throw new Error(message);
+      }
       return s;
     }
 
@@ -261,7 +273,9 @@
     gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
     gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
     gl.useProgram(program);
 
     const buffer = gl.createBuffer();
@@ -288,8 +302,8 @@
 
     function resize() {
       const dpr = Math.min(devicePixelRatio || 1, 2);
-      const w = Math.floor(innerWidth * dpr);
-      const h = Math.floor(innerHeight * dpr);
+      const w = Math.max(1, Math.floor(innerWidth * dpr));
+      const h = Math.max(1, Math.floor(innerHeight * dpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
