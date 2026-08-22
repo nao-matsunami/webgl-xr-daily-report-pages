@@ -215,8 +215,8 @@
         for (int k = 0; k < 7; k++) {
           float fk = float(k);
           vec2 c = vec2(sin(fk * 2.0) * .75, -.50 + fk * .15);
-          float flat = exp(-35.0 * abs(length(uv - c) - (.045 + .02 * sin(time + fk))));
-          col += flat * mix(vec3(.85, .88, .72), vec3(.05, .45, .86), step(.5, hash(vec2(fk, 2.0)))) * .28;
+          float flatRing = exp(-35.0 * abs(length(uv - c) - (.045 + .02 * sin(time + fk))));
+          col += flatRing * mix(vec3(.85, .88, .72), vec3(.05, .45, .86), step(.5, hash(vec2(fk, 2.0)))) * .28;
         }
         return col;
       }
