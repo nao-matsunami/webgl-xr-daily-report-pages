@@ -1,0 +1,247 @@
+{
+  "date": "2026-08-23",
+  "headline": "TSLの数値テスト、行列の向き、offscreen描画予算を“見える正しさ”に変える",
+  "headlineEn": "Turning TSL numeric tests, matrix orientation, and offscreen render budgets into visible correctness",
+  "summary": "three.js の TSL GPU unit test 拡張、RotateNode Euler order、gain/rotate/faceForward/toAttribute 修正、PlayCanvas の WebGPU MSAA sampling / alphaToCoverage / parallax、Babylon.js の Lite Viewer offscreen suspension / MultiTexture / atmosphere WGSL を、前回の branch/layer/stencil/coverage から「renderer QA を触れる表現にする」方向へ進めた。今日は本命サンプルとして TSL Truth Matrix Scope、派生サンプルとして Offscreen Layer Budget Scope を実装した。",
+  "summaryEn": "Today connects three.js expanded TSL GPU unit tests, RotateNode Euler order, gain/rotate/faceForward/toAttribute fixes, PlayCanvas WebGPU MSAA sampling / alphaToCoverage / parallax work, and Babylon.js Lite Viewer offscreen suspension / MultiTexture / atmosphere WGSL to yesterday's branch/layer/stencil/coverage thread. The direction is renderer QA as a touchable expressive surface. Two samples were implemented: TSL Truth Matrix Scope and Offscreen Layer Budget Scope.",
+  "links": [
+    {
+      "label": "three.js PR #34349 TSL GPU unit test coverage",
+      "url": "https://github.com/mrdoob/three.js/pull/34349"
+    },
+    {
+      "label": "three.js PR #34348 RotateNode Euler order",
+      "url": "https://github.com/mrdoob/three.js/pull/34348"
+    },
+    {
+      "label": "three.js PR #34340 gain and pcurve fixes",
+      "url": "https://github.com/mrdoob/three.js/pull/34340"
+    },
+    {
+      "label": "three.js PR #34338 rotate 3D Euler direction fix",
+      "url": "https://github.com/mrdoob/three.js/pull/34338"
+    },
+    {
+      "label": "three.js PR #34342 faceForward WGSL capitalization fix",
+      "url": "https://github.com/mrdoob/three.js/pull/34342"
+    },
+    {
+      "label": "PlayCanvas PR #9167 multisampled render target sampling",
+      "url": "https://github.com/playcanvas/engine/pull/9167"
+    },
+    {
+      "label": "PlayCanvas MRT documentation",
+      "url": "https://developer.playcanvas.com/user-manual/graphics/advanced-rendering/multiple-render-targets/"
+    },
+    {
+      "label": "Babylon.js PR #18820 Lite Viewer offscreen suspension",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18820"
+    },
+    {
+      "label": "Babylon.js PR #18822 MultiTexture class",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+    },
+    {
+      "label": "arXiv: Six Ways to Draw Vangers with WebGPU",
+      "url": "https://arxiv.org/abs/2608.17390"
+    },
+    {
+      "label": "Main sample: TSL Truth Matrix Scope",
+      "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+    },
+    {
+      "label": "Derived sample: Offscreen Layer Budget Scope",
+      "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34349 は TSL の GPU実行 unit test を math、packing、conversion、vector/matrix、logic/bitwise、color、tone mapping、procedural helper まで広げる提案。特に matrix constructor の行/列の違い、float→int の constant-fold と runtime cast の差、select() の vector条件の扱いなど、制作時に「見た目だけでは気づかないズレ」が列挙されている。2. three.js PR #34348 は RotateNode に Euler order を渡せるようにする提案で、#34338 の 3D Euler回転方向修正、#34340 の gain()/pcurve()、#34342 の WGSL faceForward、#34347 の toAttribute type保持と合わせて、TSL の基礎関数が一気に数値検査モードに入っている。3. PlayCanvas は #9167 の WebGPU multisampled render target sampling が継続中で、#9208 alphaToCoverage と #9207 parallax mapping correctness が直近で merge 済み。MRT docs も WebGL2/WGSL 両方の output chunk を示しており、複数bufferを作品の診断面にする材料が揃ってきた。4. Babylon.js は #18820 で Lite Viewer が画面外に出た canvas の描画を止める方向、#18822 で RawTexture2DArray ベースの MultiTexture、#18821 で WebGPU GLSL の sampler-taking function 問題が見えている。5. arXiv の WebGPU multi-layer height field 論文は、見た目が同じでも eye-level では方式差が出るという観点が、今日の QA as expression と相性が良い。",
+      "bodyEn": "1. three.js PR #34349 proposes broad GPU-executed TSL unit tests covering math, packing, conversion, vector/matrix, logic/bitwise, color, tone mapping, and procedural helpers. Its notes call out mismatches that visual checks can miss: row/column constructor differences, constant-folded float-to-int casts versus runtime casts, and vector-condition select behavior. 2. three.js PR #34348 adds Euler order support to RotateNode; together with #34338, #34340, #34342, and #34347, TSL fundamentals are moving into numeric verification. 3. PlayCanvas continues #9167 for WebGPU multisampled render-target sampling, while #9208 alphaToCoverage and #9207 parallax correctness have recently merged. The MRT docs show both WebGL2 and WGSL output chunks, making multi-buffer diagnostic surfaces practical. 4. Babylon.js #18820 suspends Lite Viewer rendering while offscreen, #18822 explores RawTexture2DArray-based MultiTexture, and #18821 exposes WebGPU GLSL sampler-function constraints. 5. The WebGPU multi-layer height-field paper is relevant because it shows methods that look equivalent from one camera diverge at eye level, matching today's QA-as-expression direction.",
+      "links": [
+        {
+          "label": "three.js PR #34349",
+          "url": "https://github.com/mrdoob/three.js/pull/34349"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18820",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18820"
+        },
+        {
+          "label": "Six Ways to Draw Vangers with WebGPU",
+          "url": "https://arxiv.org/abs/2608.17390"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は three.js の TSL test 群と Babylon.js #18820 の offscreen suspension を並べること。前者は shader の数値的な正しさを GPU上で検査する流れ、後者は画面に出ていない viewer を描かないという実行予算の判断。どちらも通常は裏側の品質管理だが、表現として見ると「どの値が信頼できるか」「どの canvas が今生きているか」を可視化できる。Codrops の Run Rob Run のような音反応 goo は形の粘性を見せていたが、次は unit test pass/fail、matrix order、offscreen gate、MSAA sample coverage を音やスクロールで揺らすほうが、単なるエフェクトより深い演出になる。",
+      "bodyEn": "The notable pairing is three.js TSL tests with Babylon.js #18820 offscreen suspension. The former verifies shader numeric correctness on the GPU; the latter decides not to spend render budget on viewers outside the viewport. Both are normally hidden quality controls, but as expression they can show which values are trustworthy and which canvas is alive. Codrops' Run Rob Run makes audio-reactive goo visible; the next stronger move is to shake unit-test pass/fail, matrix order, offscreen gates, and MSAA sample coverage with audio or scroll.",
+      "links": [
+        {
+          "label": "three.js PR #34349",
+          "url": "https://github.com/mrdoob/three.js/pull/34349"
+        },
+        {
+          "label": "Babylon.js PR #18820",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18820"
+        },
+        {
+          "label": "Codrops: Run Rob Run",
+          "url": "https://tympanus.net/codrops/2026/08/20/run-rob-run-building-a-music-reactive-goo-with-three-js-and-webgpu/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期の本命は「TSL Truth Matrix Scope」。TSL test の pass/fail、行列 constructor の row/column 差、select() の scalar branch / component branch 差、tone mapping と procedural helper の期待値差を、full-screen fragment shader の4モードで見せる。ドラッグは expected-value lens、クリック/Space は GPU test pulse。派生案は「Offscreen Layer Budget Scope」。複数の viewer card ではなく、canvas/scene が viewport に入った時だけ発光し、画面外では予算が落ちるようにする。さらに multi-layer height field と MSAA resolve sample を同じ画面に入れ、見えている形・計算したlayer・消費したsampleが食い違う瞬間を演出にする。",
+      "bodyEn": "The short-term main prototype is TSL Truth Matrix Scope: four full-screen fragment-shader modes for TSL test pass/fail, row/column matrix constructor differences, scalar-branch versus component-branch select behavior, and tone/procedural expected-value differences. Dragging controls an expected-value lens; click or Space triggers a GPU-test pulse. The derived idea is Offscreen Layer Budget Scope: instead of viewer cards, canvases/scenes glow only when they enter the viewport and drop budget when offscreen. Multi-layer height fields and MSAA resolve samples are added so visible shape, computed layer, and consumed sample budget can intentionally diverge.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "TSL の今回の流れで重要なのは、shader helper の正しさを「見た目がまあ合う」から「GPU backendごとに数値で合う」へ移すこと。RotateNode の Euler order、mat4(vec4...) の列解釈、plain-number constructor の行解釈、gain() の JS ternary on Node、WGSL の faceForward 名などは、作品上では camera orbit、normal、reflection、audio curve の違和感として出る。PlayCanvas #9167 の multisampled render target sampling は、hardware resolve だけでなく user shader で sampleごとの判断をできる余地を作る。Babylon #18820 は IntersectionObserver 的な viewport gate と render loop を結ぶ設計として、複数の3D埋め込みやギャラリーに効く。MultiTexture は layer追加/削除/差し替えを shader levelで扱えるので、素材差分やステート色の演出に向く。",
+      "bodyEn": "The key production shift in TSL is moving shader-helper confidence from visually plausible to numerically checked per GPU backend. RotateNode Euler order, mat4(vec4...) column interpretation, plain-number constructor row interpretation, gain() using a JS ternary on a Node, and WGSL faceForward naming can appear in real work as odd camera orbit, normals, reflection, or audio curves. PlayCanvas #9167 opens room for user-shader per-sample decisions rather than only hardware resolves. Babylon #18820 is useful for tying viewport gates to render loops in multi-viewer 3D pages. MultiTexture is promising for shader-level layer add/remove/update, material variation, and state-color expression.",
+      "links": [
+        {
+          "label": "three.js PR #34338",
+          "url": "https://github.com/mrdoob/three.js/pull/34338"
+        },
+        {
+          "label": "three.js PR #34340",
+          "url": "https://github.com/mrdoob/three.js/pull/34340"
+        },
+        {
+          "label": "PlayCanvas PR #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js PR #18822",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件は three.js #34349/#34339/#34331 の TSL GPU unit test と branch cache、#34348 RotateNode Euler order、#34319 volumetric fog / JBU、#34259 SunLight cascade atlas、#34290 GaussianSplatGroup。PlayCanvas は #9167 multisampled render target sampling、#9208 alphaToCoverage、#9207 parallax、MRT docs の WGSL/GLSL chunk差分。Babylon.js は #18820 offscreen suspension、#18822 MultiTexture、#18812 shader loader abstraction、#18815 GSplat opacity roulette、#18816 half-float PLY。新規案件は WebGPU multi-layer height field を「層の差がカメラ角で露呈する表現」として追う。寝かせる案件は Renovate の major update、CI rerun、表現接続が薄い script clone correctness。",
+      "bodyEn": "Continue watching three.js #34349/#34339/#34331 for TSL GPU unit tests and branch caching, #34348 for RotateNode Euler order, #34319 for volumetric fog / JBU, #34259 for SunLight cascade atlases, and #34290 for GaussianSplatGroup. For PlayCanvas, track #9167 multisampled render-target sampling, #9208 alphaToCoverage, #9207 parallax, and the WGSL/GLSL split in MRT chunks. For Babylon.js, track #18820 offscreen suspension, #18822 MultiTexture, #18812 shader-loader abstraction, #18815 GSplat opacity roulette, and #18816 half-float PLY. The new thread is WebGPU multi-layer height fields as camera-angle-revealed layers. Put Renovate major updates, CI reruns, and expression-light script clone fixes to sleep.",
+      "links": [
+        {
+          "label": "three.js PR #34259",
+          "url": "https://github.com/mrdoob/three.js/pull/34259"
+        },
+        {
+          "label": "three.js PR #34290",
+          "url": "https://github.com/mrdoob/three.js/pull/34290"
+        },
+        {
+          "label": "Babylon.js PR #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "今日試すなら `outputs/2026-08-23_tsl_truth_matrix_scope.html`。1 は GPU test の pass/fail grid、2 は row/column matrix order、3 は scalar select と component blend の違い、4 は tone/procedural expected value を見る。ドラッグで lens、クリック/Space で pulse。次に足すなら、three.js の TSL unit test 結果を JSON に落として pass/fail grid に流し、実際の failing helper 名を色や配置に反映する。派生として `outputs/2026-08-23_offscreen_layer_budget_scope.html` も作成済みで、viewer suspension、layer terrain、MSAA resolve、combined budget を 1-4 で切り替える。次に足すなら IntersectionObserver の実スクロール値、WebGL timer query、MSAA sample count を入力にする。",
+      "bodyEn": "Try `outputs/2026-08-23_tsl_truth_matrix_scope.html` today. Key 1 shows a GPU-test pass/fail grid, 2 row/column matrix order, 3 scalar select versus component blend, and 4 tone/procedural expected values. Drag for the lens and click or Space for a pulse. Next, export real three.js TSL unit-test results to JSON and feed helper names into the grid layout and colors. The derived sample `outputs/2026-08-23_offscreen_layer_budget_scope.html` is also implemented, switching viewer suspension, layer terrain, MSAA resolve, and combined budget with keys 1-4. Next, wire in real IntersectionObserver scroll values, WebGL timer queries, and MSAA sample counts.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js TSL GPU tests、RotateNode、gain/rotate/faceForward/toAttribute、PlayCanvas MSAA sampling / alphaToCoverage / parallax / MRT、Babylon Lite offscreen / MultiTexture / atmosphere WGSL、WebGPU multi-layer height field。アイデア検討: 前回の branch/layer/stencil/coverage を、今日の numeric truth / matrix direction / offscreen gate / resolve sample へ拡張。サンプル実装: 本命 `2026-08-23_tsl_truth_matrix_scope.html` と派生 `2026-08-23_offscreen_layer_budget_scope.html` を追加。結果の検証: HTML parse、JS構文、HTTP 200 を確認。ヘッドレスChromeは環境側で exit 134、Node Playwright は未導入のため、実ブラウザ上の自動スクリーンショット検証は未完。短期は実TSL test JSONを入力化。中長期は renderer QA wall として、TSL、MRT、GSplat、viewer budget を同じ dashboard shader に束ねる。",
+      "bodyEn": "Collection: three.js TSL GPU tests, RotateNode, gain/rotate/faceForward/toAttribute, PlayCanvas MSAA sampling / alphaToCoverage / parallax / MRT, Babylon Lite offscreen / MultiTexture / atmosphere WGSL, and WebGPU multi-layer height fields. Ideation: extend yesterday's branch/layer/stencil/coverage into numeric truth, matrix direction, offscreen gates, and resolve samples. Prototype: added the main `2026-08-23_tsl_truth_matrix_scope.html` and derived `2026-08-23_offscreen_layer_budget_scope.html`. Verification: HTML parse, JS syntax, and HTTP 200 passed. Headless Chrome exited 134 in this environment and Node Playwright is unavailable, so automated browser screenshot verification is incomplete. Short-term: feed real TSL test JSON. Long-term: build a renderer QA wall that binds TSL, MRT, GSplat, and viewer budget into one dashboard shader.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、fog/JBU、sampler audit、branch cache、stencil、alpha coverage、MRT、GSplat opacity、TSL unit test がすべて「内部状態を作品化する」方向に収束している。昨日は branch/layer/coverage、今日は truth/matrix/budget。組み合わせ候補は、1. TSL unit test の pass/fail を fog resolve の guide depth に混ぜる、2. Euler order を音の位相差として回転方向に出す、3. offscreen suspension をスクロール連動の省電力演出にする、4. MultiTexture layer を WebGPU multi-layer terrain の地層色として使う、5. MSAA sample pattern を alphaToCoverage grain と同じ粒状 dissolve にする。育てる価値が高いテーマは「正しさがそのまま演出になるUI」。カードUIではなく、shader/空間/音/スクロールの状態面として扱う。",
+      "bodyEn": "The recent trend across fog/JBU, sampler audits, branch caching, stencil, alpha coverage, MRT, GSplat opacity, and TSL unit tests is converging on internal state as artwork. Yesterday was branch/layer/coverage; today is truth/matrix/budget. Promising combinations: 1. mix TSL unit-test pass/fail into fog resolve guide depth, 2. express Euler order as audio phase differences in rotation direction, 3. turn offscreen suspension into scroll-driven low-power staging, 4. use MultiTexture layers as strata colors for WebGPU multi-layer terrain, and 5. map MSAA sample patterns to the same granular dissolve language as alphaToCoverage. The theme worth growing is an interface where correctness itself becomes the performance. Keep it as shader, space, audio, and scroll state rather than cards.",
+      "links": [
+        {
+          "label": "three.js PR #34349",
+          "url": "https://github.com/mrdoob/three.js/pull/34349"
+        },
+        {
+          "label": "Babylon.js PR #18820",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18820"
+        },
+        {
+          "label": "PlayCanvas PR #9208",
+          "url": "https://github.com/playcanvas/engine/pull/9208"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は「TSL Truth Matrix Scope」。理由は three.js #34349 の test coverage が、そのまま可視化単位になるから。作成済みファイルは `outputs/2026-08-23_tsl_truth_matrix_scope.html`。動く内容は pass/fail grid、row/column matrix order、scalar select vs component blend、tone/procedural expected value。次に発展させるなら three.js の test runner 出力、helper category、backend差分、失敗した式の AST を texture atlas にする。2本目の派生は `outputs/2026-08-23_offscreen_layer_budget_scope.html`。動く内容は Lite Viewer 風 offscreen render suspension、multi-layer terrain、MSAA resolve sample、combined budget。次に発展させるなら実スクロールと実 frame time をつなぎ、画面外で消えるだけでなく、戻ってきた時の cold-start / warm cache の差も見せる。",
+      "bodyEn": "The main prototype is TSL Truth Matrix Scope because three.js #34349's test coverage maps directly to visualization units. The created file is `outputs/2026-08-23_tsl_truth_matrix_scope.html`, showing a pass/fail grid, row/column matrix order, scalar select versus component blend, and tone/procedural expected values. Next, turn three.js test-runner output, helper categories, backend differences, and failing expression ASTs into a texture atlas. The second derived prototype is `outputs/2026-08-23_offscreen_layer_budget_scope.html`, showing Lite Viewer-like offscreen render suspension, multi-layer terrain, MSAA resolve samples, and combined budget. Next, connect real scroll and frame time so returning onscreen shows cold-start versus warm-cache behavior, not just disappearance.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本命サンプルからは pointer、mode、pulse、test cell、matrix angle、branch gate、tone exposure をデータ化できる。展示なら、来場者の手で expected-value lens を動かし、GPU backendごとの失敗点が発光する shader test wall にできる。Web演出なら、スクロール位置を test category、hover を helper名、音の低域を matrix order、中域を select branch、高域を tone mapping pulse に割り当てる。派生サンプルからは viewport gate、viewer budget、terrain layer、sample coverage を取り出せる。WebXR では controller で offscreen gate や地層layerを掴ませ、見えている画面だけでなく「いま描くべきもの」を操作する体験にできる。中長期では、実プロダクトの品質検査ログを素材にし、QA report とWebアートを同じファイルで成立させる方向が面白い。",
+      "bodyEn": "The main sample can expose pointer, mode, pulse, test cell, matrix angle, branch gate, and tone exposure as data. For an installation, visitors could move the expected-value lens and light up backend-specific failure points on a shader test wall. For web expression, map scroll to test category, hover to helper names, bass to matrix order, mids to select branch, and highs to tone-mapping pulses. The derived sample exposes viewport gates, viewer budget, terrain layers, and sample coverage. In WebXR, controllers can grab offscreen gates or terrain layers, manipulating not only what is visible but what deserves rendering. Longer-term, real product QA logs can become material so the QA report and web artwork are the same artifact.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-23_tsl_truth_matrix_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-23_offscreen_layer_budget_scope.html"
+        }
+      ]
+    }
+  ]
+}

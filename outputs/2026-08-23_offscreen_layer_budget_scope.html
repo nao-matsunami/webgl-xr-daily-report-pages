@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-08-23 Offscreen Layer Budget Scope</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#07090d;color:#eef3f7;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:18px;top:16px;max-width:min(660px,calc(100vw - 36px));font-size:12px;line-height:1.55;color:#d9e4ec;text-shadow:0 1px 8px #000}
+    .hud b{color:white}.hud span{color:#8ef0bd}
+    .error{position:fixed;left:16px;right:16px;bottom:16px;white-space:pre-wrap;color:#ffb0a6;background:#19090b;padding:12px;border:1px solid #7d3030;display:none}
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud"><b>Offscreen Layer Budget Scope</b><br><span>1</span> viewer suspension / <span>2</span> layer terrain / <span>3</span> MSAA resolve / <span>4</span> combined budget<br>drag: viewport/scroll gate, click/Space: viewer wake pulse</div>
+<pre id="err" class="error"></pre>
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const err = document.getElementById('err');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  if (!gl) {
+    err.style.display = 'block';
+    err.textContent = 'WebGL is not available.';
+    return;
+  }
+  const vert = `attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}`;
+  const frag = `
+precision mediump float;
+uniform vec2 r;
+uniform vec2 m;
+uniform float t;
+uniform float mode;
+uniform float pulse;
+
+float sat(float x){return clamp(x,0.0,1.0);}
+float circle(vec2 p,float radius){return smoothstep(radius, radius-0.012, length(p));}
+float ring(vec2 p,float radius,float width){return smoothstep(width,0.0,abs(length(p)-radius));}
+float box(vec2 p,vec2 b){vec2 q=abs(p)-b;return smoothstep(0.012,0.0,length(max(q,0.0))+min(max(q.x,q.y),0.0));}
+float lineSeg(vec2 p,vec2 a,vec2 b,float width){vec2 pa=p-a;vec2 ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);return smoothstep(width,0.0,length(pa-ba*h));}
+
+vec3 heat(float x){
+  return mix(mix(vec3(0.06,0.12,0.20), vec3(0.05,0.82,0.72), sat(x*1.4)), vec3(1.0,0.38,0.18), sat(x-0.65)*2.8);
+}
+
+float terrainA(float x){return 0.18*sin(x*4.0+t*0.25)+0.10*sin(x*9.0-t*0.17);}
+float terrainB(float x){return -0.23+0.16*sin(x*3.0-1.4)+0.07*sin(x*13.0+t*0.35);}
+
+vec3 viewerSuspension(vec2 uv, vec2 pointer, float wake){
+  vec3 col = vec3(0.012,0.018,0.026);
+  float viewportY = pointer.y * 0.72;
+  float viewTop = viewportY + 0.36;
+  float viewBottom = viewportY - 0.36;
+  col += box(vec2(uv.x, uv.y-viewportY), vec2(0.72,0.36)) * vec3(0.03,0.08,0.12);
+  for (int i=0; i<4; i++) {
+    float fi = float(i);
+    float cy = 0.62 - fi * 0.42 + 0.18*sin(t*0.17);
+    vec2 center = vec2(-0.56 + mod(fi,2.0)*1.12, cy);
+    vec2 local = uv - center;
+    float panel = box(local, vec2(0.33,0.16));
+    float visible = step(viewBottom, center.y+0.16) * step(center.y-0.16, viewTop);
+    float budget = mix(0.10, 0.92, visible) + wake*0.28*smoothstep(0.5,0.0,length(local));
+    col += panel * heat(budget) * (0.35 + 0.65*budget);
+    col += ring(local, 0.09 + 0.035*sin(t*2.0+fi), 0.012) * vec3(1.0,0.90,0.42) * visible;
+    col += lineSeg(uv, center+vec2(-0.22,-0.11), center+vec2(0.22,-0.11), 0.008) * vec3(0.6,0.85,1.0) * budget;
+  }
+  col += lineSeg(uv, vec2(-0.76,viewTop), vec2(0.76,viewTop), 0.01) * vec3(0.5,1.0,0.7);
+  col += lineSeg(uv, vec2(-0.76,viewBottom), vec2(0.76,viewBottom), 0.01) * vec3(0.5,1.0,0.7);
+  return col;
+}
+
+vec3 layerTerrain(vec2 uv, vec2 pointer, float wake){
+  vec3 col = vec3(0.010,0.014,0.020);
+  float x = uv.x * 2.7 + pointer.x;
+  float top = terrainA(x) + 0.22;
+  float bottom = terrainB(x) - 0.04;
+  float upperBand = smoothstep(0.012,0.0,abs(uv.y-top));
+  float lowerBand = smoothstep(0.012,0.0,abs(uv.y-bottom));
+  float solid = step(uv.y,bottom) + (step(uv.y,top) * step(bottom+0.035,uv.y));
+  float cave = step(bottom+0.035,uv.y) * step(uv.y,top-0.035);
+  col += solid * vec3(0.12,0.36,0.30);
+  col += cave * vec3(0.04,0.07,0.12);
+  col += upperBand * vec3(0.95,0.75,0.30);
+  col += lowerBand * vec3(0.30,0.82,1.0);
+  float edit = circle(uv-pointer*0.62,0.20+0.04*sin(t*2.0));
+  col = mix(col, vec3(0.98,0.25,0.38), edit*0.65);
+  col += wake * ring(uv-pointer*0.62,0.32,0.018) * vec3(1.0,0.95,0.55);
+  return col;
+}
+
+vec3 resolvePattern(vec2 uv, vec2 pointer, float wake){
+  vec3 col = vec3(0.012,0.015,0.022);
+  vec2 grid = fract((uv+1.0)*6.0)-0.5;
+  vec2 cell = floor((uv+1.0)*6.0);
+  float sampleA = circle(grid-vec2(-0.18,-0.18),0.045);
+  float sampleB = circle(grid-vec2(0.18,-0.18),0.045);
+  float sampleC = circle(grid-vec2(-0.18,0.18),0.045);
+  float sampleD = circle(grid-vec2(0.18,0.18),0.045);
+  float edge = smoothstep(0.015,0.0,abs(sin((cell.x+cell.y)*0.7+t+pointer.x*3.0)));
+  float custom = sat((sampleA+sampleB*0.6+sampleC*0.3+sampleD) * (0.55+edge+wake));
+  float boxResolve = box(grid, vec2(0.18)) * 0.34;
+  col += box(grid, vec2(0.42)) * vec3(0.04,0.07,0.10);
+  col += custom * vec3(0.20,0.95,0.78);
+  col += boxResolve * vec3(0.96,0.34,0.42);
+  col += edge * lineSeg(grid, vec2(-0.36,0.0), vec2(0.36,0.0), 0.012) * vec3(1.0,0.9,0.4);
+  return col;
+}
+
+vec3 combined(vec2 uv, vec2 pointer, float wake){
+  vec3 a = viewerSuspension(uv, pointer, wake);
+  vec3 b = layerTerrain(uv, pointer, wake);
+  vec3 c = resolvePattern(uv, pointer, wake);
+  float left = smoothstep(0.18,-0.18,uv.x);
+  float right = smoothstep(-0.18,0.18,uv.x);
+  vec3 col = mix(mix(a,b,right), c, smoothstep(0.35,0.85,abs(uv.y)));
+  col += ring(uv,0.66,0.014) * vec3(0.9,0.95,1.0) * (0.25+wake);
+  col += lineSeg(uv, vec2(0.0,-0.8), vec2(0.0,0.8), 0.008) * vec3(0.3,0.5,0.65) * left;
+  return col;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy * 2.0 - r) / min(r.x, r.y);
+  vec2 pointer = (m * 2.0 - r) / min(r.x, r.y);
+  float wake = exp(-pulse*2.8);
+  vec3 col;
+  if(mode < 1.5){
+    col = viewerSuspension(uv, pointer, wake);
+  } else if(mode < 2.5){
+    col = layerTerrain(uv, pointer, wake);
+  } else if(mode < 3.5){
+    col = resolvePattern(uv, pointer, wake);
+  } else {
+    col = combined(uv, pointer, wake);
+  }
+  float vignette = smoothstep(1.35,0.12,length(uv));
+  gl_FragColor = vec4(pow(col*vignette, vec3(0.86)), 1.0);
+}
+`;
+  function shader(type, src) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (e) {
+    err.style.display = 'block';
+    err.textContent = e.message;
+    return;
+  }
+  gl.useProgram(program);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const u = {
+    r: gl.getUniformLocation(program, 'r'),
+    m: gl.getUniformLocation(program, 'm'),
+    t: gl.getUniformLocation(program, 't'),
+    mode: gl.getUniformLocation(program, 'mode'),
+    pulse: gl.getUniformLocation(program, 'pulse')
+  };
+  let pointer = [innerWidth * 0.55, innerHeight * 0.52];
+  let mode = 1;
+  let pulseAt = -10;
+  addEventListener('pointermove', e => { pointer = [e.clientX, innerHeight - e.clientY]; });
+  addEventListener('pointerdown', e => { pointer = [e.clientX, innerHeight - e.clientY]; pulseAt = performance.now() * 0.001; });
+  addEventListener('keydown', e => {
+    if (e.key >= '1' && e.key <= '4') mode = Number(e.key);
+    if (e.code === 'Space') pulseAt = performance.now() * 0.001;
+  });
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(innerWidth * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  addEventListener('resize', resize);
+  resize();
+  function frame(ms) {
+    const time = ms * 0.001;
+    const sx = canvas.width / innerWidth;
+    const sy = canvas.height / innerHeight;
+    gl.uniform2f(u.r, canvas.width, canvas.height);
+    gl.uniform2f(u.m, pointer[0] * sx, pointer[1] * sy);
+    gl.uniform1f(u.t, time);
+    gl.uniform1f(u.mode, mode);
+    gl.uniform1f(u.pulse, Math.max(0.0, time - pulseAt));
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
