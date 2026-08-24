@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TSLのBRDF/bit/depth検証とMultiTexture層合成を、触れる診断スコープにする | 2026-08-24</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.24</p>
+      <h1>TSLのBRDF/bit/depth検証とMultiTexture層合成を、触れる診断スコープにする</h1>
+      <p class="hero-subtitle">Turning TSL BRDF/bit/depth validation and MultiTexture layer compositing into touchable diagnostic scopes</p>
+      <p>three.js の Tour of TSL と GPU実行 unit test 拡張、PlayCanvas の WebGPU multisampled render target sampling、Babylon.js の MultiTexture と Lite Viewer offscreen suspension、Codrops の DOM/WebGL/TSL事例を、前回の renderer QA as expressive instrument から「検証結果、層、予算をそのまま演出にする」方向へ進めた。本命サンプルとして TSL BRDF Bit Scope、派生サンプルとして MultiTexture Layer Blend Scope を実装した。</p>
+      <p class="en-copy">Today connects three.js Tour of TSL and expanded GPU-executed unit tests, PlayCanvas WebGPU multisampled render-target sampling, Babylon.js MultiTexture and Lite Viewer offscreen suspension, and recent Codrops DOM/WebGL/TSL examples to yesterday's renderer-QA-as-expression thread. The direction is to make validation results, layers, and budgets into the performance itself. Two samples were implemented: TSL BRDF Bit Scope and MultiTexture Layer Blend Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-24_tsl_brdf_bit_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-23.html">← 2026.08.23</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-24 TSL BRDF Bit Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-24_tsl_brdf_bit_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-08-24 MultiTexture Layer Blend Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-24_multitexture_layer_blend_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34085 の Tour of TSL は、TSLを単なるAPIドキュメントではなく、Markdown、検索、runner、playground、共有URL、mobile layoutを含む学習/検証環境にする流れ。PR本文では単一Markdownにページ階層と例を集約し、runnerがimport mapを読めること、playgroundが仮想ファイルや自動importを持つことが説明されている。2. three.js PR #34350 は BRDF/BSDF、depth conversion、color space、type constructor、bit operation、noise の GPU実行テストを追加し、WebGL fallback の countTrailingZeros(0) が WebGPU と異なる実バグを修正した。#34358 も LTC area light、point light、SH irradiance、UV、post-processing utils に検査面を広げている。3. PlayCanvas PR #9167 は WebGPUで multisampled render target を user shader から textureLoad できるようにし、hardware box resolve では出せない独自resolveを可能にする。4. Babylon.js PR #18822 は RawTexture2DArray を使う MultiTexture で、複数画像の add/remove/update と blend mode を shader levelで扱う提案。#18820 は Lite Viewer の画面外描画停止で、4 viewer の例で見えていない canvas の frame が 0 になることを示している。5. Codrops WebGL欄では、DOMとWebGLのretro-futurist stage、TSL/WebGPU cluster、procedural geometry、glass xylophone が並び、技術内部を見せる演出の文脈が続いている。</p>
+          <p class="en-copy">1. three.js PR #34085 turns TSL into a learning and validation environment rather than only API docs, combining Markdown, search, a runner, playground, shareable URLs, and mobile layout. The PR describes a single Markdown source for pages and examples, an import-map-aware runner, and a playground with virtual files and automatic imports. 2. three.js PR #34350 adds GPU-executed tests for BRDF/BSDF, depth conversion, color space, type constructors, bit operations, and noise, and fixes a real WebGL fallback bug where countTrailingZeros(0) disagreed with WebGPU. #34358 extends this validation surface to LTC area lights, point lights, SH irradiance, UV utilities, and post-processing helpers. 3. PlayCanvas PR #9167 lets WebGPU user shaders textureLoad multisampled render targets, enabling custom resolves beyond hardware box resolve. 4. Babylon.js PR #18822 proposes MultiTexture on RawTexture2DArray with add/remove/update and blend modes at shader level. #18820 pauses Lite Viewer rendering when offscreen and shows hidden viewer frames dropping to zero. 5. Codrops' WebGL feed continues the context with DOM/WebGL retro-futurist staging, TSL/WebGPU clusters, procedural geometry, and a glass xylophone.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">three.js PR #34085</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34350" target="_blank" rel="noreferrer">three.js PR #34350</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日いちばん面白いのは、Tour of TSL と GPU unit test が同時に進んでいる点。学習環境、playground、runner、実GPU検証が揃うと、shader helperを読んで、試して、壊して、差分を視覚化する循環が作れる。ここに Babylon MultiTexture を足すと、検証結果を単色の pass/fail にせず、層、blend mode、差し替え履歴として見せられる。さらに PlayCanvas #9167 の sample index resolve を組み合わせると、同じ pixel の中で sampleごとに違う判定や層を持たせられる。つまり「テスト結果の画面」ではなく「テストが演奏される面」にできる。</p>
+          <p class="en-copy">The strongest signal today is Tour of TSL advancing alongside GPU unit tests. With learning docs, playground, runner, and real GPU validation, a loop emerges: read a shader helper, try it, break it, and visualize the difference. Adding Babylon MultiTexture prevents pass/fail from staying monochrome: results can become layers, blend modes, and replacement history. Combining PlayCanvas #9167 then allows per-sample decisions inside one pixel. This becomes not a screen of test results, but a surface where tests are performed.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">Tour of TSL PR</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">MultiTexture PR</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">MSAA sampling PR</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「TSL BRDF Bit Scope」。BRDFの期待値レーン、countTrailingZeros(0) のようなゼロ入力トラップ、depth roundtrip の誤差リング、Tour of TSL のplayground/runnerを同じスコープにする。操作は 1-4 のモード切替、ドラッグで expected-value lens、クリック/Space で compile pulse。派生案は「MultiTexture Layer Blend Scope」。RawTexture2DArray の各layerを仮想的な質感層として描き、add/remove/update、alpha stack、screen/add composite、terrain strata を切り替える。次に足すなら、TSL testのカテゴリをlayerに割り当て、失敗したhelperだけ別blendで浮かせる。</p>
+          <p class="en-copy">The main idea is TSL BRDF Bit Scope: BRDF expected-value lanes, zero-input traps like countTrailingZeros(0), depth-roundtrip error rings, and Tour-of-TSL playground/runner pages in one scope. Controls are mode keys 1-4, drag as an expected-value lens, and click/Space as a compile pulse. The derived idea is MultiTexture Layer Blend Scope: draw RawTexture2DArray layers as virtual material strata and switch add/remove/update, alpha stack, screen/add compositing, and terrain strata. Next, assign TSL test categories to layers and float failing helpers with a different blend.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>TSL/WGSLでは select や if で未到達に見える式でも、compile-time constant folding が先に走ると division by zero などで shader module 作成時に落ちる。#34350 の depth/bit/BRDF検証は、見た目のテストでは拾えない backend差分を明示する材料になる。PlayCanvas #9167 の `bindMultisampled` は、MSAA color attachment を保存し、`texture_multisampled_2d` として user shader から sampleIndex 付きで読む設計。Babylon #18822 の MultiTexture は WebGL2+ 前提の RawTexture2DArray なので、WebGL1サンプルでは疑似layerに留めたが、実装時は layerの寸法統一、dispose race、watch polling、tree-shaking side effects を見る必要がある。#18820 の offscreen suspension は、render loop停止とscene registrationを分ける点が重要で、画面外復帰時のdelta spikeを避ける実装メモとして使える。</p>
+          <p class="en-copy">In TSL/WGSL, expressions that look unreachable behind select or if can still be constant-folded first; division by zero can fail shader-module creation. #34350's depth/bit/BRDF validation is useful because it exposes backend differences that visual tests miss. PlayCanvas #9167's `bindMultisampled` stores the MSAA color attachment and exposes it as `texture_multisampled_2d` for sampleIndex-based user shader reads. Babylon #18822's MultiTexture is WebGL2+ RawTexture2DArray, so today's WebGL1 sample only simulates layers; real use should check layer dimension normalization, disposal races, watch polling, and tree-shaking side effects. #18820's key implementation note is separating render-loop state from scene registration so resume avoids delta spikes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34350" target="_blank" rel="noreferrer">three.js PR #34350</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18820" target="_blank" rel="noreferrer">Babylon.js PR #18820</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js #34085 Tour of TSL、#34358/#34350/#34349 GPU unit tests、#34339 branch cache、#34308 Fn positional index、#34354 Sky/SkyMesh up uniform、#34259 SunLight、#34290 GaussianSplatGroup。PlayCanvas は #9167 multisampled render target sampling、#9208 alphaToCoverage、#9207 parallax、transform feedback multi-slot #9109。Babylon.js は #18822 MultiTexture、#18820 offscreen suspension、#18812 shader loader abstraction、#18815 GSplat opacity roulette、#18816 half-float PLY。新規案件: Tour of TSL の playground URL hash を、日報サンプルの再現URLとして使えるか検討。寝かせる案件: npm/Renovate、CI rerun、表現接続が薄いscript clone修正群。</p>
+          <p class="en-copy">Continue watching three.js #34085 Tour of TSL, #34358/#34350/#34349 GPU unit tests, #34339 branch caching, #34308 Fn positional index reads, #34354 Sky/SkyMesh up uniform removal, #34259 SunLight, and #34290 GaussianSplatGroup. For PlayCanvas, track #9167 multisampled render-target sampling, #9208 alphaToCoverage, #9207 parallax, and transform-feedback multi-slot #9109. For Babylon.js, track #18822 MultiTexture, #18820 offscreen suspension, #18812 shader-loader abstraction, #18815 GSplat opacity roulette, and #18816 half-float PLY. New thread: evaluate whether Tour of TSL playground URL hashes can serve as reproducible URLs for daily samples. Sleep: npm/Renovate, CI reruns, and expression-light script clone fixes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34358" target="_blank" rel="noreferrer">three.js PR #34358</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9109" target="_blank" rel="noreferrer">PlayCanvas PR #9109</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18812" target="_blank" rel="noreferrer">Babylon.js PR #18812</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-08-24_tsl_brdf_bit_scope.html` を開く。1 は BRDF期待値レーン、2 は bit-count zero trap、3 は depth roundtrip、4 は Tour playground 風のページ/runner。ドラッグで lens、クリック/Spaceで pulse。次に足すなら、three.js の TSL test JSONを読み込み、helper名、backend、期待値、実値、compile errorをレーンの色と形に割り当てる。2本目は `outputs/2026-08-24_multitexture_layer_blend_scope.html`。1 は alpha stack、2 は add/remove layer、3 は shader composite、4 は terrain strata。次に足すなら、実WebGL2 texture array版にして、layer更新を画像アップロードや音の帯域に接続する。</p>
+          <p class="en-copy">Open `outputs/2026-08-24_tsl_brdf_bit_scope.html` first. Mode 1 is BRDF expected-value lanes, 2 is the bit-count zero trap, 3 is depth roundtrip, and 4 is a Tour-playground-like page/runner view. Drag for the lens and click/Space for a pulse. Next, load real three.js TSL test JSON and map helper name, backend, expected value, actual value, and compile errors into lane colors and shapes. The second sample is `outputs/2026-08-24_multitexture_layer_blend_scope.html`: 1 alpha stack, 2 add/remove layer, 3 shader composite, 4 terrain strata. Next, make a real WebGL2 texture-array version and connect layer updates to image uploads or audio bands.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: Tour of TSL、TSL GPU unit tests、PlayCanvas MSAA sampling、Babylon MultiTexture/offscreen、Codrops WebGL/TSL/geometry事例。アイデア検討: 前回の numeric truth / matrix direction / offscreen budget を、BRDF/bit/depth検証と layer blend に接続。サンプル実装: 本命 `2026-08-24_tsl_brdf_bit_scope.html`、派生 `2026-08-24_multitexture_layer_blend_scope.html` を追加。結果の検証: JSON parse、HTML parse、script構文、ローカルHTTP、WebGL shader compileを確認。短期で試すものは TSL test JSON入力。中長期で育てるものは、Tour/Playground/UnitTest/Layer/OffscreenBudget を統合した renderer QA performance wall。</p>
+          <p class="en-copy">Collection: Tour of TSL, TSL GPU unit tests, PlayCanvas MSAA sampling, Babylon MultiTexture/offscreen, and Codrops WebGL/TSL/geometry examples. Ideation: connect yesterday's numeric truth / matrix direction / offscreen budget to BRDF/bit/depth validation and layer blending. Prototype: added the main `2026-08-24_tsl_brdf_bit_scope.html` and derived `2026-08-24_multitexture_layer_blend_scope.html`. Verification: JSON parse, HTML parse, script syntax, local HTTP, and WebGL shader compile checked. Short-term: feed TSL test JSON. Long-term: build a renderer QA performance wall combining Tour, Playground, UnitTest, Layer, and OffscreenBudget.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向はかなり明確で、WebGL/WebGPUの表現は「きれいなshader」から「renderer内部の判断を観客が触れる状態面」へ寄っている。fog/JBU、branch cache、sampler audit、alphaToCoverage、MSAA sample、offscreen suspension、MultiTexture、TSL unit test は別々の話に見えるが、全部、どの値を信用し、どの層を描き、どの予算を使うかの可視化でつながる。組み合わせ候補は、TSL test failure を MultiTexture layer にして、MSAA sampleごとに違う failure色をresolveすること。育てる価値が高いテーマは「shader playground がそのまま舞台になる」こと。Tour of TSL は、その足場になり得る。</p>
+          <p class="en-copy">The recent trend is clear: WebGL/WebGPU expression is moving from beautiful shaders toward state surfaces where viewers can touch renderer decisions. Fog/JBU, branch caching, sampler audits, alphaToCoverage, MSAA samples, offscreen suspension, MultiTexture, and TSL unit tests look separate, but all visualize which values are trusted, which layers are drawn, and which budget is spent. A strong combination is to turn TSL test failures into MultiTexture layers and resolve different failure colors per MSAA sample. The theme worth growing is the shader playground becoming the stage itself. Tour of TSL could be the scaffold.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">Tour of TSL</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34350" target="_blank" rel="noreferrer">TSL tests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命は `outputs/2026-08-24_tsl_brdf_bit_scope.html`。短時間で試せる理由は、#34350 の検査項目が BRDF、bit、depth と視覚化しやすく、依存なしのfragment shaderでも意味が崩れないため。何が動くか: BRDF期待値レーン、countTrailingZeros(0) 由来のzero trap、depth roundtrip ring、Tour/runner風のページ列。次に足すなら実TSL test出力を読み込む。2本目は `outputs/2026-08-24_multitexture_layer_blend_scope.html`。何が動くか: layer stack、add/remove/update表現、shader composite、terrain strata。次に足すなら WebGL2 RawTexture2DArray と実画像layerにする。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-08-24_tsl_brdf_bit_scope.html`. It is quick to test because #34350's BRDF, bit, and depth checks remain meaningful in a dependency-free fragment shader. It shows BRDF expected-value lanes, a countTrailingZeros(0)-style zero trap, depth-roundtrip rings, and Tour/runner-like page columns. Next, load real TSL test output. The second prototype is `outputs/2026-08-24_multitexture_layer_blend_scope.html`, showing layer stack, add/remove/update expression, shader compositing, and terrain strata. Next, move it to WebGL2 RawTexture2DArray with real image layers.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日の2サンプルは、入力値、検証カテゴリ、layer番号、blend mode、pulse時刻をデータとして取り出せる。展示なら、来場者のpointerや音量で test category がlayerとして増減し、失敗したbackendだけ異なる色で発光する壁面にできる。Webサイトなら、scrollで offscreen budget とlayer更新を同期し、見えていない3D要素は止まり、戻ると履歴が地層として残る。WebXRなら、左右眼やsampleIndexごとに違う検証layerを見せ、正しさの差を立体視の違和感として扱える。MediaPipeやカメラを足す場合は、手の距離を expected-value lens、指の本数を bit-count lane、顔の向きを Euler/depth roundtrip に割り当てると、QAの言葉を身体的な演奏に変えられる。</p>
+          <p class="en-copy">The two samples expose inputs, validation categories, layer IDs, blend modes, and pulse timing as data. In an installation, visitor pointer or audio amplitude could add and remove test categories as layers, with failing backends glowing in distinct colors. On a website, scroll could synchronize offscreen budget and layer updates: hidden 3D elements stop, and when they return their history remains as strata. In WebXR, each eye or sampleIndex could show different validation layers, making correctness differences into stereoscopic tension. With MediaPipe or camera input, hand distance can drive the expected-value lens, finger count can select bit-count lanes, and face direction can control Euler/depth roundtrip, turning QA vocabulary into bodily performance.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">three.js PR #34085 Tour of TSL</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34358" target="_blank" rel="noreferrer">three.js PR #34358 TSL GPU unit test coverage</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34350" target="_blank" rel="noreferrer">three.js PR #34350 BRDF/depth/color/bit tests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9167" target="_blank" rel="noreferrer">PlayCanvas PR #9167 WebGPU multisampled render target sampling</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822 MultiTexture</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18820" target="_blank" rel="noreferrer">Babylon.js PR #18820 Lite Viewer offscreen suspension</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="../outputs/2026-08-24_tsl_brdf_bit_scope.html" target="_blank" rel="noreferrer">Main sample: TSL BRDF Bit Scope</a></li>
+          
+            <li><a href="../outputs/2026-08-24_multitexture_layer_blend_scope.html" target="_blank" rel="noreferrer">Derived sample: MultiTexture Layer Blend Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-24_tsl_brdf_bit_scope.html" loading="lazy" title="2026-08-24 TSL BRDF Bit Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
