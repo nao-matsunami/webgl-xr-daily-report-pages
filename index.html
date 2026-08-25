@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 68</span>
+        <span>days: 69</span>
         <span>page: 1 / 6</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -309,6 +309,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-08-25">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.08.25</p>
+              <h2>GPUリソース寿命、MSAA texture、retroreflectionを触れる状態面にする</h2>
+              <p class="card-subtitle">Turning GPU resource lifetime, MSAA textures, and retroreflection into touchable state surfaces</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-08-25" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の `Renderer.dispose()` 非同期化、dynamic shadow map size 追跡、WebGPU fallback のオンデマンド化、PlayCanvas の multisampled Texture API / MSAA binding / parallax mip level、Babylon.js の KHR_materials_retroreflection / overlay texture binding leak / MultiTexture / GSplat opacity roulette を、前回の TSL 検証レーンと layer scope から「寿命、sample、反射、binding を演出状態として見せる」方向へ進めた。本命サンプルとして Async Dispose Lifetime Scope、派生サンプルとして Retroreflective Cone Probe を実装した。</p>
+          <p class="description en-copy">Today connects three.js asynchronous `Renderer.dispose()`, dynamic shadow-map-size tracking, and on-demand WebGPU fallback loading; PlayCanvas multisampled Texture API, MSAA bindings, and parallax mip-level sampling; and Babylon.js KHR_materials_retroreflection, overlay texture binding leak fixes, MultiTexture, and GSplat opacity roulette to yesterday's TSL validation lanes and layer scopes. The direction is to expose lifetime, samples, reflection, and bindings as performance state. Two samples were implemented: Async Dispose Lifetime Scope and Retroreflective Cone Probe.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-08-25.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-08-25_retroreflective_cone_probe.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-08-24">
           <div class="card-top">
             <div>
@@ -558,29 +581,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-14.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-14_msaa_depth_resolve_choreography.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-13">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.13</p>
-              <h2>圧縮 Splat、空、影、アップスケールを同じ品質予算に載せる</h2>
-              <p class="card-subtitle">Putting compressed splats, sky, shadows, and upscaling on one quality budget</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-13" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の SPZ v4 対応、SunLight / Cascaded Shadow Maps 提案、NodeMaterial compile 整備、Babylon.js の FSR 1 WebGL2/Native 対応、PlayCanvas の procedural sky / float blend capability / indirect draw 修正を、昨日の view-dependent quality allocation から「複数の見た目コストを一枚の診断スコープに集める」方向へ接続した。</p>
-          <p class="description en-copy">Today connects three.js SPZ v4 support, the SunLight / Cascaded Shadow Maps proposal, NodeMaterial compile work, Babylon.js FSR 1 WebGL2/Native support, and PlayCanvas procedural sky / float blend capability / indirect draw fixes to yesterday's view-dependent quality allocation by gathering multiple visual costs into one diagnostic scope.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-13.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-13_spz_sky_upscale_budget_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

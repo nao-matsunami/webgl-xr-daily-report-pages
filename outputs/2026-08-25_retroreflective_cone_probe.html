@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-08-25 Retroreflective Cone Probe</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#060607;color:#eef1f0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:18px;right:18px;top:14px;display:flex;gap:12px;justify-content:space-between;pointer-events:none}
+    .hud b{font-size:13px;color:#fff}
+    .hud span{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#aeb8b5}
+    .err{position:fixed;left:18px;right:18px;bottom:16px;color:#ffc1aa;white-space:pre-wrap;font-size:12px}
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div><b>Retroreflective Cone Probe</b><span>1 cone / 2 light return / 3 scatter / 4 binding leak. Drag moves the camera-adjacent light. Click or Space sends a headlight flash.</span></div>
+  <div><b id="modeLabel">mode 1</b><span>Babylon.js #18829 + #18828 + #18810/#18815</span></div>
+</div>
+<div class="err" id="err"></div>
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  const err = document.getElementById('err');
+  const label = document.getElementById('modeLabel');
+  let mode = 1;
+  let flash = 0;
+  const pointer = [0.5, 0.35];
+  if (!gl) { err.textContent = 'WebGL is not available.'; return; }
+  const vert = `attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}`;
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform float mode;
+uniform float flash;
+
+float msel(float x){ return 1.0 - step(0.5, abs(mode - x)); }
+float sdBox(vec2 p, vec2 b){ vec2 d=abs(p)-b; return length(max(d,0.0))+min(max(d.x,d.y),0.0); }
+float box(vec2 p, vec2 b){ return 1.0 - smoothstep(0.0, 0.012, sdBox(p,b)); }
+float disk(vec2 p,float r){ return 1.0-smoothstep(r,r+0.012,length(p)); }
+float ring(vec2 p,float r,float w){ return 1.0-smoothstep(w,w+0.012,abs(length(p)-r)); }
+float tri(vec2 p, float s){
+  p.y += s * 0.18;
+  vec2 q = abs(p);
+  float d = max(q.x * 0.866025 + p.y * 0.5, -p.y) - s * 0.5;
+  return 1.0 - smoothstep(0.0, 0.012, d);
+}
+float seg(vec2 p, vec2 a, vec2 b, float w){
+  vec2 pa=p-a, ba=b-a;
+  float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
+  return 1.0-smoothstep(w,w+0.012,length(pa-ba*h));
+}
+float stripe(float y){ return smoothstep(0.025,0.0,abs(fract(y*8.0)-0.5)); }
+
+vec3 coneScene(vec2 p, vec2 light){
+  vec3 col=vec3(0.018,0.018,0.016);
+  float cone=tri(p-vec2(0.0,-0.03),0.84);
+  float base=box(p-vec2(0.0,-0.45),vec2(0.36,0.055));
+  float bands=cone*stripe(p.y+0.25);
+  vec2 n=normalize(vec2(p.x*0.9,0.65-abs(p.y)));
+  vec2 view=normalize(light-p);
+  float retro=pow(max(dot(n,view),0.0),8.0);
+  col += cone*vec3(0.94,0.36,0.07)*(0.42+retro*1.4);
+  col += bands*vec3(1.0,0.92,0.72)*(0.75+retro*2.2+flash);
+  col += base*vec3(0.08,0.09,0.08);
+  col += disk(light,0.038)*vec3(1.0,0.92,0.62);
+  col += seg(p,light,vec2(0.0,-0.02),0.006)*vec3(0.9,0.86,0.55)*0.45;
+  return col;
+}
+
+vec3 returnMap(vec2 p, vec2 light){
+  vec3 col=vec3(0.015,0.019,0.019);
+  for(float i=0.0;i<5.0;i+=1.0){
+    float y=-0.42+i*0.2;
+    vec2 c=vec2(-0.48+i*0.24,y+0.05*sin(time+i));
+    float target=ring(p-c,0.085+0.015*i,0.012);
+    float angle=pow(max(dot(normalize(light-c),normalize(vec2(0.0,1.0))),0.0),6.0);
+    col += target*mix(vec3(0.1,0.22,0.24),vec3(1.0,0.82,0.34),angle+flash*0.35);
+    col += seg(p,light,c,0.004)*vec3(0.35,0.65,0.62)*angle;
+  }
+  return col;
+}
+
+vec3 scatterMap(vec2 p){
+  vec3 col=vec3(0.012,0.018,0.022);
+  float r=length(p);
+  float shells=ring(p,0.22,0.012)+ring(p,0.38,0.012)+ring(p,0.56,0.012);
+  float grain=fract(sin(dot(floor((p+1.0)*38.0),vec2(13.1,91.7)))*4517.23);
+  float roulette=step(0.52+0.2*sin(time+r*8.0),grain);
+  col += shells*vec3(0.18,0.55,0.75);
+  col += roulette*smoothstep(0.74,0.0,r)*vec3(0.62,0.88,0.72);
+  col += ring(p,0.68+0.02*sin(time*1.4),0.018)*vec3(0.9,0.38,0.28);
+  return col;
+}
+
+vec3 bindingLeak(vec2 p){
+  vec3 col=vec3(0.018,0.016,0.022);
+  for(float i=-2.0;i<=2.0;i+=1.0){
+    vec2 c=vec2(i*0.24,0.05*sin(time+i));
+    float mat=box(p-c,vec2(0.085,0.13));
+    float overlay=ring(p-c,0.15,0.01);
+    float leak=step(0.0,sin(time*1.3+i+flash*3.0));
+    col += mat*vec3(0.15,0.20,0.24);
+    col += overlay*mix(vec3(0.26,0.6,0.72),vec3(0.98,0.22,0.18),leak);
+  }
+  col += seg(p,vec2(-0.7,-0.42),vec2(0.7,0.35),0.006)*vec3(0.95,0.72,0.34);
+  return col;
+}
+
+void main(){
+  vec2 p=(gl_FragCoord.xy*2.0-resolution)/min(resolution.x,resolution.y);
+  vec2 uv=gl_FragCoord.xy/resolution;
+  vec2 light=(pointer*2.0-1.0)*vec2(1.0,-1.0);
+  vec3 c1=coneScene(p,light);
+  vec3 c2=returnMap(p,light);
+  vec3 c3=scatterMap(p);
+  vec3 c4=bindingLeak(p);
+  vec3 col=c1*msel(1.0)+c2*msel(2.0)+c3*msel(3.0)+c4*msel(4.0);
+  float grid=(step(0.987,fract(uv.x*24.0))+step(0.987,fract(uv.y*16.0)))*0.035;
+  col += grid*vec3(0.7,0.68,0.56);
+  col += exp(-length(p-light)*2.5)*vec3(0.16,0.12,0.04)*(0.6+flash);
+  gl_FragColor=vec4(pow(max(col,vec3(0.0)),vec3(0.88)),1.0);
+}`;
+  function compile(type, src) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || 'shader compile failed');
+    return shader;
+  }
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch(e) { err.textContent = e.message; return; }
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(program,'position');
+  const uni={
+    resolution:gl.getUniformLocation(program,'resolution'),
+    time:gl.getUniformLocation(program,'time'),
+    pointer:gl.getUniformLocation(program,'pointer'),
+    mode:gl.getUniformLocation(program,'mode'),
+    flash:gl.getUniformLocation(program,'flash')
+  };
+  function resize(){
+    const dpr=Math.min(devicePixelRatio||1,2);
+    const w=Math.floor(innerWidth*dpr), h=Math.floor(innerHeight*dpr);
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}
+  }
+  addEventListener('pointermove',e=>{pointer[0]=e.clientX/innerWidth;pointer[1]=e.clientY/innerHeight;});
+  addEventListener('pointerdown',()=>{flash=1;});
+  addEventListener('keydown',e=>{
+    if(e.key>='1'&&e.key<='4') mode=Number(e.key);
+    if(e.code==='Space') flash=1;
+    label.textContent='mode '+mode;
+  });
+  function frame(ms){
+    resize(); flash*=0.93;
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    gl.uniform2f(uni.resolution,canvas.width,canvas.height);
+    gl.uniform1f(uni.time,ms*0.001);
+    gl.uniform2f(uni.pointer,pointer[0],pointer[1]);
+    gl.uniform1f(uni.mode,mode);
+    gl.uniform1f(uni.flash,flash);
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

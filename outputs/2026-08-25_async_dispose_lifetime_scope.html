@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-08-25 Async Dispose Lifetime Scope</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#05070a;color:#dfe8ee;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:18px;right:18px;top:14px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;pointer-events:none}
+    .hud b{font-size:13px;color:#fff;font-weight:700}
+    .hud span{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#9fb2bf}
+    .err{position:fixed;left:18px;right:18px;bottom:16px;color:#ffb3a3;white-space:pre-wrap;font-size:12px}
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <div><b>Async Dispose Lifetime Scope</b><span>1 lifetime / 2 query pool / 3 shadow resize / 4 fallback import. Drag changes teardown order. Click or Space injects a dispose pulse.</span></div>
+  <div><b id="modeLabel">mode 1</b><span>three.js #34364 + #34360/#34361 + #34334</span></div>
+</div>
+<div class="err" id="err"></div>
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  const err = document.getElementById('err');
+  const label = document.getElementById('modeLabel');
+  let mode = 1;
+  let pulse = 0;
+  const pointer = [0.58, 0.48];
+  if (!gl) {
+    err.textContent = 'WebGL is not available.';
+    return;
+  }
+  const vert = `
+attribute vec2 position;
+void main(){ gl_Position = vec4(position, 0.0, 1.0); }
+`;
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform float mode;
+uniform float pulse;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float ring(vec2 p, float r, float w){ return 1.0 - smoothstep(w, w + 0.012, abs(length(p) - r)); }
+float disk(vec2 p, float r){ return 1.0 - smoothstep(r, r + 0.01, length(p)); }
+float boxSdf(vec2 p, vec2 b){ vec2 d = abs(p) - b; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
+float box(vec2 p, vec2 b){ return 1.0 - smoothstep(0.0, 0.012, boxSdf(p, b)); }
+float seg(vec2 p, vec2 a, vec2 b, float w){
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return 1.0 - smoothstep(w, w + 0.012, length(pa - ba * h));
+}
+float msel(float x){ return 1.0 - step(0.5, abs(mode - x)); }
+
+vec3 palette(float t){
+  return 0.55 + 0.45 * cos(6.28318 * (vec3(0.02, 0.27, 0.52) + t));
+}
+
+vec3 lifetime(vec2 p){
+  vec3 col = vec3(0.015, 0.027, 0.035);
+  float t = time * 0.55 + pulse * 1.7;
+  vec2 gate = (pointer * 2.0 - 1.0) * vec2(1.2, -0.8);
+  for (float i = -3.0; i <= 3.0; i += 1.0) {
+    vec2 c = vec2(i * 0.22, 0.0);
+    float phase = fract(t * 0.28 + i * 0.13 + 0.25);
+    float body = ring(p - c, 0.075 + phase * 0.05, 0.015);
+    float core = disk(p - c, 0.028) * (0.4 + 0.6 * sin(t + i) * sin(t + i));
+    float link = seg(p, c, gate, 0.006 + 0.008 * phase);
+    col += body * palette(phase + i * 0.1) * 0.95;
+    col += core * vec3(0.95, 0.96, 0.82);
+    col += link * vec3(0.25, 0.75, 0.95) * (0.35 + phase);
+  }
+  col += ring(p - gate, 0.12 + 0.06 * sin(t), 0.012) * vec3(1.0, 0.52, 0.28);
+  return col;
+}
+
+vec3 queryPool(vec2 p){
+  vec3 col = vec3(0.02, 0.02, 0.032);
+  float scan = fract(time * 0.18 + pulse);
+  for (float y = -3.0; y <= 3.0; y += 1.0) {
+    float yy = y * 0.16;
+    float busy = smoothstep(0.11, 0.0, abs(p.y - yy));
+    float dispose = smoothstep(0.035, 0.0, abs(p.x - (scan * 2.0 - 1.0 + y * 0.05)));
+    col += busy * vec3(0.05, 0.12, 0.18);
+    col += busy * dispose * vec3(1.0, 0.72, 0.25);
+    col += seg(p, vec2(-0.78, yy), vec2(0.78, yy), 0.004) * vec3(0.2, 0.5, 0.65);
+  }
+  float leak = ring(p - vec2(0.0, -0.54), 0.16 + 0.04 * sin(time * 1.8), 0.018);
+  col += leak * vec3(0.95, 0.23, 0.28);
+  return col;
+}
+
+vec3 shadowResize(vec2 p){
+  vec3 col = vec3(0.016, 0.024, 0.028);
+  float s = 0.23 + 0.08 * sin(time + pulse * 4.0);
+  vec2 a = p - vec2(-0.32, 0.05);
+  vec2 b = p - vec2(0.32, -0.03);
+  col += box(a, vec2(s)) * vec3(0.12, 0.30, 0.42);
+  col += ring(a, s * 1.42, 0.014) * vec3(0.38, 0.75, 0.95);
+  col += box(b, vec2(0.19 + 0.06 * cos(time * 1.1))) * vec3(0.18, 0.18, 0.30);
+  col += ring(b, 0.36, 0.012) * vec3(0.95, 0.55, 0.25);
+  col += seg(p, vec2(-0.53, -0.42), vec2(0.58, 0.38), 0.007) * vec3(0.86, 0.9, 0.55);
+  return col;
+}
+
+vec3 fallback(vec2 p){
+  vec3 col = vec3(0.012, 0.024, 0.034);
+  float x = p.x + 0.86;
+  for (float i = 0.0; i < 6.0; i += 1.0) {
+    vec2 c = vec2(-0.72 + i * 0.29, 0.1 * sin(time + i));
+    float ready = smoothstep(0.0, 0.35, sin(time * 0.75 + i + pulse * 5.0) * 0.5 + 0.5);
+    col += box(p - c, vec2(0.075, 0.075)) * mix(vec3(0.15, 0.2, 0.23), vec3(0.25, 0.9, 0.68), ready);
+    col += seg(p, vec2(x, -0.42), c, 0.004) * vec3(0.22, 0.54, 0.68) * ready;
+  }
+  col += ring(p - (pointer * 2.0 - 1.0) * vec2(1.0, -1.0), 0.18, 0.01) * vec3(1.0, 0.84, 0.34);
+  return col;
+}
+
+void main(){
+  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 uv = gl_FragCoord.xy / resolution;
+  float grid = (step(0.985, fract(uv.x * 28.0)) + step(0.985, fract(uv.y * 18.0))) * 0.035;
+  vec3 c1 = lifetime(p);
+  vec3 c2 = queryPool(p);
+  vec3 c3 = shadowResize(p);
+  vec3 c4 = fallback(p);
+  vec3 col = c1 * msel(1.0) + c2 * msel(2.0) + c3 * msel(3.0) + c4 * msel(4.0);
+  col += grid * vec3(0.5, 0.7, 0.8);
+  col += exp(-length(p) * 1.8) * vec3(0.02, 0.035, 0.04);
+  col += pow(max(0.0, 1.0 - length(p - (pointer * 2.0 - 1.0) * vec2(1.0, -1.0)) * 3.0), 3.0) * vec3(0.12, 0.22, 0.24);
+  gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.88)), 1.0);
+}
+`;
+
+  function compile(type, src) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(shader) || 'shader compile failed');
+    }
+    return shader;
+  }
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (e) {
+    err.textContent = e.message;
+    return;
+  }
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, 'position');
+  const uni = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    time: gl.getUniformLocation(program, 'time'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    mode: gl.getUniformLocation(program, 'mode'),
+    pulse: gl.getUniformLocation(program, 'pulse')
+  };
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.floor(innerWidth * dpr);
+    const h = Math.floor(innerHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h);
+    }
+  }
+  addEventListener('pointermove', e => {
+    pointer[0] = e.clientX / innerWidth;
+    pointer[1] = e.clientY / innerHeight;
+  });
+  addEventListener('pointerdown', () => { pulse = 1; });
+  addEventListener('keydown', e => {
+    if (e.key >= '1' && e.key <= '4') mode = Number(e.key);
+    if (e.code === 'Space') pulse = 1;
+    label.textContent = 'mode ' + mode;
+  });
+  function frame(ms) {
+    resize();
+    pulse *= 0.94;
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform2f(uni.resolution, canvas.width, canvas.height);
+    gl.uniform1f(uni.time, ms * 0.001);
+    gl.uniform2f(uni.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uni.mode, mode);
+    gl.uniform1f(uni.pulse, pulse);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+{
+  "date": "2026-08-25",
+  "headline": "GPUリソース寿命、MSAA texture、retroreflectionを触れる状態面にする",
+  "headlineEn": "Turning GPU resource lifetime, MSAA textures, and retroreflection into touchable state surfaces",
+  "summary": "three.js の `Renderer.dispose()` 非同期化、dynamic shadow map size 追跡、WebGPU fallback のオンデマンド化、PlayCanvas の multisampled Texture API / MSAA binding / parallax mip level、Babylon.js の KHR_materials_retroreflection / overlay texture binding leak / MultiTexture / GSplat opacity roulette を、前回の TSL 検証レーンと layer scope から「寿命、sample、反射、binding を演出状態として見せる」方向へ進めた。本命サンプルとして Async Dispose Lifetime Scope、派生サンプルとして Retroreflective Cone Probe を実装した。",
+  "summaryEn": "Today connects three.js asynchronous `Renderer.dispose()`, dynamic shadow-map-size tracking, and on-demand WebGPU fallback loading; PlayCanvas multisampled Texture API, MSAA bindings, and parallax mip-level sampling; and Babylon.js KHR_materials_retroreflection, overlay texture binding leak fixes, MultiTexture, and GSplat opacity roulette to yesterday's TSL validation lanes and layer scopes. The direction is to expose lifetime, samples, reflection, and bindings as performance state. Two samples were implemented: Async Dispose Lifetime Scope and Retroreflective Cone Probe.",
+  "links": [
+    {
+      "label": "three.js PR #34364 Renderer: Introduce dispose() async",
+      "url": "https://github.com/mrdoob/three.js/pull/34364"
+    },
+    {
+      "label": "three.js PR #34360 LightsNode: Detect dynamic shadow map size changes",
+      "url": "https://github.com/mrdoob/three.js/pull/34360"
+    },
+    {
+      "label": "three.js PR #34361 NodeMaterialObserver: Track shadow map sizes",
+      "url": "https://github.com/mrdoob/three.js/pull/34361"
+    },
+    {
+      "label": "three.js PR #34334 WebGPURenderer: Load the WebGL fallback on demand",
+      "url": "https://github.com/mrdoob/three.js/pull/34334"
+    },
+    {
+      "label": "PlayCanvas PR #9217 Add samples option to Texture for multisampled textures on WebGPU",
+      "url": "https://github.com/playcanvas/engine/pull/9217"
+    },
+    {
+      "label": "PlayCanvas PR #9167 Support multisampled texture bindings in WGSL reflection and bind groups",
+      "url": "https://github.com/playcanvas/engine/pull/9167"
+    },
+    {
+      "label": "PlayCanvas PR #9219 Sample the parallax march at an explicit mip level",
+      "url": "https://github.com/playcanvas/engine/pull/9219"
+    },
+    {
+      "label": "Babylon.js PR #18829 Add KHR_materials_retroreflection support",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18829"
+    },
+    {
+      "label": "Babylon.js PR #18828 Fix overlay texture bindings leaking into shared PBR materials",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18828"
+    },
+    {
+      "label": "Khronos glTF PR #2610 KHR_materials_retroreflection",
+      "url": "https://github.com/KhronosGroup/glTF/pull/2610"
+    },
+    {
+      "label": "Codrops: HAOQI.DESIGN DOM and WebGL stage",
+      "url": "https://tympanus.net/codrops/2026/08/15/inside-haoqi-design-letting-dom-and-webgl-share-a-retro-futurist-stage/"
+    },
+    {
+      "label": "Main sample: Async Dispose Lifetime Scope",
+      "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+    },
+    {
+      "label": "Derived sample: Retroreflective Cone Probe",
+      "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34364 は `Renderer.dispose()` と `Backend.dispose()` を非同期化し、timestamp query pool など GPU resource の解放を await できるようにする変更。内部 teardown order も明示され、前回までの offscreen suspension / resource lifetime の話と直結する。2. three.js PR #34360/#34361 は WebGPURenderer 側で shadow map size の動的変更を検出し、NodeMaterialObserver へ追跡を寄せる流れ。shadow atlas を固定前提にせず、サイズ変更そのものを状態として扱う材料になる。3. PlayCanvas PR #9217 は `new Texture(device, { samples: 4 })` のように WebGPU multisampled texture を first-class にし、#9167 の multisampled binding と合わせて sampleIndex を shader 表現へ持ち込む足場を作った。#9219 は parallax occlusion march を明示 mip level で読むことで、遠景の aliasing と texture cache の問題を抑える。4. Babylon.js PR #18829 は draft の `KHR_materials_retroreflection` を OpenPBRMaterial として読む実装。交通コーンのような camera-adjacent light で強く返る材質は、Web上の安全・案内・演出UIに向いている。#18828 は overlay texture binding が shared PBR material に漏れる問題で、binding state の汚染を視覚化する題材として面白い。5. Codrops の HAOQI.DESIGN 事例は DOM/CSS/WebGL を一つの retro-futurist stage にしており、renderer内部の状態をUIではなく舞台装置にする流れを補強している。",
+      "bodyEn": "1. three.js PR #34364 makes `Renderer.dispose()` and `Backend.dispose()` asynchronous so GPU resources such as timestamp query pools can be awaited during release. It also clarifies teardown order, directly extending the recent offscreen-suspension and resource-lifetime thread. 2. three.js PR #34360/#34361 detect dynamic shadow-map-size changes in WebGPURenderer and move tracking toward NodeMaterialObserver. This treats shadow-atlas resizing itself as a state surface. 3. PlayCanvas PR #9217 makes WebGPU multisampled textures first-class via `new Texture(device, { samples: 4 })`; together with #9167, this brings sampleIndex into shader expression. #9219 samples parallax occlusion marching at an explicit mip level to reduce minification aliasing and texture-cache pressure. 4. Babylon.js PR #18829 implements the draft `KHR_materials_retroreflection` as OpenPBRMaterial. Materials that return light strongly toward a camera-adjacent lamp, like a traffic cone, are useful for web safety, guidance, and entertainment cues. #18828 fixes overlay texture bindings leaking into shared PBR materials, which is a good subject for visualizing binding-state contamination. 5. Codrops' HAOQI.DESIGN case study reinforces the direction of turning DOM/CSS/WebGL into one stage rather than a UI around a renderer.",
+      "links": [
+        {
+          "label": "three.js #34364",
+          "url": "https://github.com/mrdoob/three.js/pull/34364"
+        },
+        {
+          "label": "PlayCanvas #9217",
+          "url": "https://github.com/playcanvas/engine/pull/9217"
+        },
+        {
+          "label": "Babylon.js #18829",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18829"
+        },
+        {
+          "label": "Codrops HAOQI.DESIGN",
+          "url": "https://tympanus.net/codrops/2026/08/15/inside-haoqi-design-letting-dom-and-webgl-share-a-retro-futurist-stage/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の核は「片付ける瞬間を見せる」こと。WebGL/WebGPUの作品は生成や描画の瞬間ばかり見せがちだが、`dispose()`、query pool、fallback import、shadow map resize、offscreen resume は、実運用では体験の滑らかさを決める重要な時間軸になる。ここに retroreflection を足すと、暗い面から急に戻る反射や、binding leak で意図しない texture が残る状態を、単なるバグ表示ではなく演出上の「残光」「汚染」「回収」として扱える。PlayCanvas の multisampled texture は、同じ pixel 内に複数の記憶を持たせる方向でこの話に接続できる。",
+      "bodyEn": "The strongest theme today is showing the cleanup moment. WebGL/WebGPU works often emphasize creation and rendering, but `dispose()`, query pools, fallback imports, shadow-map resizing, and offscreen resume are critical timelines for real-world smoothness. Adding retroreflection turns sudden light return, or accidental texture leftovers from binding leaks, into afterglow, contamination, and recovery rather than only bug displays. PlayCanvas multisampled textures connect by allowing one pixel to hold multiple memories.",
+      "links": [
+        {
+          "label": "three.js #34364",
+          "url": "https://github.com/mrdoob/three.js/pull/34364"
+        },
+        {
+          "label": "PlayCanvas #9217",
+          "url": "https://github.com/playcanvas/engine/pull/9217"
+        },
+        {
+          "label": "Babylon.js #18828",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18828"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Async Dispose Lifetime Scope」。GPU resource を円環、query pool を横レーン、shadow map resize を正方形atlas、WebGPU fallback import を小さな正方形module列として描く。操作は 1-4 のモード切替、ドラッグで teardown order、クリック/Space で dispose pulse。派生案は「Retroreflective Cone Probe」。交通コーン風の三角形と白帯、camera-adjacent light、scatter shell、binding leak lane を切り替え、ポインタ光に対して強く返る材質を検証する。次に足すなら、1本目の dispose pulse を2本目の headlight flash に送り、破棄済みresourceだけ反射しないようにする。",
+      "bodyEn": "The main idea is Async Dispose Lifetime Scope: GPU resources as rings, query pools as horizontal lanes, shadow-map resize as square atlases, and WebGPU fallback import as small module squares. Controls are modes 1-4, drag for teardown order, and click/Space for a dispose pulse. The derived idea is Retroreflective Cone Probe: switch between a traffic-cone-like triangle with white bands, a camera-adjacent light return map, scatter shells, and binding leak lanes. Next, send the first sample's dispose pulse into the second sample's headlight flash so disposed resources stop reflecting.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "`dispose()` が async になる場合、単に戻り値を Promise にするだけでなく、UI/scene切替側も破棄待ち、次scene生成、GPU query pool回収、fallback backend teardown の順序をログ化した方がよい。PlayCanvas #9217 では multisampled texture が 2D、non-array、non-storage、mipmapなし、初期dataなしなどの制約を持つため、実サンプル化する時は通常textureと同じasset pipelineに載せない。#9167 の WGSL reflection と組み合わせると `texture_multisampled_2d` を user shader から読む設計になる。Babylon #18829 の retroreflection は camera-light-view の角度依存を作品側のインタラクションへ転用しやすい。#18828 のような binding leak は shared material と outline/pass 切替の間で起きるため、debug view では material id、effect id、bound texture id を同じ画面に出すと原因が見つけやすい。",
+      "bodyEn": "If `dispose()` becomes async, the scene/UI layer should log disposal wait, next-scene creation, GPU query-pool collection, and fallback-backend teardown order rather than just accepting a Promise return. PlayCanvas #9217 multisampled textures are constrained to 2D, non-array, non-storage, no mipmaps, and no initial data, so they should not be pushed through the same asset pipeline as ordinary textures. Combined with #9167 WGSL reflection, user shaders can read `texture_multisampled_2d`. Babylon #18829 retroreflection makes camera-light-view angle dependence easy to reuse as interaction. Binding leaks like #18828 happen between shared materials and outline/pass changes; debug views should show material id, effect id, and bound texture id together.",
+      "links": [
+        {
+          "label": "three.js #34364",
+          "url": "https://github.com/mrdoob/three.js/pull/34364"
+        },
+        {
+          "label": "PlayCanvas #9167",
+          "url": "https://github.com/playcanvas/engine/pull/9167"
+        },
+        {
+          "label": "Babylon.js #18828",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18828"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34085 Tour of TSL、#34339 branch cache、#34235 PrefixSum、#34290 GaussianSplatGroup、#34334 fallback import、#34364 async dispose。PlayCanvas は #9217 multisampled Texture、#9167 multisampled binding、#9219 parallax mip、今後の RenderTarget support follow-up。Babylon.js は #18829 retroreflection、#18828 overlay binding leak、#18822 MultiTexture、#18815 GSplat opacity roulette、#18810 scatter。新規案件: retroreflection と scatter を Web上の誘導表示、警告、ライブ演出の「近づくと光が返る素材」として検討。寝かせる案件: Renovate/npm更新、純粋なドキュメント整形、表現接続が薄いテストhelper修正。",
+      "bodyEn": "Continue watching three.js #34085 Tour of TSL, #34339 branch cache, #34235 PrefixSum, #34290 GaussianSplatGroup, #34334 fallback import, and #34364 async dispose. For PlayCanvas, track #9217 multisampled Texture, #9167 multisampled binding, #9219 parallax mip level, and the future RenderTarget support follow-up. For Babylon.js, track #18829 retroreflection, #18828 overlay binding leak, #18822 MultiTexture, #18815 GSplat opacity roulette, and #18810 scatter. New thread: use retroreflection and scatter as web guidance, warning, and live-show materials that return light as the viewer approaches. Sleep: Renovate/npm updates, pure docs formatting, and expression-light test-helper fixes.",
+      "links": [
+        {
+          "label": "three.js #34235",
+          "url": "https://github.com/mrdoob/three.js/pull/34235"
+        },
+        {
+          "label": "PlayCanvas #9217",
+          "url": "https://github.com/playcanvas/engine/pull/9217"
+        },
+        {
+          "label": "Babylon.js #18815",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18815"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-08-25_async_dispose_lifetime_scope.html` を開く。1 は resource lifetime ring、2 は query pool dispose lane、3 は shadow map resize atlas、4 は fallback import module列。ドラッグで teardown order、クリック/Spaceで dispose pulse。次に足すなら、実アプリの `dispose()` 開始/終了、GPU query count、shadow map size、fallback loaded のログを JSON で流し込む。2本目は `outputs/2026-08-25_retroreflective_cone_probe.html`。1 は traffic cone風反射、2 は light return map、3 は scatter roulette、4 は binding leak lane。次に足すなら、WebGL2 MRTかpostprocessで headlight buffer を作り、角度依存の返りを実textureとして残す。",
+      "bodyEn": "Open `outputs/2026-08-25_async_dispose_lifetime_scope.html` first. Mode 1 is resource lifetime rings, 2 is query-pool dispose lanes, 3 is a shadow-map resize atlas, and 4 is fallback-import module columns. Drag changes teardown order and click/Space emits a dispose pulse. Next, feed real app logs for `dispose()` start/end, GPU query count, shadow-map size, and fallback loaded state. The second sample is `outputs/2026-08-25_retroreflective_cone_probe.html`: mode 1 traffic-cone-like reflection, 2 light return map, 3 scatter roulette, 4 binding leak lanes. Next, use WebGL2 MRT or a postprocess headlight buffer and keep the angular return as a real texture.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js async dispose / shadow map size / fallback import、PlayCanvas multisampled texture / parallax mip、Babylon retroreflection / binding leak / scatter / MultiTexture、Codrops DOM+WebGL stage。アイデア検討: 前回の TSL検証レーンと layer blend を、resource lifetime、sampleIndex、retroreflection、binding state へ拡張。サンプル実装: 本命 `2026-08-25_async_dispose_lifetime_scope.html`、派生 `2026-08-25_retroreflective_cone_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、ローカルHTTP、公開publishを実行する。短期で試すものは dispose/log JSON 入力。中長期で育てるものは、renderer QA performance wall に lifetime / reflection / sample memory を加えること。",
+      "bodyEn": "Collection: three.js async dispose / shadow-map size / fallback import, PlayCanvas multisampled texture / parallax mip level, Babylon retroreflection / binding leak / scatter / MultiTexture, and Codrops DOM+WebGL staging. Ideation: extend yesterday's TSL validation lanes and layer blending into resource lifetime, sampleIndex, retroreflection, and binding state. Prototype: added `2026-08-25_async_dispose_lifetime_scope.html` and `2026-08-25_retroreflective_cone_probe.html`. Verification: JSON parse, HTML parse, script syntax, local HTTP, and publish. Short-term: feed dispose/log JSON. Long-term: add lifetime / reflection / sample memory to the renderer QA performance wall.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、renderer の正しさだけでなく lifecycle の正しさが表現素材になってきたこと。8/21 の fog buffer、8/22 の branch/layer/stencil、8/23-24 の TSL unit test / MultiTexture に、今日の async dispose と retroreflection を重ねると、「生成、検証、描画、反射、破棄」が一本の時間軸になる。組み合わせ候補は、MSAA sampleごとに異なる resource lifetime を持たせ、破棄されていない sample だけ retroreflective に光る表現。育てる価値が高いテーマは、WebGL/WebGPU の内部状態を観客が触れる舞台照明として扱うこと。カードUI系ではなく、空間演出、パーティクル、ポストプロセス、音反応へ接続しやすい。",
+      "bodyEn": "The recent trend is that renderer lifecycle correctness, not only rendering correctness, is becoming expressive material. Combining the 8/21 fog buffer, 8/22 branch/layer/stencil, 8/23-24 TSL unit tests / MultiTexture, and today's async dispose / retroreflection creates one timeline: create, validate, render, reflect, dispose. A strong combination is to give each MSAA sample a different resource lifetime and make only non-disposed samples retroreflective. The theme worth growing is treating WebGL/WebGPU internal state as stage lighting that viewers can touch. This connects better to spatial staging, particles, postprocess, and audio reaction than to card UI.",
+      "links": [
+        {
+          "label": "three.js #34364",
+          "url": "https://github.com/mrdoob/three.js/pull/34364"
+        },
+        {
+          "label": "Khronos glTF #2610",
+          "url": "https://github.com/KhronosGroup/glTF/pull/2610"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-08-25_async_dispose_lifetime_scope.html`。短時間で試せる理由は、resource lifetime / query pool / shadow size / fallback import がすべて抽象図形で十分に意味を持ち、実engine依存なしで動かせるため。何が動くか: 円環resource、横レーンquery pool、正方形shadow atlas、module列fallback。次に足すなら、`performance.mark()` と renderer dispose Promise の実測ログを入力にする。2本目は `outputs/2026-08-25_retroreflective_cone_probe.html`。何が動くか: pointer light に反応する三角形コーン、返り光map、scatter shell、binding leak lane。次に足すなら、TrafficCone glTF sample の角度とライト位置を読み込む。",
+      "bodyEn": "The main prototype is `outputs/2026-08-25_async_dispose_lifetime_scope.html`. It is quick to test because resource lifetime, query pools, shadow size, and fallback import remain meaningful as abstract geometry without engine dependencies. It shows resource rings, query-pool lanes, square shadow atlases, and fallback module columns. Next, feed `performance.mark()` and real renderer dispose Promise timing logs. The second prototype is `outputs/2026-08-25_retroreflective_cone_probe.html`. It shows a pointer-light-reactive triangular cone, return-light map, scatter shells, and binding leak lanes. Next, load angle and light-position data from the TrafficCone glTF sample.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2サンプルは、resource id、dispose開始/終了時刻、query pool数、sample count、light vector、reflection intensity、binding leak発生をデータ化できる。展示なら、観客が近づくほど retroreflective layer が強く返り、裏側では不要resourceが消えていく「片付く光」の壁にできる。Webサイトなら、scrollで offscreen viewer を止め、復帰時のdelta spikeを光の残像で見せる。音反応なら、低域を dispose pulse、中域を query lane、高域を retroreflection band に割り当てる。WebXRなら、左右眼の sampleIndex に別々の lifetime を持たせ、片眼だけ残るbinding leakを空間的な違和感として出せる。MediaPipeを足す場合は、手の距離を headlight、指の本数を sample count、手の開閉を resource release に割り当てると、GPU内部の管理語彙を身体で演奏できる。",
+      "bodyEn": "The two samples can turn resource id, dispose start/end time, query-pool count, sample count, light vector, reflection intensity, and binding leak events into data. In an installation, approaching visitors could strengthen retroreflective layers while unused resources disappear behind the scene, creating a wall of cleanup light. On a website, scroll can suspend offscreen viewers and show resume delta spikes as afterimages. For audio reaction, map bass to dispose pulse, mids to query lanes, and highs to retroreflection bands. In WebXR, give each eye's sampleIndex a different lifetime and show one-eye binding leaks as spatial tension. With MediaPipe, hand distance can be the headlight, finger count the sample count, and hand open/close the resource release gesture.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-25_async_dispose_lifetime_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-25_retroreflective_cone_probe.html"
+        }
+      ]
+    }
+  ]
+}
