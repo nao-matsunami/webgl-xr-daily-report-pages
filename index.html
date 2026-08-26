@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 69</span>
+        <span>days: 70</span>
         <span>page: 1 / 6</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -309,6 +309,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-08-26">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.08.26</p>
+              <h2>NTC/fp16、MSAA resolve、GSplat readinessを同じ時間面で見る</h2>
+              <p class="card-subtitle">Viewing NTC/fp16, MSAA resolve, and GSplat readiness on one time surface</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-08-26" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の Neural Texture Compression + TSL f16、WebGPURenderer の texture dispose listener leak、GTAONode noise texture disposal、LightProbeGridWebGL の SunLight 修正、PlayCanvas の multisampled RenderTarget / sample_mask / depthResolveMode / parallax terrain soft shadow、Babylon.js の Gaussian Splat readiness regression / budget-driven multi-camera LOD / WebXR media layer / shared shader loading state / IES candela normalization を、前回の async dispose・retroreflection から「圧縮、sample、readiness、media layer を実時間の舞台状態として見せる」方向へ進めた。本命サンプルとして NTC FP16 Resolve Scope、派生サンプルとして Splat Readiness Media Layer Scope を実装した。</p>
+          <p class="description en-copy">Today connects three.js Neural Texture Compression with TSL f16, WebGPURenderer texture dispose listener leaks, GTAONode noise texture disposal, and LightProbeGridWebGL SunLight fixes; PlayCanvas multisampled RenderTarget, sample_mask, depthResolveMode, parallax terrain, and soft height-field self-shadowing; and Babylon.js Gaussian Splat readiness regression, budget-driven multi-camera LOD, WebXR media layers, shared shader loading state, and IES candela normalization. The direction extends yesterday's async dispose and retroreflection into compression, sampling, readiness, and media layers as realtime stage state. Two samples were implemented: NTC FP16 Resolve Scope and Splat Readiness Media Layer Scope.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-08-26.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-08-26_splat_readiness_media_layer_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-08-25">
           <div class="card-top">
             <div>
@@ -558,29 +581,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-15.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-15_mrt_depth_ibl_telemetry.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-14">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.14</p>
-              <h2>MSAAサンプル、scene depth、Splat sortを後段シェーダーの演出入力にする</h2>
-              <p class="card-subtitle">Turning MSAA samples, scene depth, and splat sorting into downstream shader inputs</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-14" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">PlayCanvas の multisampled render target sampling / scene texture 書き込み、three.js の GaussianSplatMesh counting sort / sort invalidation、WebGPU Inspector virtual scrolling、Babylon.js の editor dynamic import 正規化を、前回の品質予算スコープから「内部バッファを見せる演出」へ接続した。</p>
-          <p class="description en-copy">Today connects PlayCanvas multisampled render-target sampling and scene-texture writes, three.js GaussianSplatMesh counting sort and sort invalidation, WebGPU Inspector virtual scrolling, and Babylon.js editor dynamic-import normalization to yesterday's quality-budget scope by treating internal buffers as visible performance choreography.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-14.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-14_msaa_depth_resolve_choreography.html">代表サンプル / Sample</a>
           </div>
         </article>
       

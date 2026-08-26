@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-08-26 Splat Readiness Media Layer Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #111314; color: #edf1ec; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: min(760px, calc(100vw - 32px)); color: rgba(237,241,236,.86); font-size: 12px; line-height: 1.55; pointer-events: none; }
+    .hud b { color: #b9f1ff; }
+    .err { position: fixed; left: 16px; right: 16px; bottom: 14px; color: #ffb2a3; white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud"><b>Splat Readiness Media Layer Scope</b><br>1 readiness sort / 2 budget LOD / 3 IES light profile / 4 XR media layer. Drag: camera pair. Click/Space: one-shot render wait.</div>
+  <div id="err" class="err"></div>
+  <script>
+  const canvas = document.getElementById("gl");
+  const err = document.getElementById("err");
+  const gl = canvas.getContext("webgl", { antialias: true, alpha: false });
+  let mode = 1;
+  let pulse = 0;
+  const pointer = { x: 0.5, y: 0.55 };
+
+  const vert = `
+    attribute vec2 position;
+    void main() { gl_Position = vec4(position, 0.0, 1.0); }
+  `;
+  const frag = `
+    precision mediump float;
+    uniform vec2 resolution;
+    uniform float time;
+    uniform vec2 pointer;
+    uniform float mode;
+    uniform float pulse;
+
+    float hash(float n) { return fract(sin(n) * 43758.5453); }
+    float hash2(vec2 p) { return fract(sin(dot(p, vec2(97.1, 37.7))) * 24634.6345); }
+    float sdCircle(vec2 p, float r) { return length(p) - r; }
+    float sdBox(vec2 p, vec2 b) {
+      vec2 d = abs(p) - b;
+      return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    }
+    float stroke(float d, float w) { return 1.0 - smoothstep(w, w + 0.012, abs(d)); }
+    float fill(float d) { return 1.0 - smoothstep(0.0, 0.012, d); }
+
+    float splat(vec2 p, vec2 c, float r, float a) {
+      float d = dot(p - c, p - c) / max(r * r, 0.0001);
+      return exp(-d * a);
+    }
+
+    vec3 ramp(float v) {
+      vec3 cold = vec3(0.05, 0.08, 0.10);
+      vec3 teal = vec3(0.05, 0.55, 0.62);
+      vec3 lemon = vec3(0.96, 0.86, 0.32);
+      vec3 coral = vec3(0.95, 0.26, 0.20);
+      return mix(mix(cold, teal, smoothstep(0.0, 0.55, v)), mix(lemon, coral, smoothstep(0.55, 1.0, v)), smoothstep(0.35, 1.0, v));
+    }
+
+    float field(vec2 p, float budget, float sortPhase) {
+      float v = 0.0;
+      for (float i = 0.0; i < 18.0; i += 1.0) {
+        float h = hash(i * 17.0 + 3.0);
+        vec2 c = vec2(cos(i * 2.399 + sortPhase), sin(i * 1.713 - sortPhase)) * (0.15 + 0.62 * hash(i + 9.0));
+        c.x += 0.18 * sin(time * 0.25 + i);
+        float priority = smoothstep(0.0, 1.0, budget - i / 18.0 + 0.22 * h);
+        v += splat(p, c, 0.045 + 0.06 * h, 6.0) * priority;
+      }
+      return clamp(v, 0.0, 1.0);
+    }
+
+    float layerFrame(vec2 p, vec2 c, vec2 b, float roundness) {
+      float d = sdBox(p - c, b);
+      float inner = sdBox(p - c, b - vec2(roundness));
+      return stroke(d, 0.012) + 0.25 * stroke(inner, 0.01);
+    }
+
+    void main() {
+      vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+      vec2 camera = (pointer * 2.0 - 1.0) * vec2(resolution.x / min(resolution.x, resolution.y), resolution.y / min(resolution.x, resolution.y));
+      float t = time;
+      float waitPulse = exp(-pulse * 2.5);
+      float sortPhase = atan(camera.y, camera.x) + waitPulse * 1.5;
+      float budget = 0.52 + 0.35 * pointer.x + 0.12 * sin(t * 0.6);
+
+      float fReady = field(p, 0.72, sortPhase);
+      float stale = field(p + vec2(0.035 * waitPulse, -0.02 * waitPulse), 0.72, sortPhase - 0.55);
+      vec3 col = ramp(fReady);
+      col += vec3(1.0, 0.24, 0.16) * max(stale - fReady, 0.0) * (0.8 + waitPulse);
+
+      float gate = stroke(sdCircle(p - camera * 0.35, 0.28 + 0.05 * sin(t)), 0.014);
+      float readyLine = stroke(sdBox(p - vec2(-0.68, -0.64 + 0.2 * smoothstep(0.0, 1.0, 1.0 - waitPulse)), vec2(0.2, 0.025)), 0.01);
+      vec3 readyView = col + vec3(0.75, 0.9, 1.0) * gate + vec3(0.94, 0.82, 0.24) * readyLine;
+
+      float fBudget = field(p, budget, sortPhase);
+      vec2 g = floor((p + 1.0) * 5.0);
+      float lodGrid = stroke(sdBox(fract((p + 1.0) * 5.0) - 0.5, vec2(0.47)), 0.01);
+      float drop = step(budget, hash2(g));
+      vec3 budgetView = ramp(fBudget) + vec3(0.94, 0.2, 0.18) * lodGrid * drop + vec3(0.12, 0.52, 0.94) * lodGrid * (1.0 - drop);
+
+      vec2 lp = p - vec2(-0.35, 0.16);
+      float angle = atan(lp.y, lp.x);
+      float radius = length(lp);
+      float ies = pow(max(0.0, cos(angle * 3.0 + 0.4 * sin(t))), 6.0) * exp(-radius * 2.1);
+      float lamp = fill(sdCircle(lp, 0.075)) + stroke(sdCircle(lp, 0.54), 0.012);
+      vec3 iesView = vec3(0.035, 0.045, 0.045) + vec3(1.0, 0.76, 0.22) * ies + vec3(0.08, 0.48, 0.9) * lamp + ramp(fReady) * 0.28;
+
+      float quad = layerFrame(p, vec2(0.22, 0.02), vec2(0.52, 0.31), 0.08);
+      float cyl = stroke(abs(length((p - vec2(-0.48, 0.02)) * vec2(1.0, 0.58)) - 0.27), 0.018);
+      float eq = stroke(sdCircle(p - vec2(0.64, 0.1), 0.22), 0.012);
+      float videoScan = 0.5 + 0.5 * sin((p.y + 0.12 * sin(p.x * 8.0)) * 36.0 - t * 4.0);
+      vec3 mediaView = vec3(0.025, 0.035, 0.04) + vec3(0.0, 0.58, 0.66) * quad + vec3(0.94, 0.78, 0.25) * cyl + vec3(0.9, 0.24, 0.25) * eq + vec3(0.5, 0.85, 1.0) * videoScan * fill(sdBox(p - vec2(0.22, 0.02), vec2(0.49, 0.28)));
+
+      float useBudget = step(1.5, mode) * (1.0 - step(2.5, mode));
+      float useIes = step(2.5, mode) * (1.0 - step(3.5, mode));
+      float useMedia = step(3.5, mode);
+      col = mix(readyView, budgetView, useBudget);
+      col = mix(col, iesView, useIes);
+      col = mix(col, mediaView, useMedia);
+      col += vec3(1.0, 0.88, 0.36) * waitPulse * stroke(sdCircle(p, 0.18 + 0.55 * waitPulse), 0.017);
+      col = pow(max(col, vec3(0.0)), vec3(0.95));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  function shader(type, source) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program() {
+    const p = gl.createProgram();
+    gl.attachShader(p, shader(gl.VERTEX_SHADER, vert));
+    gl.attachShader(p, shader(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+
+  try {
+    if (!gl) throw new Error("WebGL is not available.");
+    const prog = program();
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "position");
+    const uniforms = {
+      resolution: gl.getUniformLocation(prog, "resolution"),
+      time: gl.getUniformLocation(prog, "time"),
+      pointer: gl.getUniformLocation(prog, "pointer"),
+      mode: gl.getUniformLocation(prog, "mode"),
+      pulse: gl.getUniformLocation(prog, "pulse")
+    };
+    gl.useProgram(prog);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h);
+      }
+    }
+    function draw(now) {
+      resize();
+      pulse += 0.016;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.uniform1f(uniforms.pulse, pulse);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(draw);
+    }
+    addEventListener("pointermove", (e) => {
+      pointer.x = e.clientX / innerWidth;
+      pointer.y = 1 - e.clientY / innerHeight;
+    });
+    addEventListener("pointerdown", () => { pulse = 0; });
+    addEventListener("keydown", (e) => {
+      if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+      if (e.code === "Space") pulse = 0;
+    });
+    requestAnimationFrame(draw);
+  } catch (e) {
+    err.textContent = e.message || String(e);
+  }
+  </script>
+</body>
+</html>

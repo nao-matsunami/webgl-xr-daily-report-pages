@@ -1,0 +1,255 @@
+{
+  "date": "2026-08-26",
+  "headline": "NTC/fp16、MSAA resolve、GSplat readinessを同じ時間面で見る",
+  "headlineEn": "Viewing NTC/fp16, MSAA resolve, and GSplat readiness on one time surface",
+  "summary": "three.js の Neural Texture Compression + TSL f16、WebGPURenderer の texture dispose listener leak、GTAONode noise texture disposal、LightProbeGridWebGL の SunLight 修正、PlayCanvas の multisampled RenderTarget / sample_mask / depthResolveMode / parallax terrain soft shadow、Babylon.js の Gaussian Splat readiness regression / budget-driven multi-camera LOD / WebXR media layer / shared shader loading state / IES candela normalization を、前回の async dispose・retroreflection から「圧縮、sample、readiness、media layer を実時間の舞台状態として見せる」方向へ進めた。本命サンプルとして NTC FP16 Resolve Scope、派生サンプルとして Splat Readiness Media Layer Scope を実装した。",
+  "summaryEn": "Today connects three.js Neural Texture Compression with TSL f16, WebGPURenderer texture dispose listener leaks, GTAONode noise texture disposal, and LightProbeGridWebGL SunLight fixes; PlayCanvas multisampled RenderTarget, sample_mask, depthResolveMode, parallax terrain, and soft height-field self-shadowing; and Babylon.js Gaussian Splat readiness regression, budget-driven multi-camera LOD, WebXR media layers, shared shader loading state, and IES candela normalization. The direction extends yesterday's async dispose and retroreflection into compression, sampling, readiness, and media layers as realtime stage state. Two samples were implemented: NTC FP16 Resolve Scope and Splat Readiness Media Layer Scope.",
+  "links": [
+    {
+      "label": "three.js PR #34365 Neural Texture Compression example + TSL 16 bit support",
+      "url": "https://github.com/mrdoob/three.js/pull/34365"
+    },
+    {
+      "label": "three.js PR #34368 WebGPURenderer texture dispose listener leak",
+      "url": "https://github.com/mrdoob/three.js/pull/34368"
+    },
+    {
+      "label": "three.js PR #34369 GTAONode dispose internal noise texture",
+      "url": "https://github.com/mrdoob/three.js/pull/34369"
+    },
+    {
+      "label": "three.js PR #34370 LightProbeGridWebGL SunLight integration",
+      "url": "https://github.com/mrdoob/three.js/pull/34370"
+    },
+    {
+      "label": "PlayCanvas PR #9221 multisampled color buffers and custom resolves",
+      "url": "https://github.com/playcanvas/engine/pull/9221"
+    },
+    {
+      "label": "PlayCanvas PR #9222 sample_mask builtin support",
+      "url": "https://github.com/playcanvas/engine/pull/9222"
+    },
+    {
+      "label": "PlayCanvas PR #9226 depthResolveMode",
+      "url": "https://github.com/playcanvas/engine/pull/9226"
+    },
+    {
+      "label": "PlayCanvas PR #9225 parallax occlusion soft self shadowing",
+      "url": "https://github.com/playcanvas/engine/pull/9225"
+    },
+    {
+      "label": "Babylon.js PR #18836 Gaussian splat readiness regression",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18836"
+    },
+    {
+      "label": "Babylon.js PR #18834 budget-driven multi-camera LOD for streaming Gaussian Splatting",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18834"
+    },
+    {
+      "label": "Babylon.js PR #18832 WebXR composition and media layer support",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18832"
+    },
+    {
+      "label": "Babylon.js PR #18833 IES candela profile normalization",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18833"
+    },
+    {
+      "label": "Babylon.js PR #18830 shared shader loading state",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18830"
+    },
+    {
+      "label": "Codrops: Relighting Images with Depth Maps and Three.js",
+      "url": "https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/"
+    },
+    {
+      "label": "Codrops Creative Hub: Plinkopinball",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: NTC FP16 Resolve Scope",
+      "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+    },
+    {
+      "label": "Derived sample: Splat Readiness Media Layer Scope",
+      "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34365 は Neural Texture Compression example と TSL の half precision 型をまとめた WIP。multiresolution latent grid と MLP decoder を MeshPhysicalNodeMaterial に載せる方向で、圧縮textureを単なる転送最適化ではなく「復元中の質感」として見せられる。2. three.js PR #34368/#34369 は texture dispose listener leak と GTAONode 内部 noise DataTexture の破棄漏れ。昨日の async dispose と同じく、作品の終わり・postprocessの差し替え・scene transition の残像を設計対象にできる。3. PlayCanvas PR #9221/#9222/#9226 は WebGPU multisampled RenderTarget、sample_mask builtin、depthResolveMode を一気に進めた。sampleごとの記憶、coverage mask、MIN/MAX/SAMPLE0 depth resolve を、透明・粒子・soft particles・outline に直接使える。4. PlayCanvas PR #9223/#9225 は parallax terrain と height field soft self shadowing。distance/view angle で破綻しやすい parallax を、遠景のaliasingではなく地形の「凹凸が光を持つ」表現として育てられる。5. Babylon.js PR #18836/#18834/#18832/#18830/#18833 は、Gaussian Splat の初回 readiness、budget driven multi-camera LOD、WebXR media layer、material shader import cache、IES light profile の修正。見た目の派手さより、いつ描けるか、どこへ予算を使うか、どのlayerに置くか、どの光分布が正しいかという運用寄りの視点が強い。",
+      "bodyEn": "1. three.js PR #34365 combines a Neural Texture Compression example with half precision types in TSL. Its multiresolution latent grid and MLP decoder on MeshPhysicalNodeMaterial suggest compressed textures can be shown as recovering material, not only transfer optimization. 2. three.js PR #34368/#34369 address texture dispose listener leaks and an internal GTAONode noise DataTexture disposal leak. Like yesterday's async dispose, they turn endings, postprocess swaps, and scene-transition residue into design material. 3. PlayCanvas PR #9221/#9222/#9226 advances WebGPU multisampled RenderTarget, sample_mask builtin, and depthResolveMode. Per-sample memory, coverage masks, and MIN/MAX/SAMPLE0 depth resolves can feed transparency, particles, soft particles, and outlines. 4. PlayCanvas PR #9223/#9225 adds parallax terrain and height-field soft self-shadowing, moving parallax from aliasing risk toward relief that carries light. 5. Babylon.js PR #18836/#18834/#18832/#18830/#18833 focus on Gaussian Splat first-frame readiness, budget-driven multi-camera LOD, WebXR media layers, material shader import caching, and IES profile normalization.",
+      "links": [
+        {
+          "label": "three.js #34365",
+          "url": "https://github.com/mrdoob/three.js/pull/34365"
+        },
+        {
+          "label": "PlayCanvas #9221",
+          "url": "https://github.com/playcanvas/engine/pull/9221"
+        },
+        {
+          "label": "Babylon.js #18834",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18834"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops の depth map relighting は、2D画像を depth/normal/soft shadow の surface に変換する実践例としてまだ強い。今日の PlayCanvas parallax terrain と合わせると、実geometryを増やさずに光が入り込む面を作る方向が見える。Creative Hub では Plinkopinball のような Three.js + Blender 系の物理/ゲーム的事例も新しく、内部状態の可視化をただの診断UIにせず、玉がsample maskを叩く、ピンがdepth resolve modeを切り替える、といったエンタメ化ができる。Babylon の WebXR media layer は、quad/cylinder/equirect/cube layer を映像素材として空間に置く話なので、NTCで復元される質感、GSplatのready状態、IES profile の光を一つの空間演出へ接続しやすい。",
+      "bodyEn": "Codrops' depth-map relighting remains a strong example of converting 2D images into depth, normal, and soft-shadow surfaces. Combined with PlayCanvas parallax terrain, it points toward surfaces where light enters without increasing real geometry. The Creative Hub's recent Three.js + Blender physical/game-like examples, including Plinkopinball, suggest diagnostic states can become entertainment mechanics: balls hitting sample masks, or pins switching depth resolve modes. Babylon's WebXR media layer support places quad, cylinder, equirect, and cube layers as spatial media, making it a good container for NTC recovery, GSplat readiness, and IES light distribution.",
+      "links": [
+        {
+          "label": "Codrops relighting tutorial",
+          "url": "https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Babylon.js #18832",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18832"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「NTC FP16 Resolve Scope」。圧縮された latent grid、fp16量子化帯、MLP decoder風の光沢、sample_maskの4点coverage、depth resolve のMIN/MAX/SAMPLE0差分を一枚のshader面に置く。ドラッグでdecoder-light vector、クリック/Spaceでcompression pulse、1-4で表示を切り替える。派生案は「Splat Readiness Media Layer Scope」。GSplatの初回sort待ち、budget LOD、IES light profile、WebXR media layer を mode として持たせ、readyになる前のstale差分を残光にする。次に足すなら、1本目の sample_mask を2本目のXR media quadに貼り、映像layerがsample coverageで削られる演出にする。",
+      "bodyEn": "The main idea is NTC FP16 Resolve Scope: a compressed latent grid, fp16 quantization bands, MLP-decoder-like sheen, four-point sample_mask coverage, and depth-resolve MIN/MAX/SAMPLE0 differences on one shader surface. Drag controls the decoder-light vector, click/Space emits a compression pulse, and 1-4 switch views. The derived idea is Splat Readiness Media Layer Scope: GSplat first-sort wait, budget LOD, IES profile, and WebXR media layers as modes, with stale pre-ready differences as afterglow. Next, feed the first sample's sample_mask into the second sample's XR media quad so the media layer is cut by sample coverage.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "NTC/fp16系は、実装前に storage buffer の half 対応、fallback時のfp32化、decoder cost、mip/latent grid のcache局所性を分けて測る。PlayCanvas #9221 のような custom resolve は、hardware resolve が苦手なinteger/r32floatや、透明・edge・particleでsampleごとの履歴が必要な時に効く。#9226 の depthResolveMode は soft particles や depth fog の端ノイズを減らす実務的なノブで、SAMPLE0は比較用、MINは安定優先、MAXは背面寄りの効果確認に使える。Babylon #18830 の shared shader loading state は、material cloneが増える展示/EC/Configuratorで初回欠落を避けるための運用メモとして重要。#18836 の readiness regression は one-shot render や thumbnail生成で特に効くため、renderCount:1系の検証を日報サンプルにも残したい。",
+      "bodyEn": "For NTC/fp16 work, measure storage-buffer half support, fp32 fallback, decoder cost, and mip/latent-grid cache locality separately before implementation. Custom resolves like PlayCanvas #9221 matter for integer/r32float formats that hardware cannot resolve, and for transparency, edges, and particles that need per-sample history. #9226 depthResolveMode is a practical knob for reducing soft-particle and depth-fog edge noise: SAMPLE0 for comparison, MIN for stability, MAX for rear-biased effects. Babylon #18830 shared shader loading state is important for exhibitions, ecommerce, and configurators with many cloned materials. #18836 readiness regression matters for one-shot rendering and thumbnail generation, so renderCount:1-style checks should appear in future samples.",
+      "links": [
+        {
+          "label": "PlayCanvas #9226",
+          "url": "https://github.com/playcanvas/engine/pull/9226"
+        },
+        {
+          "label": "Babylon.js #18830",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18830"
+        },
+        {
+          "label": "Babylon.js #18836",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18836"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34365 NTC/f16、#34368 texture listener leak、#34291 GPGPU warning、#34085 Tour of TSL、#34235 PrefixSum、#34290 GaussianSplatGroup。PlayCanvas は #9221 custom resolve、#9222 sample_mask、#9226 depthResolveMode、#9225 parallax self shadow、#9157 SOG LOD budget。Babylon.js は #18836 readiness、#18834 multi-camera LOD、#18832 media layer、#18830 shader loading state、#18833 IES、#18829 retroreflection、#18810 scatter。新規案件: compressed material recovery と media layer を組み合わせた「復元される広告/展示面」。寝かせる案件: 純粋な依存更新、CI report upload hardening、README install追加など、表現への接続が薄いもの。",
+      "bodyEn": "Continue watching three.js #34365 NTC/f16, #34368 texture listener leaks, #34291 GPGPU warnings, #34085 Tour of TSL, #34235 PrefixSum, and #34290 GaussianSplatGroup. For PlayCanvas, watch #9221 custom resolve, #9222 sample_mask, #9226 depthResolveMode, #9225 parallax self-shadowing, and #9157 SOG LOD budget. For Babylon.js, watch #18836 readiness, #18834 multi-camera LOD, #18832 media layers, #18830 shader loading state, #18833 IES, #18829 retroreflection, and #18810 scatter. New thread: recovered advertising/exhibition surfaces that combine compressed material recovery and media layers. Sleep: pure dependency updates, CI report upload hardening, and README install additions.",
+      "links": [
+        {
+          "label": "three.js #34291",
+          "url": "https://github.com/mrdoob/three.js/pull/34291"
+        },
+        {
+          "label": "PlayCanvas #9157",
+          "url": "https://github.com/playcanvas/engine/pull/9157"
+        },
+        {
+          "label": "Babylon.js #18810",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18810"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-08-26_ntc_fp16_resolve_scope.html` を開く。1 は復元後の質感、2 は latent grid / fp16量子化、3 は sample_mask + custom resolve、4 は depth resolve 差分。短時間で試すなら、画像1枚から生成したdepth/normalの値をlatent grid風に落として、クリックpulseで復元前後を切り替える。2本目は `outputs/2026-08-26_splat_readiness_media_layer_scope.html`。1 は readiness sort、2 は budget LOD、3 は IES light profile、4 は XR media layer。次に足すなら、実GSplatのsort完了時刻と表示splat数をJSONで流し込み、media layer の透明度やscan速度に割り当てる。",
+      "bodyEn": "Open `outputs/2026-08-26_ntc_fp16_resolve_scope.html` first. Mode 1 shows recovered material, 2 latent grid / fp16 quantization, 3 sample_mask + custom resolve, and 4 depth resolve differences. A short test would map a single image's generated depth/normal values into a latent-grid-like field, then use the click pulse to switch before/after recovery. The second sample is `outputs/2026-08-26_splat_readiness_media_layer_scope.html`: 1 readiness sort, 2 budget LOD, 3 IES light profile, 4 XR media layer. Next, feed real GSplat sort completion time and visible splat count as JSON, then assign them to media layer opacity and scan speed.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js NTC/f16・dispose leak・GTAO noise texture・SunLight integration、PlayCanvas custom resolve・sample_mask・depthResolveMode・parallax terrain、Babylon GSplat readiness・budget LOD・WebXR media layer・shader loading・IES、Codrops depth relighting / Creative Hub。アイデア検討: 前回の async dispose / retroreflection / binding state に、圧縮復元、sample coverage、depth resolve、first-frame readiness、media layer を追加。サンプル実装: 本命 `2026-08-26_ntc_fp16_resolve_scope.html`、派生 `2026-08-26_splat_readiness_media_layer_scope.html`。結果の検証: JSON parse、HTML parse、script構文、ローカルHTTP、publishを実行する。短期で試すものは sample_maskを使ったpostprocess風カット。中長期で育てるものは、renderer lifecycle + compressed material + spatial media layer を統合した舞台面。",
+      "bodyEn": "Collection: three.js NTC/f16, dispose leaks, GTAO noise texture, and SunLight integration; PlayCanvas custom resolve, sample_mask, depthResolveMode, and parallax terrain; Babylon GSplat readiness, budget LOD, WebXR media layer, shader loading, and IES; Codrops depth relighting / Creative Hub. Ideation: add compression recovery, sample coverage, depth resolve, first-frame readiness, and media layers to yesterday's async dispose / retroreflection / binding state. Prototypes: `2026-08-26_ntc_fp16_resolve_scope.html` and `2026-08-26_splat_readiness_media_layer_scope.html`. Verification: JSON parse, HTML parse, script syntax, local HTTP, and publish. Short-term: postprocess-like cuts using sample_mask. Long-term: a stage surface combining renderer lifecycle, compressed material, and spatial media layers.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、renderer QA をただのチェックではなく、作品の時間軸にする方向へはっきり寄っている。8/21 は fog buffer、8/22 は branch/layer/stencil、8/23-24 は TSL検証/MultiTexture、8/25 は async dispose/retroreflection、今日は NTC/fp16/custom resolve/readiness/media layer。組み合わせ候補は、圧縮textureが復元される途中だけ retroreflective に光り、sample_maskで粒状に欠け、GSplatがreadyになった瞬間にXR media layerへ滑り込む演出。育てる価値が高いテーマは「表示される前後」を作品化すること。ロード、復元、resolve、ready、破棄はどれも待ち時間だが、時間面として扱えばインタラクションになる。",
+      "bodyEn": "The recent trend is clearly toward making renderer QA a timeline inside the work rather than a separate check. 8/21 was fog buffers, 8/22 branch/layer/stencil, 8/23-24 TSL validation/MultiTexture, 8/25 async dispose/retroreflection, and today NTC/fp16/custom resolve/readiness/media layers. A promising combination: compressed texture glows retroreflectively only while recovering, breaks into sample_mask grains, then slides into an XR media layer when the GSplat scene becomes ready. The high-value theme is making before/after display into the work. Loading, recovery, resolve, readiness, and disposal are all waits, but as time surfaces they become interaction.",
+      "links": [
+        {
+          "label": "three.js #34365",
+          "url": "https://github.com/mrdoob/three.js/pull/34365"
+        },
+        {
+          "label": "Babylon.js #18832",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18832"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-08-26_ntc_fp16_resolve_scope.html`。短時間で試せる理由は、NTCの正確なdecoder実装を待たずに、latent grid、量子化、復元光沢、sample_mask、depth resolve の関係を抽象図形で検証できるため。何が動くか: latent cell、fp16帯、pointer light、coverage mask、depth edge。次に足すなら、実画像depth mapをtexture化してlatent gridに置き換える。2本目は `outputs/2026-08-26_splat_readiness_media_layer_scope.html`。何が動くか: splat field、stale/ready差分、budget LOD grid、IES profile、quad/cylinder/equirect風media layer。次に足すなら、Babylon Playground 由来の WebXR layer transform と GSplat renderCount:1 のログを入力化する。",
+      "bodyEn": "The main prototype is `outputs/2026-08-26_ntc_fp16_resolve_scope.html`. It is quick to test because latent grids, quantization, recovery sheen, sample_mask, and depth resolve can be explored as abstract geometry without a real NTC decoder. It animates latent cells, fp16 bands, pointer light, coverage masks, and depth edges. Next, convert a real image depth map into a texture and replace the latent grid. The second prototype is `outputs/2026-08-26_splat_readiness_media_layer_scope.html`. It animates a splat field, stale/ready differences, budget LOD grid, IES profile, and quad/cylinder/equirect-like media layers. Next, feed Babylon Playground WebXR layer transforms and GSplat renderCount:1 logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、色や形そのものよりも、内部状態のログを入力にしたときに伸びる。NTC sample は latent cell値、量子化step、decoder cost、sample mask bit、depth resolve mode をCSV/JSONにできる。音反応なら低域をcompression pulse、中域をsample mask、高域をfp16 band sparkleに割り当てる。カメラやMediaPipeなら手の位置をdecoder light、手の開閉をresolve modeへ接続する。Splat readiness sample は sort完了時刻、表示splat数、LOD drop率、media layer transform、IES intensityを入力にできる。WebXRでは、quad layerを近景、cylinder layerを周辺情報、equirect layerを環境記憶として分けると、ロード待ちも演出になる。",
+      "bodyEn": "Both samples grow best when internal-state logs become inputs rather than when only colors and shapes are changed. The NTC sample can accept latent cell values, quantization steps, decoder cost, sample mask bits, and depth resolve modes as CSV/JSON. For audio, map bass to compression pulse, mids to sample masks, and highs to fp16 band sparkle. With camera or MediaPipe, map hand position to decoder light and hand open/close to resolve mode. The splat readiness sample can take sort completion time, visible splat count, LOD drop ratio, media layer transforms, and IES intensity. In WebXR, use quad layers for near media, cylinder layers for peripheral information, and equirect layers for environmental memory so loading waits become staging.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-26_ntc_fp16_resolve_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-26_splat_readiness_media_layer_scope.html"
+        }
+      ]
+    }
+  ]
+}
