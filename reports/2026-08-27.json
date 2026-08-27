@@ -1,0 +1,247 @@
+{
+  "date": "2026-08-27",
+  "headline": "FFTの周波数面とXR空間記憶を、演出の入力状態として扱う",
+  "headlineEn": "Treating FFT frequency surfaces and XR spatial memory as expressive input state",
+  "summary": "three.js の TSL compute による GPU 2D FFT、WebGPU bind group の storage buffer 再割当て修正、Inspector dispose / split screen 改善、ArrayCamera highp matrix 対応、PlayCanvas の multisampled depth buffer / depthResolveBuffer、Gaussian Splat tonemap opt-out、SoundInstance loop 修正、Babylon.js の WebXR persistent anchor、room capture、semantic labels、MultiTexture 継続更新を調査した。前回の NTC/readiness/media layer から、今日は「周波数、深度sample、音のloop、空間anchor/label」を作品内の状態面として見せる方向へ進めた。本命サンプルとして FFT Spectral Wake Scope、派生サンプルとして XR Semantic Anchor Room Scope を実装した。",
+  "summaryEn": "Today covers three.js GPU 2D FFT via TSL compute, WebGPU stale bind group fixes for repointed storage buffers, Inspector disposal / split-screen improvements, ArrayCamera highp matrix support, PlayCanvas multisampled depth buffers / depthResolveBuffer, Gaussian Splat tonemap opt-out, SoundInstance looping fixes, and Babylon.js WebXR persistent anchors, room capture, semantic labels, plus the continuing MultiTexture work. Extending yesterday's NTC/readiness/media-layer direction, the focus shifts to frequency, depth samples, sound loops, and spatial anchors/labels as visible state surfaces. Two samples were implemented: FFT Spectral Wake Scope and XR Semantic Anchor Room Scope.",
+  "links": [
+    {
+      "label": "three.js PR #34382 Add FFT2D GPU 2D FFT via TSL compute shaders",
+      "url": "https://github.com/mrdoob/three.js/pull/34382"
+    },
+    {
+      "label": "three.js PR #34381 WebGPU stale bind group reuse fix",
+      "url": "https://github.com/mrdoob/three.js/pull/34381"
+    },
+    {
+      "label": "three.js PR #34383 Inspector disposal support and split screen handling",
+      "url": "https://github.com/mrdoob/three.js/pull/34383"
+    },
+    {
+      "label": "three.js PR #34384 ArrayCamera support in highp matrix nodes",
+      "url": "https://github.com/mrdoob/three.js/pull/34384"
+    },
+    {
+      "label": "PlayCanvas PR #9230 multisampled depth buffers and depth resolve targets",
+      "url": "https://github.com/playcanvas/engine/pull/9230"
+    },
+    {
+      "label": "PlayCanvas PR #9229 scene.gsplat.useTonemap",
+      "url": "https://github.com/playcanvas/engine/pull/9229"
+    },
+    {
+      "label": "PlayCanvas PR #9231 looping sounds with start time and duration",
+      "url": "https://github.com/playcanvas/engine/pull/9231"
+    },
+    {
+      "label": "Babylon.js PR #18840 WebXR persistent anchor lifecycle support",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18840"
+    },
+    {
+      "label": "Babylon.js PR #18841 WebXR room capture support",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18841"
+    },
+    {
+      "label": "Babylon.js PR #18839 WebXR semantic labels",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18839"
+    },
+    {
+      "label": "Babylon.js PR #18822 MultiTexture",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+    },
+    {
+      "label": "Codrops Creative Hub: Plinkopinball",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Codrops: Relighting Images with Depth Maps and Three.js",
+      "url": "https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/"
+    },
+    {
+      "label": "Main sample: FFT Spectral Wake Scope",
+      "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+    },
+    {
+      "label": "Derived sample: XR Semantic Anchor Room Scope",
+      "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34382 は `examples/jsm/gpgpu/FFT2D.js` と WebGPU/TSL compute の 2D FFT。波、海面、画像畳み込み、blur/sharpen、texture compression の基礎部品で、昨日の NTC/fp16 から「圧縮・復元」だけでなく「周波数空間そのものを見せる」方向へ接続できる。2. three.js PR #34381 は texture と storage buffer が同じ bind group にあり、storage buffer だけ差し替わる時の stale reuse 修正。FFT の ping-pong buffer や compute postprocess では、見えない cache key を作品内の ghost trail として可視化する余地がある。3. PlayCanvas PR #9230 は multisampled depth buffer と depthResolveBuffer 対応で、#9226 の depthResolveMode と合わせて depth sample を shader で読む/解決する面が揃った。4. PlayCanvas PR #9229 は GSplat を tonemapping/exposure から外す opt-out。unlit splat を lit world へ置く時に、どの色空間を信じるかを演出上のスイッチにできる。5. Babylon.js PR #18839/#18840/#18841 は WebXR の semantic label、persistent anchor、room capture。空間を一度読んで、名前付き平面と保存anchorとして戻す流れが見え、XRの体験を「毎回消えるscene」から「場所に記憶が残るscene」へ寄せる。",
+      "bodyEn": "1. three.js PR #34382 adds `examples/jsm/gpgpu/FFT2D.js`, a WebGPU/TSL compute 2D FFT. It is a base part for waves, oceans, convolution, blur/sharpen, and texture compression, connecting yesterday's NTC/fp16 topic to visible frequency space. 2. three.js PR #34381 fixes stale bind group reuse when a texture and a repointed storage buffer share a group. FFT ping-pong buffers and compute postprocesses can expose invisible cache keys as ghost trails. 3. PlayCanvas PR #9230 adds multisampled depth buffers and depthResolveBuffer support, completing a surface where depth samples can be read or resolved in shaders with #9226 depthResolveMode. 4. PlayCanvas PR #9229 lets GSplats opt out of tonemapping/exposure, making color-space trust a staging switch. 5. Babylon.js PR #18839/#18840/#18841 add WebXR semantic labels, persistent anchors, and room capture, moving XR scenes from disposable sessions toward place-aware memory.",
+      "links": [
+        {
+          "label": "three.js #34382",
+          "url": "https://github.com/mrdoob/three.js/pull/34382"
+        },
+        {
+          "label": "PlayCanvas #9230",
+          "url": "https://github.com/playcanvas/engine/pull/9230"
+        },
+        {
+          "label": "Babylon.js #18840",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18840"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative Hub の Plinkopinball は Three.js + Blender の物理/ゲーム寄り事例として、技術状態をプレイ可能な構造に変換するヒントになる。今日の FFT なら、周波数binをピン配置や跳ね返り強度にし、音のloop区間が違うと場の波が変わる。Codrops の depth relighting は引き続き重要で、PlayCanvas の depthResolveBuffer と組み合わせると、画像/空間/深度sampleを同じライティング面に載せられる。Babylon の WebXR room capture と semantic label は、展示空間の床・壁・机・窓を素材レイヤーとして扱う入り口になる。",
+      "bodyEn": "Codrops Creative Hub's Plinkopinball is a useful Three.js + Blender physical/game example because it turns technical state into playable structure. With today's FFT topic, frequency bins could become pin placement or rebound strength, and sound loop regions could change the wave field. Codrops' depth relighting remains relevant because PlayCanvas depthResolveBuffer can place image, space, and depth samples on the same lighting surface. Babylon's WebXR room capture and semantic labels open a path to treating floors, walls, desks, and windows as material layers in an installation space.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Codrops relighting tutorial",
+          "url": "https://tympanus.net/codrops/2026/08/19/relighting-images-with-depth-maps-and-three-js/"
+        },
+        {
+          "label": "Babylon.js #18839",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18839"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「FFT Spectral Wake Scope」。GPU FFT そのものは three.js PR #34382 の WebGPU/TSL 実装を待つとして、短時間試作では fragment shader で spectrum grid、inverse wave、ping-pong stage、depth resolve lanes を抽象化した。ドラッグで位相中心、クリック/Spaceで impulse、1-4で表示を切り替える。派生案は「XR Semantic Anchor Room Scope」。room capture のscan、persistent anchorの復元、semantic label の床/壁/机、MultiTexture 風 layer stack を同じshader面に置く。次に足すなら、1本目の FFT amplitude を2本目の anchor復元強度へ入れ、音が鳴るたびに保存済み空間が少しだけ再照明される演出にする。",
+      "bodyEn": "The main idea is FFT Spectral Wake Scope. While the real GPU FFT belongs to three.js PR #34382's WebGPU/TSL path, the quick prototype abstracts spectrum grids, inverse waves, ping-pong stages, and depth resolve lanes in a fragment shader. Drag moves the phase center, click/Space emits an impulse, and 1-4 switch views. The derived idea is XR Semantic Anchor Room Scope: room-capture scan, persistent-anchor restore, semantic floor/wall/table labels, and a MultiTexture-like layer stack on one shader surface. Next, feed the first sample's FFT amplitude into the second sample's anchor restore strength so saved space relights when sound hits.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "FFT2D は power-of-two サイズ、forward/inverse の ping-pong texture、complex値のpacking、WebGPU compute availability、fallback時のCPU/fragment近似を分けて設計する。bind group の storage buffer 差し替えは、texture identity と buffer identity の両方を version/cached state に含める発想が重要で、GPGPU chain の「前フレームが残る」バグ検出にも使える。PlayCanvas #9230 の multisampled depth は WebGPU に hardware depth resolve がないため shader-based resolve になり、soft particle / depth fog / outline の輪郭品質を直接制御できる。音については #9231 のように loopStart/loopEnd と duration を混同すると、Chrome/Firefox差ではなく仕様差として壊れる。XRでは persistent anchor 操作を capability check と lifecycle-safe rejection で囲むこと、semanticLabel は null/missing を状態として表示することが重要。",
+      "bodyEn": "FFT2D work should separate power-of-two sizing, forward/inverse ping-pong textures, complex value packing, WebGPU compute availability, and CPU/fragment fallback. Repointed storage buffers need both texture identity and buffer identity in cached state, which also helps detect GPGPU ghost-frame bugs. PlayCanvas #9230 uses shader-based depth resolve because WebGPU has no hardware depth resolve, making soft-particle, depth-fog, and outline edge quality directly controllable. For sound, #9231 shows that mixing loopStart/loopEnd and duration can fail by spec, not just by browser quirk. For XR, persistent-anchor operations need capability checks and lifecycle-safe rejection, and semanticLabel null/missing states should be visible.",
+      "links": [
+        {
+          "label": "three.js #34381",
+          "url": "https://github.com/mrdoob/three.js/pull/34381"
+        },
+        {
+          "label": "PlayCanvas #9231",
+          "url": "https://github.com/playcanvas/engine/pull/9231"
+        },
+        {
+          "label": "Babylon.js #18841",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18841"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34382 FFT2D、#34381 bind group stale reuse、#34085 Tour of TSL、#34365 NTC/f16、#33950 Gaussian Splat renderer、PlayCanvas #9230 multisampled depth、#9229 GSplat tonemap、#9231 sound loop、#9221/#9226 custom resolve、Babylon.js #18839/#18840/#18841 WebXR spatial memory、#18822 MultiTexture、#18834 GSplat LOD。新規案件: FFT spectrum を UI ではなく空間の照明・水面・粒子budgetへ入れる。寝かせる案件: Babylon Native ES5 bundle、依存更新、CI hardening など、表現への接続が薄いもの。",
+      "bodyEn": "Continue watching three.js #34382 FFT2D, #34381 bind group stale reuse, #34085 Tour of TSL, #34365 NTC/f16, #33950 Gaussian Splat renderer; PlayCanvas #9230 multisampled depth, #9229 GSplat tonemap, #9231 sound loop, #9221/#9226 custom resolves; and Babylon.js #18839/#18840/#18841 WebXR spatial memory, #18822 MultiTexture, #18834 GSplat LOD. New thread: feed FFT spectrum into lighting, water, and particle budgets rather than only UI. Sleep: Babylon Native ES5 bundles, dependency updates, and CI hardening unless they connect to rendering expression.",
+      "links": [
+        {
+          "label": "three.js #34085",
+          "url": "https://github.com/mrdoob/three.js/pull/34085"
+        },
+        {
+          "label": "PlayCanvas #9221",
+          "url": "https://github.com/playcanvas/engine/pull/9221"
+        },
+        {
+          "label": "Babylon.js #18834",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18834"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-08-27_fft_spectral_wake_scope.html` を開く。1 は波として復元された周波数面、2 は spectrum bin、3 は FFT ping-pong stage、4 は depth resolve lanes。短時間で足すなら Web Audio Analyser の低域を impulse、中域を spectrum grid、高域を depth lane の輝きに割り当てる。2本目は `outputs/2026-08-27_xr_semantic_anchor_room_scope.html`。1 は room capture scan、2 は persistent anchor、3 は semantic label、4 は MultiTexture 風 layer stack。次に足すなら、実WebXR環境ではなくてもJSONで `floor/wall/table/window` のlabel列を流し込み、ラベルごとに shader layer の色と反応を変える。",
+      "bodyEn": "Open `outputs/2026-08-27_fft_spectral_wake_scope.html` first. Mode 1 is frequency space reconstructed as waves, 2 spectrum bins, 3 FFT ping-pong stages, and 4 depth resolve lanes. A quick next step is mapping Web Audio Analyser bass to impulse, mids to the spectrum grid, and highs to depth-lane sparkle. The second sample is `outputs/2026-08-27_xr_semantic_anchor_room_scope.html`: 1 room capture scan, 2 persistent anchors, 3 semantic labels, and 4 MultiTexture-like layer stack. Next, even without a real WebXR device, feed JSON labels such as `floor/wall/table/window` and vary shader layer color and behavior per label.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js FFT2D / stale bind group / Inspector dispose / ArrayCamera highp matrix、PlayCanvas multisampled depth / GSplat tonemap / sound loop、Babylon WebXR persistent anchor / room capture / semantic labels / MultiTexture、Codrops Plinkopinball / depth relighting。アイデア検討: 前回の compressed material / readiness / media layer に、frequency surface、depth sample、sound loop、spatial memory を追加。サンプル実装: 本命 `2026-08-27_fft_spectral_wake_scope.html`、派生 `2026-08-27_xr_semantic_anchor_room_scope.html`。結果の検証: JSON parse、HTML parse、script構文、ローカルHTTP、publishを実行する。短期で試すものは Web Audio analyser と FFT scope の接続。中長期で育てるものは、XR room labels と renderer telemetry を合わせた「場所が覚えているshader」。",
+      "bodyEn": "Collection: three.js FFT2D / stale bind group / Inspector dispose / ArrayCamera highp matrix; PlayCanvas multisampled depth / GSplat tonemap / sound loop; Babylon WebXR persistent anchors / room capture / semantic labels / MultiTexture; Codrops Plinkopinball / depth relighting. Ideation: add frequency surfaces, depth samples, sound loops, and spatial memory to yesterday's compressed material / readiness / media-layer direction. Prototypes: `2026-08-27_fft_spectral_wake_scope.html` and `2026-08-27_xr_semantic_anchor_room_scope.html`. Verification: JSON parse, HTML parse, script syntax, local HTTP, and publish. Short-term: connect Web Audio analyser to the FFT scope. Long-term: a place-memory shader combining XR room labels and renderer telemetry.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、GPU内部状態を「診断の結果」ではなく「演出の入力」にする方向で一貫している。8/21 は fog buffer、8/22 は branch/layer/stencil、8/23-24 は TSL検証/MultiTexture、8/25 は async dispose/retroreflection、8/26 は NTC/readiness/media layer、今日は FFT/depth sample/sound loop/XR spatial memory。組み合わせ候補は、音loopの区間からFFT spectrumを作り、そのenergyでXR anchorが再点灯し、semantic labelごとにMultiTexture layerが切り替わる展示。育てる価値が高いテーマは「場所と周波数の再照明」。Web上の視覚表現としても、ただの背景ではなく、訪問者の操作/音/部屋の意味が画面のshader状態に残る。",
+      "bodyEn": "The recent trend consistently treats GPU internal state as expressive input rather than diagnostic output. 8/21 was fog buffers, 8/22 branch/layer/stencil, 8/23-24 TSL validation/MultiTexture, 8/25 async dispose/retroreflection, 8/26 NTC/readiness/media layers, and today FFT/depth samples/sound loops/XR spatial memory. A promising combination: sound-loop regions produce FFT spectra, that energy relights XR anchors, and MultiTexture layers switch per semantic label. The high-value theme is relighting place and frequency. As a web visual expression, this is not just a background; visitor interaction, sound, and room meaning remain as shader state.",
+      "links": [
+        {
+          "label": "three.js #34382",
+          "url": "https://github.com/mrdoob/three.js/pull/34382"
+        },
+        {
+          "label": "Babylon.js #18840",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18840"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-08-27_fft_spectral_wake_scope.html`。短時間で試せる理由は、実FFT computeを待たずに、周波数bin、逆変換された波、ping-pong stage、depth resolve lane の関係を1枚のWebGL fragment shaderで確認できるため。何が動くか: spectrum grid、phase center、impulse ring、ping-pong columns、depth MIN/MAX/SAMPLE0風 lane。次に足すなら、Web Audio Analyser と小さなJSON spectrum recorderを入れる。2本目は `outputs/2026-08-27_xr_semantic_anchor_room_scope.html`。何が動くか: room scan、anchor restore、floor/wall/table label、MultiTexture風layer。次に足すなら、保存anchorの寿命やrestore失敗を残光として表示する。",
+      "bodyEn": "The main prototype is `outputs/2026-08-27_fft_spectral_wake_scope.html`. It is quick because frequency bins, reconstructed waves, ping-pong stages, and depth resolve lanes can be checked in one WebGL fragment shader before a real compute FFT. It animates a spectrum grid, phase center, impulse ring, ping-pong columns, and MIN/MAX/SAMPLE0-like depth lanes. Next, add a Web Audio Analyser and a small JSON spectrum recorder. The second prototype is `outputs/2026-08-27_xr_semantic_anchor_room_scope.html`. It animates room scan, anchor restore, floor/wall/table labels, and MultiTexture-like layers. Next, show anchor lifetime and restore failures as afterglow.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本命サンプルは、spectrum bin、phase center、impulse時刻、ping-pong stage、depth resolve lane をデータとして扱える。音反応では bass=impulse、mid=spectrum bin密度、high=depth lane sparkle。画像処理では FFT の blur/sharpen/convolution preview として使える。派生サンプルは、room capture scan位置、anchor id、restore可否、semantic label、layer index をデータ化できる。WebXRなしでも、スマホのorientation、カメラ検出、MediaPipeの手/顔位置を anchor restore 強度に見立てられる。展示やWeb演出では、訪問者の音が場所のlabelを再照明し、テクスチャlayerが空間の意味ごとに変わる構成が強い。",
+      "bodyEn": "The main sample can treat spectrum bins, phase center, impulse time, ping-pong stage, and depth resolve lanes as data. For audio, map bass to impulse, mids to spectrum density, and highs to depth-lane sparkle. For image processing, it can preview FFT blur/sharpen/convolution states. The derived sample can datafy room-capture scan position, anchor id, restore success, semantic label, and layer index. Even without WebXR, phone orientation, camera detection, or MediaPipe hand/face position can stand in for anchor restore strength. For installations and web experiences, the strong structure is visitor sound relighting place labels while texture layers change by spatial meaning.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-27_xr_semantic_anchor_room_scope.html"
+        }
+      ]
+    }
+  ]
+}

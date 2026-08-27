@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 70</span>
+        <span>days: 71</span>
         <span>page: 1 / 6</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -309,6 +309,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-08-27">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.08.27</p>
+              <h2>FFTの周波数面とXR空間記憶を、演出の入力状態として扱う</h2>
+              <p class="card-subtitle">Treating FFT frequency surfaces and XR spatial memory as expressive input state</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-08-27" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の TSL compute による GPU 2D FFT、WebGPU bind group の storage buffer 再割当て修正、Inspector dispose / split screen 改善、ArrayCamera highp matrix 対応、PlayCanvas の multisampled depth buffer / depthResolveBuffer、Gaussian Splat tonemap opt-out、SoundInstance loop 修正、Babylon.js の WebXR persistent anchor、room capture、semantic labels、MultiTexture 継続更新を調査した。前回の NTC/readiness/media layer から、今日は「周波数、深度sample、音のloop、空間anchor/label」を作品内の状態面として見せる方向へ進めた。本命サンプルとして FFT Spectral Wake Scope、派生サンプルとして XR Semantic Anchor Room Scope を実装した。</p>
+          <p class="description en-copy">Today covers three.js GPU 2D FFT via TSL compute, WebGPU stale bind group fixes for repointed storage buffers, Inspector disposal / split-screen improvements, ArrayCamera highp matrix support, PlayCanvas multisampled depth buffers / depthResolveBuffer, Gaussian Splat tonemap opt-out, SoundInstance looping fixes, and Babylon.js WebXR persistent anchors, room capture, semantic labels, plus the continuing MultiTexture work. Extending yesterday's NTC/readiness/media-layer direction, the focus shifts to frequency, depth samples, sound loops, and spatial anchors/labels as visible state surfaces. Two samples were implemented: FFT Spectral Wake Scope and XR Semantic Anchor Room Scope.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">xr</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-08-27.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-08-27_xr_semantic_anchor_room_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-08-26">
           <div class="card-top">
             <div>
@@ -558,29 +581,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-16.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-16_raymarch_oit_sample_orbit.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-15">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.15</p>
-              <h2>MRT clear、soft splat depth、IBL fallbackを舞台照明の信号にする</h2>
-              <p class="card-subtitle">Turning MRT clear, soft splat depth, and IBL fallback into stage-light telemetry</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-15" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の MRT attachment 別 clear と WebGPU timestamp query 修正、PlayCanvas の scene pass depth / GSplat soft depth、Babylon.js 9.21.2 の IBL・caps・particle async 修正を、前日の MSAA/depth/sort スコープから「attachment と fallback を見せる演出」へ接続した。</p>
-          <p class="description en-copy">Today connects three.js per-attachment MRT clear and WebGPU timestamp-query fixes, PlayCanvas scene-pass depth and GSplat soft depth, and Babylon.js 9.21.2 IBL/caps/particle async fixes to yesterday's MSAA/depth/sort scope by treating attachments and fallbacks as visible performance choreography.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-15.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-15_mrt_depth_ibl_telemetry.html">代表サンプル / Sample</a>
           </div>
         </article>
       
