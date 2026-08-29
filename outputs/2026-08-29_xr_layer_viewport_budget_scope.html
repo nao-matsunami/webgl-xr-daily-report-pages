@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XR Layer Viewport Budget Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #06070a;
+      color: #eef3f7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(238, 243, 247, 0.84);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+    }
+    .hud strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    #error {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: 16px;
+      color: #ffd6d6;
+      white-space: pre-wrap;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><strong>XR Layer Viewport Budget Scope</strong><br>1 stereo budget / 2 composition opacity / 3 viewport scale / 4 foveation limits</div>
+    <div>Drag: recommended scale<br>Click or Space: layer allocation pulse</div>
+  </div>
+  <pre id="error"></pre>
+  <script>
+  (() => {
+    const canvas = document.getElementById('c');
+    const errorEl = document.getElementById('error');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!gl) {
+      errorEl.textContent = 'WebGL is not available.';
+      return;
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float line(float v, float width) {
+        return 1.0 - smoothstep(0.0, width, abs(v));
+      }
+
+      float ring(vec2 p, float radius, float width) {
+        return 1.0 - smoothstep(width, width * 2.0, abs(length(p) - radius));
+      }
+
+      float circle(vec2 p, float radius) {
+        return 1.0 - smoothstep(radius, radius + 0.012, length(p));
+      }
+
+      float squareFrame(vec2 p, float size, float width) {
+        return 1.0 - smoothstep(width, width * 2.0, abs(max(abs(p.x), abs(p.y)) - size));
+      }
+
+      float rectMask(vec2 p, vec2 size) {
+        vec2 d = abs(p) - size;
+        return 1.0 - smoothstep(0.0, 0.012, max(d.x, d.y));
+      }
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      vec3 eyeField(vec2 p, float side, float scale) {
+        vec2 eyeCenter = vec2(side * 0.52, 0.05);
+        vec2 q = (p - eyeCenter) / max(0.35, scale);
+        float frame = squareFrame(q, 0.42, 0.018);
+        float grid = max(line(fract((q.x + 0.5) * 8.0) - 0.5, 0.018), line(fract((q.y + 0.5) * 8.0) - 0.5, 0.018));
+        float lens = ring(q, 0.18 + 0.02 * sin(time * 2.0 + side), 0.018);
+        float fill = rectMask(q, vec2(0.42)) * (0.12 + 0.18 * scale);
+        vec3 col = fill * mix(vec3(0.12, 0.44, 0.72), vec3(0.74, 0.5, 0.2), side * 0.5 + 0.5);
+        col += grid * vec3(0.08, 0.24, 0.28);
+        col += frame * vec3(0.86, 0.9, 0.78);
+        col += lens * vec3(0.25, 0.88, 0.78);
+        return col;
+      }
+
+      vec3 stereoBudget(vec2 p, vec2 uv) {
+        float recommended = 0.55 + 0.35 * (pointer.y * 0.5 + 0.5);
+        float requested = clamp(recommended + 0.13 * sin(time * 1.4), 0.45, 1.0);
+        vec3 col = eyeField(p, -1.0, requested) + eyeField(p, 1.0, recommended);
+        float barY = -0.72;
+        float leftBar = rectMask(vec2(p.x + 0.45, p.y - barY), vec2(requested * 0.32, 0.035));
+        float rightBar = rectMask(vec2(p.x - 0.45, p.y - barY), vec2(recommended * 0.32, 0.035));
+        col += leftBar * vec3(0.92, 0.5, 0.24);
+        col += rightBar * vec3(0.22, 0.8, 0.85);
+        col += ring(p - pointer * 0.8, 0.12 + pulse * 0.58, 0.018) * vec3(1.0, 0.86, 0.44);
+        return col + vec3(0.015, 0.02, 0.026);
+      }
+
+      vec3 compositionLayers(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.012, 0.018, 0.028);
+        for (int i = 0; i < 5; i++) {
+          float fi = float(i);
+          vec2 center = vec2((fi - 2.0) * 0.34, 0.08 * sin(time + fi));
+          vec2 q = p - center;
+          float size = 0.18 + 0.025 * fi;
+          float opacity = 0.25 + 0.14 * fi + 0.12 * sin(time * 1.7 + fi);
+          float quality = smoothstep(-0.7, 0.8, pointer.x + 0.18 * fi);
+          float layer = rectMask(q, vec2(size, size * 0.62));
+          vec3 tint = mix(vec3(0.22, 0.62, 0.78), vec3(0.95, 0.58, 0.23), quality);
+          col = mix(col, tint, layer * clamp(opacity, 0.0, 0.9));
+          col += squareFrame(q, max(size, size * 0.62), 0.012) * tint;
+        }
+        float limitLine = line(fract(uv.x * 5.0), 0.011);
+        col += limitLine * vec3(0.14, 0.18, 0.22);
+        col += pulse * ring(p, 0.24 + pulse * 0.4, 0.018) * vec3(0.9, 0.8, 0.46);
+        return col;
+      }
+
+      vec3 viewportScale(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.015, 0.02, 0.025);
+        float scale = clamp(0.45 + (pointer.x * 0.5 + 0.5) * 0.55, 0.45, 1.0);
+        for (int i = 0; i < 10; i++) {
+          float fi = float(i);
+          float y = -0.72 + fi * 0.16;
+          float wave = scale + 0.08 * sin(time * 1.1 + fi * 0.8);
+          float req = line(p.y - y, 0.012) * smoothstep(-0.82, -0.82 + wave * 1.64, p.x);
+          float native = line(p.y - y - 0.045, 0.009) * smoothstep(-0.82, -0.82 + scale * 1.64, p.x);
+          col += req * vec3(0.88, 0.48, 0.22);
+          col += native * vec3(0.22, 0.82, 0.82);
+        }
+        vec2 q = p - vec2(0.0, 0.05);
+        col += squareFrame(q, 0.5 * scale, 0.018) * vec3(0.9, 0.88, 0.62);
+        col += squareFrame(q, 0.5, 0.006) * vec3(0.16, 0.2, 0.24);
+        return col;
+      }
+
+      vec3 foveationLimits(vec2 p, vec2 uv) {
+        float r = length(p - pointer * 0.45);
+        float fovea = smoothstep(0.46, 0.02, r);
+        float ringA = ring(p - pointer * 0.45, 0.28, 0.018);
+        float ringB = ring(p - pointer * 0.45, 0.58, 0.02);
+        vec2 id = floor((uv - 0.5) * vec2(22.0, 14.0));
+        float cell = hash(id);
+        float budget = step(cell, mix(0.2, 0.92, fovea));
+        vec3 col = vec3(0.015, 0.022, 0.032) + budget * mix(vec3(0.1, 0.32, 0.38), vec3(0.72, 0.83, 0.58), fovea);
+        col += ringA * vec3(0.24, 0.92, 0.82);
+        col += ringB * vec3(0.92, 0.52, 0.24);
+        float maxLayerGate = line(p.y + 0.78, 0.015) * smoothstep(-0.8, 0.8, p.x + 0.1 * sin(time));
+        col += maxLayerGate * vec3(0.95, 0.82, 0.48);
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+        vec3 col = stereoBudget(p, uv);
+        col = mix(col, compositionLayers(p, uv), step(1.5, mode));
+        col = mix(col, viewportScale(p, uv), step(2.5, mode));
+        col = mix(col, foveationLimits(p, uv), step(3.5, mode));
+        float vignette = smoothstep(1.48, 0.2, length(p));
+        gl_FragColor = vec4(pow(max(col * vignette, vec3(0.0)), vec3(0.94)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    let program;
+    try {
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program));
+      }
+    } catch (error) {
+      errorEl.textContent = error.message;
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      time: gl.getUniformLocation(program, 'time'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    const state = {
+      pointer: { x: 0.12, y: 0.28 },
+      mode: 1,
+      pulseStart: -10,
+      dragging: false
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(window.innerWidth * dpr));
+      const height = Math.max(1, Math.floor(window.innerHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      const side = Math.min(rect.width, rect.height);
+      state.pointer.x = ((x - 0.5) * rect.width * 2) / side;
+      state.pointer.y = ((0.5 - y) * rect.height * 2) / side;
+    }
+
+    canvas.addEventListener('pointerdown', (event) => {
+      state.dragging = true;
+      canvas.setPointerCapture(event.pointerId);
+      setPointer(event);
+      state.pulseStart = performance.now() * 0.001;
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (state.dragging) setPointer(event);
+    });
+    canvas.addEventListener('pointerup', () => {
+      state.dragging = false;
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.pulseStart = performance.now() * 0.001;
+    });
+    window.addEventListener('resize', resize);
+
+    function frame(nowMs) {
+      resize();
+      const now = nowMs * 0.001;
+      const pulseAge = Math.max(0, now - state.pulseStart);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now);
+      gl.uniform2f(uniforms.pointer, state.pointer.x, state.pointer.y);
+      gl.uniform1f(uniforms.pulse, Math.exp(-pulseAge * 1.8));
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

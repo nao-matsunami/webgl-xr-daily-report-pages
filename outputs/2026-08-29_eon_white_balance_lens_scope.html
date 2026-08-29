@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EON White Balance Lens Scope</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #070807;
+      color: #edf4eb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(237, 244, 235, 0.84);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+    }
+    .hud strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    #error {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: 16px;
+      color: #ffd6d6;
+      white-space: pre-wrap;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><strong>EON White Balance Lens Scope</strong><br>1 material / 2 rough diffuse / 3 Kelvin bands / 4 square lens</div>
+    <div>Drag: light and white balance<br>Click or Space: calibration pulse</div>
+  </div>
+  <pre id="error"></pre>
+  <script>
+  (() => {
+    const canvas = document.getElementById('c');
+    const errorEl = document.getElementById('error');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!gl) {
+      errorEl.textContent = 'WebGL is not available.';
+      return;
+    }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float sat(float v) { return clamp(v, 0.0, 1.0); }
+      vec3 sat3(vec3 v) { return clamp(v, 0.0, 1.0); }
+
+      float line(float v, float width) {
+        return 1.0 - smoothstep(0.0, width, abs(v));
+      }
+
+      float circle(vec2 p, float r) {
+        return 1.0 - smoothstep(r, r + 0.012, length(p));
+      }
+
+      float ring(vec2 p, float r, float w) {
+        return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r));
+      }
+
+      float squareMask(vec2 p, float s) {
+        return 1.0 - smoothstep(s, s + 0.012, max(abs(p.x), abs(p.y)));
+      }
+
+      float squareFrame(vec2 p, float s, float w) {
+        return 1.0 - smoothstep(w, w * 2.0, abs(max(abs(p.x), abs(p.y)) - s));
+      }
+
+      vec3 kelvinToRgb(float k) {
+        float t = clamp(k, 1000.0, 12000.0) / 100.0;
+        float r = t <= 66.0 ? 1.0 : sat(1.292936186 * pow(t - 60.0, -0.13320476));
+        float g = t <= 66.0 ? sat(0.39008158 * log(t) - 0.63184144) : sat(1.12989086 * pow(t - 60.0, -0.07551485));
+        float b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0 : sat(0.54320679 * log(t - 10.0) - 1.19625409));
+        return vec3(r, g, b);
+      }
+
+      vec3 whiteBalance(vec3 c, float kelvin, float tint) {
+        vec3 sourceWhite = kelvinToRgb(kelvin) + vec3(tint * 0.07, -abs(tint) * 0.025, -tint * 0.07);
+        sourceWhite = max(sourceWhite, vec3(0.12));
+        return sat3(c / sourceWhite);
+      }
+
+      float roughDiffuse(vec3 n, vec3 l, vec3 v, float roughness) {
+        float nl = sat(dot(n, l));
+        float nv = sat(dot(n, v));
+        float lv = sat(dot(l, v));
+        float back = pow(sat(1.0 - lv), 1.5) * roughness;
+        float horizon = pow(sat(1.0 - min(nl, nv)), 2.0) * roughness;
+        float energy = 1.0 + 0.65 * roughness;
+        return nl * energy + back * 0.55 + horizon * 0.18;
+      }
+
+      vec3 normalFromField(vec2 p) {
+        float z = sqrt(max(0.0, 1.0 - dot(p, p)));
+        vec3 n = normalize(vec3(p.x, p.y, z));
+        n.xy += 0.08 * vec2(
+          sin(p.y * 18.0 + time * 1.2),
+          cos(p.x * 16.0 - time * 1.0)
+        );
+        return normalize(n);
+      }
+
+      vec3 materialView(vec2 p, vec2 uv, vec2 lightCursor) {
+        vec2 q = p;
+        float body = circle(q, 0.74);
+        vec3 n = normalFromField(q / 0.74);
+        vec3 l = normalize(vec3(lightCursor * 1.15, 0.85));
+        vec3 v = vec3(0.0, 0.0, 1.0);
+        float rough = sat(0.18 + 0.72 * (uv.x + 0.15 * sin(time + uv.y * 9.0)));
+        float eon = roughDiffuse(n, l, v, rough);
+        float lambert = sat(dot(n, l));
+        float compare = smoothstep(-0.02, 0.02, p.x);
+        vec3 base = mix(vec3(0.62, 0.41, 0.25), vec3(0.23, 0.58, 0.69), uv.y);
+        vec3 col = base * mix(lambert, eon, compare);
+        col += pow(sat(dot(reflect(-l, n), v)), 18.0) * vec3(0.96, 0.82, 0.52) * (1.0 - rough);
+        col *= body;
+        col += ring(q, 0.74, 0.01) * vec3(0.95, 0.78, 0.42);
+        col += line(p.x, 0.004) * vec3(0.2, 0.3, 0.28);
+        return col;
+      }
+
+      vec3 roughnessView(vec2 p, vec2 uv, vec2 lightCursor) {
+        float band = floor(uv.x * 7.0);
+        float x = fract(uv.x * 7.0) - 0.5;
+        float y = uv.y * 2.0 - 1.0;
+        float rough = (band + 0.5) / 7.0;
+        vec3 n = normalize(vec3(x * 1.4, y * 0.9, 0.9));
+        vec3 l = normalize(vec3(lightCursor, 0.7));
+        float eon = roughDiffuse(n, l, vec3(0.0, 0.0, 1.0), rough);
+        float plot = line(x - (eon - 0.55) * 0.42, 0.02);
+        float sampleDot = circle(vec2(x, y - sin(band * 1.7 + time) * 0.34), 0.06);
+        vec3 col = vec3(0.025, 0.033, 0.03);
+        col += plot * mix(vec3(0.92, 0.58, 0.25), vec3(0.2, 0.82, 0.8), rough);
+        col += sampleDot * vec3(0.5, 0.74, 0.66) * (0.35 + rough);
+        col += line(fract(uv.x * 7.0), 0.012) * vec3(0.22);
+        return col;
+      }
+
+      vec3 kelvinView(vec2 p, vec2 uv) {
+        float row = floor(uv.y * 6.0);
+        float kelvin = mix(2200.0, 10500.0, (row + 0.5) / 6.0);
+        vec3 wb = kelvinToRgb(kelvin);
+        vec3 gray = whiteBalance(vec3(0.68), kelvin, pointer.x);
+        float chip = squareMask(vec2(fract(uv.x * 10.0) - 0.5, fract(uv.y * 6.0) - 0.5), 0.38);
+        float axis = line(p.x, 0.006) + line(p.y, 0.006);
+        vec3 col = mix(wb * 0.72, gray, step(0.5, fract(uv.x * 2.0)));
+        col *= chip;
+        col += axis * vec3(0.18, 0.21, 0.2);
+        col += ring(p - pointer * 0.82, 0.14 + pulse * 0.52, 0.018) * vec3(0.96, 0.85, 0.54);
+        return col + vec3(0.02, 0.025, 0.024);
+      }
+
+      vec3 lensView(vec2 p, vec2 uv, vec2 lightCursor) {
+        vec2 lens = p - pointer * 0.78;
+        float frame = squareFrame(lens, 0.36, 0.018);
+        float inside = squareMask(lens, 0.36);
+        float distortion = inside * (0.12 + 0.08 * sin(time * 1.7));
+        vec2 warped = p + lens * distortion;
+        vec3 a = materialView(warped + vec2(0.02, 0.0), uv, lightCursor);
+        vec3 b = materialView(warped, uv, lightCursor);
+        vec3 c = materialView(warped - vec2(0.02, 0.0), uv, lightCursor);
+        vec3 col = vec3(a.r, b.g, c.b);
+        col += frame * vec3(0.95, 0.52, 0.28);
+        col += ring(lens, 0.12 + pulse * 0.5, 0.015) * vec3(0.25, 0.9, 0.82);
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+        vec2 lightCursor = pointer;
+        float kelvin = mix(2600.0, 9800.0, sat(pointer.y * 0.5 + 0.5));
+        vec3 col = materialView(p, uv, lightCursor);
+        col = mix(col, roughnessView(p, uv, lightCursor), step(1.5, mode));
+        col = mix(col, kelvinView(p, uv), step(2.5, mode));
+        col = mix(col, lensView(p, uv, lightCursor), step(3.5, mode));
+        col = whiteBalance(col, kelvin, pointer.x);
+        float grid = max(line(fract((p.x + 1.0) * 5.0) - 0.5, 0.008), line(fract((p.y + 1.0) * 5.0) - 0.5, 0.008));
+        col += grid * vec3(0.018, 0.03, 0.028);
+        float vignette = smoothstep(1.45, 0.18, length(p));
+        gl_FragColor = vec4(pow(max(col * vignette, vec3(0.0)), vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+
+    let program;
+    try {
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program));
+      }
+    } catch (error) {
+      errorEl.textContent = error.message;
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      time: gl.getUniformLocation(program, 'time'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    const state = {
+      pointer: { x: 0.25, y: 0.18 },
+      mode: 1,
+      pulseStart: -10,
+      dragging: false
+    };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.floor(window.innerWidth * dpr));
+      const height = Math.max(1, Math.floor(window.innerHeight * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      const aspectSafe = Math.min(rect.width, rect.height);
+      state.pointer.x = ((x - 0.5) * rect.width * 2) / aspectSafe;
+      state.pointer.y = ((0.5 - y) * rect.height * 2) / aspectSafe;
+    }
+
+    canvas.addEventListener('pointerdown', (event) => {
+      state.dragging = true;
+      canvas.setPointerCapture(event.pointerId);
+      setPointer(event);
+      state.pulseStart = performance.now() * 0.001;
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (state.dragging) setPointer(event);
+    });
+    canvas.addEventListener('pointerup', () => {
+      state.dragging = false;
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.pulseStart = performance.now() * 0.001;
+    });
+    window.addEventListener('resize', resize);
+
+    function frame(nowMs) {
+      resize();
+      const now = nowMs * 0.001;
+      const pulseAge = Math.max(0, now - state.pulseStart);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now);
+      gl.uniform2f(uniforms.pointer, state.pointer.x, state.pointer.y);
+      gl.uniform1f(uniforms.pulse, Math.exp(-pulseAge * 1.8));
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

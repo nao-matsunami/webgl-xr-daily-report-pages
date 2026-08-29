@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>粗い拡散反射、ホワイトバランス、XRレイヤー予算を演出パラメータにする | 2026-08-29</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.08.29</p>
+      <h1>粗い拡散反射、ホワイトバランス、XRレイヤー予算を演出パラメータにする</h1>
+      <p class="hero-subtitle">Turning rough diffuse, white balance, and XR layer budgets into expressive parameters</p>
+      <p>three.js の Tour of TSL、GPGPU Node warning、RTTNode renderer state restore、EON rough diffuse BRDF、BufferGeometryUtils の hash overflow 修正、PlayCanvas の VSM_32F float filtering、NPOT mipmap upload、sound timing、ESM tree-shaking、Babylon.js の WebXR composition layer controls、dynamic viewport scaling、white balance、MultiTexture、KHR_materials_scatter を調査した。前回の FFT / depth resolve / XR spatial memory から、今日は「光学補正とXR表示予算を触れる表現」に寄せ、本命サンプルとして EON White Balance Lens Scope、派生サンプルとして XR Layer Viewport Budget Scope を実装した。</p>
+      <p class="en-copy">Today covers three.js Tour of TSL, GPGPU node warnings, RTTNode renderer-state restoration, EON rough diffuse BRDF, BufferGeometryUtils hash overflow fixes, PlayCanvas VSM_32F float filtering, NPOT mipmap upload, sound timing, ESM tree-shaking, and Babylon.js WebXR composition layer controls, dynamic viewport scaling, white balance, MultiTexture, and KHR_materials_scatter. Extending yesterday's FFT / depth resolve / XR spatial-memory direction, the focus shifts to optical correction and XR display budgets as interactive visual expression. Two samples were implemented: EON White Balance Lens Scope and XR Layer Viewport Budget Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-08-27.html">← 2026.08.27</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>XR Layer Viewport Budget Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>EON White Balance Lens Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-08-29_eon_white_balance_lens_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34085 は Tour of TSL。TSL のドキュメント、例、runner、playground を1つの環境にまとめる流れで、TSLを「読むAPI」から「触って確認する制作面」へ近づけている。2. three.js PR #34291 は GPGPU Node が間違った shader stage で呼ばれた時の warning。昨日の FFT ping-pong とつながり、compute / fragment / render target の境界を可視化する価値が高い。3. three.js PR #34379 は MeshPhysicalMaterial への EON rough diffuse BRDF。粗い誘電体の backscattering と energy preservation を WebGL/WebGPU/TSL の両方に持ち込む提案で、単なる色変化ではなく表面の返り方を演出できる。4. PlayCanvas PR #9263/#9262 は VSM_32F の filterable 判定と NPOT texture mipmap の修正。影とミップの品質差が、WebGL/WebGPU間の見た目の違いとして表に出やすい。5. Babylon.js PR #18848/#18851/#18855 は WebXR layer の opacity/quality/forceMono/maxRenderLayers、dynamic viewport scaling、temperature/tint white balance。XR体験を固定解像度の描画ではなく、視野・レイヤー・色温度の予算制御として扱える。</p>
+          <p class="en-copy">1. three.js PR #34085 is Tour of TSL, combining documentation, examples, a runner, and a playground into one environment. It moves TSL from a read-only API surface toward a hands-on production surface. 2. three.js PR #34291 adds warnings when GPGPU nodes are invoked in the wrong shader stages, which connects to yesterday's FFT ping-pong work and makes compute / fragment / render-target boundaries worth visualizing. 3. three.js PR #34379 proposes EON rough diffuse BRDF for MeshPhysicalMaterial, bringing energy-preserving rough dielectric backscattering to both WebGL and WebGPU/TSL. 4. PlayCanvas PR #9263/#9262 fix VSM_32F filterability and NPOT mipmap handling, places where WebGL/WebGPU visual differences can leak into production. 5. Babylon.js PR #18848/#18851/#18855 expose WebXR layer opacity, quality, mono, max-layer controls, dynamic viewport scaling, and temperature/tint white balance, reframing XR as view/layer/color-budget control.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">three.js #34085</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34379" target="_blank" rel="noreferrer">three.js #34379</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18848" target="_blank" rel="noreferrer">Babylon.js #18848</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Codrops Creative Hub の Mouse-Following Square Lens Distortion Effect with RGB Shift は、ポインタ位置を「UI操作」ではなく局所的な光学補正面として見せている点が今日のテーマに合う。四角いレンズ、RGB shift、カーソル追従は、three.js の EON rough diffuse や Babylon.js の white balance と相性が良い。例えば粗い陶器、紙、肌、石材のような材質をポインタ周辺だけ補正し、補正前/補正後の色温度差を舞台照明のように見せられる。Babylon.js の XR layer controls と組み合わせるなら、レンズ自体を quad layer / cylinder layer として扱い、opacity と viewportScale を視線や負荷に応じて変える方向が面白い。</p>
+          <p class="en-copy">Codrops Creative Hub's Mouse-Following Square Lens Distortion Effect with RGB Shift fits today's theme because the pointer becomes a local optical correction surface rather than a normal UI action. A square lens, RGB shift, and cursor following pair well with three.js EON rough diffuse and Babylon.js white balance. Rough ceramic, paper, skin, or stone could be corrected only around the pointer, showing before/after temperature differences like stage lighting. Combined with Babylon.js XR layer controls, the lens itself could become a quad or cylinder layer whose opacity and viewport scale respond to gaze or load.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18855" target="_blank" rel="noreferrer">Babylon.js #18855</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「EON White Balance Lens Scope」。粗い拡散反射の返り方、Kelvin/tint の white balance、四角いRGB lens distortionを1枚のWebGL shaderで確認する。ドラッグで光源と色温度、クリック/Spaceで補正pulse、1-4で material / rough diffuse / Kelvin bands / square lens を切り替える。派生案は「XR Layer Viewport Budget Scope」。Babylon.js の composition layer controls と dynamic viewport scaling を、左右眼、layer opacity、recommended/requested scale、foveation limit の4表示に分ける。次に足すなら、1本目の white balance pulse を2本目の layer opacity に接続し、光学補正が強い瞬間だけXRレイヤーの解像度を上げる。</p>
+          <p class="en-copy">The main idea is EON White Balance Lens Scope: rough diffuse return, Kelvin/tint white balance, and square RGB lens distortion in one WebGL shader. Drag controls light and color temperature, click/Space emits a calibration pulse, and 1-4 switch material / rough diffuse / Kelvin bands / square lens. The derived idea is XR Layer Viewport Budget Scope, splitting Babylon.js composition layer controls and dynamic viewport scaling into stereo eyes, layer opacity, recommended/requested scale, and foveation limits. Next, connect the first sample's white-balance pulse to the second sample's layer opacity so optical correction temporarily raises XR layer resolution.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>EON rough diffuse を制作で使う場合は、Lambert と EON を全材質に一律で置き換えるより、roughness が高い材質だけ opt-in にするのが安全。furnace test を通すような energy preservation は、展示照明や暗い背景で「白飛びしないが鈍く光る」質感に効く。white balance は Kelvin と tint を単純な色フィルタにせず、neutral patch が戻る補正として扱うと作品全体の色が破綻しにくい。PlayCanvas の VSM_32F は `textureFloatFilterable` のような抽象capabilityを見ることで WebGL/WebGPU差を吸収できる。NPOT mipmap は WebGL2以降なら普通に使えるが、VRAM計算とmipmap uploadの両方を揃えないと品質診断がずれる。WebXR layer は maxRenderLayers、fixed foveation、viewportScale、skipRendering を全部「負荷が見えるパラメータ」としてログ化すると、演出と最適化を同じ画面で扱える。</p>
+          <p class="en-copy">For production, EON rough diffuse should be an opt-in path for high-roughness materials instead of replacing Lambert everywhere. Energy preservation that passes a furnace-style check is useful for dim installations where surfaces should glow dully without blowing out. White balance should be treated as neutral-patch correction rather than a simple color filter. PlayCanvas VSM_32F shows why a portable capability such as `textureFloatFilterable` should hide WebGL/WebGPU differences. NPOT mipmaps are valid in WebGL2+, but VRAM accounting and mipmap upload must agree for quality diagnostics. WebXR layers should log maxRenderLayers, fixed foveation, viewportScale, and skipRendering as visible load parameters so optimization and expression share the same surface.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9263" target="_blank" rel="noreferrer">PlayCanvas #9263</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9262" target="_blank" rel="noreferrer">PlayCanvas #9262</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18849" target="_blank" rel="noreferrer">Babylon.js #18849</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js #34085 Tour of TSL、#34291 GPGPU warning、#34379 EON rough diffuse、#34235 PrefixSum / GaussianSplatMesh、PlayCanvas #9263 VSM float filtering、#9262 NPOT mipmap、#9251 tree-shaking、Babylon.js #18848 composition layers、#18851 viewportScale、#18855 white balance、#18822 MultiTexture、#18810 KHR_materials_scatter。新規案件: pointer lens / white balance / rough diffuse を、深度再照明やXRレイヤーに接続する。寝かせる案件: PlayCanvas UI outline/text color、dead assignment削除、pipeline hardening など、表現への接続が薄いもの。</p>
+          <p class="en-copy">Continue watching three.js #34085 Tour of TSL, #34291 GPGPU warnings, #34379 EON rough diffuse, #34235 PrefixSum / GaussianSplatMesh; PlayCanvas #9263 VSM float filtering, #9262 NPOT mipmaps, #9251 tree-shaking; Babylon.js #18848 composition layers, #18851 viewportScale, #18855 white balance, #18822 MultiTexture, and #18810 KHR_materials_scatter. New thread: connect pointer lenses, white balance, and rough diffuse to depth relighting and XR layers. Sleep: PlayCanvas UI outline/text-color fixes, dead assignment removal, and pipeline hardening unless they gain an expressive hook.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34235" target="_blank" rel="noreferrer">three.js #34235</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9251" target="_blank" rel="noreferrer">PlayCanvas #9251</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18810" target="_blank" rel="noreferrer">Babylon.js #18810</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-08-29_eon_white_balance_lens_scope.html` を開く。1 は Lambert/EON 比較を含む粗い材質面、2 は roughness別の拡散反射カーブ、3 は Kelvin band と補正後neutral、4 は四角いRGB lens distortion。次に足すなら、Web Audio の低域で roughness pulse、中域で Kelvin drift、高域で lens RGB offset を動かす。2本目は `outputs/2026-08-29_xr_layer_viewport_budget_scope.html`。1 は左右眼の推奨/要求 scale、2 は composition layer opacity、3 は requested/native viewportScale、4 は foveation / max layer budget。次に足すなら、実WebXRなしでも `recommendedScale`, `requestedScale`, `layerCount`, `whiteBalancePulse` のJSONログを流し込む。</p>
+          <p class="en-copy">Open `outputs/2026-08-29_eon_white_balance_lens_scope.html` first. Mode 1 shows a rough material with Lambert/EON comparison, 2 roughness-specific diffuse curves, 3 Kelvin bands and corrected neutrals, and 4 square RGB lens distortion. Next, drive roughness pulse with bass, Kelvin drift with mids, and RGB lens offset with highs. The second sample is `outputs/2026-08-29_xr_layer_viewport_budget_scope.html`: 1 stereo recommended/requested scale, 2 composition layer opacity, 3 requested/native viewportScale, and 4 foveation / max layer budget. Next, feed JSON logs for `recommendedScale`, `requestedScale`, `layerCount`, and `whiteBalancePulse` without requiring real WebXR.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js Tour of TSL / GPGPU warning / RTTNode restore / EON BRDF / BufferGeometryUtils、PlayCanvas VSM_32F / NPOT mipmap / sound timing / tree-shaking、Babylon WebXR layer controls / viewport scaling / white balance / scatter / MultiTexture、Codrops pointer square lens。アイデア検討: 前回の FFT / depth sample / XR anchor に、rough diffuse、色温度補正、viewport予算を追加。サンプル実装: 本命 `2026-08-29_eon_white_balance_lens_scope.html`、派生 `2026-08-29_xr_layer_viewport_budget_scope.html`。結果の検証: JSON parse、HTML parse、script構文、ローカルHTTP、publishを実行する。短期で試すものは Web Audio と white balance lens の接続。中長期で育てるものは、XRのviewportScaleとmaterial/lighting補正を同じtimelineで扱う「負荷で変わる光学演出」。</p>
+          <p class="en-copy">Collection: three.js Tour of TSL / GPGPU warnings / RTTNode restore / EON BRDF / BufferGeometryUtils; PlayCanvas VSM_32F / NPOT mipmap / sound timing / tree-shaking; Babylon WebXR layer controls / viewport scaling / white balance / scatter / MultiTexture; and Codrops pointer square lens. Ideation: add rough diffuse, temperature correction, and viewport budgets to yesterday's FFT / depth sample / XR anchor work. Prototypes: `2026-08-29_eon_white_balance_lens_scope.html` and `2026-08-29_xr_layer_viewport_budget_scope.html`. Verification: JSON parse, HTML parse, script syntax, local HTTP, and publish. Short-term: connect Web Audio to the white-balance lens. Long-term: load-reactive optical staging where XR viewportScale and material/lighting correction share one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、renderer内部の正しさがそのまま作品の表情に出る方向。8/25 は dispose / retroreflection、8/26 は NTC / readiness / media layer、8/27 は FFT / depth sample / spatial memory、今日は rough diffuse / white balance / XR viewport budget。組み合わせ候補は、音のloop区間からFFT energyを作り、粗い材質のdiffuseRoughnessとKelvinを揺らし、XR layerのopacity/viewportScaleを一時的に上げる展示。育てる価値が高いテーマは「補正が見えるXR」。本来は裏側に隠す white balance、mipmap、filterability、viewportScale を、ユーザーの操作・音・空間ラベルに反応する光学演出として前景化する。</p>
+          <p class="en-copy">The current trend is that renderer correctness directly shapes the artwork's expression. 8/25 focused on disposal / retroreflection, 8/26 NTC / readiness / media layers, 8/27 FFT / depth samples / spatial memory, and today rough diffuse / white balance / XR viewport budgets. A promising combination: derive FFT energy from sound-loop regions, use it to move diffuseRoughness and Kelvin, and temporarily raise XR layer opacity/viewportScale. The high-value theme is XR where correction remains visible. White balance, mipmaps, filterability, and viewportScale are normally hidden, but can become foreground optical behavior responding to interaction, sound, and room labels.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34379" target="_blank" rel="noreferrer">three.js #34379</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18855" target="_blank" rel="noreferrer">Babylon.js #18855</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命は `outputs/2026-08-29_eon_white_balance_lens_scope.html`。短時間で試せる理由は、実装中の EON BRDF や white balance API を待たず、粗い拡散反射、Kelvin/tint補正、square lens RGB shift の関係をfragment shaderで確認できるため。何が動くか: EON風rough diffuse、Lambert比較線、Kelvin band、ポインタ追従の四角レンズ、クリック時のcalibration pulse。次に足すなら、写真やvideo textureに同じ white balance lens を当てる。2本目は `outputs/2026-08-29_xr_layer_viewport_budget_scope.html`。何が動くか: stereo eye scale、composition layer opacity、viewportScale lane、foveation budget。次に足すなら、WebXR Layers API の実値または手書きJSONログから layerCount と scale を読む。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-08-29_eon_white_balance_lens_scope.html`. It is quick because rough diffuse, Kelvin/tint correction, and square-lens RGB shift can be tested in a fragment shader before depending on the real EON BRDF or white-balance API. It animates EON-like rough diffuse, a Lambert comparison line, Kelvin bands, a pointer-following square lens, and a click calibration pulse. Next, apply the same white-balance lens to photos or video textures. The second prototype is `outputs/2026-08-29_xr_layer_viewport_budget_scope.html`, animating stereo eye scale, composition layer opacity, viewportScale lanes, and foveation budget. Next, read layerCount and scale from WebXR Layers API values or a handwritten JSON log.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日のサンプルは、pointer位置、mode、Kelvin、tint、roughness、calibration pulse、recommended/requested viewportScale、layer opacity、foveation中心を時系列データとして保存できる。応用先は、ECの商品素材ビューでは「手元だけ正しい色温度で見る」レンズ、音楽サイトでは低域でroughnessが増す紙/石/陶器のステージ、展示では来場者の視線や負荷に応じてXR layerの解像度が上がる照明。前回の FFT sample と接続すると、音の周波数が材質補正とXR表示予算を同時に動かす。8/26 の NTC/readiness と合わせるなら、圧縮復元が完了したlayerだけwhite balanceを正しく戻し、未ready layerは色温度がずれたまま見せると、ロード状態も表現になる。</p>
+          <p class="en-copy">Today's samples can store pointer position, mode, Kelvin, tint, roughness, calibration pulses, recommended/requested viewportScale, layer opacity, and foveation center as time-series data. Applications include product views with a local accurate-color lens, music sites where bass increases paper/stone/ceramic roughness, and installations where XR layer resolution rises with gaze or load. Connected to yesterday's FFT sample, audio frequencies can drive both material correction and XR display budgets. Combined with 8/26 NTC/readiness, only ready layers could return to correct white balance while unready layers remain temperature-shifted, turning loading state into visible expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-08-27_fft_spectral_wake_scope.html" target="_blank" rel="noreferrer">Previous FFT sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34085" target="_blank" rel="noreferrer">three.js PR #34085 Tour of TSL</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34291" target="_blank" rel="noreferrer">three.js PR #34291 TSL GPGPU node warnings</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34385" target="_blank" rel="noreferrer">three.js PR #34385 RTTNode renderer state restore</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34379" target="_blank" rel="noreferrer">three.js PR #34379 EON rough diffuse BRDF</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34390" target="_blank" rel="noreferrer">three.js PR #34390 BufferGeometryUtils vertex hash overflow</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9263" target="_blank" rel="noreferrer">PlayCanvas PR #9263 VSM_32F shadow filtering</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9262" target="_blank" rel="noreferrer">PlayCanvas PR #9262 NPOT mipmap upload and gpuSize</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9249" target="_blank" rel="noreferrer">PlayCanvas PR #9249 sound duration and timing</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9251" target="_blank" rel="noreferrer">PlayCanvas PR #9251 ESM tree-shaking</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18848" target="_blank" rel="noreferrer">Babylon.js PR #18848 WebXR composition layer controls and limits</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18851" target="_blank" rel="noreferrer">Babylon.js PR #18851 dynamic WebXR viewport scaling</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18855" target="_blank" rel="noreferrer">Babylon.js PR #18855 image processing white balance</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18822" target="_blank" rel="noreferrer">Babylon.js PR #18822 MultiTexture</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18810" target="_blank" rel="noreferrer">Babylon.js PR #18810 KHR_materials_scatter</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub: Mouse-Following Square Lens Distortion Effect with RGB Shift</a></li>
+          
+            <li><a href="../outputs/2026-08-29_eon_white_balance_lens_scope.html" target="_blank" rel="noreferrer">Main sample: EON White Balance Lens Scope</a></li>
+          
+            <li><a href="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" target="_blank" rel="noreferrer">Derived sample: XR Layer Viewport Budget Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-08-29_xr_layer_viewport_budget_scope.html" loading="lazy" title="XR Layer Viewport Budget Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
