@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compute Prefix Lifecycle Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #060706; color: #f1f7ee; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 18px; right: 18px; bottom: 16px; display: flex; justify-content: space-between; gap: 14px; pointer-events: none; font-size: 12px; line-height: 1.45; color: rgba(241,247,238,.84); text-shadow: 0 1px 8px rgba(0,0,0,.75); }
+    .hud strong { color: #fff; }
+    #error { position: fixed; left: 16px; right: 16px; top: 16px; white-space: pre-wrap; color: #ffd3d3; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><strong>Compute Prefix Lifecycle Scope</strong><br>1 lifecycle / 2 prefix bins / 3 splat sort / 4 layer composite</div>
+    <div>Drag: workgroup and hook timing<br>Click or Space: compute dispatch pulse</div>
+  </div>
+  <pre id="error"></pre>
+  <script>
+  (() => {
+    const canvas = document.getElementById('c');
+    const errorEl = document.getElementById('error');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!gl) { errorEl.textContent = 'WebGL is not available.'; return; }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() { gl_Position = vec4(position, 0.0, 1.0); }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float sat(float v) { return clamp(v, 0.0, 1.0); }
+      float line(float v, float w) { return 1.0 - smoothstep(0.0, w, abs(v)); }
+      float circle(vec2 p, float r) { return 1.0 - smoothstep(r, r + 0.012, length(p)); }
+      float ring(vec2 p, float r, float w) { return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r)); }
+      float square(vec2 p, float s) { return 1.0 - smoothstep(s, s + 0.01, max(abs(p.x), abs(p.y))); }
+      float frame(vec2 p, float s, float w) { return 1.0 - smoothstep(w, w * 2.0, abs(max(abs(p.x), abs(p.y)) - s)); }
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+      vec3 lifecycleView(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.018, 0.026, 0.024);
+        float y0 = -0.46;
+        float y1 = 0.0;
+        float y2 = 0.46;
+        float gate = fract(time * 0.18 + pulse * 0.35);
+        float before = smoothstep(gate - 0.08, gate, uv.x) * (1.0 - smoothstep(gate, gate + 0.08, uv.x));
+        float compute = smoothstep(gate - 0.14, gate, uv.x) * (1.0 - smoothstep(gate + 0.12, gate + 0.2, uv.x));
+        float after = smoothstep(gate + 0.04, gate + 0.14, uv.x) * (1.0 - smoothstep(gate + 0.18, gate + 0.27, uv.x));
+        col += line(p.y - y0, 0.018) * vec3(0.4, 0.82, 0.72);
+        col += line(p.y - y1, 0.018) * vec3(0.96, 0.76, 0.36);
+        col += line(p.y - y2, 0.018) * vec3(0.82, 0.46, 0.95);
+        col += before * exp(-60.0 * abs(p.y - y0)) * vec3(0.4, 0.9, 0.8);
+        col += compute * exp(-44.0 * abs(p.y - y1)) * vec3(1.0, 0.72, 0.28);
+        col += after * exp(-60.0 * abs(p.y - y2)) * vec3(0.75, 0.5, 1.0);
+        vec2 hook = vec2(pointer.x * 0.7, mix(y0, y2, sat(pointer.y * 0.5 + 0.5)));
+        col += ring(p - hook, 0.11 + pulse * 0.34, 0.018) * vec3(0.95, 0.95, 0.62);
+        col += frame(p - hook, 0.18, 0.012) * vec3(0.2, 0.8, 0.7);
+        return col;
+      }
+
+      vec3 prefixView(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.018, 0.023, 0.026);
+        vec2 cell = floor(uv * vec2(18.0, 10.0));
+        vec2 local = fract(uv * vec2(18.0, 10.0)) - 0.5;
+        float bin = cell.x + cell.y * 18.0;
+        float h = hash(vec2(bin, floor(time * 0.5)));
+        float count = sat(0.12 + 0.75 * h + 0.2 * sin(bin * 0.19 + time));
+        float prefix = sat((cell.x + 1.0) / 18.0 * (0.55 + 0.35 * sin(cell.y + pointer.x * 2.0)));
+        float bar = step(abs(local.x), 0.36) * step(local.y + 0.42, count * 0.78);
+        float scan = line(uv.x - fract(time * 0.12 + pulse * 0.3), 0.012);
+        col += bar * mix(vec3(0.14, 0.52, 0.84), vec3(0.92, 0.74, 0.28), prefix);
+        col += scan * (0.3 + count) * vec3(0.9, 0.96, 0.62);
+        col += frame(local, 0.47, 0.01) * vec3(0.05, 0.09, 0.1);
+        return col;
+      }
+
+      vec3 splatSortView(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.012, 0.018, 0.019);
+        for (int i = 0; i < 24; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(fract(fi * 0.618), fract(fi * 0.347));
+          vec2 pos = (seed * 2.0 - 1.0) * 0.82;
+          float depth = sat(0.5 + 0.45 * sin(fi * 1.7 + time * 0.7 + pointer.x * 2.0));
+          pos += vec2(sin(time * 0.3 + fi), cos(time * 0.24 + fi * 1.3)) * 0.05 * depth;
+          float sorted = smoothstep(-0.85, 0.85, pos.y + pointer.y * 0.4);
+          float r = 0.035 + 0.08 * depth;
+          float s = circle(p - pos, r);
+          col += s * mix(vec3(0.18, 0.56, 0.72), vec3(1.0, 0.55, 0.34), sorted) * (0.55 + depth);
+          col += ring(p - pos, r + 0.018, 0.006) * vec3(0.7, 0.95, 0.9) * sorted;
+        }
+        col += line(p.x - pointer.x * 0.7, 0.007) * vec3(0.6, 0.9, 0.75);
+        col += ring(p, 0.92, 0.012) * vec3(0.18, 0.27, 0.25);
+        return col;
+      }
+
+      vec3 layerView(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.015, 0.017, 0.02);
+        vec2 center = p;
+        float a = square(center + vec2(0.24, -0.08), 0.42);
+        float b = square(center + vec2(-0.12, 0.14), 0.38);
+        float c = square(center + vec2(-0.34, -0.24), 0.30);
+        float blend = sat(pointer.x * 0.5 + 0.5);
+        col += a * vec3(0.22, 0.5, 0.82) * (0.35 + blend);
+        col += b * vec3(0.92, 0.68, 0.26) * (0.65 - blend * 0.2);
+        col += c * vec3(0.78, 0.34, 0.92) * (0.45 + 0.35 * sin(time));
+        col += frame(center + vec2(0.24, -0.08), 0.42, 0.012) * vec3(0.5, 0.9, 0.95);
+        col += frame(center + vec2(-0.12, 0.14), 0.38, 0.012) * vec3(1.0, 0.82, 0.35);
+        col += ring(center - pointer * 0.7, 0.18 + pulse * 0.48, 0.015) * vec3(0.95, 0.95, 0.7);
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+        vec3 col = lifecycleView(p, uv);
+        col = mix(col, prefixView(p, uv), step(1.5, mode));
+        col = mix(col, splatSortView(p, uv), step(2.5, mode));
+        col = mix(col, layerView(p, uv), step(3.5, mode));
+        float grid = max(line(fract((p.x + 1.0) * 6.0) - 0.5, 0.006), line(fract((p.y + 1.0) * 6.0) - 0.5, 0.006));
+        col += grid * vec3(0.015, 0.025, 0.024);
+        col *= smoothstep(1.48, 0.22, length(p));
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+
+    let program;
+    try {
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    } catch (error) {
+      errorEl.textContent = error.message;
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      time: gl.getUniformLocation(program, 'time'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    const state = { pointer: [0.25, 0.15], pulse: 0, mode: 1 };
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      state.pointer[1] = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+    }
+    canvas.addEventListener('pointermove', setPointer);
+    canvas.addEventListener('pointerdown', (event) => { setPointer(event); state.pulse = 1; });
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.pulse = 1;
+    });
+
+    function resize() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function render(now) {
+      resize();
+      state.pulse *= 0.93;
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  })();
+  </script>
+</body>
+</html>

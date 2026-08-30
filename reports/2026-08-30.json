@@ -1,0 +1,259 @@
+{
+  "date": "2026-08-30",
+  "headline": "compute前後処理、prefix-sum、texture layerを演出状態として扱う",
+  "headlineEn": "Treating compute lifecycle, prefix sums, and texture layers as expressive render state",
+  "summary": "three.js の compute stage `updateBefore` / `updateAfter`、GaussianSplatMesh 向け高速 PrefixSum、Inspector の CSP 対応、PlayCanvas の NPOT mipmap / procedural geometry tangent / VSM float filtering、Babylon.js の MultiTexture / white balance / Sandbox camera presets を調査した。前回の rough diffuse / white balance / XR viewport budget から、今日は「compute の前後処理と texture layer の状態を見える演出」に接続し、本命サンプルとして Compute Prefix Lifecycle Scope、派生サンプルとして NPOT Tangent Mipmap Probe を実装した。",
+  "summaryEn": "Today covers three.js compute-stage `updateBefore` / `updateAfter`, fast PrefixSum work for GaussianSplatMesh sorting, Inspector CSP support, PlayCanvas NPOT mipmaps, procedural-geometry tangents, VSM float filtering, and Babylon.js MultiTexture, white balance, and Sandbox camera presets. Extending yesterday's rough diffuse / white balance / XR viewport-budget direction, the focus shifts to visible compute lifecycle and texture-layer state. Two samples were implemented: Compute Prefix Lifecycle Scope and NPOT Tangent Mipmap Probe.",
+  "links": [
+    {
+      "label": "three.js PR #34401 Nodes compute updateBefore/updateAfter",
+      "url": "https://github.com/mrdoob/three.js/pull/34401"
+    },
+    {
+      "label": "three.js PR #34235 Counting Sort PrefixSum",
+      "url": "https://github.com/mrdoob/three.js/pull/34235"
+    },
+    {
+      "label": "three.js PR #34396 Inspector CSP nonce",
+      "url": "https://github.com/mrdoob/three.js/pull/34396"
+    },
+    {
+      "label": "three.js TSL documentation",
+      "url": "https://threejs.org/docs/TSL.html"
+    },
+    {
+      "label": "three.js compute reduction example",
+      "url": "https://threejs.org/examples/webgpu_compute_reduce.html"
+    },
+    {
+      "label": "PlayCanvas PR #9262 NPOT mipmap upload and gpuSize",
+      "url": "https://github.com/playcanvas/engine/pull/9262"
+    },
+    {
+      "label": "PlayCanvas PR #9253 procedural geometry tangents",
+      "url": "https://github.com/playcanvas/engine/pull/9253"
+    },
+    {
+      "label": "PlayCanvas PR #9263 VSM_32F shadow filtering",
+      "url": "https://github.com/playcanvas/engine/pull/9263"
+    },
+    {
+      "label": "PlayCanvas PR #9249 sound duration and timing",
+      "url": "https://github.com/playcanvas/engine/pull/9249"
+    },
+    {
+      "label": "Babylon.js PR #18822 MultiTexture",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+    },
+    {
+      "label": "Babylon.js PR #18855 white balance",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18855"
+    },
+    {
+      "label": "Babylon.js PR #18807 Sandbox camera presets",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18807"
+    },
+    {
+      "label": "Codrops Creative Hub all demos",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "Main sample: Compute Prefix Lifecycle Scope",
+      "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+    },
+    {
+      "label": "Derived sample: NPOT Tangent Mipmap Probe",
+      "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34401 は `renderer.compute()` 実行時に Node の `updateBefore` / `updateAfter` lifecycle hook を通す提案。GaussianBlurNode、RTT、nested compute のように compute の前後に準備や後処理が必要なノードを、描画passだけでなく compute pass の中でも組み立てられる。2. three.js PR #34235 は GaussianSplatMesh の CountingSort 向け PrefixSum 改修で、高い binCount でも prefix step を短くする方向。splat の depth sort を、単なる最適化ではなく粒子密度の舞台制御として見られる。3. three.js PR #34396 は Inspector の nonce / CSP compliance。制作ツールや埋め込みviewerを本番サイトへ入れる時、debug UI が CSP で壊れないことは地味に重要。4. PlayCanvas PR #9262/#9253/#9263 は NPOT mipmap、procedural geometry tangent、VSM_32F filtering。テクスチャ品質、接線空間、影のfilterabilityが WebGL2/WebGPU の表現差として現れる。5. Babylon.js PR #18822/#18855/#18807 は MultiTexture、white balance、Sandbox camera presets。前回の光学補正に、複数layerの合成と視点bookmarkを足せる。",
+      "bodyEn": "1. three.js PR #34401 adds `updateBefore` / `updateAfter` lifecycle hooks during `renderer.compute()`, enabling GaussianBlurNode, RTT, and nested compute work to prepare or clean up around compute passes. 2. three.js PR #34235 reworks PrefixSum for GaussianSplatMesh CountingSort, reducing the cost of high bin counts and reframing splat depth sorting as density staging. 3. three.js PR #34396 adds nonce / CSP compliance to Inspector, important when debug tooling is embedded in production sites. 4. PlayCanvas PR #9262/#9253/#9263 cover NPOT mipmaps, procedural-geometry tangents, and VSM_32F filterability, all visible quality differences across WebGL2/WebGPU. 5. Babylon.js PR #18822/#18855/#18807 add MultiTexture, white balance, and Sandbox camera presets, extending yesterday's optical correction work with texture-layer composition and view bookmarks.",
+      "links": [
+        {
+          "label": "three.js #34401",
+          "url": "https://github.com/mrdoob/three.js/pull/34401"
+        },
+        {
+          "label": "three.js #34235",
+          "url": "https://github.com/mrdoob/three.js/pull/34235"
+        },
+        {
+          "label": "PlayCanvas #9262",
+          "url": "https://github.com/playcanvas/engine/pull/9262"
+        },
+        {
+          "label": "Babylon.js #18822",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "three.js の compute reduction example は、reduce / subgroup / workgroup の挙動をデモとして触れる形にしている。ここに PR #34401 の compute lifecycle と #34235 の PrefixSum を重ねると、GPU上の見えない前処理、scan、sort、後処理がタイムラインとして見える。Codrops 側では Creative Hub に pointer lens、Relighting、Interactive 3D Cluster、Geometry Painter など、TSL/WebGPU/Three.js の実験が継続して並んでいる。面白いのは、見た目の派手さだけでなく、制作記事側が音、depth、scroll、tooling、Blender連携を説明している点。つまり shader は最終画ではなく、素材生成、検証、演出ログまで含むワークフローの中心になりつつある。",
+      "bodyEn": "The three.js compute reduction example makes reduce / subgroup / workgroup behavior tangible as a demo. If combined with PR #34401's compute lifecycle and #34235's PrefixSum work, invisible GPU preparation, scan, sort, and after-pass work can become a visible timeline. On Codrops, Creative Hub continues to surface pointer lenses, relighting, interactive clusters, and geometry-painting experiments across TSL/WebGPU/Three.js. The important point is not only the visual finish but the production context: audio, depth, scroll, tooling, and Blender workflows are being explained. Shaders are becoming the center of material generation, verification, and performance logs, not just final pixels.",
+      "links": [
+        {
+          "label": "three.js compute reduction",
+          "url": "https://threejs.org/examples/webgpu_compute_reduce.html"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Codrops Articles",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Compute Prefix Lifecycle Scope」。compute の `updateBefore`、dispatch、`updateAfter` を3本の時間レーンとして描き、PrefixSum bin、splat sort、MultiTexture風layer compositeへ切り替える。ユーザーがドラッグすると hook timing と workgroup の焦点が動き、クリック/Spaceで dispatch pulse が走る。派生案は「NPOT Tangent Mipmap Probe」。PlayCanvas の NPOT mipmap修正、procedural geometry tangent整理、VSM float filtering、sound timingを、テクスチャ品質と接線空間の可視化にする。次に足すなら、1本目の prefix bins を2本目の mip level 選択に接続し、splat密度が高い領域だけ高解像mip/高品質shadowへ寄せる。",
+      "bodyEn": "The main idea is Compute Prefix Lifecycle Scope: draw `updateBefore`, dispatch, and `updateAfter` as three timing lanes, then switch into PrefixSum bins, splat sorting, and MultiTexture-like layer compositing. Dragging moves hook timing and workgroup focus; click/Space emits a dispatch pulse. The derived idea is NPOT Tangent Mipmap Probe, turning PlayCanvas NPOT mipmap fixes, procedural-geometry tangent cleanup, VSM float filtering, and sound timing into texture-quality and tangent-space visualization. Next, connect the first sample's prefix bins to the second sample's mip-level selection so dense splat regions receive higher-resolution mips and better shadow filtering.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "`updateBefore` / `updateAfter` を compute に入れる場合、準備passが textureStore 対象や blur input を更新する順序をログに残すと、黒画面や1フレーム遅延の原因を追いやすい。PrefixSum は binCount を増やすほどメモリコストが増えるため、作品化するなら `binCount`, `prefixMs`, `visibleSplatCount`, `fallbackSingleThread` をHUDではなく発光/粒子密度/scan速度に割り当てるとよい。NPOT mipmap は WebGL2 では生成できるが、mipmap upload と gpuSize が揃って初めて品質と予算が同じ言語になる。procedural geometry tangent は Box/Circle/Sphere/Plane/Torus/Capsule/Cone/Cylinder で同じ基底処理に寄せられるため、サンプル素材では tangent方向を色や縞で出すと品質差が分かりやすい。CSP対応の Inspector は、公開ギャラリーや商用サイトで診断UIを安全に埋める前提としてウォッチする価値がある。",
+      "bodyEn": "When `updateBefore` / `updateAfter` enter compute execution, log the order in which preparation passes update textureStore targets or blur inputs; it helps diagnose black frames and one-frame-late artifacts. PrefixSum increases memory cost as binCount rises, so expressive prototypes should map `binCount`, `prefixMs`, `visibleSplatCount`, and `fallbackSingleThread` to glow, density, or scan speed rather than plain HUD text. NPOT mipmaps are valid in WebGL2, but mipmap upload and gpuSize accounting must match before quality and budget use the same language. Procedural-geometry tangent generation moving to a common base method makes tangent direction worth showing with color and stripes across Box/Circle/Sphere/Plane/Torus/Capsule/Cone/Cylinder assets. Inspector CSP support is worth watching for safely embedding diagnostic UI in public galleries or commercial sites.",
+      "links": [
+        {
+          "label": "three.js #34401",
+          "url": "https://github.com/mrdoob/three.js/pull/34401"
+        },
+        {
+          "label": "PlayCanvas #9253",
+          "url": "https://github.com/playcanvas/engine/pull/9253"
+        },
+        {
+          "label": "three.js #34396",
+          "url": "https://github.com/mrdoob/three.js/pull/34396"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34401 compute lifecycle、#34235 PrefixSum / GaussianSplatMesh、#34085 Tour of TSL、#34334 WebGPU fallback on demand、PlayCanvas #9262 NPOT mipmap、#9263 VSM_32F filterability、#9251 ESM tree-shaking、Babylon.js #18822 MultiTexture、#18855 white balance、#18810 KHR_materials_scatter。新規案件: PlayCanvas #9253 procedural geometry tangent を、正円/正方形/正三角形の品質ルールと接続する。寝かせる案件: UI text color、license file casing、dead assignment削除など、表現・検証面への接続が薄い修正。ただし CSP nonce は展示サイトへの埋め込みで効くので継続。",
+      "bodyEn": "Continue watching three.js #34401 compute lifecycle, #34235 PrefixSum / GaussianSplatMesh, #34085 Tour of TSL, #34334 WebGPU fallback on demand; PlayCanvas #9262 NPOT mipmaps, #9263 VSM_32F filterability, #9251 ESM tree-shaking; and Babylon.js #18822 MultiTexture, #18855 white balance, #18810 KHR_materials_scatter. New thread: connect PlayCanvas #9253 procedural-geometry tangents to the project's circle/square/triangle quality rule. Sleep: UI text-color fixes, license-file casing, and dead-assignment cleanup unless they gain an expression or verification hook. Keep CSP nonce on the active list because it matters for embedded diagnostic tooling.",
+      "links": [
+        {
+          "label": "three.js #34085",
+          "url": "https://github.com/mrdoob/three.js/pull/34085"
+        },
+        {
+          "label": "PlayCanvas #9251",
+          "url": "https://github.com/playcanvas/engine/pull/9251"
+        },
+        {
+          "label": "Babylon.js #18810",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18810"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-08-30_compute_prefix_lifecycle_scope.html` を開く。1 は updateBefore / compute / updateAfter の3レーン、2 は PrefixSum bin scan、3 は splat sort、4 は MultiTexture風layer composite。ドラッグで hook timing と焦点を動かし、クリック/Spaceで dispatch pulseを入れる。次に足すなら、実測 `prefixMs` と `binCount` をJSONで流し、scan速度と粒子密度へ反映する。2本目は `outputs/2026-08-30_npot_tangent_mipmap_probe.html`。1 は tangent normal、2 は NPOT mip levels、3 は VSM filter、4 は sound timing smear。次に足すなら、実テクスチャをNPOTサイズで読み込み、mip生成前後の差を同じshaderに渡す。",
+      "bodyEn": "Open `outputs/2026-08-30_compute_prefix_lifecycle_scope.html` first. Mode 1 shows updateBefore / compute / updateAfter lanes, 2 PrefixSum bin scan, 3 splat sort, and 4 MultiTexture-like layer composite. Drag moves hook timing and focus; click/Space emits a dispatch pulse. Next, feed measured `prefixMs` and `binCount` as JSON and map them to scan speed and particle density. The second sample is `outputs/2026-08-30_npot_tangent_mipmap_probe.html`: 1 tangent normals, 2 NPOT mip levels, 3 VSM filter, and 4 sound timing smear. Next, load a real NPOT texture and send before/after mip generation into the same shader.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js compute lifecycle / PrefixSum / Inspector CSP / TSL docs / compute examples、PlayCanvas NPOT mipmap / procedural tangent / VSM_32F / sound timing、Babylon.js MultiTexture / white balance / camera presets、Codrops Creative Hub / Articles。アイデア検討: 8/29 の white balance lens と XR viewport budget に、compute hook、prefix scan、texture layer stateを接続。サンプル実装: 本命 `2026-08-30_compute_prefix_lifecycle_scope.html`、派生 `2026-08-30_npot_tangent_mipmap_probe.html`。結果の検証: JSON parse、HTML parse、script構文、WebGL shader compile確認、gallery build、publishを実行する。短期で試すものは PrefixSum scan を音やpointerで動かす粒子密度演出。中長期で育てるものは、レンダラー内部ログを作品のtimelineに変える「GPU pipeline choreography」。",
+      "bodyEn": "Collection: three.js compute lifecycle / PrefixSum / Inspector CSP / TSL docs / compute examples; PlayCanvas NPOT mipmaps / procedural tangents / VSM_32F / sound timing; Babylon.js MultiTexture / white balance / camera presets; and Codrops Creative Hub / Articles. Ideation: connect 8/29's white-balance lens and XR viewport budget to compute hooks, prefix scans, and texture-layer state. Prototypes: `2026-08-30_compute_prefix_lifecycle_scope.html` and `2026-08-30_npot_tangent_mipmap_probe.html`. Verification: JSON parse, HTML parse, script syntax, WebGL shader compile check, gallery build, and publish. Short-term: drive PrefixSum scans with audio or pointer input as particle-density staging. Long-term: GPU pipeline choreography, where renderer-internal logs become the artwork timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、8/25 の renderer lifecycle、8/26 の NTC/readiness、8/27 の FFT/depth/XR anchor、8/29 の rough diffuse/white balance/XR viewport budget、そして今日の compute lifecycle/prefix/texture layerへつながっている。共通しているのは、最適化・診断・互換性対応を裏方に置かず、そのまま表現の入力にする姿勢。組み合わせ候補は、音のFFTで PrefixSum のbin密度を作り、MultiTexture layer のadd/remove/updateを発火し、white balance lensで完成layerだけ色を戻す構成。育てる価値が高いテーマは「見えるGPU段取り」。compute前処理、sort、mip生成、layer合成、viewportScaleを、作品の拍や視線誘導にする。",
+      "bodyEn": "The recent arc runs from 8/25 renderer lifecycle, 8/26 NTC/readiness, 8/27 FFT/depth/XR anchors, 8/29 rough diffuse / white balance / XR viewport budgets, to today's compute lifecycle / prefix / texture layers. The common direction is to treat optimization, diagnostics, and compatibility work as expressive inputs rather than hidden plumbing. A promising combination: use audio FFT to drive PrefixSum bin density, trigger MultiTexture add/remove/update events, and let a white-balance lens correct only completed layers. The high-value theme is visible GPU staging: compute preparation, sort, mip generation, layer composition, and viewportScale become rhythm and gaze guidance.",
+      "links": [
+        {
+          "label": "Previous white-balance sample",
+          "url": "../outputs/2026-08-29_eon_white_balance_lens_scope.html"
+        },
+        {
+          "label": "Previous XR layer sample",
+          "url": "../outputs/2026-08-29_xr_layer_viewport_budget_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-08-30_compute_prefix_lifecycle_scope.html`。短時間で試せる理由は、実 three.js WebGPU compute を組まなくても、compute hook、prefix scan、splat sorting、layer composite の関係を1枚のfragment shaderで確認できるため。何が動くか: 3本のlifecycle lane、bin scan、深度順に変化するsplat群、MultiTexture風の正方形layer。次に足すなら、three.js の実 GaussianSplatMesh や compute reduction example から `binCount` / `prefixMs` を取り込む。2本目は `outputs/2026-08-30_npot_tangent_mipmap_probe.html`。何が動くか: tangent方向の縞、NPOT mip levelのready状態、VSM filterabilityの影、sound timingのlane smear。次に足すなら、PlayCanvas のprocedural geometryから出した tangent debug buffer と実NPOT textureを入力にする。",
+      "bodyEn": "The main prototype is `outputs/2026-08-30_compute_prefix_lifecycle_scope.html`. It is quick because compute hooks, prefix scans, splat sorting, and layer compositing can be tested in a single fragment shader before wiring real three.js WebGPU compute. It animates three lifecycle lanes, bin scans, depth-changing splats, and MultiTexture-like square layers. Next, import `binCount` / `prefixMs` from a real three.js GaussianSplatMesh or compute reduction example. The second prototype is `outputs/2026-08-30_npot_tangent_mipmap_probe.html`, animating tangent-direction stripes, NPOT mip readiness, VSM filterability shadows, and sound-timing lane smear. Next, feed a PlayCanvas procedural-geometry tangent debug buffer and a real NPOT texture.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、pointer、mode、pulse、hook timing、bin scan位置、splat depth、layer opacity、mip readiness、tangent方向、shadow filterability、timing laneを時系列データとして扱える。展示なら、来場者の手の位置や音量で compute前処理とsort密度が変わり、完成したlayerだけwhite balanceが戻る演出にできる。音楽Webなら、低域でbin密度、中域でmip bias、高域でtangent stripeを動かすと、GPU内部の段取りがVJ素材になる。XRに戻すなら、PrefixSumで混雑した領域だけviewportScaleを上げ、NPOT mipmap probeで遠景layerの解像度を落とす。前回の white balance / XR layer budget と接続すると、補正、解像度、sort、layer合成が1本のtimelineになる。",
+      "bodyEn": "Today's two samples can treat pointer, mode, pulse, hook timing, bin-scan position, splat depth, layer opacity, mip readiness, tangent direction, shadow filterability, and timing lanes as time-series data. In an installation, hand position or volume could alter compute preparation and sort density, while only completed layers return to correct white balance. On a music site, bass could drive bin density, mids mip bias, and highs tangent stripes, turning GPU staging into VJ material. In XR, PrefixSum-heavy areas could receive higher viewportScale while the NPOT mipmap probe lowers far-layer resolution. Connected to yesterday's white-balance and XR-layer budget work, correction, resolution, sort, and layer compositing become one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        },
+        {
+          "label": "Previous FFT sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        }
+      ]
+    }
+  ]
+}
