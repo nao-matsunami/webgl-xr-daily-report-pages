@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multiview Layer Resolve Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #070708; color: #f5f2ea; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 18px; right: 18px; bottom: 16px; display: flex; justify-content: space-between; gap: 14px; pointer-events: none; font-size: 12px; line-height: 1.45; color: rgba(245,242,234,.86); text-shadow: 0 1px 8px rgba(0,0,0,.78); }
+    .hud strong { color: #fff; }
+    #error { position: fixed; left: 16px; right: 16px; top: 16px; white-space: pre-wrap; color: #ffd8d8; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><strong>Multiview Layer Resolve Scope</strong><br>1 stereo layers / 2 resolve lanes / 3 white-balance pass / 4 CSP inspector pulse</div>
+    <div>Drag: eye offset and layer order<br>Click or Space: resolve pulse</div>
+  </div>
+  <pre id="error"></pre>
+  <script>
+  (() => {
+    const canvas = document.getElementById('c');
+    const errorEl = document.getElementById('error');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!gl) { errorEl.textContent = 'WebGL is not available.'; return; }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() { gl_Position = vec4(position, 0.0, 1.0); }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float sat(float v) { return clamp(v, 0.0, 1.0); }
+      float line(float v, float w) { return 1.0 - smoothstep(0.0, w, abs(v)); }
+      float circle(vec2 p, float r) { return 1.0 - smoothstep(r, r + 0.012, length(p)); }
+      float ring(vec2 p, float r, float w) { return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r)); }
+      float box(vec2 p, float s) { return 1.0 - smoothstep(s, s + 0.012, max(abs(p.x), abs(p.y))); }
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+      vec3 layerColor(float id, vec2 p) {
+        float stripe = 0.5 + 0.5 * sin((p.x + p.y) * (8.0 + id * 3.0) + time * (0.7 + id * 0.2));
+        vec3 a = vec3(0.18, 0.54, 0.78);
+        vec3 b = vec3(0.94, 0.65, 0.26);
+        vec3 c = vec3(0.72, 0.36, 0.88);
+        return mix(mix(a, b, sat(id * 0.45)), c, step(2.5, id)) * (0.55 + 0.45 * stripe);
+      }
+
+      vec3 stereoLayers(vec2 p) {
+        vec3 col = vec3(0.014, 0.017, 0.02);
+        float eyeSide = sign(p.x);
+        vec2 eyeP = p;
+        eyeP.x = abs(p.x) - 0.52;
+        float eyeOffset = pointer.x * 0.08 * eyeSide;
+        for (int i = 0; i < 4; i++) {
+          float fi = float(i);
+          vec2 q = eyeP + vec2(eyeOffset + sin(time * 0.32 + fi) * 0.035, (fi - 1.5) * 0.12 + pointer.y * 0.04);
+          float s = box(q, 0.34 - fi * 0.045);
+          float alpha = 0.22 + 0.16 * fi + 0.2 * sin(time + fi);
+          col += s * layerColor(fi, q) * alpha;
+          col += ring(q, 0.22 + fi * 0.045, 0.006) * vec3(0.85, 0.95, 0.78) * 0.32;
+        }
+        col += line(p.x, 0.008) * vec3(0.7, 0.76, 0.68);
+        col += ring(eyeP, 0.5, 0.012) * vec3(0.25, 0.38, 0.35);
+        return col;
+      }
+
+      vec3 resolveLanes(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.012, 0.017, 0.021);
+        for (int i = 0; i < 8; i++) {
+          float fi = float(i);
+          float y = -0.7 + fi * 0.2;
+          float phase = fract(time * 0.18 + fi * 0.09 + pulse * 0.28);
+          float lane = line(p.y - y, 0.018);
+          float tick = line(uv.x - phase, 0.015);
+          float msaa = 0.35 + 0.65 * hash(vec2(fi, 2.0));
+          col += lane * vec3(0.14, 0.25, 0.28);
+          col += lane * tick * mix(vec3(0.25, 0.72, 0.86), vec3(0.96, 0.75, 0.32), msaa);
+        }
+        col += ring(p - pointer * 0.65, 0.16 + pulse * 0.4, 0.014) * vec3(0.95, 0.92, 0.6);
+        return col;
+      }
+
+      vec3 whiteBalance(vec2 p) {
+        vec3 base = stereoLayers(p);
+        float kelvin = sat(pointer.y * 0.5 + 0.5);
+        vec3 cool = vec3(0.74, 0.88, 1.12);
+        vec3 warm = vec3(1.18, 0.93, 0.72);
+        vec3 balanced = base * mix(cool, warm, kelvin);
+        float lens = box(p - pointer * 0.62, 0.32 + pulse * 0.1);
+        vec2 shift = vec2(0.025, -0.018) * lens;
+        vec3 rgb = vec3(
+          stereoLayers(p + shift).r,
+          balanced.g,
+          stereoLayers(p - shift).b
+        );
+        return mix(balanced, rgb + vec3(0.05, 0.04, 0.01), lens * 0.65);
+      }
+
+      vec3 inspectorPulse(vec2 p, vec2 uv) {
+        vec3 col = resolveLanes(p, uv) * 0.75;
+        vec2 g = floor((uv + vec2(time * 0.025, 0.0)) * vec2(22.0, 12.0));
+        float nonce = step(0.78, hash(g + floor(time)));
+        vec2 local = fract(uv * vec2(22.0, 12.0)) - 0.5;
+        col += box(local, 0.35) * nonce * vec3(0.7, 0.95, 0.72) * (0.3 + pulse);
+        col += stereoLayers(p) * 0.42;
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+        vec3 col = stereoLayers(p);
+        col = mix(col, resolveLanes(p, uv), step(1.5, mode));
+        col = mix(col, whiteBalance(p), step(2.5, mode));
+        col = mix(col, inspectorPulse(p, uv), step(3.5, mode));
+        col *= smoothstep(1.5, 0.18, length(p));
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+
+    let program;
+    try {
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    } catch (error) {
+      errorEl.textContent = error.message;
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      time: gl.getUniformLocation(program, 'time'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    const state = { pointer: [0.15, 0.22], pulse: 0, mode: 1 };
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      state.pointer[1] = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+    }
+    canvas.addEventListener('pointermove', setPointer);
+    canvas.addEventListener('pointerdown', (event) => { setPointer(event); state.pulse = 1; });
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.pulse = 1;
+    });
+
+    function resize() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function render(now) {
+      resize();
+      state.pulse *= 0.93;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  })();
+  </script>
+</body>
+</html>

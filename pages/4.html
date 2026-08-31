@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 73</span>
+        <span>days: 74</span>
         <span>page: 4 / 7</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -313,6 +313,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-25">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.25</p>
+              <h2>relighting、fisheye、SOG flashlight を一枚の shader 診断に統合する</h2>
+              <p class="card-subtitle">Unify relighting, fisheye, and SOG flashlight into one shader diagnostic</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-25" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-25 は、PlayCanvas Engine v2.21.1 の MSDF coverage ramp 修正、Babylon.js 9.18.0 の Gaussian Splat texture leak 修正、PlayCanvas の GSplat renderer / relighting / fisheye docs に加え、SOG に通常ライトが効かないため screen-space flashlight や relighting texture を使う実装相談を拾い、runtime quality pressure と照明演出の接続として整理しました。追加ミニ試作は単体 WebGL の SOG Flashlight PostFX Scope です。</p>
+          <p class="description en-copy">For 2026-07-25, PlayCanvas Engine v2.21.1 MSDF coverage ramp fixes, Babylon.js 9.18.0 Gaussian Splat resize leak fixes, PlayCanvas GSplat renderer / relighting / fisheye docs, and a PlayCanvas forum thread about lighting unlit SOG scenes are connected as runtime quality pressure and lighting interaction. The added mini prototype is a standalone WebGL SOG Flashlight PostFX Scope.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">shader</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-07-25.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-07-25_sog_flashlight_postfx_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-23">
           <div class="card-top">
             <div>
@@ -562,29 +585,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-07-13.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-07-13_semantic_splat_mask_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-12">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.12</p>
-              <h2>360度splatの次は、緯度ごとの品質配分を見える化する</h2>
-              <p class="card-subtitle">After 360 splats, visualize latitude-based quality allocation</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-12" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">2026-07-12 は、three.js r185、Babylon.js 9.16.0、PlayCanvas Engine v2.20.6、SuperSplat v2.29.0 を再確認し、前日の equirectangular splat 診断を「緯度ごとの面積差と品質配分」へ進めました。新しい単体 WebGL サンプルでは、極付近で無駄になりやすい splat 密度、SPZ 風の緯度量子化、seam risk、ポインタ周辺の retained detail を同時に表示します。</p>
-          <p class="description en-copy">For 2026-07-12, I rechecked three.js r185, Babylon.js 9.16.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.29.0, then advanced yesterday's equirectangular splat diagnostic toward latitude-based area and quality allocation. The new standalone WebGL sample visualizes wasted density near the poles, SPZ-like latitude quantization, seam risk, and retained detail near the pointer.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-07-12.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-07-12_latitude_equalized_splat_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

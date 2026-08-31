@@ -1,0 +1,239 @@
+{
+  "date": "2026-08-31",
+  "headline": "VXGI、誤差駆動LOD、multiview layer resolveを見える舞台装置にする",
+  "headlineEn": "Turning VXGI, error-driven LOD, and multiview layer resolve into visible stage mechanics",
+  "summary": "three.js の VXGINode 提案、Counting Sort PrefixSum 継続、WebGPU fallback on demand、PlayCanvas の error-driven GSplat LOD と Application deprecation notes、Babylon.js の MultiTexture / white balance / WebXR layer 系を調査した。前回の compute lifecycle / prefix / texture layer から、今日は品質誤差・間接光・片目ごとの layer resolve を表現入力として扱い、本命サンプル VXGI Error LOD Cone Field と派生サンプル Multiview Layer Resolve Scope を実装した。",
+  "summaryEn": "Today covers the three.js VXGINode proposal, ongoing Counting Sort PrefixSum work, WebGPU fallback on demand, PlayCanvas error-driven GSplat LOD and Application deprecation notes, and Babylon.js MultiTexture / white balance / WebXR layer work. Building on yesterday's compute lifecycle / prefix / texture-layer theme, the focus shifts to treating quality error, indirect light, and per-eye layer resolve as expressive inputs. Two samples were implemented: VXGI Error LOD Cone Field and Multiview Layer Resolve Scope.",
+  "links": [
+    {
+      "label": "three.js PR #34402 VXGINode",
+      "url": "https://github.com/mrdoob/three.js/pull/34402"
+    },
+    {
+      "label": "three.js PR #34235 Counting Sort PrefixSum",
+      "url": "https://github.com/mrdoob/three.js/pull/34235"
+    },
+    {
+      "label": "three.js PR #34334 WebGPU fallback on demand",
+      "url": "https://github.com/mrdoob/three.js/pull/34334"
+    },
+    {
+      "label": "three.js VXGI live demo from PR",
+      "url": "https://rawcdn.githack.com/Mugen87/three.js/93fac64e9448e6955b122ae053784d0cabc77f17/examples/index.html?q=webgpu%20voxel"
+    },
+    {
+      "label": "PlayCanvas PR #9233 Error-driven GSplat LOD",
+      "url": "https://github.com/playcanvas/engine/pull/9233"
+    },
+    {
+      "label": "PlayCanvas PR #9247 Application deprecation documentation",
+      "url": "https://github.com/playcanvas/engine/pull/9247"
+    },
+    {
+      "label": "PlayCanvas PR #9262 NPOT mipmap upload and gpuSize",
+      "url": "https://github.com/playcanvas/engine/pull/9262"
+    },
+    {
+      "label": "Babylon.js PR #18822 MultiTexture",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+    },
+    {
+      "label": "Babylon.js PR #18855 white balance",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18855"
+    },
+    {
+      "label": "Babylon.js WebGPU-XR Phase 5 issue",
+      "url": "https://github.com/BabylonJS/Babylon.js/issues/18641"
+    },
+    {
+      "label": "Codrops WebGL tag",
+      "url": "https://tympanus.net/codrops/tag/webgl/"
+    },
+    {
+      "label": "Main sample: VXGI Error LOD Cone Field",
+      "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+    },
+    {
+      "label": "Derived sample: Multiview Layer Resolve Scope",
+      "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34402 は VXGINode、つまり Voxel Cone Tracing による diffuse GI を提案している。PR本文では SSGI と Light Probe Grid の中間に位置づけられ、screen-space artifact を避けながら動的ライトを扱う方向が示されている。2. three.js PR #34235 の PrefixSum は引き続き更新され、前回の compute lifecycle から「sort や scan の状態そのものを見せる」線が強い。3. PlayCanvas PR #9233 は streamed SOG / GSplat の LOD 選択を距離ではなく `coverage * error removed / splats added` で買う方式に変える。表現上は、視点距離よりも「失われる細部」を演出値にできる。4. Babylon.js PR #18822 の MultiTexture は RawTexture2DArray を使った shader-level 合成で、add/remove/insert/update できる layer が表現の時間軸になる。5. Babylon.js WebGPU-XR Phase 5 issue は capability detection、fallback、in-headset manual validation を明文化しており、XR の表現サンプルでも「対応していない状態」を演出に含める価値がある。",
+      "bodyEn": "1. three.js PR #34402 proposes VXGINode, a diffuse-GI node based on Voxel Cone Tracing. The PR positions it between SSGI and Light Probe Grid: fewer screen-space artifacts than SSGI, while supporting dynamic lighting more directly than baked probes. 2. three.js PR #34235 continues PrefixSum work, reinforcing yesterday's compute-lifecycle direction of making scan and sort state visible. 3. PlayCanvas PR #9233 changes streamed SOG / GSplat LOD selection from distance bands to buying upgrades by `coverage * error removed / splats added`; visually, quality loss can become a stronger expressive signal than camera distance. 4. Babylon.js PR #18822 MultiTexture uses RawTexture2DArray for shader-level layer composition with add/remove/insert/update operations. 5. Babylon.js WebGPU-XR Phase 5 explicitly calls out capability detection, fallback, and manual in-headset validation, making unsupported state part of the XR design surface.",
+      "links": [
+        {
+          "label": "three.js #34402",
+          "url": "https://github.com/mrdoob/three.js/pull/34402"
+        },
+        {
+          "label": "PlayCanvas #9233",
+          "url": "https://github.com/playcanvas/engine/pull/9233"
+        },
+        {
+          "label": "Babylon.js #18822",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+        },
+        {
+          "label": "Babylon.js #18641",
+          "url": "https://github.com/BabylonJS/Babylon.js/issues/18641"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日いちばん面白い一次情報は three.js #34402 の VXGI demo。voxelization、cone tracing、diffuse GI という重い内部処理が、Sponza や Cornell box のような空間で光漏れ、解像度、動的ライトの違いとして見える。PlayCanvas #9233 は見た目の作例ではないが、誤差とcoverageでLODを決める思想が強い。これは展示や音楽ビジュアルで、近い/遠いではなく「今どこに細部を買う価値があるか」を動かす発想につながる。Codrops の WebGLタグでは8/25の Three.js + GLSL mouse-following square lens が引き続き参照価値あり。pointer lens、depth relighting、TSL cluster の流れを、今日の GI cone と layer resolve に重ねると、ユーザー操作が最終色だけでなくレンダリング予算と品質配分を触る体験になる。",
+      "bodyEn": "The most useful primary example today is the VXGI demo linked from three.js #34402. Heavy internals such as voxelization, cone tracing, and diffuse GI become visible as light leaking, resolution, and dynamic-light behavior in spaces like Sponza and Cornell box. PlayCanvas #9233 is not a visual case study, but its error-and-coverage LOD allocator is conceptually strong: in installations or music visuals, the question becomes not near versus far, but where detail is worth buying now. Codrops' WebGL tag remains useful, especially the August 25 Three.js + GLSL mouse-following square lens. Combining pointer lenses, depth relighting, TSL clusters, GI cones, and layer resolve turns user input into control over quality budget, not just final color.",
+      "links": [
+        {
+          "label": "three.js VXGI live demo",
+          "url": "https://rawcdn.githack.com/Mugen87/three.js/93fac64e9448e6955b122ae053784d0cabc77f17/examples/index.html?q=webgpu%20voxel"
+        },
+        {
+          "label": "Codrops WebGL tag",
+          "url": "https://tympanus.net/codrops/tag/webgl/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「VXGI Error LOD Cone Field」。ドラッグ位置を光源と誤差の焦点にして、cone tracing 風の扇、voxel予算grid、error-driven splat LODを切り替える。クリック/Spaceで予算pulseを入れると、細部を買う領域が広がる。派生案は「Multiview Layer Resolve Scope」。Babylon.js MultiTexture、white balance、WebXR composition layer、three.js WebXR single-pass resolveの話題を、左右の目に分かれたlayer stackとして描く。pointerで eye offset と layer order を変え、完成したlayerだけwhite balance lensで戻す。次に足すなら、1本目の error score を2本目の per-eye layer opacity に渡し、高誤差領域だけ片目側の解像度やlayer数を増やす。",
+      "bodyEn": "The main idea is VXGI Error LOD Cone Field. Dragging sets both the light source and error focus, switching between cone-tracing fans, voxel-budget grids, and error-driven splat LOD. Click/Space sends a budget pulse that expands where detail is bought. The derived idea is Multiview Layer Resolve Scope, turning Babylon.js MultiTexture, white balance, WebXR composition layers, and three.js WebXR single-pass resolve into a left/right-eye layer stack. The pointer controls eye offset and layer ordering, while a white-balance lens corrects only completed layers. Next, send the first sample's error score into the second sample's per-eye layer opacity so high-error regions receive more layer or resolution budget.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "VXGIを作品に使う場合、voxel resolution、cone count、voxelization update interval、light leak量をUI値ではなく色温度、残光、粒子密度に割り当てると観客に内部コストが伝わる。GSplat LODは距離ベースから error-driven に変えると、近距離でも平坦な領域は粗く、遠距離でも細部が重要な領域は残せる。これは XR や展示で視線、手、音量をcoverageに混ぜると強い。MultiTextureは RawTexture2DArray 前提なので WebGL2+ の境界を明示する必要があるが、layer add/remove/update がそのまま拍やカット編集になる。WebGPU-XR の fallback は、単に警告表示するより、unsupported path を低解像layer、モノクロpass、遅延resolveとして見せるほうがこのプロジェクトには合う。実装時の図形は短辺基準座標で正円・正方形を保ち、歪みはeye offsetやlens効果の理由がある場所だけに限定する。",
+      "bodyEn": "For VXGI-based work, map voxel resolution, cone count, voxelization update interval, and light leaking to color temperature, afterglow, and particle density instead of plain UI values. With error-driven GSplat LOD, flat regions can stay coarse even nearby, while detail-rich areas can remain higher quality at distance; this becomes stronger in XR or installations when gaze, hands, or volume feed into coverage. MultiTexture depends on RawTexture2DArray and therefore WebGL2+, but layer add/remove/update operations naturally become beats and edits. For WebGPU-XR fallback, show unsupported paths as low-resolution layers, monochrome passes, or delayed resolve rather than plain warning text. Keep base geometry on short-edge-normalized coordinates so circles and squares remain clean; reserve distortion for eye offset and lens effects with a visible reason.",
+      "links": [
+        {
+          "label": "three.js #34402",
+          "url": "https://github.com/mrdoob/three.js/pull/34402"
+        },
+        {
+          "label": "PlayCanvas #9233",
+          "url": "https://github.com/playcanvas/engine/pull/9233"
+        },
+        {
+          "label": "Babylon.js #18822",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34402 VXGINode、#34235 PrefixSum、#34334 WebGPU fallback on demand、#34379 EON rough diffuse、PlayCanvas #9233 error-driven GSplat LOD、#9262 NPOT mipmap、#9263 VSM_32F、Babylon.js #18822 MultiTexture、#18855 white balance、#18810 KHR_materials_scatter。新規案件: PlayCanvas #9247 の Application deprecation documentation は、サンプル実装を古いApplication依存からどう移すかの運用面で重要。寝かせる案件: dependency更新、画像最適化、license casing、Observable通知修正など、今日の表現軸に直接つながらないもの。ただし production gallery の安全性に関わる CSP/Inspector は継続監視。",
+      "bodyEn": "Continue watching three.js #34402 VXGINode, #34235 PrefixSum, #34334 WebGPU fallback on demand, #34379 EON rough diffuse; PlayCanvas #9233 error-driven GSplat LOD, #9262 NPOT mipmaps, #9263 VSM_32F; and Babylon.js #18822 MultiTexture, #18855 white balance, #18810 KHR_materials_scatter. New item: PlayCanvas #9247 Application deprecation documentation matters operationally because samples should avoid locking into older app setup patterns. Sleep: dependency updates, image optimization, license casing, and Observable notification fixes unless they connect to the expression axis. Keep CSP / Inspector on watch because it affects safe diagnostic UI in the production gallery.",
+      "links": [
+        {
+          "label": "PlayCanvas #9247",
+          "url": "https://github.com/playcanvas/engine/pull/9247"
+        },
+        {
+          "label": "three.js #34334",
+          "url": "https://github.com/mrdoob/three.js/pull/34334"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-08-31_vxgi_error_lod_cone_field.html` を開く。1 は cone GI、2 は voxel budget、3 は splat LOD、4 は合成stage。ドラッグで光源と誤差焦点、クリック/Spaceでbudget pulseが動く。次に足すなら、実GSplat manifestの `lodErrors`、node coverage、splats addedをJSON化して、粒子の大きさと色へ入れる。2本目は `outputs/2026-08-31_multiview_layer_resolve_scope.html`。1 は左右目のlayer、2 はresolve lanes、3 はwhite balance pass、4 はCSP Inspector風pulse。次に足すなら WebXR viewportScale と layer count を入力にして、片目ごとに異なる解像度劣化を出す。",
+      "bodyEn": "Open `outputs/2026-08-31_vxgi_error_lod_cone_field.html` first. Mode 1 shows cone GI, 2 voxel budget, 3 splat LOD, and 4 the combined stage. Drag moves light and error focus; click/Space triggers a budget pulse. Next, feed real GSplat manifest `lodErrors`, node coverage, and splats added into particle size and color. The second sample is `outputs/2026-08-31_multiview_layer_resolve_scope.html`: 1 stereo layers, 2 resolve lanes, 3 white-balance pass, and 4 CSP Inspector-like pulse. Next, feed WebXR viewportScale and layer count to show per-eye resolution degradation.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34402/#34235/#34334、PlayCanvas #9233/#9247/#9262/#9263、Babylon.js #18822/#18855/#18641、Codrops WebGLタグ。アイデア検討: 8/30 の compute/prefix/layer を、今日は GI cone、誤差駆動LOD、multiview resolveへ拡張。サンプル実装: 本命 `2026-08-31_vxgi_error_lod_cone_field.html`、派生 `2026-08-31_multiview_layer_resolve_scope.html`。結果の検証: JSON parse、HTML parse、script構文、簡易GLSL予約語チェック、gallery build、publishを実行する。短期で試すものは error score を粒子LODにする表現。中長期で育てるものは、GI/LOD/XR layer budget を同じtimelineで制御する「quality choreography」。",
+      "bodyEn": "Collection: three.js #34402/#34235/#34334, PlayCanvas #9233/#9247/#9262/#9263, Babylon.js #18822/#18855/#18641, and the Codrops WebGL tag. Ideation: extend 8/30 compute/prefix/layer work into GI cones, error-driven LOD, and multiview resolve. Prototypes: `2026-08-31_vxgi_error_lod_cone_field.html` and `2026-08-31_multiview_layer_resolve_scope.html`. Verification: JSON parse, HTML parse, script syntax, simple GLSL reserved-word check, gallery build, and publish. Short-term: use error scores as particle LOD. Long-term: quality choreography, where GI, LOD, and XR layer budget are controlled on one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/25以降の流れは renderer lifecycle、sample/readiness、FFT/depth、white balance/XR budget、compute lifecycle/prefix、そして今日の GI/LOD/layer resolve へ伸びている。共通項は「見えない品質判断を可視化する」こと。組み合わせ候補は、FFT低域で voxel cone count、中域で GSplat error budget、高域で MultiTexture layer update を動かし、pointer lensでwhite balanceを戻す構成。育てる価値が高いテーマは、画質を落とす/戻す判断を演出の文法にすること。単なる最適化ログではなく、観客が触ると間接光、粒子密度、片目ごとのresolveが変わる体験にできる。",
+      "bodyEn": "Since 8/25, the thread has moved through renderer lifecycle, sample/readiness, FFT/depth, white balance/XR budget, compute lifecycle/prefix, and now GI/LOD/layer resolve. The shared theme is making invisible quality decisions visible. A promising combination: bass drives voxel cone count, mids drive GSplat error budget, highs trigger MultiTexture layer updates, and a pointer lens restores white balance. The theme worth growing is quality degradation and recovery as visual grammar. Instead of optimization logs, viewers can touch indirect light, particle density, and per-eye resolve behavior.",
+      "links": [
+        {
+          "label": "Previous compute sample",
+          "url": "../outputs/2026-08-30_compute_prefix_lifecycle_scope.html"
+        },
+        {
+          "label": "Previous NPOT sample",
+          "url": "../outputs/2026-08-30_npot_tangent_mipmap_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-08-31_vxgi_error_lod_cone_field.html`。短時間で試せる理由は、実VXGIを組まなくても cone tracing、voxel budget、error-driven LOD の関係をfragment shaderの状態遷移として確認できるため。何が動くか: cone GI風の扇、voxel予算grid、error scoreで大きさと色が変わるsplat、合成stage。次に足すなら、three.js VXGI demoの設定値や PlayCanvas SOG manifest の誤差値を実入力にする。2本目は `outputs/2026-08-31_multiview_layer_resolve_scope.html`。何が動くか: 左右目のlayer stack、MSAA/XR resolve風lane、white balance lens、CSP Inspector風のnonce pulse。次に足すなら、実WebXRが使える端末で片目ごとの viewportScale と composition layer limits をログ化して入れる。",
+      "bodyEn": "The main prototype is `outputs/2026-08-31_vxgi_error_lod_cone_field.html`. It is quick because cone tracing, voxel budget, and error-driven LOD can be tested as fragment-shader state transitions before implementing real VXGI. It animates cone-GI fans, voxel-budget grids, splats whose size and color respond to error score, and a combined stage. Next, feed real settings from the three.js VXGI demo or PlayCanvas SOG manifest error values. The second prototype is `outputs/2026-08-31_multiview_layer_resolve_scope.html`, animating left/right-eye layer stacks, MSAA/XR resolve lanes, a white-balance lens, and CSP Inspector-like nonce pulses. Next, log per-eye viewportScale and composition-layer limits on a real WebXR device.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本から取れるデータは、pointer位置、mode、pulse、cone方向、voxel cellの選択状態、LOD value、splat半径、eye offset、layer opacity、resolve phase、white balance lensの範囲。音反応では、低域をvoxel resolution、中域をLOD budget、高域をlayer insert/removeにすると、GPU品質制御がVJ素材になる。カメラやMediaPipeと組み合わせるなら、手の距離をcoverage、顔の向きをeye offset、口の開閉をresolve pulseへ入れる。XRでは、視線近傍だけGI cone数とsplat LODを上げ、周辺視野はMultiTextureの低解像layerへ落とす。過去案との接続では、8/27のFFT、8/29のwhite balance lens、8/30のPrefixSumを今日のerror budgetへ接続すると、音、補正、sort、間接光が一本の操作体系になる。",
+      "bodyEn": "Today's two samples expose pointer position, mode, pulse, cone direction, voxel-cell selection, LOD value, splat radius, eye offset, layer opacity, resolve phase, and white-balance lens bounds as data. For audio response, map bass to voxel resolution, mids to LOD budget, and highs to layer insert/remove so GPU quality control becomes VJ material. With camera or MediaPipe, hand distance can feed coverage, face direction eye offset, and mouth opening resolve pulse. In XR, raise GI cone count and splat LOD near gaze while pushing peripheral vision into lower-resolution MultiTexture layers. Connected to prior work, 8/27 FFT, 8/29 white-balance lens, and 8/30 PrefixSum can all drive today's error budget, creating one interaction system for audio, correction, sorting, and indirect light.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        },
+        {
+          "label": "Previous FFT sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        }
+      ]
+    }
+  ]
+}

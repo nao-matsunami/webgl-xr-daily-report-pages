@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VXGI Error LOD Cone Field</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #050706; color: #eef6ee; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 18px; right: 18px; bottom: 16px; display: flex; justify-content: space-between; gap: 14px; pointer-events: none; font-size: 12px; line-height: 1.45; color: rgba(238,246,238,.86); text-shadow: 0 1px 8px rgba(0,0,0,.78); }
+    .hud strong { color: #fff; }
+    #error { position: fixed; left: 16px; right: 16px; top: 16px; white-space: pre-wrap; color: #ffd8d8; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div><strong>VXGI Error LOD Cone Field</strong><br>1 cone GI / 2 voxel budget / 3 splat LOD / 4 combined stage</div>
+    <div>Drag: light and error focus<br>Click or Space: budget pulse</div>
+  </div>
+  <pre id="error"></pre>
+  <script>
+  (() => {
+    const canvas = document.getElementById('c');
+    const errorEl = document.getElementById('error');
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!gl) { errorEl.textContent = 'WebGL is not available.'; return; }
+
+    const vertexSource = `
+      attribute vec2 position;
+      void main() { gl_Position = vec4(position, 0.0, 1.0); }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float sat(float v) { return clamp(v, 0.0, 1.0); }
+      float line(float v, float w) { return 1.0 - smoothstep(0.0, w, abs(v)); }
+      float circle(vec2 p, float r) { return 1.0 - smoothstep(r, r + 0.012, length(p)); }
+      float ring(vec2 p, float r, float w) { return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r)); }
+      float box(vec2 p, float s) { return 1.0 - smoothstep(s, s + 0.012, max(abs(p.x), abs(p.y))); }
+      float tri(vec2 p, float s) {
+        p.y += s * 0.3;
+        float a = atan(p.x, p.y) + 3.14159265;
+        float r = length(p);
+        float edge = cos(floor(0.5 + a / 2.0943951) * 2.0943951 - a) * r;
+        return 1.0 - smoothstep(s, s + 0.012, edge);
+      }
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(41.7, 289.3))) * 43758.5453); }
+
+      vec3 coneGi(vec2 p) {
+        vec2 light = pointer * 0.72;
+        vec3 col = vec3(0.015, 0.021, 0.018);
+        for (int i = 0; i < 6; i++) {
+          float fi = float(i);
+          float a = fi * 1.04719755 + time * 0.12;
+          vec2 dir = vec2(cos(a), sin(a));
+          float along = dot(p - light, dir);
+          float side = abs(dot(p - light, vec2(-dir.y, dir.x)));
+          float cone = smoothstep(0.0, 0.08, along) * (1.0 - smoothstep(0.04, 0.34 + fi * 0.025, side + along * 0.16));
+          float leak = 1.0 - smoothstep(0.18, 0.9, along);
+          col += cone * leak * mix(vec3(0.95, 0.68, 0.34), vec3(0.28, 0.78, 0.72), fi / 5.0) * 0.32;
+        }
+        col += circle(p - light, 0.09 + pulse * 0.12) * vec3(1.0, 0.88, 0.54);
+        col += ring(p - light, 0.22 + pulse * 0.5, 0.018) * vec3(0.7, 0.95, 0.86);
+        return col;
+      }
+
+      vec3 voxelBudget(vec2 p, vec2 uv) {
+        vec3 col = vec3(0.012, 0.018, 0.022);
+        vec2 g = uv * vec2(14.0, 9.0);
+        vec2 cell = floor(g);
+        vec2 local = fract(g) - 0.5;
+        float h = hash(cell);
+        float cost = sat(0.2 + h * 0.7 + 0.2 * sin(time + cell.x));
+        float selected = step(cost, sat(pointer.y * 0.5 + 0.58 + pulse * 0.25));
+        float sq = box(local, 0.38);
+        col += sq * mix(vec3(0.12, 0.22, 0.26), vec3(0.33, 0.76, 0.68), selected) * (0.55 + cost);
+        col += line(local.x, 0.018) * line(local.y, 0.38) * vec3(0.95, 0.72, 0.32) * cost;
+        col += line(uv.x - sat(pointer.x * 0.5 + 0.5), 0.01) * vec3(0.92, 0.92, 0.55);
+        return col;
+      }
+
+      vec3 lodSplat(vec2 p) {
+        vec3 col = vec3(0.011, 0.016, 0.019);
+        for (int i = 0; i < 32; i++) {
+          float fi = float(i);
+          vec2 seed = vec2(fract(fi * 0.3819), fract(fi * 0.7261));
+          vec2 pos = (seed * 2.0 - 1.0) * 0.86;
+          float coverage = sat(1.0 - length(pos - pointer * 0.55));
+          float err = sat(hash(seed * 19.0) + 0.25 * sin(time * 0.8 + fi));
+          float value = coverage * err;
+          float level = floor(value * 4.0);
+          float r = mix(0.025, 0.085, value);
+          float dotv = circle(p - pos, r);
+          vec3 c = mix(vec3(0.16, 0.35, 0.72), vec3(0.98, 0.52, 0.30), level / 3.0);
+          col += dotv * c * (0.55 + value);
+          col += ring(p - pos, r + 0.015, 0.006) * vec3(0.8, 0.93, 0.75) * step(2.0, level);
+        }
+        col += ring(p - pointer * 0.55, 0.34 + pulse * 0.22, 0.012) * vec3(0.95, 0.92, 0.58);
+        return col;
+      }
+
+      vec3 combined(vec2 p, vec2 uv) {
+        vec3 col = coneGi(p) * 0.75 + lodSplat(p) * 0.95;
+        float mask = tri(p - vec2(0.0, -0.03), 0.72);
+        col = mix(col * 0.55, col + vec3(0.08, 0.04, 0.0), mask * 0.32);
+        col += voxelBudget(p, uv) * 0.34;
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+        vec3 col = coneGi(p);
+        col = mix(col, voxelBudget(p, uv), step(1.5, mode));
+        col = mix(col, lodSplat(p), step(2.5, mode));
+        col = mix(col, combined(p, uv), step(3.5, mode));
+        float vignette = smoothstep(1.55, 0.2, length(p));
+        col *= vignette;
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+
+    let program;
+    try {
+      program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    } catch (error) {
+      errorEl.textContent = error.message;
+      return;
+    }
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      time: gl.getUniformLocation(program, 'time'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    const state = { pointer: [0.22, 0.18], pulse: 0, mode: 1 };
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer[0] = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      state.pointer[1] = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+    }
+    canvas.addEventListener('pointermove', setPointer);
+    canvas.addEventListener('pointerdown', (event) => { setPointer(event); state.pulse = 1; });
+    window.addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') state.mode = Number(event.key);
+      if (event.code === 'Space') state.pulse = 1;
+    });
+
+    function resize() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.floor(innerWidth * dpr);
+      const h = Math.floor(innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+
+    function render(now) {
+      resize();
+      state.pulse *= 0.93;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, now * 0.001);
+      gl.uniform2f(uniforms.pointer, state.pointer[0], state.pointer[1]);
+      gl.uniform1f(uniforms.pulse, state.pulse);
+      gl.uniform1f(uniforms.mode, state.mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  })();
+  </script>
+</body>
+</html>
