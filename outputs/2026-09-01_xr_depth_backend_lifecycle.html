@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-09-01 XR Depth Backend Lifecycle</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #070806; color: #f3f1e9; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: 720px; font-size: 12px; line-height: 1.55; color: rgba(243,241,233,.84); text-shadow: 0 1px 8px #000; }
+    .hud b { color: #fff; }
+    .error { position: fixed; left: 16px; right: 16px; bottom: 14px; color: #ffb4a9; white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud"><b>XR Depth Backend Lifecycle</b><br>1 depth pause/resume / 2 WebGPU XR fallback / 3 physics backend / 4 CDN purge queue<br>Drag: capability and active state. Click or Space: lifecycle pulse.</div>
+<pre class="error" id="error"></pre>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const errorEl = document.getElementById('error');
+  const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+  if (!gl) {
+    errorEl.textContent = 'WebGL is not available.';
+    return;
+  }
+
+  const vert = `
+attribute vec2 position;
+void main() {
+  gl_Position = vec4(position, 0.0, 1.0);
+}`;
+
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+uniform float mode;
+uniform float pulse;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(41.13, 289.7))) * 18453.913);
+}
+
+float box(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float fill(float d) {
+  return 1.0 - smoothstep(0.0, 0.014, d);
+}
+
+float stroke(float d, float w) {
+  return 1.0 - smoothstep(w, w + 0.012, abs(d));
+}
+
+vec3 warm(float x) {
+  return mix(vec3(0.1, 0.22, 0.32), vec3(1.0, 0.72, 0.28), smoothstep(0.0, 1.0, x));
+}
+
+vec3 depthLifecycle(vec2 p, vec2 m, float t) {
+  vec3 col = vec3(0.03, 0.04, 0.04);
+  float active = step(0.5, m.y + 0.08 * sin(t));
+  float paused = step(0.58, fract(t * 0.12 + m.x * 0.5));
+  for (int i = 0; i < 7; i++) {
+    float fi = float(i);
+    vec2 c = vec2((fi - 3.0) * 0.26, 0.0);
+    float phase = fract(t * 0.18 + fi * 0.11 + pulse * 0.3);
+    float ring = stroke(length(p - c) - (0.08 + phase * 0.11), 0.01);
+    float core = fill(length(p - c) - 0.055);
+    float lifecycle = mix(active, 1.0 - paused, step(3.5, fi));
+    col += warm(lifecycle) * (ring * 0.85 + core * 0.38);
+  }
+  float plane = stroke(p.y + 0.42 + 0.045 * sin(p.x * 8.0 + t), 0.012);
+  float occlusion = smoothstep(0.0, 0.45, sin(p.x * 9.0 + t) * sin(p.y * 7.0 - t * 0.7));
+  col += plane * mix(vec3(0.25, 0.35, 0.38), vec3(0.78, 1.0, 0.72), active);
+  col *= 0.78 + 0.34 * occlusion * active * (1.0 - paused);
+  col += paused * vec3(0.7, 0.14, 0.12) * stroke(abs(p.x) - 0.55, 0.01);
+  return col;
+}
+
+vec3 xrFallback(vec2 p, vec2 m, float t) {
+  vec3 col = vec3(0.025, 0.028, 0.04);
+  for (int eye = 0; eye < 2; eye++) {
+    float fe = float(eye);
+    vec2 center = vec2((fe - 0.5) * 0.68, 0.04);
+    vec2 q = p - center;
+    float shell = stroke(length(q) - 0.34, 0.015);
+    float stereo = fill(box(q, vec2(0.24, 0.16)));
+    float cap = step(0.34 + fe * 0.17, m.x);
+    float rollback = step(0.82, fract(t * 0.19 + fe * 0.21 + m.y));
+    vec3 good = vec3(0.17, 0.72, 0.96);
+    vec3 fallback = vec3(0.95, 0.44, 0.18);
+    col += mix(fallback, good, cap) * (shell * 0.9 + stereo * 0.18);
+    col += rollback * vec3(1.0, 0.15, 0.35) * stroke(q.y + 0.02 * sin(q.x * 18.0 + t * 2.0), 0.01);
+  }
+  float diag = stroke(p.x + p.y + sin(t * 0.4) * 0.2, 0.01);
+  return col + diag * vec3(0.65, 0.85, 1.0);
+}
+
+vec3 physicsBackend(vec2 p, vec2 m, float t) {
+  vec3 col = vec3(0.025, 0.028, 0.026);
+  for (int i = 0; i < 20; i++) {
+    float fi = float(i);
+    float lane = mod(fi, 4.0);
+    float row = floor(fi / 4.0);
+    vec2 base = vec2((lane - 1.5) * 0.34, (row - 2.0) * 0.22);
+    float backend = step(lane / 4.0, m.x);
+    float bounce = abs(sin(t * (0.7 + lane * 0.17) + fi));
+    vec2 c = base + vec2(0.0, (bounce - 0.5) * 0.08 * backend);
+    float d = length(p - c) - 0.055;
+    float contact = stroke(abs(p.y - c.y + 0.08), 0.008) * smoothstep(0.45, 0.95, bounce);
+    col += mix(vec3(0.25, 0.32, 0.34), vec3(0.86, 0.84, 0.38), backend) * fill(d);
+    col += contact * vec3(0.2, 0.92, 0.66);
+  }
+  float install = stroke(box(p - vec2(0.0, -0.62), vec2(0.72 * m.x + 0.1, 0.035)), 0.014);
+  return col + install * vec3(0.95, 0.7, 0.25);
+}
+
+vec3 purgeQueue(vec2 p, vec2 m, float t) {
+  vec3 col = vec3(0.025, 0.026, 0.03);
+  for (int i = 0; i < 24; i++) {
+    float fi = float(i);
+    vec2 c = vec2(-0.78 + mod(fi, 8.0) * 0.22, -0.32 + floor(fi / 8.0) * 0.32);
+    float waitFlag = step(0.6, hash(vec2(fi, 2.0)) + 0.18 * sin(t + fi));
+    float nonBlocking = step(fi / 24.0, fract(t * 0.12 + m.x));
+    float d = box(p - c, vec2(0.072));
+    col += mix(vec3(0.78, 0.18, 0.16), vec3(0.18, 0.78, 0.92), nonBlocking) * fill(d);
+    col += waitFlag * (1.0 - nonBlocking) * vec3(1.0, 0.58, 0.2) * stroke(d, 0.01);
+  }
+  float gateway = stroke(length(p - vec2(0.78, 0.0)) - (0.18 + 0.08 * sin(t + pulse)), 0.014);
+  return col + gateway * vec3(0.9, 0.95, 0.62);
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 uv = gl_FragCoord.xy / resolution;
+  vec2 m = pointer;
+  float vignette = smoothstep(1.52, 0.2, length(p));
+  vec3 c1 = depthLifecycle(p, m, time);
+  vec3 c2 = xrFallback(p, m, time);
+  vec3 c3 = physicsBackend(p, m, time);
+  vec3 c4 = purgeQueue(p, m, time);
+  float s1 = 1.0 - step(1.5, mode);
+  float s2 = step(1.5, mode) * (1.0 - step(2.5, mode));
+  float s3 = step(2.5, mode) * (1.0 - step(3.5, mode));
+  float s4 = step(3.5, mode);
+  vec3 color = c1 * s1 + c2 * s2 + c3 * s3 + c4 * s4;
+  float pulseWave = exp(-pulse * 1.4) * stroke(length(p) - pulse * 1.25, 0.018);
+  color += pulseWave * vec3(0.65, 0.95, 0.74);
+  color += 0.025 * sin((uv.x + uv.y + time * 0.04) * 700.0);
+  gl_FragColor = vec4(pow(max(color * vignette, vec3(0.0)), vec3(0.9)), 1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(shader));
+    }
+    return shader;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+  } catch (err) {
+    errorEl.textContent = err.message;
+    return;
+  }
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const pos = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    time: gl.getUniformLocation(program, 'time'),
+    mode: gl.getUniformLocation(program, 'mode'),
+    pulse: gl.getUniformLocation(program, 'pulse')
+  };
+
+  let mode = 1;
+  let pointer = [0.45, 0.62];
+  let pulseStart = -10;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(innerWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(innerHeight * dpr));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  function setPointer(event) {
+    const rect = canvas.getBoundingClientRect();
+    pointer = [
+      Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height))
+    ];
+  }
+  addEventListener('resize', resize);
+  addEventListener('pointermove', setPointer);
+  addEventListener('pointerdown', (event) => { setPointer(event); pulseStart = performance.now() / 1000; });
+  addEventListener('keydown', (event) => {
+    if (event.key >= '1' && event.key <= '4') mode = Number(event.key);
+    if (event.code === 'Space') pulseStart = performance.now() / 1000;
+  });
+  resize();
+  function frame(now) {
+    const t = now / 1000;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.time, t);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.uniform1f(uniforms.pulse, Math.max(0, t - pulseStart));
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

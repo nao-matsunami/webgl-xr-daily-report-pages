@@ -1,0 +1,267 @@
+{
+  "date": "2026-09-01",
+  "headline": "packed lane、dispatch index、XR depth lifecycleを触れる品質制御にする",
+  "headlineEn": "Turning packed lanes, dispatch indices, and XR depth lifecycle into tactile quality controls",
+  "summary": "three.js の TSL packed 4x8 integer operations、IndexNode JSDoc、boolean-vector mix / ternary、SunLight の location + datetime、GaussianSplatGroup 継続、PlayCanvas の GSplat LOD mode / non-uniform scale sort / physicsWorld injection、Babylon.js の WebGPU XR hardening / WebXR depth sensing lifecycle / MultiTexture / white balance / CDN purge を調査した。昨日の VXGI / error-driven LOD / multiview resolve から、今日は packed byte、dispatch index、depth active state、backend selection を表現入力として扱い、本命サンプル Packed Lane Dispatch Scope と派生サンプル XR Depth Backend Lifecycle を実装した。",
+  "summaryEn": "Today covers three.js TSL packed 4x8 integer operations, IndexNode docs, boolean-vector mix / ternary, location+datetime SunLight, ongoing GaussianSplatGroup work, PlayCanvas GSplat LOD mode / non-uniform scale sort / physicsWorld injection, and Babylon.js WebGPU XR hardening / WebXR depth sensing lifecycle / MultiTexture / white balance / CDN purge. Building on yesterday's VXGI / error-driven LOD / multiview resolve theme, the focus shifts to packed bytes, dispatch indices, depth active state, and backend selection as expressive inputs. Two samples were implemented: Packed Lane Dispatch Scope and XR Depth Backend Lifecycle.",
+  "links": [
+    {
+      "label": "three.js PR #34412 TSL packed 4x8 integer operations",
+      "url": "https://github.com/mrdoob/three.js/pull/34412"
+    },
+    {
+      "label": "three.js PR #34413 IndexNode JSDoc",
+      "url": "https://github.com/mrdoob/three.js/pull/34413"
+    },
+    {
+      "label": "three.js PR #34394 boolean-vector mix and ternary",
+      "url": "https://github.com/mrdoob/three.js/pull/34394"
+    },
+    {
+      "label": "three.js PR #34410 SunLight location + date time",
+      "url": "https://github.com/mrdoob/three.js/pull/34410"
+    },
+    {
+      "label": "three.js PR #34290 GaussianSplatGroup",
+      "url": "https://github.com/mrdoob/three.js/pull/34290"
+    },
+    {
+      "label": "PlayCanvas PR #9266 AppOptions.physicsWorld",
+      "url": "https://github.com/playcanvas/engine/pull/9266"
+    },
+    {
+      "label": "PlayCanvas PR #9267 GSplat LOD mode and detail falloff",
+      "url": "https://github.com/playcanvas/engine/pull/9267"
+    },
+    {
+      "label": "PlayCanvas PR #9268 non-uniform GSplat CPU sort",
+      "url": "https://github.com/playcanvas/engine/pull/9268"
+    },
+    {
+      "label": "Babylon.js PR #18858 WebGPU XR hardening",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18858"
+    },
+    {
+      "label": "Babylon.js PR #18842 WebXR depth sensing lifecycle controls",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18842"
+    },
+    {
+      "label": "Babylon.js PR #18859 CDN purge wait fix",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18859"
+    },
+    {
+      "label": "Babylon.js release 9.23.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.23.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Packed Lane Dispatch Scope",
+      "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+    },
+    {
+      "label": "Derived sample: XR Depth Backend Lifecycle",
+      "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34412 は WGSL の packed_4x8_integer_dot_product 拡張由来の8つの組み込み操作を TSL から扱う提案。4つの8bit lane をまとめて扱えるので、色、法線、分類、MLP風の軽い特徴量を「詰めて動かす」表現に直結する。2. three.js PR #34394 は TSL の `select()` を control-flow 寄りの `ternary()` と per-component の `mix()` に分ける流れ。packed vec4 や bvec lane の選択が表現上も実装上も明確になる。3. three.js PR #34413 は IndexNode JSDoc 更新で、compute dispatch 内の invocation built-in の読み方を明確にするもの。これは shader 内の `instanceIndex` / dispatch index を視覚化するサンプルと相性が良い。4. PlayCanvas PR #9267/#9268 は GSplat LOD を error/distance mode で選べるようにしつつ、非一様スケール時の CPU sort 誤差を直す流れ。LOD と sort error を別々の表現値にできる。5. Babylon.js PR #18858/#18842 は WebGPU XR と depth sensing lifecycle を堅くする更新。depthActive、pause/resume、fallback、headset validation を、XR表現の状態遷移として扱える。",
+      "bodyEn": "1. three.js PR #34412 proposes TSL access to eight built-ins from WGSL's packed_4x8_integer_dot_product extension. Four 8-bit lanes can be packed together, which directly supports visuals where color, normals, classes, or lightweight MLP-like features are moved as compressed lanes. 2. three.js PR #34394 separates TSL's former `select()` usage into control-flow-like `ternary()` and per-component `mix()`, making packed vec4 and bvec lane selection clearer. 3. three.js PR #34413 updates IndexNode JSDoc so invocation built-ins inside compute dispatches are easier to infer. 4. PlayCanvas PR #9267/#9268 add GSplat LOD mode control and fix CPU sort errors for non-uniformly scaled splats, splitting LOD budget and sort error into separate expression values. 5. Babylon.js PR #18858/#18842 harden WebGPU XR and depth sensing lifecycle, making depthActive, pause/resume, fallback, and headset validation useful state transitions for XR visuals.",
+      "links": [
+        {
+          "label": "three.js #34412",
+          "url": "https://github.com/mrdoob/three.js/pull/34412"
+        },
+        {
+          "label": "three.js #34394",
+          "url": "https://github.com/mrdoob/three.js/pull/34394"
+        },
+        {
+          "label": "PlayCanvas #9267",
+          "url": "https://github.com/playcanvas/engine/pull/9267"
+        },
+        {
+          "label": "PlayCanvas #9268",
+          "url": "https://github.com/playcanvas/engine/pull/9268"
+        },
+        {
+          "label": "Babylon.js #18858",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18858"
+        },
+        {
+          "label": "Babylon.js #18842",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18842"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の注目は three.js #34412 と #34394 の組み合わせ。どちらも派手な作例ではないが、packed lane と per-component selection が整うと、GPU内の小さな判断を見えるレイヤーとして出しやすくなる。昨日の VXGI cone や GSplat error LOD は「どこに品質を買うか」だったが、今日は「買った品質をどの lane に詰め、どの component だけ切り替えるか」に進められる。PlayCanvas #9267 は `error` と `distance` の LOD mode を明示する点が良い。展示やVJでは、観客に近いから細かいのではなく、音や視線で重要になったから細かい、というルールを作れる。Babylon.js #18858 は WebGPU XR の fallback と実機検証まで含めており、失敗状態・未対応状態を作品の診断表示として演出する根拠になる。Codrops Creative Hub では Pointer Square Lens Distortion、Relighting Images、Interactive 3D Cluster など、pointer lens、depth、TSL系が続いており、内部状態をUIではなく視覚効果として触らせる流れと一致している。",
+      "bodyEn": "The strongest pairing today is three.js #34412 and #34394. They are not flashy demos, but packed lanes and per-component selection make small GPU-side decisions easier to expose as visible layers. Yesterday's VXGI cones and GSplat error LOD asked where quality should be bought; today's direction asks which packed lane receives that quality and which component switches. PlayCanvas #9267 is useful because it makes `error` versus `distance` LOD mode explicit. For installations and VJ work, detail can appear because sound or gaze made it important, not merely because it is close. Babylon.js #18858 includes fallback and physical headset validation for WebGPU XR, giving a production basis for showing unsupported or failed states as diagnostic visuals. Codrops Creative Hub continues to show pointer lens, depth, and TSL examples, matching the larger move from UI sliders to touchable visual effects.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Pointer Square Lens Distortion with RGB Shift",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Relighting Images with Three.js",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Packed Lane Dispatch Scope」。4つの8bit lane を色・強度・分類・エラー値として扱い、pointerで選択 lane を変える。mode 1 は packed bytes、mode 2 は bvec mix、mode 3 は dispatch index、mode 4 は GaussianSplatGroup / non-uniform sort error 風の粒子フィールド。クリック/Spaceで repack pulse が走る。派生案は「XR Depth Backend Lifecycle」。Babylon.js の depthActive / pauseDepthSensingAsync / resumeDepthSensingAsync、WebGPU XR fallback、PlayCanvas physicsWorld injection、Babylon CDN purge の non-blocking 化を、state machine として描く。次に足すなら、1本目の lane mask を2本目の depth active state に渡し、depthが一時停止している間だけ packed lane の一部を凍結する。",
+      "bodyEn": "The main idea is Packed Lane Dispatch Scope. Four 8-bit lanes act as color, intensity, class, and error values; the pointer changes the selected lane. Mode 1 shows packed bytes, mode 2 bvec mix, mode 3 dispatch indices, and mode 4 a GaussianSplatGroup / non-uniform sort-error particle field. Click/Space triggers a repack pulse. The derived idea is XR Depth Backend Lifecycle. Babylon.js depthActive / pauseDepthSensingAsync / resumeDepthSensingAsync, WebGPU XR fallback, PlayCanvas physicsWorld injection, and Babylon CDN purge non-blocking behavior are drawn as a state machine. Next, pass the first sample's lane mask into the second sample's depth active state so selected packed lanes freeze while depth sensing is paused.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "packed 4x8 integer は WebGPU/WGSL 拡張前提の話なので、WebGLサンプルでは実命令ではなく lane 構造だけを先に試すのが現実的。実装時は、pack/unpack、signed/unsigned、dot product、clamp、byte layout、sign extension のテスト観点をそのまま可視化に使える。boolean-vector `mix()` は、vec4 の各componentで別の branch を選びたいときの表現力が高い。GLSL/WebGLでは float vector は native boolean-vector mix、int/uint/bool は component-wise ternary helper という差が出るため、デバッグ表示では componentごとに色を分けるとよい。IndexNode / invocation built-in は、dispatch grid、local index、workgroup index を HUD ではなく格子や輪として表示すると、computeの段取りが作品になる。XR depth lifecycle は、depthActive が false のruntimeや unsupported pause/resume を例外で終わらせず、低解像・モノクロ・凍結layerとして見せるのがこのプロジェクト向き。PlayCanvas physicsWorld injection はグラフィックス更新ではないが、backend選択が明示されるので、物理反応の質感を Ammo / Null / future backend の差として演出しやすい。",
+      "bodyEn": "Packed 4x8 integer work depends on WebGPU/WGSL language-extension support, so for WebGL samples it is pragmatic to prototype the lane structure rather than the real instruction. The implementation test topics themselves become visualization inputs: pack/unpack, signed/unsigned behavior, dot product, clamp, byte layout, and sign extension. Boolean-vector `mix()` is expressive when different vec4 components need different branches. Since GLSL/WebGL handles float vectors natively but int/uint/bool may need component-wise ternary helpers, component-colored debug output is useful. IndexNode / invocation built-ins can make dispatch grids, local indices, and workgroup indices visible as geometry. XR depth lifecycle should not end at exceptions when depthActive is false or pause/resume is unsupported; show it as low-resolution, monochrome, or frozen layers. PlayCanvas physicsWorld injection is not a graphics feature, but explicit backend selection makes Ammo / Null / future backend feel differences available as interaction material.",
+      "links": [
+        {
+          "label": "three.js #34412",
+          "url": "https://github.com/mrdoob/three.js/pull/34412"
+        },
+        {
+          "label": "three.js #34413",
+          "url": "https://github.com/mrdoob/three.js/pull/34413"
+        },
+        {
+          "label": "Babylon.js #18842",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18842"
+        },
+        {
+          "label": "PlayCanvas #9266",
+          "url": "https://github.com/playcanvas/engine/pull/9266"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34412 packed 4x8 integer、#34394 boolean-vector mix、#34413 IndexNode、#34290 GaussianSplatGroup、#34235 PrefixSum、PlayCanvas #9267/#9268/#9233 GSplat LOD/sort、Babylon.js #18858 WebGPU XR、#18842 depth lifecycle、#18822 MultiTexture、#18855 white balance。新規案件: three.js #34410 の location + date time SunLight は、時間・場所・天候データを照明演出へ入れる軸として中長期で面白い。PlayCanvas #9266 physicsWorld は、カードUIではない体感差分の入力として検討。寝かせる案件: Babylon #18859 CDN purge や CI/CD trust boundary は直接の画作りから遠い。ただし publish pipeline の待ち時間や失敗状態を見える化する派生表現には使える。",
+      "bodyEn": "Continue watching three.js #34412 packed 4x8 integer, #34394 boolean-vector mix, #34413 IndexNode, #34290 GaussianSplatGroup, #34235 PrefixSum; PlayCanvas #9267/#9268/#9233 GSplat LOD/sort; and Babylon.js #18858 WebGPU XR, #18842 depth lifecycle, #18822 MultiTexture, #18855 white balance. New item: three.js #34410 location + datetime SunLight is promising for a medium-term lighting system driven by time, place, and weather data. PlayCanvas #9266 physicsWorld is worth exploring as an input for tactile backend differences. Sleep: Babylon #18859 CDN purge and CI/CD trust boundary are far from direct visual work, though publish waits and failure states can become derived diagnostic visuals.",
+      "links": [
+        {
+          "label": "three.js #34410",
+          "url": "https://github.com/mrdoob/three.js/pull/34410"
+        },
+        {
+          "label": "Babylon.js #18859",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18859"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-01_packed_lane_dispatch_scope.html` を開く。1 は packed bytes、2 は boolean-vector mix、3 は dispatch index、4 は non-uniform GSplat sort error。ドラッグで lane mask と workgroup phase、クリック/Spaceで repack pulse が動く。次に足すなら、実WebGPUで packed_4x8_integer_dot_product 対応可否を検出し、対応端末では実 pack/unpack の値、非対応端末では shader内の疑似laneを表示する。2本目は `outputs/2026-09-01_xr_depth_backend_lifecycle.html`。1 は depth pause/resume、2 は WebGPU XR fallback、3 は physics backend、4 は CDN purge queue。次に足すなら、WebXR depthActive と pause/resume の結果ログを JSON 化し、depth停止中だけ scene layer を凍結する。",
+      "bodyEn": "Open `outputs/2026-09-01_packed_lane_dispatch_scope.html` first. Mode 1 shows packed bytes, 2 boolean-vector mix, 3 dispatch indices, and 4 non-uniform GSplat sort error. Drag changes the lane mask and workgroup phase; click/Space triggers a repack pulse. Next, detect real WebGPU packed_4x8_integer_dot_product support and show real pack/unpack values on supported devices, falling back to simulated lanes elsewhere. The second sample is `outputs/2026-09-01_xr_depth_backend_lifecycle.html`: 1 depth pause/resume, 2 WebGPU XR fallback, 3 physics backend, 4 CDN purge queue. Next, log WebXR depthActive and pause/resume results as JSON and freeze scene layers while depth is paused.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34412/#34413/#34394/#34410/#34290、PlayCanvas #9266/#9267/#9268/#9233、Babylon.js #18858/#18842/#18859/#18822/#18855、Babylon.js 9.23.0 release、Codrops Creative Hub。アイデア検討: 8/31 の VXGI/error LOD/multiview resolve を、9/1 は packed lane、dispatch index、depth lifecycle、backend selection へ展開。サンプル実装: 本命 `2026-09-01_packed_lane_dispatch_scope.html`、派生 `2026-09-01_xr_depth_backend_lifecycle.html`。結果の検証: JSON parse、HTML parse、script構文、簡易GLSL予約語チェック、gallery build、publishを実行する。短期で試すものは packed lane の疑似可視化。中長期で育てるものは、品質・backend・XR capability を同じ performance timeline に載せる状態機械型の演出。",
+      "bodyEn": "Collection: three.js #34412/#34413/#34394/#34410/#34290, PlayCanvas #9266/#9267/#9268/#9233, Babylon.js #18858/#18842/#18859/#18822/#18855, Babylon.js 9.23.0 release, and Codrops Creative Hub. Ideation: expand 8/31 VXGI/error LOD/multiview resolve into packed lanes, dispatch indices, depth lifecycle, and backend selection. Prototypes: `2026-09-01_packed_lane_dispatch_scope.html` and `2026-09-01_xr_depth_backend_lifecycle.html`. Verification: JSON parse, HTML parse, script syntax, simple GLSL reserved-word check, gallery build, and publish. Short-term: simulate and visualize packed lanes. Long-term: a state-machine performance system where quality, backend, and XR capability share one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、8/27 の FFT/depth、8/29 の white balance lens、8/30 の compute prefix lifecycle、8/31 の VXGI/error LOD/layer resolve、そして今日の packed lane/depth lifecycle へ続いている。共通しているのは、GPUの内部判断を美術的なインタラクションへ変えること。組み合わせ候補は、FFT低域で packed lane の byte layout を揺らし、中域で GSplat LOD mode を error/distance 間で遷移し、高域で WebXR depth pause/resume を走らせる構成。育てる価値が高いテーマは「capability と fallback を隠さない演出」。対応端末では高品質、非対応端末では劣化表示ではなく、fallback 自体が作品の別モードとして成立する方向が良い。",
+      "bodyEn": "The recent arc runs from 8/27 FFT/depth, 8/29 white-balance lens, 8/30 compute prefix lifecycle, 8/31 VXGI/error LOD/layer resolve, and today's packed lane/depth lifecycle. The shared theme is turning GPU-internal decisions into artistic interaction. A strong combination: bass modulates packed-lane byte layout, mids transition GSplat LOD between error and distance modes, and highs trigger WebXR depth pause/resume. The theme worth growing is exposing capability and fallback. Supported devices get high-quality paths, while unsupported devices do not merely degrade; fallback becomes a distinct visual mode.",
+      "links": [
+        {
+          "label": "Previous VXGI sample",
+          "url": "../outputs/2026-08-31_vxgi_error_lod_cone_field.html"
+        },
+        {
+          "label": "Previous multiview sample",
+          "url": "../outputs/2026-08-31_multiview_layer_resolve_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-09-01_packed_lane_dispatch_scope.html`。短時間で試せる理由は、実WebGPU拡張を待たずに packed lane、bvec mix、dispatch index、sort error の見え方を raw WebGL で確認できるため。何が動くか: 4lane byte grid、component-wise branch selection、workgroup/invocation風のindex ring、非一様スケールsort error風の粒子。次に足すなら、WebGPU版を別ファイルで作り、adapter の language feature / shader compile 成否を表示する。2本目は `outputs/2026-09-01_xr_depth_backend_lifecycle.html`。何が動くか: depth sensing の pause/resume、WebGPU XR fallback、physics backend injection、CDN purge queue を状態遷移として表示。次に足すなら、実WebXRなしでも recorded JSON stream を読み、depthActive の変化で背景layerを freeze/unfreeze する。",
+      "bodyEn": "The main prototype is `outputs/2026-09-01_packed_lane_dispatch_scope.html`. It is quick because packed lanes, bvec mix, dispatch indices, and sort-error visuals can be checked in raw WebGL before relying on real WebGPU extensions. It animates a four-lane byte grid, component-wise branch selection, workgroup/invocation-like index rings, and non-uniform-scale sort-error particles. Next, create a WebGPU version that displays adapter language-feature and shader-compile results. The second prototype is `outputs/2026-09-01_xr_depth_backend_lifecycle.html`, showing depth sensing pause/resume, WebGPU XR fallback, physics backend injection, and CDN purge queues as state transitions. Next, even without real WebXR, read a recorded JSON stream and use depthActive changes to freeze/unfreeze background layers.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本から取れるデータは、pointer位置、mode、pulse、lane mask、byte value、component selection、dispatch cell、workgroup phase、sort error、depth active、paused state、fallback state、backend selection、purge queue progress。音反応では、低域を lane mask、中域を dispatch phase、高域を pause/resume pulse に割り当てると、compute と XR の状態変化がVJ素材になる。MediaPipeと組み合わせるなら、手の指本数を active lane、手の奥行きを depth active、顔の向きを WebGPU XR fallback の stereo offset に入れる。three.js #34410 の SunLight を加えるなら、場所と時刻でベース照明を作り、packed lane は日の出/夕暮れの色チャンネル補正として使う。過去案との接続では、8/31 の error score を今日の packed byte lane に詰め、8/29 の white balance lens でlaneごとに補正し、8/27 の FFT を dispatch index の走査順へ入れると、音、光、品質、fallback が同じ時間構造を持つ。",
+      "bodyEn": "Today's two samples expose pointer position, mode, pulse, lane mask, byte value, component selection, dispatch cell, workgroup phase, sort error, depth active state, paused state, fallback state, backend selection, and purge queue progress. For audio response, map bass to lane mask, mids to dispatch phase, and highs to pause/resume pulses so compute and XR state changes become VJ material. With MediaPipe, finger count can choose active lanes, hand depth can drive depth active state, and face direction can feed WebGPU XR fallback stereo offset. Adding three.js #34410 SunLight would let location and time drive base lighting, while packed lanes act as sunrise/sunset color-channel correction. Connected to prior work, pack 8/31 error scores into today's byte lanes, apply 8/29 white-balance lens per lane, and use 8/27 FFT to control dispatch scan order, giving audio, light, quality, and fallback one time structure.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-01_packed_lane_dispatch_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-01_xr_depth_backend_lifecycle.html"
+        },
+        {
+          "label": "three.js SunLight PR",
+          "url": "https://github.com/mrdoob/three.js/pull/34410"
+        },
+        {
+          "label": "Previous FFT sample",
+          "url": "../outputs/2026-08-27_fft_spectral_wake_scope.html"
+        }
+      ]
+    }
+  ]
+}

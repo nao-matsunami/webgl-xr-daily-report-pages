@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-09-01 Packed Lane Dispatch Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #080a0d; color: #eef3f7; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: 680px; font-size: 12px; line-height: 1.55; color: rgba(238,243,247,.84); text-shadow: 0 1px 8px #000; }
+    .hud b { color: #fff; font-weight: 700; }
+    .error { position: fixed; left: 16px; right: 16px; bottom: 14px; color: #ffb4a9; white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud"><b>Packed Lane Dispatch Scope</b><br>1 packed bytes / 2 bvec mix / 3 dispatch index / 4 splat group sort<br>Drag: lane mask and workgroup phase. Click or Space: repack pulse.</div>
+<pre class="error" id="error"></pre>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const errorEl = document.getElementById('error');
+  const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+  if (!gl) {
+    errorEl.textContent = 'WebGL is not available.';
+    return;
+  }
+
+  const vert = `
+attribute vec2 position;
+void main() {
+  gl_Position = vec4(position, 0.0, 1.0);
+}`;
+
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+uniform float mode;
+uniform float pulse;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float box(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float stroke(float d, float w) {
+  return 1.0 - smoothstep(w, w + 0.012, abs(d));
+}
+
+float fill(float d) {
+  return 1.0 - smoothstep(0.0, 0.014, d);
+}
+
+vec3 palette(float x) {
+  return 0.55 + 0.45 * cos(6.28318 * (vec3(0.03, 0.28, 0.53) + x));
+}
+
+float laneByte(float lane, float cell, float t) {
+  float wave = sin(t * (1.1 + lane * 0.17) + cell * 0.67 + lane * 1.9);
+  float gate = step(0.22, fract(cell * 0.173 + lane * 0.251 + sin(t * 0.23) * 0.12));
+  return clamp(0.5 + 0.5 * wave + gate * 0.22, 0.0, 1.0);
+}
+
+vec3 packedGrid(vec2 p, vec2 m, float t) {
+  vec2 q = p;
+  q.x += 0.22 * sin(q.y * 2.0 + t * 0.4);
+  vec2 cell = floor(q * 5.0);
+  vec2 local = fract(q * 5.0) - 0.5;
+  float id = cell.x + cell.y * 13.0;
+  float lane = floor(clamp((local.x + 0.5) * 4.0, 0.0, 3.0));
+  float byteValue = laneByte(lane, id, t + pulse * 1.7);
+  float mask = step(abs(lane - floor(m.x * 4.0)), 0.2);
+  float d = box(local - vec2((lane - 1.5) * 0.18, 0.0), vec2(0.055 + byteValue * 0.035));
+  float row = stroke(abs(fract(local.y * 4.0 + byteValue) - 0.5) - 0.18, 0.011);
+  vec3 col = palette(byteValue + lane * 0.13);
+  col *= 0.34 + 0.72 * fill(d);
+  col += row * vec3(0.12, 0.42, 0.7);
+  col += mask * fill(d - 0.025) * vec3(1.0, 0.92, 0.5);
+  return col;
+}
+
+vec3 bvecMix(vec2 p, vec2 m, float t) {
+  vec2 cell = floor(p * 4.0);
+  vec2 local = fract(p * 4.0) - 0.5;
+  float id = cell.x + cell.y * 7.0;
+  float a = hash(cell + 1.0);
+  float b = hash(cell + 17.0);
+  float selectorX = step(0.0, sin(id * 1.4 + t + m.x * 5.0));
+  float selectorY = step(0.0, cos(id * 0.9 - t * 0.8 + m.y * 4.0));
+  vec3 branchA = vec3(0.08, 0.36 + a * 0.4, 0.78);
+  vec3 branchB = vec3(0.95, 0.34 + b * 0.25, 0.12);
+  vec3 mixed = mix(branchA, branchB, vec3(selectorX, selectorY, 1.0 - selectorX));
+  float dCircle = length(local) - (0.16 + 0.04 * selectorX);
+  float dSquare = box(local, vec2(0.22 + selectorY * 0.04));
+  float shape = max(fill(dCircle), stroke(dSquare, 0.012));
+  vec3 line = vec3(stroke(local.x, 0.01) * selectorX, stroke(local.y, 0.01) * selectorY, stroke(local.x + local.y, 0.012));
+  return mixed * (0.25 + 0.75 * shape) + line * 0.55;
+}
+
+vec3 dispatchIndex(vec2 p, vec2 m, float t) {
+  vec2 cell = floor(p * 6.0);
+  vec2 local = fract(p * 6.0) - 0.5;
+  float localIndex = mod(cell.x + cell.y * 6.0, 32.0);
+  float workgroup = floor((cell.x + 6.0 * cell.y) / 8.0);
+  float invocation = fract((localIndex + floor(m.x * 16.0)) / 8.0);
+  float ring = stroke(length(local) - (0.12 + invocation * 0.12), 0.015);
+  float bar = fill(box(local - vec2((invocation - 0.5) * 0.42, 0.0), vec2(0.055, 0.28)));
+  float flow = step(0.78, fract(workgroup * 0.17 + t * 0.42 + m.y));
+  vec3 col = mix(vec3(0.06, 0.18, 0.22), vec3(0.2, 0.9, 0.86), invocation);
+  col += ring * vec3(0.98, 0.82, 0.36);
+  col += bar * vec3(0.28, 0.48, 0.98);
+  col += flow * vec3(0.95, 0.2, 0.62) * (0.25 + 0.75 * fill(length(local) - 0.33));
+  return col;
+}
+
+vec3 splatSort(vec2 p, vec2 m, float t) {
+  vec3 col = vec3(0.025, 0.035, 0.045);
+  for (int i = 0; i < 34; i++) {
+    float fi = float(i);
+    float angle = fi * 2.39996 + sin(t * 0.2) * 0.6;
+    float radius = 0.12 + 0.78 * fract(fi * 0.618);
+    vec2 center = vec2(cos(angle), sin(angle)) * radius;
+    center += vec2(sin(fi * 1.7 + t * 0.37), cos(fi * 1.1 - t * 0.29)) * 0.045;
+    float nonUniform = 0.55 + 0.45 * sin(angle + m.x * 6.0);
+    float sortError = abs(dot(center, normalize(vec2(0.35 + m.x, -0.4 + m.y))) - nonUniform * center.x);
+    float d = length(p - center) - (0.026 + 0.07 * smoothstep(0.0, 0.8, sortError));
+    vec3 splatColor = palette(fi * 0.047 + sortError + t * 0.025);
+    col += splatColor * fill(d) * (0.18 + 0.68 * (1.0 - sortError));
+    col += vec3(1.0, 0.75, 0.35) * stroke(d, 0.008) * smoothstep(0.24, 0.02, sortError);
+  }
+  float axis = stroke(dot(p, normalize(vec2(0.35 + m.x, -0.4 + m.y))), 0.008);
+  return col + axis * vec3(0.45, 0.78, 1.0);
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 uv = gl_FragCoord.xy / resolution;
+  vec2 m = pointer;
+  float vignette = smoothstep(1.55, 0.25, length(p));
+  float scan = 0.035 * sin((uv.y + time * 0.035) * 900.0);
+  vec3 c1 = packedGrid(p, m, time);
+  vec3 c2 = bvecMix(p, m, time);
+  vec3 c3 = dispatchIndex(p, m, time);
+  vec3 c4 = splatSort(p, m, time);
+  float s1 = 1.0 - step(1.5, mode);
+  float s2 = step(1.5, mode) * (1.0 - step(2.5, mode));
+  float s3 = step(2.5, mode) * (1.0 - step(3.5, mode));
+  float s4 = step(3.5, mode);
+  vec3 color = c1 * s1 + c2 * s2 + c3 * s3 + c4 * s4;
+  color = color * vignette + scan;
+  color += exp(-pulse * 1.7) * vec3(0.65, 0.85, 1.0) * smoothstep(0.5, 0.0, abs(length(p) - pulse * 1.35));
+  gl_FragColor = vec4(pow(max(color, vec3(0.0)), vec3(0.88)), 1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      throw new Error(gl.getShaderInfoLog(shader));
+    }
+    return shader;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+  } catch (err) {
+    errorEl.textContent = err.message;
+    return;
+  }
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const pos = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    time: gl.getUniformLocation(program, 'time'),
+    mode: gl.getUniformLocation(program, 'mode'),
+    pulse: gl.getUniformLocation(program, 'pulse')
+  };
+
+  let mode = 1;
+  let pointer = [0.58, 0.42];
+  let pulseStart = -10;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(innerWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(innerHeight * dpr));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  function setPointer(event) {
+    const rect = canvas.getBoundingClientRect();
+    pointer = [
+      Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height))
+    ];
+  }
+  addEventListener('resize', resize);
+  addEventListener('pointermove', setPointer);
+  addEventListener('pointerdown', (event) => { setPointer(event); pulseStart = performance.now() / 1000; });
+  addEventListener('keydown', (event) => {
+    if (event.key >= '1' && event.key <= '4') mode = Number(event.key);
+    if (event.code === 'Space') pulseStart = performance.now() / 1000;
+  });
+  resize();
+  function frame(now) {
+    const t = now / 1000;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.time, t);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.uniform1f(uniforms.pulse, Math.max(0, t - pulseStart));
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
