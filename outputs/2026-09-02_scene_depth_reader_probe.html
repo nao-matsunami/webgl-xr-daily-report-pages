@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-09-02 Scene Depth Reader Probe</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07090d; color: #edf6f2; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: 720px; font-size: 12px; line-height: 1.55; color: rgba(237,246,242,.86); text-shadow: 0 1px 8px #000; }
+    .hud b { color: #fff; }
+    .error { position: fixed; left: 16px; right: 16px; bottom: 14px; color: #ffb4a9; white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud"><b>Scene Depth Reader Probe</b><br>1 reciprocal depth / 2 async readback queue / 3 autofocus cap / 4 splat silhouette fade<br>Drag: read rect and focus target. Click or Space: issue a new readback pulse.</div>
+<pre class="error" id="error"></pre>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const errorEl = document.getElementById('error');
+  const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+  if (!gl) { errorEl.textContent = 'WebGL is not available.'; return; }
+
+  const vert = `
+attribute vec2 position;
+void main() { gl_Position = vec4(position, 0.0, 1.0); }`;
+
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+uniform float mode;
+uniform float pulse;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+float fillCircle(vec2 p, float r) { return 1.0 - smoothstep(r, r + 0.012, length(p)); }
+float strokeCircle(vec2 p, float r, float w) { return 1.0 - smoothstep(w, w + 0.012, abs(length(p) - r)); }
+float box(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+float fillBox(vec2 p, vec2 b) { return 1.0 - smoothstep(0.0, 0.012, box(p, b)); }
+float strokeBox(vec2 p, vec2 b, float w) { return 1.0 - smoothstep(w, w + 0.012, abs(box(p, b))); }
+
+float sceneDepth(vec2 p) {
+  float floorDepth = 18.0 + 5.0 * sin(p.x * 1.4 + time * 0.2);
+  float d1 = fillCircle(p - vec2(-0.55, -0.05), 0.32);
+  float d2 = fillCircle(p - vec2(0.2, 0.22), 0.24);
+  float d3 = fillCircle(p - vec2(0.58, -0.26), 0.18);
+  float stripe = smoothstep(0.44, 0.02, abs(p.y + 0.42 + 0.08 * sin(p.x * 5.0)));
+  float z = floorDepth;
+  z = mix(z, 10.0 + 1.0 * sin(time + p.x * 4.0), d1);
+  z = mix(z, 15.0 + 1.5 * cos(time * 0.8 + p.y * 5.0), d2);
+  z = mix(z, 22.0, d3);
+  z = mix(z, 55.0, stripe * (1.0 - max(max(d1, d2), d3)));
+  return z;
+}
+
+float coverage(vec2 p) {
+  float c = 0.0;
+  c += fillCircle(p - vec2(-0.55, -0.05), 0.32);
+  c += fillCircle(p - vec2(0.2, 0.22), 0.24);
+  c += fillCircle(p - vec2(0.58, -0.26), 0.18);
+  c += 0.45 * smoothstep(0.18, 0.0, abs(p.y + 0.42 + 0.08 * sin(p.x * 5.0)));
+  return clamp(c, 0.0, 1.0);
+}
+
+vec3 palette(float v) {
+  return 0.52 + 0.48 * cos(6.28318 * (vec3(0.02, 0.31, 0.61) + v));
+}
+
+vec3 depthMap(vec2 p, vec2 m) {
+  float z = sceneDepth(p);
+  float c = coverage(p);
+  float reciprocalStored = c / max(z, 0.001) + (1.0 - c) / 80.0;
+  float decoded = 1.0 / max(reciprocalStored, 0.0001);
+  float linearWrong = mix(80.0, z, c);
+  float selected = mix(linearWrong, decoded, step(0.5, mode));
+  vec3 col = palette(selected * 0.025);
+  col *= 0.25 + 0.75 * c;
+  col += strokeCircle(p - m, 0.18 + 0.06 * sin(time * 2.0), 0.018) * vec3(1.0, 0.84, 0.38);
+  col += strokeCircle(p, 0.62, 0.012) * vec3(0.14, 0.36, 0.62);
+  return col;
+}
+
+vec3 queueView(vec2 p, vec2 m) {
+  vec3 col = vec3(0.02, 0.07, 0.09);
+  for (float i = 0.0; i < 7.0; i += 1.0) {
+    float x = -0.72 + i * 0.24;
+    float age = fract(time * 0.32 + i * 0.17 + pulse);
+    vec2 q = p - vec2(x, 0.0);
+    float ring = strokeCircle(q, 0.08 + age * 0.11, 0.014);
+    float ready = step(0.48, age);
+    col += ring * mix(vec3(0.25, 0.38, 0.78), vec3(0.8, 1.0, 0.5), ready);
+    col += fillCircle(q, 0.035) * palette(i * 0.13 + ready * 0.2);
+  }
+  vec2 rectUv = (p - m) * vec2(1.0, 1.0);
+  col += strokeBox(rectUv, vec2(0.22), 0.015) * vec3(1.0, 0.55, 0.25);
+  col += fillBox(vec2(p.x, p.y + 0.7), vec2(0.85, 0.018)) * vec3(0.12, 0.32, 0.4);
+  col += fillBox(vec2(p.x + 0.85 - fract(time * 0.4 + pulse) * 1.7, p.y + 0.7), vec2(0.05, 0.05)) * vec3(1.0, 0.78, 0.34);
+  return col;
+}
+
+vec3 focusView(vec2 p, vec2 m) {
+  float z = sceneDepth(m);
+  float cap = 34.0;
+  float focus = min(z, cap);
+  float dz = abs(sceneDepth(p) - focus);
+  float crisp = exp(-dz * 0.18);
+  vec3 col = mix(vec3(0.03, 0.05, 0.07), palette(focus * 0.025), crisp);
+  col += coverage(p) * vec3(0.05, 0.25, 0.32);
+  col += strokeCircle(p - m, 0.1, 0.014) * mix(vec3(0.5, 0.9, 1.0), vec3(1.0, 0.3, 0.24), step(cap - 0.1, z));
+  col += strokeCircle(p, focus / cap * 0.52, 0.012) * vec3(0.96, 0.84, 0.42);
+  return col;
+}
+
+vec3 splatFade(vec2 p, vec2 m) {
+  vec3 col = vec3(0.01, 0.04, 0.055);
+  for (float i = 0.0; i < 36.0; i += 1.0) {
+    vec2 base = vec2(hash(vec2(i, 3.0)), hash(vec2(i, 9.0))) * 2.0 - 1.0;
+    base *= 0.82;
+    float z = 7.0 + 55.0 * hash(vec2(i, 21.0));
+    float alpha = 0.25 + 0.75 * smoothstep(0.9, 0.0, abs(length(base - m) - 0.28));
+    float r = 0.026 + 0.048 * (1.0 - z / 62.0);
+    float blob = fillCircle(p - base, r);
+    col += blob * alpha * palette(z * 0.022 + i * 0.04);
+  }
+  col += strokeCircle(p - m, 0.28, 0.016) * vec3(1.0, 0.82, 0.45);
+  return col;
+}
+
+void main() {
+  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+  vec2 m = (pointer * 2.0 - 1.0) * vec2(resolution.x / min(resolution.x, resolution.y), resolution.y / min(resolution.x, resolution.y));
+  float band = 0.5 + 0.5 * sin(time * 0.7 + p.x * 2.0);
+  vec3 col = depthMap(p, m);
+  col = mix(col, queueView(p, m), smoothstep(1.5, 1.55, mode));
+  col = mix(col, focusView(p, m), smoothstep(2.5, 2.55, mode));
+  col = mix(col, splatFade(p, m), smoothstep(3.5, 3.55, mode));
+  col += pulse * exp(-6.0 * abs(length(p - m) - 0.42 - 0.1 * band)) * vec3(0.35, 0.7, 1.0);
+  gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (err) {
+    errorEl.textContent = err.message;
+    return;
+  }
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const position = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    time: gl.getUniformLocation(program, 'time'),
+    mode: gl.getUniformLocation(program, 'mode'),
+    pulse: gl.getUniformLocation(program, 'pulse')
+  };
+  let mode = 1;
+  let pointer = [0.52, 0.48];
+  let pulseStart = -10;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.floor(innerWidth * dpr);
+    const h = Math.floor(innerHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h);
+    }
+  }
+  function setPointer(e) {
+    pointer = [e.clientX / innerWidth, 1 - e.clientY / innerHeight];
+  }
+  addEventListener('pointermove', setPointer);
+  addEventListener('pointerdown', (e) => { setPointer(e); pulseStart = performance.now() / 1000; });
+  addEventListener('keydown', (e) => {
+    if (e.key >= '1' && e.key <= '4') mode = Number(e.key);
+    if (e.code === 'Space') pulseStart = performance.now() / 1000;
+  });
+  function frame(now) {
+    resize();
+    const t = now / 1000;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.time, t);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.uniform1f(uniforms.pulse, Math.max(0, 1 - (t - pulseStart) * 1.4));
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

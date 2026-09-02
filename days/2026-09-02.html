@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SceneDepthReader、atomic workgroup、OpenPBR整合を診断できる演出入力にする | 2026-09-02</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.02</p>
+      <h1>SceneDepthReader、atomic workgroup、OpenPBR整合を診断できる演出入力にする</h1>
+      <p class="hero-subtitle">Turning SceneDepthReader, atomic workgroups, and OpenPBR consistency into inspectable visual inputs</p>
+      <p>PlayCanvas の SceneDepthReader、GSplat dataFormat swap / CPU sort cleanup / readable camera-frame enums、three.js の TSL atomic workgroup array / compute unit tests / bitcast and integer storage fixes / array camera viewport fix、Babylon.js の OpenPBR backend consistency / Adreno IBL shadow fix / fluid per-particle size を調査した。前回の packed lane と XR depth lifecycle から、今日は「深度をCPUへ戻して次の演出判断に使う」方向と「compute の atomic / subgroup / bitcast を失敗ごと見せる」方向へ進め、本命サンプル Scene Depth Reader Probe と派生サンプル TSL Atomic Subgroup Scope を実装した。</p>
+      <p class="en-copy">Today covers PlayCanvas SceneDepthReader, GSplat dataFormat swap / CPU sort cleanup / readable camera-frame enums, three.js TSL atomic workgroup arrays / compute unit tests / bitcast and integer storage fixes / array-camera viewport fix, and Babylon.js OpenPBR backend consistency / Adreno IBL shadow fixes / fluid per-particle size. Building on yesterday's packed lanes and XR depth lifecycle, the direction shifts to using CPU-readback depth as an expressive decision input and showing compute atomics, subgroups, and bitcasts as visible diagnostic surfaces. Two samples were implemented: Scene Depth Reader Probe and TSL Atomic Subgroup Scope.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-01.html">← 2026.09.01</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-02 TSL Atomic Subgroup Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-02 Scene Depth Reader Probe</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-02_scene_depth_reader_probe.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas PR #9274 は `SceneDepthReader` を追加し、カメラがエフェクト用に持つ scene depth を矩形領域で非同期にCPUへ読み戻す提案。サンプルが有限値と `Infinity` を返す設計なので、フォーカス、ヒット判定、観客の視線近傍だけの反応に使いやすい。2. three.js PR #34428/#34431 は TSL の compute 表面を atomic workgroup array、workgroup builtins、barrier、subgroup、GPU readback test へ広げる流れ。昨日の packed lane の次に、lane の集計と同期そのものを表現入力にできる。3. three.js PR #34429/#34423 は bitcast と integer storage texture の型不一致を直す更新。目立たないが、WebGPU/WGSL と WebGL/GLSL の backend差を診断する視覚化に直結する。4. Babylon.js PR #18861 は OpenPBR の GLSL/WGSL backend差を揃える修正。area light、Fresnel、anisotropic non-cube map が絡むので、同じ素材が backend によって違う見え方になる問題を減らす。5. Babylon.js PR #18865 と #18863 は、Adreno mobile GPU の IBL shadow failure と fluid renderer の per-particle size。モバイルGPU制約と粒子ごとの厚みを、展示・Web演出の品質モードとして扱える。</p>
+          <p class="en-copy">1. PlayCanvas PR #9274 adds `SceneDepthReader`, an alpha API that asynchronously reads a camera's scene-depth region back to the CPU. Because samples can return finite world-unit distances or `Infinity`, it is useful for autofocus, hit decisions, and reactions near gaze or pointer regions. 2. three.js PRs #34428/#34431 expand TSL compute toward atomic workgroup arrays, workgroup builtins, barriers, subgroups, and GPU readback tests. After yesterday's packed-lane topic, aggregation and synchronization themselves become expressive inputs. 3. three.js PRs #34429/#34423 fix bitcast and integer storage texture type issues, directly supporting backend-difference diagnostics across WebGPU/WGSL and WebGL/GLSL. 4. Babylon.js PR #18861 aligns OpenPBR behavior between GLSL and WGSL around area lights, Fresnel, and anisotropic non-cube maps. 5. Babylon.js PRs #18865 and #18863 cover Adreno mobile IBL shadow failures and per-particle fluid size, making mobile GPU constraints and individual fluid thickness promising quality modes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9274" target="_blank" rel="noreferrer">PlayCanvas #9274</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34428" target="_blank" rel="noreferrer">three.js #34428</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34431" target="_blank" rel="noreferrer">three.js #34431</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18861" target="_blank" rel="noreferrer">Babylon.js #18861</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18865" target="_blank" rel="noreferrer">Babylon.js #18865</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>最も使い勝手が良いのは PlayCanvas #9274。深度は通常 shader 内だけの素材になりがちだが、`SceneDepthReader` は「小さな矩形を読み戻し、1-2フレーム遅れて判断へ戻す」という設計なので、UIではなく作品のふるまいとして深度を使える。例えば pointer 近傍の8x8サンプルだけを読み、近い面があれば焦点を合わせ、何もなければ `Infinity` として空間を抜ける。three.js #34431 はテストの話だが、workgroup / subgroup / barrier の期待値を可視化すれば、compute shader の内部状態がそのままライブ演出の拍になる。Babylon.js #18861 は OpenPBR の backend一致が主題で、見た目の差を潰す更新だが、制作面では「差が出る箇所」を明示的に比較画面へ出せる。PR #18865 の Adreno 問題は特に重要で、`r32float` filterability や `highp int` の有無が画の有無に直結するため、モバイル向けには品質低下ではなく別のシェーダールートを用意する考え方が必要になる。</p>
+          <p class="en-copy">The most actionable item is PlayCanvas #9274. Depth often remains shader-only material, but `SceneDepthReader` turns a small sampled rectangle into a delayed CPU-side decision, letting depth affect behavior instead of only shading. A pointer-centered 8x8 sample can focus when a close surface exists and pass through space when the read returns `Infinity`. three.js #34431 is nominally about tests, but visualizing expected values for workgroups, subgroups, and barriers turns compute internals into a rhythmic live surface. Babylon.js #18861 removes backend differences, yet for production it also reveals where such differences should be displayed in comparison views. PR #18865 is especially relevant for mobile: `r32float` filterability and `highp int` support can decide whether IBL shadows appear, so mobile paths need deliberate alternate shader routes rather than vague degradation.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9274" target="_blank" rel="noreferrer">PlayCanvas SceneDepthReader PR</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34431" target="_blank" rel="noreferrer">three.js TSL compute tests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18861" target="_blank" rel="noreferrer">Babylon.js OpenPBR consistency</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18865" target="_blank" rel="noreferrer">Babylon.js Adreno IBL shadows</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Scene Depth Reader Probe」。画面上の小さな読み取り矩形をドラッグし、深度の有限値 / `Infinity` / reciprocal depth / focus cap を視覚化する。mode 1 は reciprocal depth と従来のcoverage-weighted depthの差、mode 2 は非同期readback queue、mode 3 はfocus cap、mode 4 は薄いsplat silhouetteがfar clipへ溶ける状態。派生案は「TSL Atomic Subgroup Scope」。atomic bin、subgroup ballot、bitcast store、array camera viewport regression を4モードで見せる。次に足すなら、1本目のdepth readback結果を2本目のatomic binへ入れ、近い面ほどatomic pressureが増えて subgroup の分岐が変わる構成にする。</p>
+          <p class="en-copy">The main idea is Scene Depth Reader Probe. Drag a small read rectangle and visualize finite depth, `Infinity`, reciprocal depth, and focus caps. Mode 1 compares reciprocal depth with conventional coverage-weighted depth, mode 2 shows an async readback queue, mode 3 shows autofocus capping, and mode 4 shows thin splat silhouettes fading toward the far clip. The derived idea is TSL Atomic Subgroup Scope, with four modes for atomic bins, subgroup ballots, bitcast stores, and array-camera viewport regression. Next, feed the first sample's depth readback into the second sample's atomic bins so nearby surfaces increase atomic pressure and alter subgroup branches.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-02_scene_depth_reader_probe.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>`SceneDepthReader` 的な設計では、毎フレーム全画面を読むのではなく、pointer、gaze、reticle、音のピーク位置などに限定した小矩形を読むのが現実的。結果が1-2フレーム遅れる前提で、視覚側は即時反応、論理側は遅延確定という二層に分けると破綻しにくい。reciprocal depth は半透明splatの輪郭でfar clipに引っ張られる問題を緩和する考え方として有用で、可視化では `alpha / depth` と `1 / farClip` の混合として扱うと理解しやすい。TSL atomic workgroup array は WebGPU 前提なので、WebGLでは atomic を実行するのではなく、bin、contention、barrier、subgroup vote の形を先にデザインする。bitcast / storage texture の型不一致は、色がおかしいではなく「コンパイルできない」「store値がcoerceされる」種類の事故なので、サンプルにはshader compile errorを画面下部へ出す保険を残す。Babylon.js #18865 のようなモバイルGPU差は、`highp int`、float texture filterability、half-float fallback をチェックリスト化しておく。</p>
+          <p class="en-copy">For a `SceneDepthReader`-style system, read a small region around pointer, gaze, reticle, or audio peak positions rather than the full frame. Since results arrive one or two frames later, split the design into immediate visual response and delayed logical confirmation. Reciprocal depth is useful for semi-transparent splat silhouettes that would otherwise pull toward the far clip; visualizing it as a blend of `alpha / depth` and `1 / farClip` makes the tradeoff legible. TSL atomic workgroup arrays are WebGPU-only in practice, so WebGL prototypes should design binning, contention, barriers, and subgroup votes before executing real atomics. Bitcast and storage-texture type bugs are compile/store failures rather than simple color mismatches, so keep shader compile errors visible in the sample. Babylon.js #18865 suggests a mobile checklist: `highp int`, float texture filterability, and half-float fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9274" target="_blank" rel="noreferrer">PlayCanvas #9274</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34429" target="_blank" rel="noreferrer">three.js #34429</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18865" target="_blank" rel="noreferrer">Babylon.js #18865</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js #34428/#34431 atomic workgroup / compute tests、#34412 packed 4x8 integer、#34235 PrefixSum、PlayCanvas #9274 SceneDepthReader、#9269/#9270 GSplat pipeline and sort cleanup、Babylon.js #18861 OpenPBR consistency、#18822 MultiTexture、#18855 white balance。新規案件: Babylon.js #18863 fluid per-particle size は、音反応の粒径、泡、液面の厚みへすぐ繋げられる。Babylon.js #18865 は Adreno 実機差分を長期ウォッチ。寝かせる案件: PlayCanvas #9271 supportsMsaa削除や #9273 readable enums は直接の画作りから一歩遠いが、diagnostic dashboardの入力名を人間が読める文字列にするという意味では使える。</p>
+          <p class="en-copy">Continue watching three.js #34428/#34431 atomic workgroup / compute tests, #34412 packed 4x8 integer, #34235 PrefixSum, PlayCanvas #9274 SceneDepthReader, #9269/#9270 GSplat pipeline and sort cleanup, Babylon.js #18861 OpenPBR consistency, #18822 MultiTexture, and #18855 white balance. New item: Babylon.js #18863 fluid per-particle size connects immediately to audio-reactive particle diameter, foam, and liquid thickness. Babylon.js #18865 should be watched long-term for Adreno device differences. Sleep: PlayCanvas #9271 supportsMsaa removal and #9273 readable enums are farther from visuals, though readable enum names are useful for diagnostic dashboards.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18863" target="_blank" rel="noreferrer">Babylon.js #18863</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9273" target="_blank" rel="noreferrer">PlayCanvas #9273</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-02_scene_depth_reader_probe.html` を開く。1 は reciprocal depth、2 は async readback queue、3 は autofocus cap、4 は splat silhouette fade。ドラッグで読み取り矩形とfocus targetを動かし、クリック/Spaceでreadback pulseを発行する。次に足すなら、実PlayCanvasで `SceneDepthReader.read(rect, 8, 8)` の結果をJSONログ化し、このサンプルのfocus capとqueue表示へ流し込む。2本目は `outputs/2026-09-02_tsl_atomic_subgroup_scope.html`。1 は atomic bins、2 は subgroup ballot、3 は bitcast store、4 は array camera viewport。次に足すなら、WebGPU対応時だけ実computeのreadback結果を描き、非対応時は現在の疑似診断をfallbackモードとして残す。</p>
+          <p class="en-copy">Open `outputs/2026-09-02_scene_depth_reader_probe.html` first. Mode 1 shows reciprocal depth, 2 async readback queue, 3 autofocus cap, and 4 splat silhouette fade. Drag moves the read rectangle and focus target; click/Space issues a readback pulse. Next, log real PlayCanvas `SceneDepthReader.read(rect, 8, 8)` results as JSON and feed them into the focus-cap and queue views. The second sample is `outputs/2026-09-02_tsl_atomic_subgroup_scope.html`: 1 atomic bins, 2 subgroup ballot, 3 bitcast store, 4 array camera viewport. Next, draw real WebGPU compute readback when available and keep the current simulated diagnostics as fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-02_scene_depth_reader_probe.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas #9274/#9273/#9271/#9270/#9269、three.js #34428/#34431/#34429/#34423/#34424、Babylon.js #18861/#18865/#18863/#18864、Babylon.js 9.23.0。アイデア検討: 9/1 の packed lane / depth lifecycle を、9/2 は depth readback / reciprocal depth / atomic diagnostics / backend consistency へ接続。サンプル実装: 本命 `2026-09-02_scene_depth_reader_probe.html`、派生 `2026-09-02_tsl_atomic_subgroup_scope.html`。結果の検証: JSON parse、HTML parse、script構文、簡易GLSL予約語チェック、gallery build、publishを実行する。短期で試すものは小矩形depth readbackを焦点・凍結・明滅へ割り当てること。中長期で育てるものは、深度、compute集計、backend差、モバイル制約を同じ診断演出の入力として扱うこと。</p>
+          <p class="en-copy">Collection: PlayCanvas #9274/#9273/#9271/#9270/#9269, three.js #34428/#34431/#34429/#34423/#34424, Babylon.js #18861/#18865/#18863/#18864, and Babylon.js 9.23.0. Ideation: connect 9/1's packed lanes and depth lifecycle to 9/2's depth readback, reciprocal depth, atomic diagnostics, and backend consistency. Prototypes: `2026-09-02_scene_depth_reader_probe.html` and `2026-09-02_tsl_atomic_subgroup_scope.html`. Verification: JSON parse, HTML parse, script syntax, simple GLSL reserved-word check, gallery build, and publish. Short-term: map small depth-readback regions to focus, freeze, and flashes. Long-term: treat depth, compute aggregation, backend differences, and mobile constraints as one diagnostic performance input set.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-02_scene_depth_reader_probe.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、8/27 の FFT/depth、8/29 の white balance lens、8/30 の compute prefix lifecycle、8/31 の VXGI/error LOD、9/1 の packed lane/depth lifecycle、そして今日の SceneDepthReader/atomic diagnostics へ続いている。共通点は、レンダリング結果だけでなく、readback、capability、fallback、test、queue、backend差を画の素材として扱うこと。組み合わせ候補は、SceneDepthReader の8x8深度サンプルをatomic binへ入れ、binごとの混雑度でfluid particle sizeを変え、AdrenoやWebGPU非対応時はhalf-float / highp int fallbackの見え方へ切り替える構成。育てる価値が高いテーマは「遅れて返るGPU情報をライブ演出のリズムにする」こと。即時反応だけではなく、1-2フレーム遅延の確定結果が追いかけてくる感じを、音・視線・深度の演出に使える。</p>
+          <p class="en-copy">The recent arc runs from 8/27 FFT/depth, 8/29 white-balance lens, 8/30 compute prefix lifecycle, 8/31 VXGI/error LOD, 9/1 packed lane/depth lifecycle, and today's SceneDepthReader/atomic diagnostics. The common pattern is using readback, capability, fallback, tests, queues, and backend differences as visual material, not just final render output. A strong combination: feed an 8x8 SceneDepthReader sample into atomic bins, use bin contention to resize fluid particles, and switch to half-float / highp-int fallback looks on Adreno or unsupported WebGPU paths. The theme worth growing is making delayed GPU information part of live rhythm. The one- or two-frame-late confirmed result can chase immediate input in audio, gaze, and depth-driven visuals.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-01_packed_lane_dispatch_scope.html" target="_blank" rel="noreferrer">Previous packed lane sample</a></li>
+          
+            <li><a href="../outputs/2026-09-01_xr_depth_backend_lifecycle.html" target="_blank" rel="noreferrer">Previous XR depth lifecycle sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した本命試作は `outputs/2026-09-02_scene_depth_reader_probe.html`。実PlayCanvas依存を入れず、SceneDepthReaderの設計上の要点である矩形読み取り、非同期キュー、有限値/Infinity、reciprocal depth、focus capをGLSLで最小化した。発展案は、実PlayCanvas sceneから取得したdepth arrayをdata textureまたはJSONで読み込み、focus reticle、DOF、fog、splat fadeへ接続すること。2本目の派生試作は `outputs/2026-09-02_tsl_atomic_subgroup_scope.html`。atomic workgroup、subgroup vote、bitcast store、array camera viewportを、WebGL上の診断ビジュアルとして先に形にした。発展案は、WebGPU対応ブラウザで実compute結果をStorageBuffer readbackし、WebGL fallback時との差分を同じ画面に重ねること。</p>
+          <p class="en-copy">The selected main prototype is `outputs/2026-09-02_scene_depth_reader_probe.html`. Without adding a PlayCanvas dependency, it reduces the SceneDepthReader design to rectangular reads, async queues, finite/Infinity samples, reciprocal depth, and focus caps in GLSL. Next, feed real depth arrays from a PlayCanvas scene via data texture or JSON and connect them to focus reticles, DOF, fog, and splat fades. The derived prototype is `outputs/2026-09-02_tsl_atomic_subgroup_scope.html`. It sketches atomic workgroups, subgroup votes, bitcast stores, and array-camera viewports as WebGL diagnostic visuals. Next, on WebGPU-capable browsers, read real compute results back from StorageBuffer and overlay the difference from the WebGL fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-02_scene_depth_reader_probe.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日の2本は、入力値そのものを保存して育てやすい。Scene Depth Reader Probe は pointer位置、read rect、focus depth、Infinity率、queue age、cap到達フラグをログ化できる。これを音反応と組み合わせるなら、低域でread rectを広げ、中域でfocus capを動かし、高域でreadback pulseを発行する。WebXRと組み合わせるなら、gaze reticle近傍のdepthを読み、近い面だけにwhite balance lensやretroreflectionを出す。TSL Atomic Subgroup Scope は bin pressure、subgroup threshold、bitcast mismatch、viewport quadrantをログ化できる。これを展示演出に使うなら、観客密度や端末性能差をatomic contentionとして見せ、混雑が高いほどfluid粒子が大きくなり、mobile fallback時は半透明で軽い表現へ移る。中長期では、これらのログを日次サンプル横断で蓄積し、どの入力が良い画へ繋がったかを後から再生できる形にする価値がある。</p>
+          <p class="en-copy">Both samples are easy to grow as logged input systems. Scene Depth Reader Probe can log pointer position, read rectangle, focus depth, Infinity ratio, queue age, and focus-cap hits. Combined with audio, bass can widen the read rectangle, mids can move the focus cap, and highs can issue readback pulses. Combined with WebXR, gaze-reticle depth could trigger white-balance lenses or retroreflection only on nearby surfaces. TSL Atomic Subgroup Scope can log bin pressure, subgroup threshold, bitcast mismatch, and viewport quadrant. In an installation, audience density or device-performance differences can appear as atomic contention; higher contention increases fluid particle size, while mobile fallback switches to lighter translucent rendering. Medium-term, these logs should be accumulated across daily samples so successful input-to-image mappings can be replayed and compared later.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18863" target="_blank" rel="noreferrer">Babylon.js fluid per-particle size</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18865" target="_blank" rel="noreferrer">Babylon.js Adreno IBL shadows</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9274" target="_blank" rel="noreferrer">PlayCanvas PR #9274 SceneDepthReader</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9269" target="_blank" rel="noreferrer">PlayCanvas PR #9269 stale gsplat projector pipeline</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9270" target="_blank" rel="noreferrer">PlayCanvas PR #9270 CPU sort params cleanup</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9273" target="_blank" rel="noreferrer">PlayCanvas PR #9273 readable camera-frame enums</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34428" target="_blank" rel="noreferrer">three.js PR #34428 TSL atomic workgroup array support</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34431" target="_blank" rel="noreferrer">three.js PR #34431 TSL compute unit tests</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34429" target="_blank" rel="noreferrer">three.js PR #34429 bitcast GLSL polyfill return type</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34423" target="_blank" rel="noreferrer">three.js PR #34423 integer storage texture values</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34424" target="_blank" rel="noreferrer">three.js PR #34424 WebGPU array camera viewport</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18861" target="_blank" rel="noreferrer">Babylon.js PR #18861 OpenPBR backend consistency</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18865" target="_blank" rel="noreferrer">Babylon.js PR #18865 Adreno IBL shadows</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18863" target="_blank" rel="noreferrer">Babylon.js PR #18863 fluid per-particle size</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.23.0" target="_blank" rel="noreferrer">Babylon.js release 9.23.0</a></li>
+          
+            <li><a href="../outputs/2026-09-02_scene_depth_reader_probe.html" target="_blank" rel="noreferrer">Main sample: Scene Depth Reader Probe</a></li>
+          
+            <li><a href="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" target="_blank" rel="noreferrer">Derived sample: TSL Atomic Subgroup Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-02_tsl_atomic_subgroup_scope.html" loading="lazy" title="2026-09-02 TSL Atomic Subgroup Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

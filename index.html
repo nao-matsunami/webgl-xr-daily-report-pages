@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 75</span>
+        <span>days: 76</span>
         <span>page: 1 / 7</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -313,6 +313,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-02">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.02</p>
+              <h2>SceneDepthReader、atomic workgroup、OpenPBR整合を診断できる演出入力にする</h2>
+              <p class="card-subtitle">Turning SceneDepthReader, atomic workgroups, and OpenPBR consistency into inspectable visual inputs</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-02" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">PlayCanvas の SceneDepthReader、GSplat dataFormat swap / CPU sort cleanup / readable camera-frame enums、three.js の TSL atomic workgroup array / compute unit tests / bitcast and integer storage fixes / array camera viewport fix、Babylon.js の OpenPBR backend consistency / Adreno IBL shadow fix / fluid per-particle size を調査した。前回の packed lane と XR depth lifecycle から、今日は「深度をCPUへ戻して次の演出判断に使う」方向と「compute の atomic / subgroup / bitcast を失敗ごと見せる」方向へ進め、本命サンプル Scene Depth Reader Probe と派生サンプル TSL Atomic Subgroup Scope を実装した。</p>
+          <p class="description en-copy">Today covers PlayCanvas SceneDepthReader, GSplat dataFormat swap / CPU sort cleanup / readable camera-frame enums, three.js TSL atomic workgroup arrays / compute unit tests / bitcast and integer storage fixes / array-camera viewport fix, and Babylon.js OpenPBR backend consistency / Adreno IBL shadow fixes / fluid per-particle size. Building on yesterday's packed lanes and XR depth lifecycle, the direction shifts to using CPU-readback depth as an expressive decision input and showing compute atomics, subgroups, and bitcasts as visible diagnostic surfaces. Two samples were implemented: Scene Depth Reader Probe and TSL Atomic Subgroup Scope.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-09-02.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-09-02_tsl_atomic_subgroup_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-01">
           <div class="card-top">
             <div>
@@ -562,29 +585,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-21.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-21_edge_aware_fog_goo_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-20">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.20</p>
-              <h2>Depth relighting、RTT resolution、shadow maskを一枚の診断用ライティング面にする</h2>
-              <p class="card-subtitle">Turning depth relighting, RTT resolution, and shadow masks into one diagnostic lighting surface</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-20" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の RTTNode autoUpdate / resolutionScale、ViewportTextureNode の WebGLRenderer 修正、USD connected material input、PlayCanvas の omni shadow culling / shadowCascadeMask / flat normals、Babylon.js Viewer Lite compatibility、Codrops の depth-map relighting を、8/19 の splat group/raycast/bounds/scatter から「触れる診断レイヤーを、照明と影の制作面へ広げる」方向へ接続した。</p>
-          <p class="description en-copy">Today connects three.js RTTNode autoUpdate / resolutionScale, the WebGLRenderer ViewportTextureNode fix, USD connected material inputs, PlayCanvas omni-shadow culling / shadowCascadeMask / flat normals, Babylon.js Viewer Lite compatibility, and Codrops depth-map relighting to yesterday's splat group / raycast / bounds / scatter thread by extending touchable diagnostics into lighting and shadow production surfaces.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-20.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-20_depth_relight_shadow_budget_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       
