@@ -144,6 +144,7 @@ async function copyProject(sourceDir, targetDir) {
 }
 
 async function publishInPlace(repoDir) {
+  await run("node", ["scripts/inject-mobile-preset-controls.mjs"], repoDir);
   await run("node", ["scripts/build-gallery.mjs"], repoDir);
   await run("git", ["add", "."], repoDir);
 

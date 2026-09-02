@@ -1,73 +1,13 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mobile Check - Semantic Latency Residue Scope</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      font-family: "Avenir Next", system-ui, sans-serif;
-      color: #eafcff;
-      background:
-        radial-gradient(circle at 18% 18%, rgba(82, 231, 255, 0.20), transparent 26%),
-        radial-gradient(circle at 84% 12%, rgba(255, 47, 178, 0.14), transparent 24%),
-        linear-gradient(145deg, #050912, #07151d 52%, #030608);
-    }
-    main {
-      width: min(520px, 100%);
-      padding: 24px;
-      border: 1px solid rgba(124, 232, 255, 0.24);
-      background: rgba(4, 12, 20, 0.72);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(18px) saturate(1.2);
-    }
-    h1 { margin: 0 0 10px; font-size: 22px; line-height: 1.22; letter-spacing: 0; }
-    p { margin: 0 0 18px; color: #abc9d6; line-height: 1.65; font-size: 14px; }
-    .qr {
-      width: min(320px, 100%);
-      display: block;
-      margin: 18px auto;
-      padding: 12px;
-      background: #f4fbff;
-    }
-    a {
-      color: #88ecff;
-      text-decoration: none;
-      overflow-wrap: anywhere;
-    }
-    .button {
-      display: block;
-      width: 100%;
-      padding: 13px 16px;
-      border: 1px solid rgba(124, 232, 255, 0.34);
-      background: linear-gradient(90deg, rgba(30, 205, 255, 0.18), rgba(255, 65, 184, 0.16));
-      color: #effcff;
-      text-align: center;
-      font-weight: 650;
-      box-shadow: 0 0 22px rgba(86, 223, 255, 0.12);
-    }
-    .note {
-      margin-top: 16px;
-      font-size: 12px;
-      color: #85a9b8;
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>スマホ確認用 QR</h1>
-    <p>スマホのカメラで読み取ると、公開済みの WebGL サンプルを直接開けます。重い場合は、数秒待ってから画面をタップしてください。</p>
-    <img class="qr" src="./2026-07-14_semantic_latency_residue_scope_qr.png" alt="QR code for mobile sample" />
-    <a class="button" href="https://nao-matsunami.github.io/webgl-xr-daily-report-pages/outputs/2026-07-14_semantic_latency_residue_scope.html">サンプルを開く</a>
-    <p class="note">URL: <a href="https://nao-matsunami.github.io/webgl-xr-daily-report-pages/outputs/2026-07-14_semantic_latency_residue_scope.html">https://nao-matsunami.github.io/webgl-xr-daily-report-pages/outputs/2026-07-14_semantic_latency_residue_scope.html</a></p>
-  </main>
-<!-- mobile-preset-controls:v1 -->
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(scriptDir, "..");
+const outputDir = path.join(rootDir, "outputs");
+const marker = "<!-- mobile-preset-controls:v1 -->";
+
+const snippet = `${marker}
 <style>
   .mobile-preset-controls {
     position: fixed;
@@ -154,6 +94,33 @@
     });
   });
 })();
-</script>
-</body>
-</html>
+</script>`;
+
+async function main() {
+  const entries = await fs.readdir(outputDir, { withFileTypes: true });
+  let changed = 0;
+  let skipped = 0;
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".html")) continue;
+
+    const filePath = path.join(outputDir, entry.name);
+    let html = await fs.readFile(filePath, "utf8");
+    if (html.includes(marker)) continue;
+    if (!/<\/body>/i.test(html)) {
+      skipped += 1;
+      continue;
+    }
+
+    html = html.replace(/<\/body>/i, `${snippet}\n</body>`);
+    await fs.writeFile(filePath, html, "utf8");
+    changed += 1;
+  }
+
+  console.log(`Mobile preset controls injected: ${changed} changed, ${skipped} skipped.`);
+}
+
+main().catch((error) => {
+  console.error(error.message);
+  process.exitCode = 1;
+});

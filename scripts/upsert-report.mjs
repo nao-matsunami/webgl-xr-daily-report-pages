@@ -151,6 +151,7 @@ async function main() {
   await fs.writeFile(targetPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   console.log(`Saved report: ${targetPath}`);
 
+  await run("node", ["scripts/inject-mobile-preset-controls.mjs"], rootDir);
   await run("node", ["scripts/build-gallery.mjs"], rootDir);
 
   if (options.publish) {
