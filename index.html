@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 76</span>
+        <span>days: 77</span>
         <span>page: 1 / 7</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -313,6 +313,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-03">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.03</p>
+              <h2>Velocity buffer、datamosh、fluid粒径を遅延するGPU状態の表現にする</h2>
+              <p class="card-subtitle">Turning velocity buffers, datamosh, and fluid particle size into delayed GPU-state expression</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-03" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の MeshVelocityMaterial / TSL subgroup indexing / native linear indexing、PlayCanvas の ImmediateBatch typed array retention / volumetric fog resize fix / SceneDepthReader継続、Babylon.js の IBL shadow for ShadowOnlyMaterial / fluid per-particle size / white balance / MultiTexture を調査した。前回の depth readback と atomic diagnostics を受け、今日は「速度バッファやreadbackの遅延をdatamosh的な履歴表現にする」方向と、「粒子サイズ・IBL shadow・モバイルfallbackを品質モードとして見せる」方向へ進め、本命サンプルと派生サンプルを2本実装した。</p>
+          <p class="description en-copy">Today covers three.js MeshVelocityMaterial, TSL subgroup indexing and native linear indexing, PlayCanvas ImmediateBatch typed-array retention, volumetric fog resize handling and the continuing SceneDepthReader thread, plus Babylon.js IBL shadows for ShadowOnlyMaterial, fluid per-particle size, white balance, and MultiTexture. Building on depth readback and atomic diagnostics, the direction shifts toward using velocity-buffer/readback delay as datamosh-like history and showing particle size, IBL shadowing, and mobile fallback as visible quality modes. Two runnable WebGL samples were implemented.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-09-03.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-09-03_velocity_datamosh_readback_field.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-02">
           <div class="card-top">
             <div>
@@ -562,29 +585,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-22.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-22_branch_cache_layer_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-21">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.21</p>
-              <h2>Edge-aware fog、音反応goo、GSplat透過影を低解像度バッファの表現面に束ねる</h2>
-              <p class="card-subtitle">Binding edge-aware fog, music-reactive goo, and transparent GSplat shadows into a low-resolution buffer surface</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-21" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の post-processing volumetric fog/JBU upsampling、Codrops の music-reactive goo、Babylon.js の GSplat IBL shadow opacity、PlayCanvas の WGSL sampler reflection / AABB frustum culling を、8/20 の depth relight / RTT resolutionScale / shadow mask から「低解像度の中間バッファを隠さず、作品と診断を兼ねる表面にする」方向へ接続した。</p>
-          <p class="description en-copy">Today connects three.js post-processing volumetric fog with JBU upsampling, Codrops' music-reactive goo, Babylon.js GSplat IBL shadow opacity, and PlayCanvas WGSL sampler reflection / AABB frustum culling to yesterday's depth relight / RTT resolutionScale / shadow-mask thread, treating low-resolution intermediate buffers as surfaces that work as both artwork and diagnostics.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span><span class="tag">audio</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-21.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-21_edge_aware_fog_goo_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

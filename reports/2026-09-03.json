@@ -1,0 +1,251 @@
+{
+  "date": "2026-09-03",
+  "headline": "Velocity buffer、datamosh、fluid粒径を遅延するGPU状態の表現にする",
+  "headlineEn": "Turning velocity buffers, datamosh, and fluid particle size into delayed GPU-state expression",
+  "summary": "three.js の MeshVelocityMaterial / TSL subgroup indexing / native linear indexing、PlayCanvas の ImmediateBatch typed array retention / volumetric fog resize fix / SceneDepthReader継続、Babylon.js の IBL shadow for ShadowOnlyMaterial / fluid per-particle size / white balance / MultiTexture を調査した。前回の depth readback と atomic diagnostics を受け、今日は「速度バッファやreadbackの遅延をdatamosh的な履歴表現にする」方向と、「粒子サイズ・IBL shadow・モバイルfallbackを品質モードとして見せる」方向へ進め、本命サンプルと派生サンプルを2本実装した。",
+  "summaryEn": "Today covers three.js MeshVelocityMaterial, TSL subgroup indexing and native linear indexing, PlayCanvas ImmediateBatch typed-array retention, volumetric fog resize handling and the continuing SceneDepthReader thread, plus Babylon.js IBL shadows for ShadowOnlyMaterial, fluid per-particle size, white balance, and MultiTexture. Building on depth readback and atomic diagnostics, the direction shifts toward using velocity-buffer/readback delay as datamosh-like history and showing particle size, IBL shadowing, and mobile fallback as visible quality modes. Two runnable WebGL samples were implemented.",
+  "links": [
+    {
+      "label": "three.js PR #23784 MeshVelocityMaterial",
+      "url": "https://github.com/mrdoob/three.js/pull/23784"
+    },
+    {
+      "label": "three.js PR #34442 native linear indexing",
+      "url": "https://github.com/mrdoob/three.js/pull/34442"
+    },
+    {
+      "label": "three.js PR #34441 subgroup_id support",
+      "url": "https://github.com/mrdoob/three.js/pull/34441"
+    },
+    {
+      "label": "three.js PR #34440 Counting Sort in Birds Example",
+      "url": "https://github.com/mrdoob/three.js/pull/34440"
+    },
+    {
+      "label": "three.js PR #34430 vector bitcast fix",
+      "url": "https://github.com/mrdoob/three.js/pull/34430"
+    },
+    {
+      "label": "PlayCanvas PR #9286 Immediate line batches typed arrays",
+      "url": "https://github.com/playcanvas/engine/pull/9286"
+    },
+    {
+      "label": "PlayCanvas PR #9283 volumetric fog resize frame",
+      "url": "https://github.com/playcanvas/engine/pull/9283"
+    },
+    {
+      "label": "PlayCanvas PR #9275 WebGL texture read device destroy",
+      "url": "https://github.com/playcanvas/engine/pull/9275"
+    },
+    {
+      "label": "Babylon.js PR #18873 IBL Shadows for ShadowOnlyMaterial",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18873"
+    },
+    {
+      "label": "Babylon.js PR #18863 fluid per-particle size",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18863"
+    },
+    {
+      "label": "Babylon.js PR #18855 white balance",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18855"
+    },
+    {
+      "label": "Babylon.js PR #18822 MultiTexture",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18822"
+    },
+    {
+      "label": "Codrops Three.js Datamosh Effect",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Velocity Datamosh Readback Field",
+      "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+    },
+    {
+      "label": "Derived sample: Fluid Shadow Size Fallback Scope",
+      "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #23784 は velocity field をバッファへ描く MeshVelocityMaterial を追加する流れで、motion blur や TRAA だけでなく datamosh / temporal smear / motion mask の素材として使える。2. three.js PR #34442/#34441 は TSL compute の invocation / workgroup / subgroup index をより明示的に扱う更新で、昨日の atomic diagnostics を「どのlaneがどこを担当したか」まで追える方向へ進める。3. PlayCanvas PR #9286 は immediate line batch を retained typed arrays にして、デバッグ線や編集補助線の大量描画で配列再確保を避ける。線の束を毎フレーム増減する表現にも効く。4. PlayCanvas PR #9283 は resize直後に volumetric fog が1フレーム消える問題。短い欠落でも演出上は強いノイズになるので、resize / render target再確保 / depth attachment のライフサイクルを見える状態にする価値がある。5. Babylon.js PR #18873/#18863 は ShadowOnlyMaterial で IBL shadow を受ける話と fluid renderer の per-particle size。透明な影受け面と粒子ごとの厚みを合わせると、Web演出でも展示でも「床にだけ環境光の影が落ちる液体粒子」が作れる。",
+      "bodyEn": "1. three.js PR #23784 adds a MeshVelocityMaterial path for rendering scene velocity to a buffer, useful not only for motion blur or TRAA but also for datamosh, temporal smear, and motion masks. 2. three.js PRs #34442/#34441 make TSL compute invocation, workgroup, and subgroup indexing more explicit, extending yesterday's atomic diagnostics toward per-lane responsibility. 3. PlayCanvas PR #9286 stores immediate line batches in retained typed arrays, avoiding repeated allocation for heavy debug or editor line rendering. 4. PlayCanvas PR #9283 addresses a one-frame volumetric fog dropout after resize; even a brief gap can become a visible artifact in creative work. 5. Babylon.js PRs #18873/#18863 combine IBL shadows on ShadowOnlyMaterial and per-particle fluid size, suggesting liquid particles that only cast environment shadows on a transparent catcher.",
+      "links": [
+        {
+          "label": "three.js #23784",
+          "url": "https://github.com/mrdoob/three.js/pull/23784"
+        },
+        {
+          "label": "three.js #34442",
+          "url": "https://github.com/mrdoob/three.js/pull/34442"
+        },
+        {
+          "label": "PlayCanvas #9286",
+          "url": "https://github.com/playcanvas/engine/pull/9286"
+        },
+        {
+          "label": "PlayCanvas #9283",
+          "url": "https://github.com/playcanvas/engine/pull/9283"
+        },
+        {
+          "label": "Babylon.js #18873",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18873"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Codrops では 2026-09-02 に Three.js Datamosh Effect が出ており、3D / GLSL / postprocessing / Three.js / WebGL の文脈で、速度や前フレームの履歴を画として見せる方向がタイムリー。9/1 の Dreamfold、Footballs in Motion、Eiffel Tower Catapult、8/31 の Volatile Nexus も含め、最近の事例は「3D空間を作る」だけでなく、カメラ移動・物理・粒子・postprocessで時間のクセを残す傾向が強い。今回の本命試作は、MeshVelocityMaterial 的な速度バッファと、PlayCanvas SceneDepthReader 的な小領域 readback の遅延を同じ画面に置き、datamoshを単なるグリッチではなく「GPUから戻ってくる情報の遅れ」として扱う。",
+      "bodyEn": "Codrops lists Three.js Datamosh Effect on 2026-09-02 in the 3D / GLSL / postprocessing / Three.js / WebGL context, making velocity and previous-frame history especially timely. Recent items such as Dreamfold, Footballs in Motion, Eiffel Tower Catapult, and Volatile Nexus also emphasize camera motion, physics, particles, and postprocess traces rather than static 3D scenes. Today's main prototype combines a MeshVelocityMaterial-like velocity buffer with SceneDepthReader-like small-region readback delay, treating datamosh as delayed GPU information rather than generic glitch.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub all demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "three.js MeshVelocityMaterial PR",
+          "url": "https://github.com/mrdoob/three.js/pull/23784"
+        },
+        {
+          "label": "PlayCanvas SceneDepthReader PR",
+          "url": "https://github.com/playcanvas/engine/pull/9274"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Velocity Datamosh Readback Field」。ポインタの移動を速度ベクトルとして扱い、1 は velocity buffer、2 は datamosh trail、3 は retained typed-array line batch、4 は resize直後の fog dropout を表現する。ドラッグで motion source を動かし、クリック/Spaceで readback pulse を入れる。派生案は「Fluid Shadow Size Fallback Scope」。1 は per-particle size、2 は IBL shadow catcher、3 は MultiTexture strata、4 は Adreno / highp / float-filterability fallback lane を表示する。次に足すなら、1本目のvelocity magnitudeを2本目の粒径へ接続し、速く動いた場所だけ粒子が太り、ShadowOnlyMaterial風の床影が遅れて追うようにする。",
+      "bodyEn": "The main idea is Velocity Datamosh Readback Field. Pointer motion becomes a velocity vector: mode 1 shows a velocity buffer, 2 datamosh trails, 3 retained typed-array line batches, and 4 a resize-triggered fog dropout. Drag moves the motion source; click/Space emits a readback pulse. The derived idea is Fluid Shadow Size Fallback Scope: mode 1 per-particle size, 2 IBL shadow catcher, 3 MultiTexture strata, and 4 Adreno/highp/float-filterability fallback lanes. Next, connect the first sample's velocity magnitude to particle size in the second so fast-moving areas thicken and transparent floor shadows follow with delay.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "velocity buffer を使う場合、描画物の前フレーム位置と現フレーム位置を分けて管理し、screen-space velocity を postprocess に渡す。WebGLの最小試作では実バッファを持たず、ポインタの前回値と現在値の差を velocity と見なすだけでも表現検証になる。datamosh は色の崩れではなく、motion vector で参照UVをずらす処理として設計すると制御しやすい。PlayCanvas #9286 の教訓は、lineやdebug overlayも演出に使うなら JS 配列 push の膨張を避け、Float32Array の容量維持に寄せること。PlayCanvas #9283/#9275 からは、resize / destroy / async read の未完了状態を捨てずに、画面上で小さな dropout pulse として扱う設計が見える。Babylon.js #18863 の per-particle size は、音量、速度、深度、subgroup/bin pressure と相性が良い。",
+      "bodyEn": "For velocity buffers, keep previous and current object positions separately and pass screen-space velocity into postprocessing. In a minimal WebGL prototype, pointer delta can stand in for real velocity. Datamosh is easier to control when designed as motion-vector UV offset rather than arbitrary color corruption. PlayCanvas #9286 suggests using retained Float32Array capacity for line/debug overlays that become part of the show. PlayCanvas #9283/#9275 suggest surfacing resize, destroy, and pending async-read states as small dropout pulses instead of hiding them. Babylon.js #18863's per-particle size pairs well with audio, velocity, depth, and subgroup/bin pressure.",
+      "links": [
+        {
+          "label": "PlayCanvas #9286",
+          "url": "https://github.com/playcanvas/engine/pull/9286"
+        },
+        {
+          "label": "PlayCanvas #9275",
+          "url": "https://github.com/playcanvas/engine/pull/9275"
+        },
+        {
+          "label": "Babylon.js #18863",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18863"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: PlayCanvas #9274 SceneDepthReader、three.js #34428/#34431 atomic workgroup and compute tests、#34235 PrefixSum、Babylon.js #18822 MultiTexture、#18855 white balance、#18829 retroreflection。新規案件: three.js #23784 MeshVelocityMaterial は motion blur以外のdatamosh/temporal paintingへ広げる。three.js #34440 Counting Sort in Birds Example は群れの近傍探索がそのまま粒子演出のbin可視化になる。PlayCanvas #9286 は大量ライン表現、#9283 はfog/depth attachment lifecycleとして継続。Babylon.js #18873 は透明shadow catcherをAR/商品演出へ接続できる。寝かせる案件: docsリンク修正やJSDoc prefix整理は直接の画作りからは遠いが、LLMが読むAPI面の品質改善として別枠で見る。",
+      "bodyEn": "Continue watching PlayCanvas #9274 SceneDepthReader, three.js #34428/#34431 atomic workgroups and compute tests, #34235 PrefixSum, Babylon.js #18822 MultiTexture, #18855 white balance, and #18829 retroreflection. New items: three.js #23784 MeshVelocityMaterial for datamosh/temporal painting beyond motion blur; #34440 Counting Sort in Birds Example as bin visualization for flock particles; PlayCanvas #9286 for heavy line expression; #9283 for fog/depth-attachment lifecycle; Babylon.js #18873 for transparent shadow catchers in AR/product staging. Sleep: docs link and JSDoc prefix cleanup are farther from image-making, though useful for API surfaces that agents read.",
+      "links": [
+        {
+          "label": "three.js #34440",
+          "url": "https://github.com/mrdoob/three.js/pull/34440"
+        },
+        {
+          "label": "Babylon.js #18829",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18829"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-03_velocity_datamosh_readback_field.html` を開く。1 は速度場、2 はdatamosh trail、3 はline batch、4 はfog dropout。ドラッグで速度源を動かし、クリック/Spaceで遅延readback風のpulseを出す。次に足すなら、実three.jsで MeshVelocityMaterial のvelocity textureを取り、ポインタdeltaの代わりにsampleへ渡す。2本目は `outputs/2026-09-03_fluid_shadow_size_fallback_scope.html`。1 はfluid粒径、2 は透明なIBL shadow catcher、3 はMultiTexture風layer、4 はmobile fallback lane。次に足すなら、highp / float texture / WebGPU対応可否の実チェックをUIではなくshader uniformへ流し、対応状況で粒径と影を変える。",
+      "bodyEn": "Open `outputs/2026-09-03_velocity_datamosh_readback_field.html` first. Mode 1 is velocity field, 2 datamosh trail, 3 line batch, and 4 fog dropout. Drag moves the velocity source; click/Space emits a delayed-readback-like pulse. Next, use real three.js MeshVelocityMaterial velocity textures instead of pointer delta. The second sample is `outputs/2026-09-03_fluid_shadow_size_fallback_scope.html`: 1 fluid particle size, 2 transparent IBL shadow catcher, 3 MultiTexture-like layers, and 4 mobile fallback lanes. Next, feed real highp / float texture / WebGPU capability checks into shader uniforms and vary particle size and shadow behavior.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #23784/#34442/#34441/#34440/#34430、PlayCanvas #9286/#9283/#9275/#9274、Babylon.js #18873/#18863/#18855/#18822/#18865、Codrops Three.js Datamosh Effect。アイデア検討: 9/2 の depth readback / atomic diagnostics を、9/3 は velocity history / datamosh / retained line batches / per-particle sizeへ接続。サンプル実装: 本命 `2026-09-03_velocity_datamosh_readback_field.html`、派生 `2026-09-03_fluid_shadow_size_fallback_scope.html`。結果の検証: JSON parse、HTML parse、script構文、簡易GLSL予約語チェック、gallery build、publishを実行する。短期で試すものは velocity delta をdatamosh UV offsetへ入れること。中長期で育てるものは、depth/velocity/compute/fallbackを同じ時間軸に積んだ「GPU状態のライブ譜面」。",
+      "bodyEn": "Collection: three.js #23784/#34442/#34441/#34440/#34430, PlayCanvas #9286/#9283/#9275/#9274, Babylon.js #18873/#18863/#18855/#18822/#18865, and Codrops Three.js Datamosh Effect. Ideation: connect 9/2 depth readback and atomic diagnostics to 9/3 velocity history, datamosh, retained line batches, and per-particle size. Prototypes: `2026-09-03_velocity_datamosh_readback_field.html` and `2026-09-03_fluid_shadow_size_fallback_scope.html`. Verification: JSON parse, HTML parse, script syntax, simple GLSL reserved-word check, gallery build, and publish. Short-term: feed velocity delta into datamosh UV offset. Long-term: build a live score of GPU state where depth, velocity, compute, and fallback share one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、8/27 のFFT/depth、8/29 のwhite balance lens、8/30 のcompute prefix、8/31 のVXGI/error LOD、9/1 のpacked lane、9/2 のSceneDepthReader/atomic diagnostics、そして今日のvelocity/datamoshへ続いている。共通しているのは、最終画ではなく途中状態を見せること。組み合わせ候補としては、SceneDepthReader の小矩形depth、MeshVelocityMaterial のvelocity、PrefixSum/CountingSort のbin、fluid particle size、white balanceを1つのpostprocessへ集約するのが強い。育てる価値が高いテーマは「GPUから遅れて返る情報の choreography」。速度は現在入力、depth/readbackは遅延確定、atomic/binは集計、fallbackは環境差という役割に分けると、ライブ演出として読みやすい。",
+      "bodyEn": "The recent trend moves from 8/27 FFT/depth, 8/29 white-balance lens, 8/30 compute prefix, 8/31 VXGI/error LOD, 9/1 packed lanes, 9/2 SceneDepthReader/atomic diagnostics, and now velocity/datamosh. The common move is exposing intermediate state rather than only final images. A strong combination is one postprocess that combines small-rectangle SceneDepthReader depth, MeshVelocityMaterial velocity, PrefixSum/CountingSort bins, fluid particle size, and white balance. The theme worth growing is choreography of information returning late from the GPU: velocity as immediate input, depth/readback as delayed confirmation, atomic/bin as aggregation, and fallback as environment difference.",
+      "links": [
+        {
+          "label": "Previous depth sample",
+          "url": "../outputs/2026-09-02_scene_depth_reader_probe.html"
+        },
+        {
+          "label": "Previous atomic sample",
+          "url": "../outputs/2026-09-02_tsl_atomic_subgroup_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した本命は `outputs/2026-09-03_velocity_datamosh_readback_field.html`。MeshVelocityMaterial と Codrops datamosh の接点を短時間で触れるように、前回/現在ポインタ差分をvelocity bufferの代替にして、履歴の引きずり、読み取り矩形、line batch、fog dropoutを4モードで表示する。派生試作は `outputs/2026-09-03_fluid_shadow_size_fallback_scope.html`。Babylon.js #18863/#18873/#18822/#18865 を、粒径、透明shadow catcher、layer合成、mobile fallback laneとしてまとめた。どちらも依存なしの単体HTMLで動く。次に足すなら、1本目のvelocityを2本目の粒径uniformへ直接渡し、速度がある場所だけ液体が太って床影が遅れて出る連結デモにする。",
+      "bodyEn": "The selected main prototype is `outputs/2026-09-03_velocity_datamosh_readback_field.html`. To quickly touch the overlap between MeshVelocityMaterial and Codrops-style datamosh, it uses previous/current pointer delta as a velocity-buffer stand-in and shows history smear, read rectangles, line batches, and fog dropout across four modes. The derived prototype is `outputs/2026-09-03_fluid_shadow_size_fallback_scope.html`, mapping Babylon.js #18863/#18873/#18822/#18865 into particle size, transparent shadow catchers, layer compositing, and mobile fallback lanes. Both are dependency-free standalone HTML files. Next, connect the first sample's velocity directly into the second sample's particle-size uniform so liquid thickens only where motion occurs and shadows follow late.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、入力値と描画状態をデータとして扱うと発展しやすい。1本目は pointer velocity、readback pulse、mode、fog dropout timing をログにすれば、ユーザーの動きがどこでdatamoshを起こしたかを後から再生できる。2本目は particle size、shadow strength、layer id、fallback flag を持てるので、MediaPipeの手速度、Web Audioの低域、WebXRの床検出、商品画像の透明shadow catcherと組み合わせやすい。展示では、来場者の速い手振りだけが液体粒子を太らせ、床影は半拍遅れて追う。Web演出では、ページ遷移時のvelocity bufferを次ページの液体shadowへ渡すと、単なるtransitionではなく「前ページの運動量が残る」表現になる。",
+      "bodyEn": "Both samples become more useful when their inputs and render states are treated as data. The first can log pointer velocity, readback pulse, mode, and fog-dropout timing, allowing replay of where user motion caused datamosh. The second can expose particle size, shadow strength, layer id, and fallback flags, making it easy to combine with MediaPipe hand speed, Web Audio bass, WebXR floor detection, or product-image transparent shadow catchers. In an installation, only fast hand gestures thicken liquid particles while floor shadows follow half a beat later. On the web, passing page-transition velocity into the next page's liquid shadow creates a sense that motion from the previous page remains.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    }
+  ]
+}
