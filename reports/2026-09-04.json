@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-04",
+  "headline": "Scheduled submit、次フレームreadback、object IDをGPU状態の譜面にする",
+  "headlineEn": "Turning scheduled submits, next-frame readback, and object IDs into a score of GPU state",
+  "summary": "three.js の WebGPURenderer autoSubmit / scheduled submits、PassNode pixel ratio修正、packed 4x8 integer dot product、PlayCanvas の次フレーム冒頭での async texture read copy、WireRenderer、SOG LOD bundle、Babylon.js の object ID geometry textures、ShadowOnlyMaterial IBL shadows、bounding box寸法表示を調査した。前回の velocity/datamosh/readback 遅延から、今日は「いつGPUへsubmitするか」「いつreadbackをcopyするか」「どのobjectがどのpixelを占めるか」を見える時間軸に置き、2本のWebGLサンプルを実装した。",
+  "summaryEn": "Today covers three.js WebGPURenderer autoSubmit / scheduled submits, PassNode pixel-ratio fixes, packed 4x8 integer dot product support, PlayCanvas next-frame async texture-read copy, WireRenderer, a single streamed SOG LOD bundle, and Babylon.js object ID geometry textures, ShadowOnlyMaterial IBL shadows, and bounding-box dimensions. Building on yesterday's velocity/datamosh/readback delay, the focus shifts to making GPU submit timing, readback copy timing, and per-pixel object ownership visible. Two runnable WebGL samples were implemented.",
+  "links": [
+    {
+      "label": "three.js PR #34454 Renderer autoSubmit and Scheduled Submits",
+      "url": "https://github.com/mrdoob/three.js/pull/34454"
+    },
+    {
+      "label": "three.js PR #34453 PassNode pixel ratio",
+      "url": "https://github.com/mrdoob/three.js/pull/34453"
+    },
+    {
+      "label": "three.js PR #34451 packed 4x8 integer dot product",
+      "url": "https://github.com/mrdoob/three.js/pull/34451"
+    },
+    {
+      "label": "PlayCanvas PR #9293 async texture read next frame",
+      "url": "https://github.com/playcanvas/engine/pull/9293"
+    },
+    {
+      "label": "PlayCanvas PR #9288 WireRenderer",
+      "url": "https://github.com/playcanvas/engine/pull/9288"
+    },
+    {
+      "label": "PlayCanvas PR #9290 downtown streamed SOG bundle",
+      "url": "https://github.com/playcanvas/engine/pull/9290"
+    },
+    {
+      "label": "Babylon.js PR #18879 object ID geometry textures",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18879"
+    },
+    {
+      "label": "Babylon.js PR #18875 Inspector bounding box dimensions",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18875"
+    },
+    {
+      "label": "Babylon.js PR #18873 IBL Shadows for ShadowOnlyMaterial",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18873"
+    },
+    {
+      "label": "Codrops Creative Hub all demos",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Scheduled Submit Readback Scope",
+      "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+    },
+    {
+      "label": "Derived sample: Object ID SOG LOD Wire Scope",
+      "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34454 は WebGPURenderer で command buffer の submit をまとめる実験。autoSubmit=false と明示的 submit によって、nested render / compute が多いNode系処理で「いつGPUへ流すか」を制作者が制御できる可能性が出る。2. PlayCanvas PR #9293 は WebGL の async texture read 終端copyを次フレーム冒頭へ移す選択肢。SceneDepthReader が毎フレーム読むとき、描画後に同期copyするより、未処理の描画キューが少ない場所へずらす発想が重要。3. three.js PR #34453 は PassNode派生passの pixel ratio 回帰修正。postprocessを表現の主役にするほど、描画バッファサイズと見た目のズレは直接ノイズになる。4. PlayCanvas PR #9288/#9290 は WireRenderer と、downtown SOG captureを単一streamed multi-LOD bundleへ寄せる更新。デバッグ線、LOD error metadata、streaming単位が、画作りの診断レイヤーとして使いやすくなる。5. Babylon.js PR #18879 は geometry buffer / frame graph に object ID attachment を足す流れ。select mask、edge highlight、object別postprocess、展示での注視対象検出に直結する。",
+      "bodyEn": "1. three.js PR #34454 experiments with batching WebGPURenderer command-buffer submits. With autoSubmit=false and explicit submit, creators may gain control over when nested render/compute work reaches the GPU. 2. PlayCanvas PR #9293 lets async texture-read copy happen at the start of the next frame on WebGL, reducing the chance that readback waits on unrelated queued drawing. 3. three.js PR #34453 fixes a PassNode-derived pass pixel-ratio regression, important because postprocessing artifacts become visible creative noise. 4. PlayCanvas PRs #9288/#9290 add WireRenderer and move a downtown SOG capture to a single streamed multi-LOD bundle, making debug lines, LOD error metadata, and streaming units useful diagnostic layers. 5. Babylon.js PR #18879 adds object-ID attachments to geometry rendering, directly useful for selection masks, edge highlighting, object-level postprocess, and gaze/attention staging.",
+      "links": [
+        {
+          "label": "three.js #34454",
+          "url": "https://github.com/mrdoob/three.js/pull/34454"
+        },
+        {
+          "label": "PlayCanvas #9293",
+          "url": "https://github.com/playcanvas/engine/pull/9293"
+        },
+        {
+          "label": "Babylon.js #18879",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18879"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative Hub では 2026-09-02 の Three.js Datamosh Effect、9/1 の Dreamfold / Footballs in Motion / Eiffel Tower Catapult、8/31 の Volatile Nexus が並び、ここ数日のWeb表現は「空間」「物理」「粒子」「postprocessの時間残像」が強い。前回のvelocity/datamoshは見た目の履歴だったが、今日のPR群はもう一段低い「GPU作業の順番」や「readbackの置き場所」へ降りている。submit queue、readback copy、object ID、LOD errorを可視化すると、開発者向け診断だけでなく、観客に処理の鼓動を見せるステージ演出になる。",
+      "bodyEn": "Codrops Creative Hub currently lists Three.js Datamosh Effect from 2026-09-02, Dreamfold / Footballs in Motion / Eiffel Tower Catapult from 9/1, and Volatile Nexus from 8/31, showing a strong run of spatial scenes, physics, particles, and temporal postprocess residue. Yesterday's velocity/datamosh was visual history; today's PRs go lower, toward GPU work ordering and readback placement. Visualizing submit queues, readback copies, object IDs, and LOD error can become a stage language, not only developer diagnostics.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub all demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Scheduled Submit Readback Scope」。1 は command buffer queue、2 は次フレーム冒頭へ逃がした readback copy、3 は pixel ratioのズレをpass格子で表示、4 はそれらを同じtimelineに重ねる。ドラッグでqueue pressure、クリック/Spaceでsubmit pulseを入れる。派生案は「Object ID SOG LOD Wire Scope」。1 はobject ID mask、2 はSOG LOD error / bin、3 はWireRenderer風のdebug shape、4 はInspectorのbounding box寸法表示を抽象化する。次に足すなら、1本目のsubmit pulseで2本目のobject ID highlightを一拍遅らせ、GPU submitのタイミングが選択輪郭へ伝播する演出にする。",
+      "bodyEn": "The main idea is Scheduled Submit Readback Scope. Mode 1 shows command-buffer queues, 2 next-frame readback copies, 3 pixel-ratio drift as pass grids, and 4 the combined timeline. Drag changes queue pressure; click/Space emits a submit pulse. The derived idea is Object ID SOG LOD Wire Scope: mode 1 object-ID masks, 2 SOG LOD error/bins, 3 WireRenderer-like debug shapes, and 4 Inspector-style bounding-box dimensions. Next, let submit pulses from the first sample delay object-ID highlights in the second so GPU submit timing visibly propagates into selection outlines.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "WebGPU側で submit をまとめる場合、見た目の改善だけでなく、UI入力からGPU反映までのlatencyを測る必要がある。`performance.mark()` で input、render start、compute end、submit、readback copy、present 風の時刻を残すと、サンプルのshader uniformへ流せる。PlayCanvas #9293 の考え方は WebGL でも使える。readPixels / getBufferSubData を発行する場所をフレーム末尾固定にせず、次フレーム冒頭や負荷の低いpassへ逃がす設計にする。object ID texture はRGBA8 24-bitなら広いID空間、RED8なら軽い選択maskとして扱える。SOG LOD error metadata と合わせると、選択されたobjectだけ高LOD、周辺はwire/debug outlineという演出が組める。",
+      "bodyEn": "If WebGPU submits are batched, measure not only visual improvement but input-to-GPU latency. Mark input, render start, compute end, submit, readback copy, and present-like timing with `performance.mark()` and feed those values into shader uniforms. The PlayCanvas #9293 idea applies to WebGL too: avoid always doing readPixels/getBufferSubData at frame end; move copies to the next frame start or a lighter pass. Object-ID textures can use RGBA8 for a 24-bit ID space or RED8 for a cheap selection mask. Combined with SOG LOD error metadata, selected objects can get high LOD while surroundings become wire/debug outlines.",
+      "links": [
+        {
+          "label": "three.js #34454",
+          "url": "https://github.com/mrdoob/three.js/pull/34454"
+        },
+        {
+          "label": "PlayCanvas #9293",
+          "url": "https://github.com/playcanvas/engine/pull/9293"
+        },
+        {
+          "label": "Babylon.js #18879",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18879"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34454 autoSubmit、#34235 PrefixSum、#34440 Counting Sort Birds、#34441 subgroup_id fallback、PlayCanvas #9293 SceneDepthReader readback performance、#9274 SceneDepthReader、Babylon.js #18822 MultiTexture、#18873 ShadowOnlyMaterial IBL shadows。新規案件: Babylon.js #18879 object ID geometry textures、#18875 bounding box dimensions、PlayCanvas #9288 WireRenderer、#9290 SOG LOD bundle。寝かせる案件: PlayCanvas StandardMaterial型修正 #9294/#9295 は制作体験には効くが、今日の画作りからは少し遠い。Babylon.js Lottie削除 #18878 も、このプロジェクトでは優先度を下げる。",
+      "bodyEn": "Continue watching three.js #34454 autoSubmit, #34235 PrefixSum, #34440 Counting Sort Birds, #34441 subgroup_id fallback, PlayCanvas #9293 SceneDepthReader readback performance, #9274 SceneDepthReader, Babylon.js #18822 MultiTexture, and #18873 ShadowOnlyMaterial IBL shadows. New items: Babylon.js #18879 object-ID geometry textures, #18875 bounding-box dimensions, PlayCanvas #9288 WireRenderer, and #9290 SOG LOD bundle. Sleep: PlayCanvas StandardMaterial type fixes #9294/#9295 help authoring but are less central to today's visual direction; Babylon.js Lottie removal #18878 is also low priority here.",
+      "links": [
+        {
+          "label": "PlayCanvas #9295",
+          "url": "https://github.com/playcanvas/engine/pull/9295"
+        },
+        {
+          "label": "Babylon.js #18878",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18878"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-04_scheduled_submit_readback_scope.html` を開く。1 はcommand buffer、2 はnext-frame readback、3 はpixel ratio pass、4 は統合表示。ドラッグでqueue pressure、クリック/Spaceでsubmit pulse。次に足すなら、実コードで `performance.now()` の差分をuniform化し、submit数やreadback待ち時間で色を変える。2本目は `outputs/2026-09-04_object_id_sog_lod_wire_scope.html`。1 はobject ID mask、2 はSOG LOD error、3 はwire debug、4 はbounds inspector。次に足すなら、ID maskを使った輪郭線と、LOD errorが高いobjectだけ粒子化するpostprocessを足す。",
+      "bodyEn": "Open `outputs/2026-09-04_scheduled_submit_readback_scope.html` first. Mode 1 is command buffers, 2 next-frame readback, 3 pixel-ratio passes, and 4 the combined view. Drag changes queue pressure; click/Space emits a submit pulse. Next, feed real `performance.now()` deltas into uniforms and color by submit count or readback wait. The second sample is `outputs/2026-09-04_object_id_sog_lod_wire_scope.html`: mode 1 object-ID masks, 2 SOG LOD error, 3 wire debug, and 4 bounds inspector. Next, add outlines from ID masks and a postprocess that turns only high-error objects into particles.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34454/#34453/#34451/#34440/#34235、PlayCanvas #9293/#9288/#9290/#9291/#9274、Babylon.js #18879/#18875/#18873/#18822、Codrops Creative Hub。アイデア検討: 9/3 の velocity/readback/datamosh を、9/4 は submit scheduling、next-frame copy、object ID、LOD/wire debugへ接続。サンプル実装: 本命 `2026-09-04_scheduled_submit_readback_scope.html`、派生 `2026-09-04_object_id_sog_lod_wire_scope.html`。結果の検証: JSON parse、HTML parse、script構文、upsert/build/publishを実行する。短期で試すものは timing markers をshader uniformへ流すこと。中長期で育てるものは、GPU内部状態を「遅延」「集計」「選択」「劣化」の4トラックで演奏するシステム。",
+      "bodyEn": "Collection: three.js #34454/#34453/#34451/#34440/#34235, PlayCanvas #9293/#9288/#9290/#9291/#9274, Babylon.js #18879/#18875/#18873/#18822, and Codrops Creative Hub. Ideation: connect 9/3 velocity/readback/datamosh to 9/4 submit scheduling, next-frame copy, object ID, and LOD/wire debug. Prototypes: `2026-09-04_scheduled_submit_readback_scope.html` and `2026-09-04_object_id_sog_lod_wire_scope.html`. Verification: JSON parse, HTML parse, script syntax, upsert/build/publish. Short-term: feed timing markers into shader uniforms. Long-term: perform GPU internal state as four tracks: delay, aggregation, selection, and degradation.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/27 のFFT/depth、8/30 のcompute prefix、9/1 のpacked lane、9/2 のSceneDepthReader、9/3 のvelocity/datamoshに続き、今日はsubmit/readback/object IDへ進んだ。傾向として、描画結果そのものより、rendererが持つ中間状態をどう見せるかが主題になっている。組み合わせ候補は、velocity magnitudeでsubmit pulseの幅を変え、SceneDepthReaderの遅延値でobject ID outlineを遅らせ、SOG LOD errorで粒子密度を変え、white balanceでfallback状態を色温度として出す構成。育てる価値が高いテーマは「GPU状態のライブ譜面」。観客は美しい絵を見るだけでなく、内部で何が詰まって何が遅れているかをリズムとして感じられる。",
+      "bodyEn": "After 8/27 FFT/depth, 8/30 compute prefix, 9/1 packed lanes, 9/2 SceneDepthReader, and 9/3 velocity/datamosh, today moves into submit/readback/object ID. The trend is less about final imagery and more about exposing intermediate renderer state. A promising combination: velocity magnitude controls submit-pulse width, delayed SceneDepthReader values delay object-ID outlines, SOG LOD error changes particle density, and white balance maps fallback state to color temperature. The theme worth growing is a live score of GPU state, where viewers feel what is queued, delayed, selected, and degraded as rhythm.",
+      "links": [
+        {
+          "label": "Previous velocity sample",
+          "url": "../outputs/2026-09-03_velocity_datamosh_readback_field.html"
+        },
+        {
+          "label": "Previous fluid fallback sample",
+          "url": "../outputs/2026-09-03_fluid_shadow_size_fallback_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した本命は `outputs/2026-09-04_scheduled_submit_readback_scope.html`。three.js #34454 と PlayCanvas #9293 を短時間で触るため、command buffer、readback copy、pixel ratio pass、combined choreographyの4モードをWebGL fragment shaderで表現した。派生試作は `outputs/2026-09-04_object_id_sog_lod_wire_scope.html`。Babylon.js #18879、PlayCanvas #9288/#9290、Babylon.js #18875 を、object ID mask、LOD error、wire debug、bounds inspectorとして抽象化した。どちらも依存なしの単体HTML。次に足すなら、2本を統合して、submit/readbackの遅延がobject ID outlineやLOD密度へ伝播する一枚の診断演出にする。",
+      "bodyEn": "The selected main prototype is `outputs/2026-09-04_scheduled_submit_readback_scope.html`. To quickly test three.js #34454 and PlayCanvas #9293, it represents command buffers, readback copy, pixel-ratio passes, and combined choreography in four WebGL fragment-shader modes. The derived prototype is `outputs/2026-09-04_object_id_sog_lod_wire_scope.html`, abstracting Babylon.js #18879, PlayCanvas #9288/#9290, and Babylon.js #18875 into object-ID masks, LOD error, wire debug, and bounds inspection. Both are dependency-free standalone HTML files. Next, merge them so submit/readback delay propagates into object-ID outlines and LOD density.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、入力値と描画状態をデータ化すると接続しやすい。1本目は pointer queue pressure、submit pulse、readback age、pixel ratio drift をログ化できる。2本目は selected object id、LOD error、wire density、bounds pulseを持てる。MediaPipeの手速度をsubmit pressureへ、Web Audioの低域をreadback pulseへ、WebXRの床・壁・注視対象をobject IDへ、商品や展示物の実寸をbounds inspectorへ流すと、処理負荷と空間理解が同じ演出面に乗る。Webのページ遷移では、前ページのsubmit/readback履歴を次ページのobject outlineとして残すと、遷移がただのフェードではなく、GPU処理の余韻として見える。",
+      "bodyEn": "The two samples connect well when inputs and render states are treated as data. The first can log pointer queue pressure, submit pulses, readback age, and pixel-ratio drift. The second can expose selected object IDs, LOD error, wire density, and bounds pulses. MediaPipe hand speed can drive submit pressure, Web Audio bass can drive readback pulses, WebXR floor/wall/gaze targets can feed object IDs, and real product dimensions can feed bounds inspection. For page transitions, carrying the previous page's submit/readback history into the next page's object outlines makes the transition read as residual GPU work rather than a simple fade.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    }
+  ]
+}

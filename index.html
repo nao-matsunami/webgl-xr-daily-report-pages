@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 77</span>
+        <span>days: 78</span>
         <span>page: 1 / 7</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -313,6 +313,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-04">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.04</p>
+              <h2>Scheduled submit、次フレームreadback、object IDをGPU状態の譜面にする</h2>
+              <p class="card-subtitle">Turning scheduled submits, next-frame readback, and object IDs into a score of GPU state</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-04" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の WebGPURenderer autoSubmit / scheduled submits、PassNode pixel ratio修正、packed 4x8 integer dot product、PlayCanvas の次フレーム冒頭での async texture read copy、WireRenderer、SOG LOD bundle、Babylon.js の object ID geometry textures、ShadowOnlyMaterial IBL shadows、bounding box寸法表示を調査した。前回の velocity/datamosh/readback 遅延から、今日は「いつGPUへsubmitするか」「いつreadbackをcopyするか」「どのobjectがどのpixelを占めるか」を見える時間軸に置き、2本のWebGLサンプルを実装した。</p>
+          <p class="description en-copy">Today covers three.js WebGPURenderer autoSubmit / scheduled submits, PassNode pixel-ratio fixes, packed 4x8 integer dot product support, PlayCanvas next-frame async texture-read copy, WireRenderer, a single streamed SOG LOD bundle, and Babylon.js object ID geometry textures, ShadowOnlyMaterial IBL shadows, and bounding-box dimensions. Building on yesterday's velocity/datamosh/readback delay, the focus shifts to making GPU submit timing, readback copy timing, and per-pixel object ownership visible. Two runnable WebGL samples were implemented.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-09-04.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-09-04_scheduled_submit_readback_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-03">
           <div class="card-top">
             <div>
@@ -562,29 +585,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-08-23.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-08-23_tsl_truth_matrix_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-08-22">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.08.22</p>
-              <h2>TSL分岐キャッシュ、WebGPU stencil、MultiTextureを“内部状態が見える層”として束ねる</h2>
-              <p class="card-subtitle">Binding TSL branch caching, WebGPU stencil, and MultiTexture into visible internal-state layers</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-08-22" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の TSL GPU-native unit tests と TempNode 分岐キャッシュ修正、WebGPU clipping + stencil demo、PlayCanvas の WebGPU alpha-to-coverage / parallax、Babylon.js の MultiTexture / atmosphere WGSL 互換性を、昨日の edge-aware fog / sampler audit から「内部の分岐・layer・clip・coverage を作品の診断面にする」方向へ接続した。</p>
-          <p class="description en-copy">Today connects three.js TSL GPU-native unit tests, TempNode branch-cache fixes, WebGPU clipping + stencil demos, PlayCanvas WebGPU alpha-to-coverage / parallax work, and Babylon.js MultiTexture / atmosphere WGSL compatibility to yesterday's edge-aware fog / sampler-audit thread, treating internal branches, layers, clips, and coverage as visible diagnostic surfaces.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-08-22.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-08-22_branch_cache_layer_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

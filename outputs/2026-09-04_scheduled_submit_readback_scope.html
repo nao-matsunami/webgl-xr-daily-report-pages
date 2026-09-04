@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-09-04 Scheduled Submit Readback Scope</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#07090d;color:#e8eef5;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:16px;top:14px;max-width:min(680px,calc(100vw - 32px));font-size:12px;line-height:1.55;color:rgba(235,241,248,.84);text-shadow:0 1px 8px #000;pointer-events:none}
+    .hud b{color:#fff}.err{position:fixed;left:16px;right:16px;bottom:14px;color:#ffb4a8;font-size:12px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud"><b>Scheduled Submit Readback Scope</b><br>1 command buffers / 2 next-frame readback / 3 pixel ratio pass / 4 combined choreography<br>drag: queue pressure, click or Space: submit pulse</div>
+<div class="err" id="err"></div>
+<script>
+(() => {
+  const canvas = document.getElementById("gl");
+  const err = document.getElementById("err");
+  const gl = canvas.getContext("webgl", { antialias:false, alpha:false });
+  if (!gl) { err.textContent = "WebGL unavailable"; return; }
+  const vert = "attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}";
+  const frag = `
+precision mediump float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+uniform float pulse;
+uniform float mode;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float rect(vec2 p, vec2 b){vec2 d=abs(p)-b;return smoothstep(0.018,0.0,length(max(d,0.0))+min(max(d.x,d.y),0.0));}
+float lineSeg(vec2 p, vec2 a, vec2 b, float w){vec2 pa=p-a;vec2 ba=b-a;float h=clamp(dot(pa,ba)/max(dot(ba,ba),0.0001),0.0,1.0);return smoothstep(w,0.0,length(pa-ba*h));}
+float ring(vec2 p,float r,float w){return smoothstep(r+w,r,length(p))*smoothstep(r-w,r,length(p));}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.0-resolution.xy)/min(resolution.x,resolution.y);
+  vec2 st=gl_FragCoord.xy/resolution.xy;
+  vec2 p=(pointer*2.0-1.0)*vec2(resolution.x/min(resolution.x,resolution.y),1.0);
+  float m1=1.0-step(1.5,mode);
+  float m2=step(1.5,mode)*(1.0-step(2.5,mode));
+  float m3=step(2.5,mode)*(1.0-step(3.5,mode));
+  float m4=step(3.5,mode);
+  vec3 col=mix(vec3(0.02,0.025,0.035),vec3(0.035,0.05,0.065),st.y);
+
+  float lanes=0.0;
+  for(int i=0;i<9;i++){
+    float fi=float(i);
+    vec2 c=vec2(-1.1+fi*0.275,-0.64+0.09*sin(time+fi));
+    float ready=step(fract(time*0.18+fi*0.137),0.62+0.22*sin(p.x+fi));
+    float box=rect(uv-c,vec2(0.095,0.045));
+    lanes+=box*(0.22+0.78*ready);
+    col+=m1*box*mix(vec3(0.10,0.22,0.34),vec3(0.0,0.82,0.72),ready);
+    col+=m1*lineSeg(uv,c+vec2(0.095,0.0),c+vec2(0.19,0.02*sin(fi+time)),0.006)*vec3(0.95,0.82,0.35);
+  }
+
+  float submitWave=ring(uv-p,0.22+pulse*0.55,0.025);
+  float manualGate=rect(uv-vec2(p.x,0.46),vec2(0.32+0.08*sin(time),0.055));
+  col+=m1*(submitWave*vec3(1.0,0.33,0.16)+manualGate*vec3(0.2,0.55,1.0)*pulse);
+
+  vec2 readCell=floor((uv+1.3)*8.0);
+  vec2 readLocal=fract((uv+1.3)*8.0)-0.5;
+  float readAge=fract(time*0.75+hash(readCell)*0.31);
+  float stall=step(readAge,0.16+pulse*0.22);
+  float readBox=rect(readLocal,vec2(0.36,0.24));
+  float frontCopy=ring(readLocal,0.17+0.15*readAge,0.018);
+  col+=m2*readBox*mix(vec3(0.09,0.13,0.17),vec3(0.9,0.18,0.1),stall);
+  col+=m2*frontCopy*vec3(0.15,0.95,0.85);
+  col+=m2*rect(uv-p,vec2(0.22,0.16))*vec3(0.95,0.78,0.34)*(0.35+0.65*pulse);
+
+  vec2 grid=fract((uv+1.0)*vec2(12.0,8.0))-0.5;
+  float passGrid=smoothstep(0.035,0.0,abs(grid.x))*0.55+smoothstep(0.035,0.0,abs(grid.y))*0.35;
+  float ratioLens=ring((uv-p)*vec2(1.0+0.5*sin(time),1.0),0.34,0.035);
+  float wrongRatio=sin((uv.x*resolution.x/resolution.y+uv.y)*22.0+time*2.0)*0.5+0.5;
+  col+=m3*(passGrid*vec3(0.18,0.38,0.72)+ratioLens*vec3(1.0,0.76,0.25)+wrongRatio*rect(uv+vec2(0.72,-0.36),vec2(0.34,0.22))*vec3(0.8,0.16,0.24));
+
+  float orbit=0.0;
+  for(int i=0;i<18;i++){
+    float fi=float(i);
+    float a=fi*0.61+time*(0.28+0.02*fi);
+    vec2 q=vec2(cos(a),sin(a))*vec2(0.45+0.02*fi,0.25+0.012*fi);
+    orbit+=ring(uv-q,0.055+0.01*sin(fi),0.012);
+  }
+  col+=m4*(orbit*vec3(0.16,0.94,0.65)+submitWave*vec3(1.0,0.33,0.18)+readBox*vec3(0.18,0.35,0.8)*(0.25+stall));
+  col+=0.08*vec3(hash(floor(st*vec2(160.0,90.0))+time),hash(floor(st*vec2(91.0,131.0))),hash(floor(st*vec2(77.0,66.0))))*(m2+m4);
+  col=pow(max(col,vec3(0.0)),vec3(0.9));
+  gl_FragColor=vec4(col,1.0);
+}`;
+  function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+  let program;
+  try{program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vert));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,frag));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));}catch(e){err.textContent=e.message;return;}
+  gl.useProgram(program);
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(program,"position");gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  const uni=n=>gl.getUniformLocation(program,n);
+  const u={resolution:uni("resolution"),pointer:uni("pointer"),time:uni("time"),pulse:uni("pulse"),mode:uni("mode")};
+  let pointer=[0.5,0.5],target=[0.64,0.55],pulse=0,mode=1;
+  addEventListener("pointermove",e=>{target=[e.clientX/innerWidth,1-e.clientY/innerHeight];});
+  addEventListener("pointerdown",e=>{target=[e.clientX/innerWidth,1-e.clientY/innerHeight];pulse=1;});
+  addEventListener("keydown",e=>{if(e.key>="1"&&e.key<="4")mode=Number(e.key);if(e.code==="Space")pulse=1;});
+  function resize(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.floor(innerWidth*dpr);canvas.height=Math.floor(innerHeight*dpr);gl.viewport(0,0,canvas.width,canvas.height);}
+  addEventListener("resize",resize);resize();
+  const start=performance.now();
+  function frame(){pointer[0]+=(target[0]-pointer[0])*0.12;pointer[1]+=(target[1]-pointer[1])*0.12;pulse*=0.92;gl.uniform2f(u.resolution,canvas.width,canvas.height);gl.uniform2f(u.pointer,pointer[0],pointer[1]);gl.uniform1f(u.time,(performance.now()-start)/1000);gl.uniform1f(u.pulse,pulse);gl.uniform1f(u.mode,mode);gl.drawArrays(gl.TRIANGLES,0,6);requestAnimationFrame(frame);}
+  frame();
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
