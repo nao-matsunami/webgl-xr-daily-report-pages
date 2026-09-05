@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026-09-05 Owner Slot Physics Hit Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #040608; color: #edf8ff; font-family: system-ui, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: 600px; font-size: 12px; line-height: 1.55; letter-spacing: 0; color: rgba(237,248,255,.86); pointer-events: none; }
+    .hud b { color: #9ef0ff; font-weight: 650; }
+    .err { position: fixed; left: 16px; bottom: 14px; color: #ff9ba0; font: 12px ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <b>Owner Slot Physics Hit Scope</b><br />
+    1 owner-keyed UBO slots / 2 physics timeScale + manual step / 3 raycast masks / 4 combined<br />
+    drag: ray source and slot owner / click or Space: manual step pulse
+  </div>
+  <pre class="err" id="err"></pre>
+  <script>
+    const canvas = document.getElementById("gl");
+    const err = document.getElementById("err");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    let mode = 4;
+    let pointer = [0.42, 0.58];
+    let pulse = 0;
+    let down = false;
+    if (!gl) err.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      varying vec2 vUv;
+      void main(){
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      varying vec2 vUv;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float hash(vec2 p){
+        p = fract(p * vec2(41.17, 289.13));
+        p += dot(p, p.yx + 19.19);
+        return fract(p.x * p.y);
+      }
+
+      float box(vec2 p, vec2 c, vec2 s){
+        vec2 d = abs(p - c) - s;
+        return 1.0 - smoothstep(0.0, 0.012, length(max(d, 0.0)) + min(max(d.x, d.y), 0.0));
+      }
+
+      float outline(vec2 p, vec2 c, vec2 s, float w){
+        float a = box(p, c, s);
+        float b = box(p, c, s - vec2(w));
+        return clamp(a - b, 0.0, 1.0);
+      }
+
+      float segment(vec2 p, vec2 a, vec2 b, float w){
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        return 1.0 - smoothstep(w, w + 0.006, length(pa - ba * h));
+      }
+
+      vec3 ownerSlots(vec2 uv){
+        vec2 p = uv;
+        vec3 col = vec3(0.025, 0.04, 0.055);
+        float rows = 10.0;
+        float cols = 18.0;
+        vec2 cell = floor(vec2(p.x * cols, p.y * rows));
+        vec2 f = fract(vec2(p.x * cols, p.y * rows));
+        float owner = mod(cell.x + floor(cell.y * 3.0), 9.0);
+        float shuffle = step(0.5, hash(vec2(cell.y, floor(time * 2.0))));
+        float drawOrderSlot = mod(cell.x + shuffle * cell.y + floor(time * 6.0), cols);
+        float stableSlot = mod(owner * 2.0 + 3.0, cols);
+        float unstable = smoothstep(0.35, 0.0, abs(drawOrderSlot - cell.x));
+        float stable = smoothstep(0.28, 0.0, abs(stableSlot - cell.x));
+        float grid = outline(f, vec2(0.5), vec2(0.48), 0.025);
+        float ownerPick = 1.0 - smoothstep(0.0, 0.06, abs(owner / 9.0 - pointer.x));
+        col += grid * vec3(0.05, 0.12, 0.16);
+        col += unstable * vec3(0.35, 0.08, 0.05);
+        col += stable * vec3(0.04, 0.48, 0.40);
+        col += ownerPick * box(f, vec2(0.5), vec2(0.20 + pulse * 0.08)) * vec3(0.85, 0.75, 0.24);
+        return col;
+      }
+
+      vec3 physicsStep(vec2 uv){
+        vec2 p = uv;
+        vec3 col = vec3(0.03, 0.035, 0.045);
+        float lanes = 7.0;
+        float lane = floor(p.y * lanes);
+        float fy = fract(p.y * lanes);
+        float scale = clamp(pointer.y * 1.35, 0.0, 1.25);
+        float paused = step(scale, 0.08);
+        float tick = fract(time * mix(0.25, 2.7, scale) + lane * 0.11);
+        float stepLine = 1.0 - smoothstep(0.0, 0.035 + pulse * 0.08, abs(tick - 0.12));
+        float manual = pulse * exp(-abs(p.x - pointer.x) * 8.0);
+        float sync = segment(p, vec2(0.05, (lane + 0.5) / lanes), vec2(0.95, (lane + 0.5) / lanes), 0.004);
+        col += sync * vec3(0.08, 0.13, 0.15);
+        col += stepLine * (1.0 - paused) * vec3(0.28, 0.58, 0.95);
+        col += paused * box(vec2(p.x, fy), vec2(0.5, 0.5), vec2(0.44, 0.10)) * vec3(0.18, 0.16, 0.12);
+        col += manual * box(vec2(fract(p.x * 12.0), fy), vec2(0.5), vec2(0.18 + pulse * 0.14)) * vec3(0.95, 0.55, 0.20);
+        return col;
+      }
+
+      vec3 raycastMasks(vec2 uv){
+        vec2 p = uv;
+        vec3 col = vec3(0.018, 0.03, 0.04);
+        vec2 src = vec2(0.1, pointer.y);
+        vec2 dst = vec2(0.94, 1.0 - pointer.x * 0.72);
+        float ray = segment(p, src, dst, 0.006);
+        col += ray * vec3(0.9, 0.7, 0.22);
+        for (int i = 0; i < 9; i++) {
+          float fi = float(i);
+          vec2 c = vec2(0.2 + mod(fi, 3.0) * 0.28, 0.22 + floor(fi / 3.0) * 0.24);
+          vec2 s = vec2(0.09 + 0.02 * sin(fi), 0.065);
+          float group = mod(fi, 3.0);
+          float maskOn = step(0.35, sin(group * 2.1 + pointer.x * 6.28318) * 0.5 + 0.5);
+          float hit = box(p, c, s);
+          float rim = outline(p, c, s, 0.012);
+          float distToRay = segment(c, src, dst, 0.045);
+          vec3 groupCol = mix(vec3(0.18, 0.24, 0.34), vec3(0.25, 0.75, 0.62), maskOn);
+          col += hit * groupCol * 0.42;
+          col += rim * mix(vec3(0.18, 0.35, 0.58), vec3(1.0, 0.42, 0.22), distToRay * maskOn);
+          col += distToRay * maskOn * pulse * hit * vec3(1.0, 0.75, 0.35);
+        }
+        return col;
+      }
+
+      void main(){
+        vec2 uv = vUv;
+        vec3 a = ownerSlots(uv);
+        vec3 b = physicsStep(uv);
+        vec3 c = raycastMasks(uv);
+        vec3 d = a * 0.75 + b * 0.85 + c * 0.95;
+        float flex = outline(uv, vec2(0.5), vec2(0.44, 0.34), 0.008);
+        d += flex * vec3(0.35, 0.22, 0.08);
+        d += pulse * exp(-length(uv - pointer) * 5.0) * vec3(0.28, 0.55, 0.75);
+        vec3 col = d;
+        col = mix(col, a, 1.0 - step(1.5, mode));
+        col = mix(col, b, step(1.5, mode) * (1.0 - step(2.5, mode)));
+        col = mix(col, c, step(2.5, mode) * (1.0 - step(3.5, mode)));
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.9)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+
+    function makeProgram() {
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+      return program;
+    }
+
+    const program = gl ? makeProgram() : null;
+    if (program) {
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+      const pos = gl.getAttribLocation(program, "position");
+      gl.enableVertexAttribArray(pos);
+      gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+      var uniforms = {
+        resolution: gl.getUniformLocation(program, "resolution"),
+        time: gl.getUniformLocation(program, "time"),
+        pointer: gl.getUniformLocation(program, "pointer"),
+        pulse: gl.getUniformLocation(program, "pulse"),
+        mode: gl.getUniformLocation(program, "mode")
+      };
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.floor(innerWidth * dpr));
+      const h = Math.max(1, Math.floor(innerHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, w, h);
+    }
+
+    function setPointer(e) {
+      const r = canvas.getBoundingClientRect();
+      pointer = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
+    }
+
+    addEventListener("keydown", (e) => {
+      if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+      if (e.code === "Space") pulse = 1;
+    });
+    canvas.addEventListener("pointerdown", (e) => { down = true; setPointer(e); pulse = 1; });
+    canvas.addEventListener("pointermove", (e) => { if (down) setPointer(e); });
+    addEventListener("pointerup", () => { down = false; });
+    addEventListener("resize", resize);
+
+    function frame(t) {
+      if (!gl || !program) return;
+      resize();
+      pulse *= 0.91;
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, t * 0.001);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.pulse, pulse);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(frame);
+    }
+
+    try { requestAnimationFrame(frame); } catch (e) { err.textContent = e.message; }
+  </script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>

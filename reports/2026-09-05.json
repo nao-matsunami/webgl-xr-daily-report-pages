@@ -1,0 +1,247 @@
+{
+  "date": "2026-09-05",
+  "headline": "TAAの蓄積、ASCII化、安定UBO slotをGPU状態の記憶として扱う",
+  "headlineEn": "Treating TAA accumulation, ASCII quantization, and stable UBO slots as GPU-state memory",
+  "summary": "three.js の TAAUtils追加、TSL Guideへの名称整理、WebGLRenderer viewport/scissorのpixel ratio修正、SSGI/SVGF/blue-noise実験、PlayCanvas の physics timeScale / public step、raycastAll sort順とcollision maskのドキュメント修正、splat depth warning整理、Babylon.js の owner-keyed WebGPU uniform buffer slots、FlexPanel / em/rem GUI units、ShadowOnlyMaterial IBL shadowsを調査した。前回のsubmit/readback/object IDから、今日は「時間的に蓄積する絵」と「draw contextごとに安定するGPU資源」を、見える記憶とヒット判定の演出へ接続した。",
+  "summaryEn": "Today covers three.js TAAUtils, the TSL Guide rename, WebGLRenderer viewport/scissor pixel-ratio fixes, SSGI/SVGF/blue-noise work, PlayCanvas physics timeScale and public step(), raycastAll sorting and collision-mask documentation, splat-depth warning cleanup, Babylon.js owner-keyed WebGPU uniform-buffer slots, FlexPanel / em-rem GUI units, and ShadowOnlyMaterial IBL shadows. Building on submit/readback/object IDs, the focus shifts to temporal image accumulation and draw-context-stable GPU resources as visible memory and hit-testing choreography.",
+  "links": [
+    {
+      "label": "three.js PR #34458 TAAUtils",
+      "url": "https://github.com/mrdoob/three.js/pull/34458"
+    },
+    {
+      "label": "three.js PR #34457 TSL Guide rename",
+      "url": "https://github.com/mrdoob/three.js/pull/34457"
+    },
+    {
+      "label": "three.js PR #34460 WebGLRenderer viewport/scissor pixel ratio",
+      "url": "https://github.com/mrdoob/three.js/pull/34460"
+    },
+    {
+      "label": "three.js PR #33770 SSGI SVGF blue noise resolutionScale",
+      "url": "https://github.com/mrdoob/three.js/pull/33770"
+    },
+    {
+      "label": "PlayCanvas PR #9300 RigidBody timeScale and step",
+      "url": "https://github.com/playcanvas/engine/pull/9300"
+    },
+    {
+      "label": "PlayCanvas PR #9305 group/mask defaults and raycastAll sort order",
+      "url": "https://github.com/playcanvas/engine/pull/9305"
+    },
+    {
+      "label": "PlayCanvas PR #9298 splat scene depth warning",
+      "url": "https://github.com/playcanvas/engine/pull/9298"
+    },
+    {
+      "label": "Babylon.js PR #18880 owner-keyed uniform buffer slots",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18880"
+    },
+    {
+      "label": "Babylon.js PR #18881 FlexPanel and em/rem GUI units",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18881"
+    },
+    {
+      "label": "Babylon.js PR #18873 ShadowOnlyMaterial IBL shadows",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/18873"
+    },
+    {
+      "label": "Codrops ASCII Logo in Three.js",
+      "url": "https://tympanus.net/Tutorials/ASCIILogo/"
+    },
+    {
+      "label": "Codrops Creative Hub all demos",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Temporal ASCII Denoise Scope",
+      "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+    },
+    {
+      "label": "Derived sample: Owner Slot Physics Hit Scope",
+      "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #34458 は TAA関連の共通関数を TAAUtils として切り出す提案。TAAUの細かな機能差を埋める目的だが、表現面では「jitter、履歴、解像度変換」を再利用可能な部品として扱いやすくなる。2. three.js PR #33770 は SSGIに SVGF denoising、blue noise、resolutionScaleを入れた探索。velocity再投影、disocclusion rejection、adaptive anti-ghosting、edge avoiding filterという語彙は、絵作りだけでなく「時間に残す/捨てる」演出設計に直結する。3. Babylon.js PR #18880 は WebGPUのleftover uniform buffer slotをdraw orderではなくdraw contextで安定化する提案。前回のsubmit/readbackから一歩進んで、draw順が変わっても同じ所有者が同じGPU bufferを掴むという、内部状態の記憶化が見える。4. PlayCanvas PR #9300 は physicsだけをtimeScaleで止めたり遅くしたり、public step(dt)で手動送りできる更新。XR/展示/ゲームUIで、空間は止めてインタラクションだけ動かす設計に使える。5. Codropsの新着 ASCII Logo in Three.js は、3D/WebGL/GLSLを文字密度へ量子化する好例。TAA/SVGFの時間蓄積と組み合わせると、ノイズ除去の途中経過そのものをASCIIの粒度変化として見せられる。",
+      "bodyEn": "1. three.js PR #34458 proposes a TAAUtils module for shared TAA-related functions. Beyond deduplication, it makes jitter, history, and resolution conversion easier to treat as reusable creative parts. 2. three.js PR #33770 explores SVGF denoising, blue noise, and resolutionScale for SSGI. Velocity reprojection, disocclusion rejection, adaptive anti-ghosting, and edge-avoiding filtering are directly useful as rules for what visual history to keep or discard. 3. Babylon.js PR #18880 stabilizes WebGPU leftover uniform-buffer slots by draw context rather than draw order, turning internal GPU state into owner memory. 4. PlayCanvas PR #9300 adds physics-only timeScale and public step(dt), useful when space should freeze while UI or inspection remains interactive. 5. Codrops' ASCII Logo in Three.js is a strong example of quantizing 3D/WebGL/GLSL output into character density; paired with temporal denoising, the denoise process can become visible ASCII grain.",
+      "links": [
+        {
+          "label": "three.js #34458",
+          "url": "https://github.com/mrdoob/three.js/pull/34458"
+        },
+        {
+          "label": "three.js #33770",
+          "url": "https://github.com/mrdoob/three.js/pull/33770"
+        },
+        {
+          "label": "Babylon.js #18880",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18880"
+        },
+        {
+          "label": "PlayCanvas #9300",
+          "url": "https://github.com/playcanvas/engine/pull/9300"
+        },
+        {
+          "label": "ASCII Logo",
+          "url": "https://tympanus.net/Tutorials/ASCIILogo/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative Hubでは 2026-09-04 の ASCII Logo in Three.js が追加され、9/2 の Three.js Datamosh Effect、9/1 の Dreamfold / Footballs in Motion / Eiffel Tower Catapult と並んでいる。ここ数日の流れは、ポストプロセスの残像、地図や都市、物理、粒子に加えて、今日は「文字密度への再符号化」が入った点が面白い。ASCII化はカードUIではなく、レンダー結果を別の表示言語へ翻訳する処理なので、このプロジェクトのシェーダー/空間演出の軸に合う。TAAやSVGFのような時間方向の安定化処理と重ねると、単に綺麗にするのではなく、安定するまで文字が震え、履歴が確定した部分から読めるロゴになる。",
+      "bodyEn": "Codrops Creative Hub added ASCII Logo in Three.js on 2026-09-04, alongside the 9/2 Three.js Datamosh Effect and the 9/1 Dreamfold / Footballs in Motion / Eiffel Tower Catapult entries. The recent pattern is temporal postprocess residue, maps/cities, physics, and particles; today's useful addition is recoding a render result into character density. ASCII conversion fits this project's shader and spatial direction because it is a translation layer for rendered output, not a card UI. Combined with TAA or SVGF, the logo can jitter until enough history is stable, then become readable where accumulation has settled.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "ASCII Logo demo",
+          "url": "https://tympanus.net/Tutorials/ASCIILogo/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Temporal ASCII Denoise Scope」。1 はTAA jitter、2 はSVGF/blue-noise風denoise、3 はASCII luminance、4 は統合表示。ドラッグでjitter中心とglyph threshold、クリック/Spaceでaccumulation reset pulseを入れる。派生案は「Owner Slot Physics Hit Scope」。1 はowner-keyed UBO slot、2 はphysics timeScale + manual step、3 はraycast group/mask、4 は安定slot、手動step、hit領域を重ねる。次に足すなら、1本目のTAA履歴が安定したセルだけ2本目のray hit対象にし、見えている/安定している/当たっている、という3段階のインタラクションにする。",
+      "bodyEn": "The main idea is Temporal ASCII Denoise Scope: mode 1 TAA jitter, 2 SVGF/blue-noise-style denoise, 3 ASCII luminance, and 4 combined. Drag controls jitter center and glyph threshold; click/Space emits an accumulation reset pulse. The derived idea is Owner Slot Physics Hit Scope: mode 1 owner-keyed UBO slots, 2 physics timeScale and manual step, 3 raycast group/mask, and 4 a combined stable-slot/manual-step/hit surface. Next, make only temporally stable ASCII cells eligible for ray hits, creating a three-stage interaction: visible, stable, hittable.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "TAA/SVGF系の見た目を作るときは、jitter offset、history weight、reset mask、disocclusion threshold、resolutionScaleをUIではなく演出パラメータとして持つと扱いやすい。ASCII化は文字を本当にDOMで並べるより、まずshader内でセルと線分/円弧に量子化すると軽い検証ができる。Babylon.js #18880の示唆は、WebGPU bind groupやUBO poolの増加を「draw orderの揺れ」としてログ化すること。安定slot化の前後を色分けすると、メモリリーク調査だけでなく、同じobjectがGPU上で同じ場所へ戻ってくる安心感を表現にできる。PlayCanvas #9300/#9305からは、physics pause、manual step、collision group/mask、raycastAll sort有無を、展示用の時間停止/手動スキャン/選択レーンに転用できる。",
+      "bodyEn": "For TAA/SVGF-style looks, treat jitter offset, history weight, reset masks, disocclusion thresholds, and resolutionScale as expressive parameters rather than only UI settings. For ASCII conversion, first quantize cells and strokes in the shader instead of building DOM characters; it is faster for small tests. Babylon.js #18880 suggests logging bind-group or UBO-pool growth as draw-order instability. Coloring before/after stable slot assignment turns memory investigation into a visible sense that each object returns to the same GPU location. PlayCanvas #9300/#9305 suggest reusing physics pause, manual step, collision groups/masks, and optional raycastAll sorting as time-freeze, manual scan, and selection-lane controls.",
+      "links": [
+        {
+          "label": "three.js #34458",
+          "url": "https://github.com/mrdoob/three.js/pull/34458"
+        },
+        {
+          "label": "Babylon.js #18880",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/18880"
+        },
+        {
+          "label": "PlayCanvas #9305",
+          "url": "https://github.com/playcanvas/engine/pull/9305"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: three.js #34454 scheduled submit、#34458 TAAUtils、#33770 SSGI/SVGF/blue noise、PlayCanvas #9293 next-frame readback、#9274 SceneDepthReader、Babylon.js #18880 owner-keyed UBO slots、#18879 object ID geometry textures。新規案件: three.js #34460 WebGLRenderer pixel ratio、PlayCanvas #9300 physics timeScale/step、#9305 group/mask/raycast docs、Babylon.js #18881 FlexPanel/em/rem GUI units、Codrops ASCII Logo。寝かせる案件: PlayCanvas #9302 publish workflow待機や #9303 examples category URL は運用改善として有用だが、今日の表現実装からは優先度を下げる。Babylon.js GUI FlexPanelはカードUI寄りに見えやすいので、今回はUIカードではなくcanvas内のhit領域/relative unitとして扱う。",
+      "bodyEn": "Continue watching three.js #34454 scheduled submits, #34458 TAAUtils, #33770 SSGI/SVGF/blue noise, PlayCanvas #9293 next-frame readback and #9274 SceneDepthReader, Babylon.js #18880 owner-keyed UBO slots and #18879 object-ID geometry textures. New items: three.js #34460 WebGLRenderer pixel ratio, PlayCanvas #9300 physics timeScale/step and #9305 group/mask/raycast docs, Babylon.js #18881 FlexPanel/em-rem GUI units, and Codrops ASCII Logo. Sleep: PlayCanvas #9302 publish workflow wait and #9303 examples category URLs are operationally useful but less central to today's expression work. Babylon GUI FlexPanel could drift toward card UI, so this report treats it as canvas hit regions and relative units instead.",
+      "links": [
+        {
+          "label": "three.js #34460",
+          "url": "https://github.com/mrdoob/three.js/pull/34460"
+        },
+        {
+          "label": "PlayCanvas #9302",
+          "url": "https://github.com/playcanvas/engine/pull/9302"
+        },
+        {
+          "label": "PlayCanvas #9303",
+          "url": "https://github.com/playcanvas/engine/pull/9303"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-05_temporal_ascii_denoise_scope.html` を開く。1 はTAA jitter、2 はSVGF/blue-noise風の平滑化、3 はASCII luminance、4 は統合表示。ドラッグでjitter中心と文字化しきい値、クリック/Spaceで履歴リセット風pulseが入る。次に足すなら、実際の前フレームtextureをping-pongし、reset maskをpointerやobject IDから作る。2本目は `outputs/2026-09-05_owner_slot_physics_hit_scope.html`。1 はowner-keyed UBO slot、2 はphysics timeScaleとmanual step、3 はraycast group/mask、4 は統合表示。次に足すなら、PlayCanvasの実raycastAll結果をJSON化し、sort有無とmask設定をshaderのhit色に流す。",
+      "bodyEn": "Open `outputs/2026-09-05_temporal_ascii_denoise_scope.html` first. Mode 1 is TAA jitter, 2 SVGF/blue-noise-style smoothing, 3 ASCII luminance, and 4 the combined view. Drag controls jitter center and ASCII threshold; click/Space emits a history-reset-like pulse. Next, add real previous-frame ping-pong textures and build reset masks from pointer or object IDs. The second sample is `outputs/2026-09-05_owner_slot_physics_hit_scope.html`: mode 1 owner-keyed UBO slots, 2 physics timeScale/manual step, 3 raycast group/mask, and 4 combined. Next, serialize real PlayCanvas raycastAll results to JSON and feed sorting/mask state into shader hit colors.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34458/#34457/#34460/#33770、PlayCanvas #9300/#9305/#9298、Babylon.js #18880/#18881/#18873、Codrops ASCII Logo / Creative Hub。アイデア検討: 9/4 のsubmit/readback/object IDを、9/5 はTAA履歴、SVGF denoise、ASCII量子化、owner-keyed slot、physics step、raycast maskへ接続。サンプル実装: 本命 `2026-09-05_temporal_ascii_denoise_scope.html`、派生 `2026-09-05_owner_slot_physics_hit_scope.html`。結果の検証: HTML parser、script構文、JSON parse、upsert/build/publishを実行する。短期で試すものは、前フレームtextureのping-pongによる本物の蓄積。中長期で育てるものは、GPU内部状態を「時間履歴」「所有者slot」「hit判定」「品質スケール」の4トラックで統合する表現システム。",
+      "bodyEn": "Collection: three.js #34458/#34457/#34460/#33770, PlayCanvas #9300/#9305/#9298, Babylon.js #18880/#18881/#18873, and Codrops ASCII Logo / Creative Hub. Ideation: connect 9/4 submit/readback/object IDs to 9/5 TAA history, SVGF denoise, ASCII quantization, owner-keyed slots, physics step, and raycast masks. Prototypes: `2026-09-05_temporal_ascii_denoise_scope.html` and `2026-09-05_owner_slot_physics_hit_scope.html`. Verification: HTML parser, script syntax, JSON parse, and upsert/build/publish. Short-term: real accumulation with previous-frame ping-pong textures. Long-term: a system combining GPU internal state as four tracks: temporal history, owner slots, hit tests, and quality scale.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "8/27 のFFT/depth、8/30 のcompute prefix、9/1 のpacked lane、9/2 のSceneDepthReader、9/3 のvelocity/datamosh、9/4 のsubmit/readback/object IDに続き、今日は時間蓄積と所有者slotへ進んだ。最近の傾向は、絵の最終結果よりも、rendererの途中状態、検証値、遅延、ヒット判定、fallbackを表現素材にする流れ。組み合わせ候補は、velocity magnitudeでTAA jitterを強め、SceneDepthReader遅延でASCIIの読める範囲を遅らせ、object IDでreset maskを切り、owner-keyed slotで選択objectの色を安定させる構成。育てる価値が高いテーマは「GPU状態のライブ譜面」の第2段階としての「GPU状態の記憶」。どの履歴を残し、どの所有者へ戻し、どのhitだけ演奏するかを設計できる。",
+      "bodyEn": "After 8/27 FFT/depth, 8/30 compute prefix, 9/1 packed lanes, 9/2 SceneDepthReader, 9/3 velocity/datamosh, and 9/4 submit/readback/object IDs, today moves into temporal accumulation and owner slots. The recent trend is using renderer intermediate state, verification values, delays, hit tests, and fallback as expressive material rather than only final imagery. A promising combination: velocity magnitude strengthens TAA jitter, SceneDepthReader delay slows down readable ASCII zones, object IDs cut reset masks, and owner-keyed slots stabilize selected-object color. The theme worth growing is GPU-state memory, the second stage of the live GPU-state score: decide which history remains, which owner it returns to, and which hit events are allowed to play.",
+      "links": [
+        {
+          "label": "Previous submit sample",
+          "url": "../outputs/2026-09-04_scheduled_submit_readback_scope.html"
+        },
+        {
+          "label": "Previous object ID sample",
+          "url": "../outputs/2026-09-04_object_id_sog_lod_wire_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "採用した本命は `outputs/2026-09-05_temporal_ascii_denoise_scope.html`。three.js #34458/#33770 と Codrops ASCII Logoを短時間で触るため、TAA jitter、SVGF/blue-noise風denoise、ASCII luminance、combined viewの4モードをWebGL fragment shaderで表現した。派生試作は `outputs/2026-09-05_owner_slot_physics_hit_scope.html`。Babylon.js #18880 と PlayCanvas #9300/#9305 を、owner-keyed UBO slots、physics timeScale/manual step、raycast masks、combined viewとして抽象化した。どちらも依存なしの単体HTML。次に足すなら、2本を統合して、時間的に安定したASCIIセルだけがraycast hitし、そのhitがowner slotへ戻って色を保持する構成にする。",
+      "bodyEn": "The selected main prototype is `outputs/2026-09-05_temporal_ascii_denoise_scope.html`. To quickly test three.js #34458/#33770 and Codrops ASCII Logo, it represents TAA jitter, SVGF/blue-noise-style denoise, ASCII luminance, and a combined view in four WebGL fragment-shader modes. The derived prototype is `outputs/2026-09-05_owner_slot_physics_hit_scope.html`, abstracting Babylon.js #18880 and PlayCanvas #9300/#9305 into owner-keyed UBO slots, physics timeScale/manual step, raycast masks, and a combined view. Both are dependency-free standalone HTML files. Next, merge them so only temporally stable ASCII cells can be ray-hit, and the hit returns to an owner slot that preserves color.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、入力値と描画状態をデータとして持つと発展しやすい。1本目は jitter center、history reset pulse、ASCII threshold、denoise strength、blue-noise seedをログ化できる。2本目は owner id、slot index、draw order drift、physics timeScale、manual step count、raycast group/mask/hitを持てる。Web Audioなら低域でhistory weight、中域でASCII threshold、高域でblue-noise seedを動かす。MediaPipeなら手の開閉をreset mask、手速度をjitter量へ送る。WebXRなら注視object IDをowner slotに固定し、床/壁/展示物だけraycast対象にする。ブランド演出では、ロゴが時間蓄積で読めるようになり、安定したobjectだけが選択できるため、読みやすさそのものをインタラクション条件にできる。",
+      "bodyEn": "The two samples can grow if their inputs and render state are treated as data. The first can log jitter center, history reset pulse, ASCII threshold, denoise strength, and blue-noise seed. The second can hold owner ID, slot index, draw-order drift, physics timeScale, manual step count, and raycast group/mask/hit. With Web Audio, bass can drive history weight, mids ASCII threshold, and highs blue-noise seed. With MediaPipe, hand open/close can drive reset masks and hand speed can drive jitter amount. With WebXR, gaze object IDs can be fixed to owner slots while only floor/wall/exhibit objects are raycast targets. In brand work, a logo becomes readable through temporal accumulation and only stable objects become selectable, so readability itself becomes an interaction condition.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-05_temporal_ascii_denoise_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-05_owner_slot_physics_hit_scope.html"
+        }
+      ]
+    }
+  ]
+}

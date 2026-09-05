@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026-09-05 Temporal ASCII Denoise Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #05070a; color: #eaf7ff; font-family: system-ui, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; left: 16px; top: 14px; max-width: 560px; font-size: 12px; line-height: 1.55; letter-spacing: 0; color: rgba(234,247,255,.86); pointer-events: none; }
+    .hud b { color: #fff0a6; font-weight: 650; }
+    .err { position: fixed; left: 16px; bottom: 14px; color: #ff9ba0; font: 12px ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <b>Temporal ASCII Denoise Scope</b><br />
+    1 TAA jitter / 2 SVGF blue-noise / 3 ASCII luminance / 4 combined<br />
+    drag: jitter center and glyph threshold / click or Space: accumulation reset pulse
+  </div>
+  <pre class="err" id="err"></pre>
+  <script>
+    const canvas = document.getElementById("gl");
+    const err = document.getElementById("err");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    let mode = 4;
+    let pointer = [0.53, 0.44];
+    let pulse = 0;
+    let down = false;
+    if (!gl) err.textContent = "WebGL is not available.";
+
+    const vert = `
+      attribute vec2 position;
+      varying vec2 vUv;
+      void main(){
+        vUv = position * 0.5 + 0.5;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const frag = `
+      precision highp float;
+      varying vec2 vUv;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform vec2 pointer;
+      uniform float pulse;
+      uniform float mode;
+
+      float hash(vec2 p){
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float lineMask(float v, float width){
+        return 1.0 - smoothstep(width, width + 0.006, abs(v));
+      }
+
+      float ring(vec2 p, vec2 c, float r, float w){
+        return 1.0 - smoothstep(w, w + 0.01, abs(length(p - c) - r));
+      }
+
+      float glyph(vec2 cellUv, float lum){
+        vec2 p = cellUv - 0.5;
+        float d0 = lineMask(p.x, 0.045) * smoothstep(0.12, 0.5, lum);
+        float d1 = lineMask(p.y, 0.04) * smoothstep(0.26, 0.74, lum);
+        float d2 = lineMask(p.x + p.y, 0.04) * smoothstep(0.42, 0.86, lum);
+        float d3 = ring(cellUv, vec2(0.5), 0.28, 0.035) * smoothstep(0.62, 0.98, lum);
+        return clamp(d0 + d1 + d2 + d3, 0.0, 1.0);
+      }
+
+      vec3 palette(float x){
+        return 0.55 + 0.45 * cos(6.28318 * (vec3(0.04, 0.35, 0.68) + x));
+      }
+
+      vec3 sceneColor(vec2 uv){
+        vec2 p = (uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
+        vec2 c = (pointer - 0.5) * vec2(resolution.x / resolution.y, 1.0);
+        float wake = ring(p, c, 0.14 + 0.08 * sin(time * 1.7), 0.025);
+        float logo = ring(p, vec2(0.0), 0.28, 0.045) + ring(p, vec2(0.0), 0.47, 0.03);
+        logo += lineMask(abs(p.x) - 0.22, 0.02) * smoothstep(0.45, 0.12, abs(p.y));
+        float wave = sin(18.0 * p.x + 8.0 * sin(p.y * 4.0 + time)) * sin(14.0 * p.y - time * 1.4);
+        float field = 0.5 + 0.5 * wave;
+        return palette(field * 0.5 + logo * 0.25 + wake * 0.35) * (0.18 + 0.82 * clamp(field + logo + wake, 0.0, 1.0));
+      }
+
+      vec3 taaView(vec2 uv){
+        vec2 px = 1.0 / resolution;
+        vec2 jitter = (pointer - 0.5) * px * 14.0;
+        vec3 a = sceneColor(uv + jitter);
+        vec3 b = sceneColor(uv - jitter * 0.65 + px * vec2(sin(time), cos(time)) * 2.0);
+        vec3 c = sceneColor(uv + px * vec2(-cos(time * 1.7), sin(time * 1.3)) * 3.0);
+        float reset = pulse * exp(-length(uv - pointer) * 5.0);
+        return mix((a + b + c) / 3.0, a + vec3(0.6, 0.35, 0.08) * reset, reset);
+      }
+
+      vec3 denoiseView(vec2 uv){
+        vec2 grid = floor(uv * resolution / 8.0);
+        float n = hash(grid + floor(time * 24.0));
+        vec3 base = taaView(uv);
+        vec3 nearCol = sceneColor(uv + vec2(1.5, 0.0) / resolution);
+        float edge = length(base - nearCol);
+        float atrous = 0.0;
+        for (int i = -2; i <= 2; i++) {
+          float fi = float(i);
+          atrous += sceneColor(uv + vec2(fi, fi * 0.35) / resolution * 12.0).g * (1.0 - abs(fi) * 0.16);
+        }
+        atrous /= 3.4;
+        vec3 smoothCol = mix(base, vec3(atrous) * palette(atrous), 0.55 - 0.4 * smoothstep(0.01, 0.08, edge));
+        return smoothCol + (n - 0.5) * vec3(0.12, 0.10, 0.18);
+      }
+
+      vec3 asciiView(vec2 uv){
+        vec2 cells = vec2(82.0, 46.0);
+        vec2 cell = floor(uv * cells);
+        vec2 f = fract(uv * cells);
+        vec2 sampleUv = (cell + 0.5) / cells;
+        vec3 col = denoiseView(sampleUv);
+        float lum = dot(col, vec3(0.299, 0.587, 0.114));
+        lum = smoothstep(pointer.y * 0.8, 1.0, lum + 0.15 * sin(time + cell.x * 0.11));
+        float g = glyph(f, lum);
+        vec3 ink = mix(vec3(0.05, 0.08, 0.10), col * 1.35 + vec3(0.08, 0.05, 0.0), g);
+        float scan = 0.9 + 0.1 * sin((cell.y + time * 18.0) * 0.7);
+        return ink * scan;
+      }
+
+      void main(){
+        vec2 uv = vUv;
+        vec3 col1 = taaView(uv);
+        vec3 col2 = denoiseView(uv);
+        vec3 col3 = asciiView(uv);
+        vec3 col4 = mix(col2, col3, 0.62);
+        float lane = smoothstep(0.0, 0.005, abs(fract(uv.y * 8.0 + time * 0.2) - 0.5));
+        col4 += (1.0 - lane) * vec3(0.18, 0.12, 0.03);
+        vec3 col = col4;
+        col = mix(col, col1, 1.0 - step(1.5, mode));
+        col = mix(col, col2, step(1.5, mode) * (1.0 - step(2.5, mode)));
+        col = mix(col, col3, step(2.5, mode) * (1.0 - step(3.5, mode)));
+        col *= 0.92 + 0.08 * smoothstep(0.0, 0.01, uv.y) * smoothstep(1.0, 0.99, uv.y);
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+      }
+    `;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+
+    function makeProgram() {
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vert));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, frag));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+      return program;
+    }
+
+    const program = gl ? makeProgram() : null;
+    if (program) {
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+      const pos = gl.getAttribLocation(program, "position");
+      gl.enableVertexAttribArray(pos);
+      gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+      var uniforms = {
+        resolution: gl.getUniformLocation(program, "resolution"),
+        time: gl.getUniformLocation(program, "time"),
+        pointer: gl.getUniformLocation(program, "pointer"),
+        pulse: gl.getUniformLocation(program, "pulse"),
+        mode: gl.getUniformLocation(program, "mode")
+      };
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.floor(innerWidth * dpr));
+      const h = Math.max(1, Math.floor(innerHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, w, h);
+    }
+
+    function setPointer(e) {
+      const r = canvas.getBoundingClientRect();
+      pointer = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
+    }
+
+    addEventListener("keydown", (e) => {
+      if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+      if (e.code === "Space") pulse = 1;
+    });
+    canvas.addEventListener("pointerdown", (e) => { down = true; setPointer(e); pulse = 1; });
+    canvas.addEventListener("pointermove", (e) => { if (down) setPointer(e); });
+    addEventListener("pointerup", () => { down = false; });
+    addEventListener("resize", resize);
+
+    function frame(t) {
+      if (!gl || !program) return;
+      resize();
+      pulse *= 0.92;
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, t * 0.001);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.pulse, pulse);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(frame);
+    }
+
+    try { requestAnimationFrame(frame); } catch (e) { err.textContent = e.message; }
+  </script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
