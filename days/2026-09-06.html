@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>非同期ロードと実行時メトリクスを、GPU状態の記憶からステージ進行へ広げる | 2026-09-06</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.06</p>
+      <h1>非同期ロードと実行時メトリクスを、GPU状態の記憶からステージ進行へ広げる</h1>
+      <p class="hero-subtitle">Extending GPU-state memory into async loading and runtime metric staging</p>
+      <p>Babylon.js の OpenUSD WebAssembly scene loader、PlayCanvas の AppStats / MiniStats更新、three.js の Sculpt addon / VXGINode / TAAUtils / packed dot product、Codrops の Unwoven と ASCII Logoを調査した。前回のTAA蓄積とowner-keyed slotから、今日は「GPU状態の記憶」を、非同期worker、command buffer、materialization、CPU/GPU timing、GPU resource memoryの可視化へ広げた。</p>
+      <p class="en-copy">Today covers Babylon.js OpenUSD WebAssembly scene loading, PlayCanvas AppStats / MiniStats updates, three.js Sculpt addon / VXGINode / TAAUtils / packed dot product, and Codrops' Unwoven plus ASCII Logo. Building on TAA accumulation and owner-keyed slots, the theme expands GPU-state memory into visualized async workers, command buffers, materialization, CPU/GPU timing, and GPU resource memory.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-06_usd_worker_stage_scan.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-05.html">← 2026.09.05</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-06 USD Worker Stage Scan</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-06_usd_worker_stage_scan.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-06 AppStats Performance Mixer</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-06_appstats_performance_mixer.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. Babylon.js PR #18882 は OpenUSD を Web Worker 上のWasmで読み、command bufferとraw data bufferをmain threadへtransferしてBabylon sceneへmaterializeする大きな提案。ステージング、buffer packing、heap copy、materialization timingが観測可能なので、ロード工程そのものを演出タイムラインにできる。2. PlayCanvas PR #9308/#9307/#9310 は AppStats と MiniStats を、CPU/GPU duration、GPU resource memory、compact/grouped/history viewとして扱いやすくする流れ。昨日のowner slotやreadback queueに、実測メトリクスの譜面が加わる。3. three.js PR #33164 は SculptGL由来のsculpt addonとWebXR sculpt例を追加する提案。dynamic topologyのsubdivision/decimationは、手の動きで空間解像度が増減する表現に直結する。4. three.js PR #34402 は VXGINodeをmerged。9/5に見たTAA/SVGFの履歴系と組み合わせると、GIのcone tracing resultとtemporal denoiseをライブに比較できる。5. Codrops Creative Hubでは 2026-09-05 に Unwoven が追加され、9/4 ASCII Logo、9/2 Datamoshと続く。文字、布目、残像が近い日付で並び、WebGLの「再符号化」表現が濃くなっている。</p>
+          <p class="en-copy">1. Babylon.js PR #18882 proposes loading OpenUSD through Wasm in a Web Worker, transferring a command buffer and raw data buffer back to the main thread, then materializing a Babylon scene. Because staging, buffer packing, heap copy, and materialization timings are observable, the loading pipeline itself can become an animation timeline. 2. PlayCanvas PRs #9308/#9307/#9310 make AppStats and MiniStats clearer around CPU/GPU duration, GPU resource memory, and compact/grouped/history views. This adds measured runtime score lanes to yesterday's owner slots and readback queues. 3. three.js PR #33164 proposes a SculptGL-derived sculpt addon and WebXR sculpt example. Dynamic topology subdivision and decimation directly suggest spatial resolution controlled by hand motion. 4. three.js PR #34402 merges VXGINode; paired with TAA/SVGF history work, it suggests live comparison between cone-traced GI and temporal denoise. 5. Codrops Creative Hub added Unwoven on 2026-09-05, following ASCII Logo and Datamosh, making text, woven structure, and temporal residue a tight recent cluster.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18882" target="_blank" rel="noreferrer">Babylon.js #18882</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9308" target="_blank" rel="noreferrer">PlayCanvas #9308</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33164" target="_blank" rel="noreferrer">three.js #33164</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34402" target="_blank" rel="noreferrer">three.js #34402</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Codropsの新着では Unwoven が 2026-09-05 にThree.js/WebGL/marquee系として掲載されている。9/4のASCII Logoは文字セル、9/2のDatamoshはフレーム履歴、Unwovenは織り/ほどける構造として読める。ここにBabylon.js #18882のcommand bufferを重ねると、USD sceneのprimやinstanceがロードされる順番を、文字や織り目やスキャンラインとして見せられる。単なるprogress barではなく、読み込まれたgeometry、texture、material、animation commandがそれぞれ違う線質を持って布のように組み上がる、というWeb演出にできる。</p>
+          <p class="en-copy">Codrops lists Unwoven on 2026-09-05 as a Three.js/WebGL/marquee item. The recent sequence reads as ASCII Logo for character cells, Datamosh for frame history, and Unwoven for woven or unraveling structure. If combined with Babylon.js #18882 command buffers, USD prims and instances can appear as text, weave, or scanline order during load. Instead of a progress bar, geometry, texture, material, and animation commands can each gain their own line quality and assemble into a woven web experience.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18882" target="_blank" rel="noreferrer">Babylon.js #18882</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「USD Worker Stage Scan」。1 はworker queue、2 はcommand buffer、3 はBabylon scene materialization、4 は統合スキャン。ドラッグでstage cursorとload pressure、クリック/Spaceでtransfer pulseを入れる。Babylon.js #18882のworker progress、diagnostics、timingsを、ステージの開閉や線の解像度として触れるようにする狙い。派生案は「AppStats Performance Mixer」。1 はCPU/GPU duration lanes、2 はGPU resource memory、3 はcompact history、4 はprofiling mix。PlayCanvas #9308/#9307のAppStats/MiniStatsを、性能劣化の警告ではなく音反応や照明変化に使える可視レーンとして扱う。次に足すなら、1本目のloader timingを2本目のCPU/GPU lanesへ流し、ロード中だけメトリクスの線が太る構成にする。</p>
+          <p class="en-copy">The main idea is USD Worker Stage Scan: mode 1 worker queue, 2 command buffer, 3 Babylon scene materialization, and 4 composed scan. Drag controls stage cursor and load pressure; click/Space emits a transfer pulse. The goal is to turn Babylon.js #18882 worker progress, diagnostics, and timings into tangible stage openings and line resolution. The derived idea is AppStats Performance Mixer: mode 1 CPU/GPU duration lanes, 2 GPU resource memory, 3 compact history, and 4 profiling mix. It treats PlayCanvas AppStats/MiniStats as visible lanes for sound-reactive or lighting changes, not just warnings. Next, feed loader timing from the first sample into the second sample's CPU/GPU lanes so metrics thicken while loading.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>OpenUSD/Wasm loader型の処理は、root file staging、supporting files staging、stage open、stage read、buffer packing、heap copy、main-thread materializationに分けてログ化すると、progress表示より豊かな入力になる。command bufferはopcode、payload length、raw data offset、material/mesh/instance/animationの種別を色や線質へ割り当てられる。PlayCanvas AppStatsは、CPU/GPU durationとGPU resource memoryを同じ単位に丸めず、別レーンとして残すのが良い。GPU memory spikeを粒子密度、CPU durationをカメラ揺れ、GPU durationをpostprocess強度に割ると、負荷状態が表現に混ざっても意味を失いにくい。three.js Sculpt addon側は、subdivision/decimation回数をブラシ痕の明度や織り密度として扱うと、今日のUnwoven/loader scanと接続しやすい。</p>
+          <p class="en-copy">For an OpenUSD/Wasm loader, log root-file staging, supporting-file staging, stage open, stage read, buffer packing, heap copy, and main-thread materialization separately; this is richer than a single progress value. Command-buffer opcode, payload length, raw-data offset, and material/mesh/instance/animation types can map to color and line quality. For PlayCanvas AppStats, keep CPU/GPU duration and GPU resource memory in separate lanes rather than forcing one unit. Map GPU memory spikes to particle density, CPU duration to camera shake, and GPU duration to postprocess strength so load state keeps semantic value. For three.js Sculpt, subdivision/decimation counts can become brush brightness or weave density, connecting well with Unwoven and loader scan ideas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/SergioRZMasson/babylon-usd-importer" target="_blank" rel="noreferrer">Babylon USD importer reference</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9308" target="_blank" rel="noreferrer">PlayCanvas #9308</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33164" target="_blank" rel="noreferrer">three.js #33164</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: three.js #34458 TAAUtils、#33770 SSGI/SVGF、#34402 VXGINode、Babylon.js #18880 owner-keyed UBO slots、#18879 object ID geometry textures、PlayCanvas #9293 next-frame async texture read、#9233 error-driven GSplat LOD。新規案件: Babylon.js #18882 OpenUSD Wasm loader、PlayCanvas #9308 AppStats、#9307/#9310 MiniStats、three.js #33164 Sculpt addon、#34463 compose-based dev environment、Codrops Unwoven。寝かせる案件: three.js #34464 ArrayBuffer/Base64 native APIはasset pipelineには有用だが表現試作の優先度は低め。PlayCanvas #9234 examples migrationは運用改善として追い、今日のサンプルには入れない。</p>
+          <p class="en-copy">Continue: three.js #34458 TAAUtils, #33770 SSGI/SVGF, #34402 VXGINode, Babylon.js #18880 owner-keyed UBO slots and #18879 object-ID geometry textures, PlayCanvas #9293 next-frame async texture read and #9233 error-driven GSplat LOD. New: Babylon.js #18882 OpenUSD Wasm loader, PlayCanvas #9308 AppStats, #9307/#9310 MiniStats, three.js #33164 Sculpt addon, #34463 compose-based dev environment, and Codrops Unwoven. Sleep: three.js #34464 native ArrayBuffer/Base64 conversion is useful for asset pipelines but less urgent for visual prototyping. PlayCanvas #9234 examples migration stays operational, outside today's samples.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34464" target="_blank" rel="noreferrer">three.js #34464</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34463" target="_blank" rel="noreferrer">three.js #34463</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9234" target="_blank" rel="noreferrer">PlayCanvas #9234</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-06_usd_worker_stage_scan.html` を開く。1 はworker queue、2 はcommand buffer、3 はmaterialization、4 は統合スキャン。ドラッグでstage cursor/load pressure、クリックまたはSpaceでtransfer pulseが入る。次に足すなら、Babylon.js #18882のonComplete timingやcommand countをJSONに保存し、各opcodeを実データで描画する。2本目は `outputs/2026-09-06_appstats_performance_mixer.html`。1 はCPU/GPU lanes、2 はGPU resource memory、3 はcompact history、4 はprofiler mix。次に足すなら、PlayCanvasの実AppStatsを1秒ごとにサンプリングしてuniform texture化し、線の太さと粒子密度を実測値で動かす。</p>
+          <p class="en-copy">Open `outputs/2026-09-06_usd_worker_stage_scan.html` first. Mode 1 is worker queue, 2 command buffer, 3 materialization, and 4 composed scan. Drag controls stage cursor/load pressure; click or Space emits a transfer pulse. Next, save Babylon.js #18882 onComplete timings and command counts to JSON and draw each opcode from real data. The second sample is `outputs/2026-09-06_appstats_performance_mixer.html`: mode 1 CPU/GPU lanes, 2 GPU resource memory, 3 compact history, and 4 profiler mix. Next, sample real PlayCanvas AppStats every second into a uniform texture and drive line width and particle density from measured values.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: Babylon.js #18882、PlayCanvas #9308/#9307/#9310、three.js #33164/#34402/#34458/#34451、Codrops Unwoven / ASCII Logo / Datamosh。アイデア検討: 9/5 のTAA履歴とowner slotを、9/6 はloader worker、command buffer、materialization timing、AppStats historyへ接続。サンプル実装: 本命 `2026-09-06_usd_worker_stage_scan.html`、派生 `2026-09-06_appstats_performance_mixer.html`。結果の検証: JSON parse、HTML parser、script構文、gallery build、publishを実施。短期で試すものは、実timing logをJSON化して今日の2本へ注入すること。中長期で育てるものは、GPU状態のライブ譜面を、renderingだけでなくloading、profiling、asset compositionまで含む「制作工程がそのまま見えるステージ」に拡張すること。</p>
+          <p class="en-copy">Collection: Babylon.js #18882, PlayCanvas #9308/#9307/#9310, three.js #33164/#34402/#34458/#34451, and Codrops Unwoven / ASCII Logo / Datamosh. Ideation: connect 9/5 TAA history and owner slots to 9/6 loader workers, command buffers, materialization timing, and AppStats history. Prototypes: `2026-09-06_usd_worker_stage_scan.html` and `2026-09-06_appstats_performance_mixer.html`. Verification: JSON parse, HTML parser, script syntax, gallery build, and publish. Short-term: inject real timing logs into today's two samples. Long-term: expand the live GPU-state score beyond rendering into loading, profiling, and asset composition as a stage where the production process is visible.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>8/30 compute prefix、9/1 packed lane、9/2 SceneDepthReader、9/3 velocity/datamosh、9/4 submit/readback/object ID、9/5 TAA/owner slotに続き、今日はloader/profilerへ視野が広がった。最近の傾向は、完成画像ではなく、内部状態、途中工程、検証値、負荷状態を表現素材として扱う方向。組み合わせ候補は、USD loaderのopcodeをASCII/Unwoven風のセルにし、AppStatsのGPU memory spikeでセル密度を増やし、VXGI/TAAのhistory weightで完成済み部分だけ安定表示する構成。育てる価値が高いテーマは「非同期工程の舞台化」。読み込み中、最適化中、描画中、計測中という裏側の時間を、ユーザーが触れる空間演出にできる。</p>
+          <p class="en-copy">After 8/30 compute prefix, 9/1 packed lanes, 9/2 SceneDepthReader, 9/3 velocity/datamosh, 9/4 submit/readback/object IDs, and 9/5 TAA/owner slots, today widens the view to loaders and profilers. The recent trend is treating internal state, intermediate process, validation values, and load state as expressive material rather than only final imagery. A promising combination: render USD loader opcodes as ASCII/Unwoven-like cells, increase cell density with AppStats GPU memory spikes, and stabilize completed regions with VXGI/TAA history weight. The high-value theme is staging asynchronous process: loading, optimizing, rendering, and measuring become spatial interaction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-05_temporal_ascii_denoise_scope.html" target="_blank" rel="noreferrer">Previous TAA sample</a></li>
+          
+            <li><a href="../outputs/2026-09-05_owner_slot_physics_hit_scope.html" target="_blank" rel="noreferrer">Previous owner slot sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した本命は `outputs/2026-09-06_usd_worker_stage_scan.html`。Babylon.js #18882を短時間で試せる抽象化として、worker queue、command buffer、materialization、composed scanの4モードをraw WebGL fragment shaderで実装した。派生試作は `outputs/2026-09-06_appstats_performance_mixer.html`。PlayCanvas #9308/#9307/#9310をもとに、CPU/GPU lanes、GPU resource memory、compact history、profiler mixを描く。どちらも単体HTMLで、カードUIではなくシェーダー/空間演出寄り。次に足すなら、2本を統合して、loader stageごとのtimingがAppStats laneを押し上げ、GPU memory spikeがcommand buffer cellを膨らませるミニデモにする。</p>
+          <p class="en-copy">The selected main prototype is `outputs/2026-09-06_usd_worker_stage_scan.html`. It abstracts Babylon.js #18882 into four raw WebGL fragment-shader modes: worker queue, command buffer, materialization, and composed scan. The derived prototype is `outputs/2026-09-06_appstats_performance_mixer.html`, based on PlayCanvas #9308/#9307/#9310 with CPU/GPU lanes, GPU resource memory, compact history, and profiler mix. Both are standalone HTML and stay in shader/spatial territory rather than card UI. Next, merge them so per-loader-stage timing pushes AppStats lanes upward and GPU memory spikes inflate command-buffer cells.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日の2本で扱ったデータは、ロード工程のtiming、command種別、payload量、CPU/GPU duration、GPU memory、compact historyという時系列。これをWebXR展示に入れるなら、見えている作品の裏で動くloader/profilerを床面や壁面の光として出し、重いassetほど線が太く、未解決textureほど赤く滲むようにできる。音と組み合わせるなら、worker stageを低域、command countを中域、GPU memory spikeを高域へ割り当てる。MediaPipeやカメラ入力と組み合わせるなら、手の位置でstage cursorを動かし、手を握った時だけmaterializationが進むようにする。ブランド演出では、大型3D商品やUSDZ/GLBのロード待ちを隠すのではなく、素材が組み上がる工程を見せる導入演出として使える。</p>
+          <p class="en-copy">The two samples treat loader timings, command types, payload size, CPU/GPU duration, GPU memory, and compact history as time-series data. In a WebXR installation, the loader/profiler behind the visible work could appear as floor or wall light; heavy assets thicken lines and unresolved textures bleed red. With audio, map worker stage to bass, command count to mid frequencies, and GPU memory spikes to highs. With MediaPipe or camera input, hand position can move the stage cursor and a fist can advance materialization. For branded experiences, loading a large 3D product or USDZ/GLB asset can become an entry sequence that reveals how the material is assembled instead of hiding the wait.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18882" target="_blank" rel="noreferrer">Babylon.js PR #18882 OpenUSD WebAssembly scene loader</a></li>
+          
+            <li><a href="https://github.com/SergioRZMasson/babylon-usd-importer" target="_blank" rel="noreferrer">Babylon USD importer reference repo</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9308" target="_blank" rel="noreferrer">PlayCanvas PR #9308 AppStats</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9307" target="_blank" rel="noreferrer">PlayCanvas PR #9307 MiniStats redesign</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9310" target="_blank" rel="noreferrer">PlayCanvas PR #9310 MiniStats docs</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/33164" target="_blank" rel="noreferrer">three.js PR #33164 Sculpt addon</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34402" target="_blank" rel="noreferrer">three.js PR #34402 VXGINode</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34458" target="_blank" rel="noreferrer">three.js PR #34458 TAAUtils</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub all demos</a></li>
+          
+            <li><a href="../outputs/2026-09-06_usd_worker_stage_scan.html" target="_blank" rel="noreferrer">Main sample: USD Worker Stage Scan</a></li>
+          
+            <li><a href="../outputs/2026-09-06_appstats_performance_mixer.html" target="_blank" rel="noreferrer">Derived sample: AppStats Performance Mixer</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-06_usd_worker_stage_scan.html" loading="lazy" title="2026-09-06 USD Worker Stage Scan"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
