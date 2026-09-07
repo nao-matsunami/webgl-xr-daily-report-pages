@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>分割ベイクとtap削減を、待ち時間ではなく触れる照明・残像にする | 2026-09-07</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.07</p>
+      <h1>分割ベイクとtap削減を、待ち時間ではなく触れる照明・残像にする</h1>
+      <p class="hero-subtitle">Turning incremental baking and tap reduction into tangible lighting and afterimage controls</p>
+      <p>three.js の LightProbeGrid incremental baking、GaussianBlurNode / UnrealBloomPass の bilinear tap merge、TSL lint、VarNode before-node修正、SunLight WebGPU利用、PlayCanvas distanceSq / MiniStats継続、Babylon.js OpenUSD loader継続、Codrops の Prism / Datamosh / Creative Hub を調査した。前回の loader worker / AppStats から、今日は「時間のかかる処理を分割して舞台化する」方向を、GIベイクとポストプロセスtap削減へ接続した。2本の最小WebGL試作を実装した。</p>
+      <p class="en-copy">Today covers three.js LightProbeGrid incremental baking, GaussianBlurNode / UnrealBloomPass bilinear tap merging, TSL linting, VarNode before-node fixes, SunLight usage in WebGPU examples, PlayCanvas distanceSq and MiniStats follow-up, the continuing Babylon.js OpenUSD loader thread, plus Codrops' Prism / Datamosh / Creative Hub items. Building on loader workers and AppStats, the focus shifts to staging long-running work as a visible performance: GI baking and postprocess tap reduction. Two minimal WebGL prototypes were implemented.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-07_incremental_probe_bake_timeline.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-06.html">← 2026.09.06</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-07 Incremental Probe Bake Timeline</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-07_incremental_probe_bake_timeline.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-07 Bilinear Blur Tap Weave</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-07_bilinear_blur_tap_weave.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #34486 は `LightProbeGrid.bake()` / `LightProbeGridWebGL.bake()` に start、count、pass を持たせ、大きなprobe gridを数probeずつベイクして、その結果をすぐ表示できるようにする提案。前回のloader worker同様、重い処理を一括待ちにせず、進行中の状態を作品の時間軸へ出せる。2. three.js PR #34478/#34479 は GaussianBlurNode と UnrealBloomPass で隣接tapをbilinear fetchにまとめる更新。blurのtap数削減は単なる高速化ではなく、同じ予算でmip数や残像層を増やす余地になる。3. three.js PR #34488 は `tsl/` lint導入、#34490 は intent variable の `.before()` が飛ばされる問題の修正。TSL graphを可視化・Inspector接続するなら、ビルド前処理やdebug nodeが落ちないことは制作上かなり重要。4. three.js PR #34476 はWebGPU examplesへSunLightを広げ、camera-fitted cascadesを手動shadow boundsの代替にする流れ。incremental probe bakingと組み合わせると、太陽・cascade・GI更新の3段階を同じ照明UIで扱える。5. Codrops 9/6 の MediaPipe + Threlte + Three.js 顔マスクは、478 landmarksのうち468点をdynamic BufferGeometryへ流し、UI frameworkのreactive graphに載せない hot path を示している。顔の動きでprobe dirty regionやblur thresholdを動かす接続が見える。6. PlayCanvasは #9313 の `distanceSq` 追加と #9307 MiniStats継続が目立つ。距離二乗は小さい更新だが、splat / particle / XR pointer の近傍判定をsqrtなしで大量に走らせる基礎になる。</p>
+          <p class="en-copy">1. three.js PR #34486 adds start, count, and pass options to `LightProbeGrid.bake()` / `LightProbeGridWebGL.bake()`, letting a large probe grid bake a few probes per frame and display results immediately. Like yesterday's loader worker theme, expensive work becomes a visible timeline instead of a blocking wait. 2. three.js PRs #34478/#34479 merge adjacent Gaussian blur taps into bilinear fetches for GaussianBlurNode and UnrealBloomPass. Tap reduction is not just optimization; it buys room for more mips, history layers, or afterimage bands under the same budget. 3. three.js PR #34488 adds linting for `tsl/`, while #34490 fixes skipped `.before()` nodes on intent variables. For TSL graph visualization and Inspector hooks, build-before/debug nodes must survive reliably. 4. PR #34476 spreads SunLight through WebGPU examples with camera-fitted cascades. Combined with incremental probe baking, sun, cascades, and GI updates can share one lighting control surface. 5. Codrops' September 6 MediaPipe + Threlte + Three.js face-mask tutorial streams 468 of 478 landmarks into dynamic BufferGeometry while keeping the hot path outside the UI framework's reactive graph. Face motion could drive probe dirty regions or blur thresholds. 6. PlayCanvas #9313 adds `distanceSq`, and MiniStats remains relevant from #9307. Squared distance is small but useful for dense splat, particle, and XR pointer proximity tests without square roots.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34486" target="_blank" rel="noreferrer">three.js #34486</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34478" target="_blank" rel="noreferrer">three.js #34478</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34479" target="_blank" rel="noreferrer">three.js #34479</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34488" target="_blank" rel="noreferrer">three.js #34488</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9313" target="_blank" rel="noreferrer">PlayCanvas #9313</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/06/building-a-real-time-3d-face-mask-with-mediapipe-threlte-and-three-js/" target="_blank" rel="noreferrer">Codrops Face Mask tutorial</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Codrops記事では 2026-09-06 の MediaPipe顔マスクと、2026-09-03 の「From Rays to Meshes: Building Vercel's Prism with vgpu」が重要。顔マスクは、推論クロックとrender clockを分離し、landmark結果をmutable refとしてThree.jsのframe loopで読む構成が実装上の肝。Prismはshader、geometry、glass、adaptive renderingを組み合わせ、Prism効果を高負荷な美術ではなく、環境に応じて成立するWeb表現として扱っている。Creative Hub側では Datamosh、Dreamfold、Volatile Nexus、ASCII Logo、Unwovenが近い時期に並んでおり、ここ数日は「フレーム履歴」「文字/織りへの再符号化」「光学的な歪み」「camera/ML入力」が強い。今日のthree.js PR群はこの傾向に実装面から接続できる。Incremental bakeは光が空間へ順に満ちる演出、bilinear tap mergeは安価な残像・bloom・織り目、TSL lintはそうしたnode graphを長く保つための制作基盤になる。</p>
+          <p class="en-copy">Codrops' September 6 MediaPipe face-mask tutorial and September 3 'From Rays to Meshes: Building Vercel's Prism with vgpu' article are the key examples. The face-mask implementation separates inference and render clocks, storing landmark results in a mutable ref that the Three.js frame loop reads. Prism combines shaders, geometry, glass, and adaptive rendering, treating the effect as a web experience that adapts to device conditions. The Creative Hub has recently clustered Datamosh, Dreamfold, Volatile Nexus, ASCII Logo, and Unwoven, emphasizing frame history, recoding into text or weave, optical distortion, and camera/ML input. Today's three.js PRs connect to that cluster at implementation level: incremental baking turns light filling a space into performance, bilinear tap merge gives cheaper bloom/afterimage/weave layers, and TSL linting supports long-lived node graph production.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/06/building-a-real-time-3d-face-mask-with-mediapipe-threlte-and-three-js/" target="_blank" rel="noreferrer">Codrops Face Mask tutorial</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/03/from-rays-to-meshes-building-vercels-prism-with-vgpu/" target="_blank" rel="noreferrer">Codrops Prism article</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Incremental Probe Bake Timeline」。mode 1 はprobe cell、2 はbounce pass、3 はSunLight cascade、4 はcity GI合成。ドラッグでベイクカーソルと太陽方向、クリック/Spaceでprobe burstを入れる。ベイク完了セルだけが明るくなり、前回のOpenUSD command buffer scanと同じく「処理の途中」を観客に見せる。派生案は「Bilinear Blur Tap Weave」。mode 1 はraw taps、2 はmerged pairs、3 はbloom mips、4 は織り目状のpostprocess。tap削減で浮いた予算をmipや織り模様に戻す検証。次に足すなら、1本目の完了probe cellを2本目のblur thresholdへ送り、ベイク済みの街区だけ残像が太くなる構成にする。</p>
+          <p class="en-copy">The main idea is Incremental Probe Bake Timeline: mode 1 probe cells, 2 bounce pass, 3 SunLight cascades, and 4 city GI composition. Drag controls bake cursor and sun direction; click/Space emits a probe burst. Completed cells brighten, exposing in-progress computation like yesterday's OpenUSD command-buffer scan. The derived idea is Bilinear Blur Tap Weave: mode 1 raw taps, 2 merged pairs, 3 bloom mips, and 4 woven postprocess. It tests spending saved tap budget on additional mips and weave-like afterimages. Next, feed completed probe cells from sample one into the blur threshold in sample two so baked city blocks receive thicker residue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>incremental bakeを実装へ進めるなら、probeIndex、passIndex、bounceIndex、sunCascadeIndex、durationMs、dirtyReasonをJSON logにして、1秒ごとのAppStats / MiniStats値と同じtimeline textureへ入れるのがよい。ベイク済みprobeをただ点灯するだけでなく、未完了は冷色、pass中は縞、前pass参照中は低周波の揺れ、と状態を分けると進捗が表現になる。bilinear tap merge側は、raw tap count、merged tap count、sigma、mip level、threshold、GPU durationを分けて保持する。tap削減分を全部品質向上に使うのではなく、一部をinteractionや音反応の帯域へ割ると、性能最適化が見た目の個性になる。</p>
+          <p class="en-copy">To take incremental baking further, log probeIndex, passIndex, bounceIndex, sunCascadeIndex, durationMs, and dirtyReason as JSON, then feed them into the same timeline texture as AppStats / MiniStats values. Rather than lighting completed probes only, use cool colors for pending cells, stripes for in-pass cells, and low-frequency motion for previous-pass sampling. For bilinear tap merge, keep raw tap count, merged tap count, sigma, mip level, threshold, and GPU duration as separate channels. Do not spend all saved taps on higher quality; reserve some for interaction or audio bands so optimization becomes a visual signature.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9307" target="_blank" rel="noreferrer">PlayCanvas MiniStats #9307</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34478" target="_blank" rel="noreferrer">three.js GaussianBlurNode #34478</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: Babylon.js #18882 のOpenUSD loaderは、onComplete timings / statistics / diagnosticsが追加で動くかを見る。three.js #34486 はincremental bakeのAPI shapeと、前pass snapshotの扱いを見る。#34478/#34479 はtap mergeの実測とpremultiplied alpha pathの分岐を見る。新規案件: TSL lint #34488 と VarNode #34490 は、TSLのdebug / Inspector / AOT shader生成の信頼性に関係するので追う。寝かせる案件: PlayCanvas #9315 の外部リンクdocs PRは、今回の表現軸には弱いので保留。PlayCanvas #9313 distanceSqは大きな絵にはならないが、particle proximityやray interactionの基礎として短期メモに置く。</p>
+          <p class="en-copy">Continue watching Babylon.js #18882 for loader onComplete timings, statistics, and diagnostics. Watch three.js #34486 for API shape and previous-pass snapshot behavior, and #34478/#34479 for measured tap savings and premultiplied-alpha branching. New watch items: TSL lint #34488 and VarNode #34490 because they affect debug, Inspector, and AOT shader generation reliability. Park PlayCanvas #9315 because the web-links docs update is weak for this expression track. Keep PlayCanvas #9313 as a small but useful primitive for particle proximity and ray interaction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18882" target="_blank" rel="noreferrer">Babylon.js #18882</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34486" target="_blank" rel="noreferrer">three.js #34486</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34490" target="_blank" rel="noreferrer">three.js #34490</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>短期で試すなら、LightProbeGridのような「分割して進む処理」を実データなしでまず可視化するのがよい。今日の本命サンプル `outputs/2026-09-07_incremental_probe_bake_timeline.html` は、probe grid、bounce pass、SunLight cascade、GI合成をraw WebGLで動かす。次に足すなら、各cellに実測durationMsを持たせ、遅いcellだけblur / bloom / color temperatureを変える。2本目の `outputs/2026-09-07_bilinear_blur_tap_weave.html` は、tap削減を質感へ戻す派生検証。次に足すなら、Web Audio Analyserのhigh bandでtap offset、low bandでbloom thresholdを動かす。</p>
+          <p class="en-copy">For a short test, visualize a chunked long-running process before wiring real data. The main sample `outputs/2026-09-07_incremental_probe_bake_timeline.html` runs probe grid, bounce pass, SunLight cascade, and GI composition in raw WebGL. Next, attach measured durationMs per cell and let slow cells alter blur, bloom, or color temperature. The second sample `outputs/2026-09-07_bilinear_blur_tap_weave.html` tests spending saved tap budget on texture. Next, use Web Audio Analyser high bands for tap offset and low bands for bloom threshold.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample: Incremental Probe Bake Timeline</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample: Bilinear Blur Tap Weave</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #34486/#34478/#34479/#34488/#34490/#34476、PlayCanvas #9313/#9307、Babylon.js #18882、Codrops Prism / Datamosh / Creative Hub。アイデア検討: 前回のloader worker / AppStatsを、今日のincremental bake / tap budgetへ接続し、長い処理と最適化を演出入力にする。サンプル実装: 本命 `2026-09-07_incremental_probe_bake_timeline.html`、派生 `2026-09-07_bilinear_blur_tap_weave.html` を作成。結果の検証: JSON parse、HTML parse、script構文チェック、upsert / publishを実行する。短期: probe進捗とblur閾値をつなぐ。中長期: loader、GI bake、postprocess、AppStatsを同じ“処理が見える舞台”として育てる。</p>
+          <p class="en-copy">Collection: three.js #34486/#34478/#34479/#34488/#34490/#34476, PlayCanvas #9313/#9307, Babylon.js #18882, and Codrops Prism / Datamosh / Creative Hub. Ideation: connect yesterday's loader worker / AppStats to today's incremental bake / tap budget, making long work and optimization into expressive inputs. Implementation: created `2026-09-07_incremental_probe_bake_timeline.html` and `2026-09-07_bilinear_blur_tap_weave.html`. Verification: run JSON parse, HTML parse, script syntax checks, upsert, and publish. Short term: connect probe progress to blur threshold. Mid term: grow loader, GI bake, postprocess, and AppStats into one visible processing stage.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、TAA/SVGF、readback、command buffer、AppStats、incremental bake、tap mergeが全部「GPU処理を隠さず、遅延や段取りを表現にする」方向へ寄っている。組み合わせ候補は、OpenUSD command buffer x LightProbeGrid bake x MiniStats history。sceneが読み込まれ、probeが順に焼かれ、負荷レーンが変化し、その状態でbloomのtap予算が変わる、という一続きのWeb演出にできる。育てる価値が高いテーマは「処理中の美学」。ロード画面やdebug overlayではなく、未完了・再計算・低予算・fallbackを作品側の文法にする。</p>
+          <p class="en-copy">The recent pattern is clear: TAA/SVGF, readback, command buffers, AppStats, incremental baking, and tap merging all point toward exposing GPU work, delay, and staging as expression. A strong combination is OpenUSD command buffer x LightProbeGrid bake x MiniStats history. A scene loads, probes bake in sequence, performance lanes shift, and bloom tap budget changes in response. The high-value theme is 'aesthetics of processing': not a loading screen or debug overlay, but a grammar where incomplete, recomputed, low-budget, and fallback states belong to the artwork.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>採用した本命は「Incremental Probe Bake Timeline」。短時間で動き、前回のloader worker / AppStatsと接続しやすく、three.js #34486の実装意図も表現へ翻訳しやすい。派生として「Bilinear Blur Tap Weave」も実装した。これは #34478/#34479 のtap削減を、ただ軽くする話ではなく、織り・残像・bloom層へ再投資する検証。どちらも依存なしのHTML/WebGLで、`outputs/` 配下から直接開ける。</p>
+          <p class="en-copy">The selected main candidate is Incremental Probe Bake Timeline. It is quick to run, connects naturally to yesterday's loader worker / AppStats theme, and translates three.js #34486 into expression. The derived sample, Bilinear Blur Tap Weave, turns #34478/#34479 tap reduction into an investment in weave, residue, and bloom layers rather than mere optimization. Both are dependency-free HTML/WebGL files under `outputs/`.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample: Incremental Probe Bake Timeline</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample: Bilinear Blur Tap Weave</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今日の2サンプルは、入力値をデータとして保存しやすい。1本目はcell id、bake order、done state、pass、sun vector、pulseを持てる。2本目はraw tap response、merged response、mip energy、threshold、tap offsetを持てる。組み合わせると、音の低域でprobe burst、中域でbake cursor、高域でtap offsetを動かし、WebXRでは視線が当たったprobeだけ次passへ進める演出にできる。画像入力を使う場合は、明るい領域だけprobe完了扱いにして、暗部はbilinear bloomで遅れて浮かせる。ブランド演出なら、ロゴを完成形として出すのではなく、ベイク完了・tap budget・負荷履歴が積み上がった結果として現れる設計が合う。</p>
+          <p class="en-copy">Both samples can be logged as data. The first can store cell id, bake order, done state, pass, sun vector, and pulse. The second can store raw tap response, merged response, mip energy, threshold, and tap offset. Combined with audio, low bands can trigger probe bursts, mids can move the bake cursor, and highs can shift tap offset. In WebXR, only gaze-hit probes could advance to the next pass. With image input, bright regions can count as completed probes while dark regions bloom in later. For brand experiences, the logo should emerge as the result of bake completion, tap budget, and performance history rather than appearing as a finished asset.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34486" target="_blank" rel="noreferrer">three.js PR #34486 LightProbeGrid incremental baking</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34478" target="_blank" rel="noreferrer">three.js PR #34478 GaussianBlurNode bilinear taps</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34479" target="_blank" rel="noreferrer">three.js PR #34479 UnrealBloomPass bilinear taps</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34488" target="_blank" rel="noreferrer">three.js PR #34488 TSL lint</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34490" target="_blank" rel="noreferrer">three.js PR #34490 VarNode before nodes</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34476" target="_blank" rel="noreferrer">three.js PR #34476 SunLight in WebGPU examples</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9313" target="_blank" rel="noreferrer">PlayCanvas PR #9313 distanceSq</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9307" target="_blank" rel="noreferrer">PlayCanvas PR #9307 MiniStats redesign</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18882" target="_blank" rel="noreferrer">Babylon.js PR #18882 OpenUSD WebAssembly scene loader</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/03/from-rays-to-meshes-building-vercels-prism-with-vgpu/" target="_blank" rel="noreferrer">Codrops: From Rays to Meshes: Building Vercel's Prism with vgpu</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/06/building-a-real-time-3d-face-mask-with-mediapipe-threlte-and-three-js/" target="_blank" rel="noreferrer">Codrops: Building a Real-Time 3D Face Mask with MediaPipe, Threlte and Three.js</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/05/building-an-infinite-loom-unravelling-images-into-threads-with-three-js/" target="_blank" rel="noreferrer">Codrops: Building an Infinite Loom</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-09-07_incremental_probe_bake_timeline.html" target="_blank" rel="noreferrer">Main sample: Incremental Probe Bake Timeline</a></li>
+          
+            <li><a href="../outputs/2026-09-07_bilinear_blur_tap_weave.html" target="_blank" rel="noreferrer">Derived sample: Bilinear Blur Tap Weave</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-07_incremental_probe_bake_timeline.html" loading="lazy" title="2026-09-07 Incremental Probe Bake Timeline"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
