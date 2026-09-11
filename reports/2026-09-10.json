@@ -1,0 +1,239 @@
+{
+  "date": "2026-09-10",
+  "headline": "平面を厚み・流体・検査面に変える",
+  "headlineEn": "Turning flat surfaces into thickness, fluid motion, and diagnostic planes",
+  "summary": "Codrops の Infinite Liquid Glass Grid と Drawing With Light、three.js の LightProbeGrid incremental baking / UnrealBloomPass bilinear fetch / r187 migration note / TSL Inspector issue、PlayCanvas の WebGPU readback staging buffer pool issue と Editor GLSL transpilation setting、Babylon.js JsRuntimeHost の async WebAssembly settling を調査した。前回の「処理中の美学」を、今日は「平面を厚み・流体・検査面として使う」方向へ接続し、2本の依存なしWebGL試作を実装した。",
+  "summaryEn": "Today covers Codrops' Infinite Liquid Glass Grid and Drawing With Light, three.js LightProbeGrid incremental baking, UnrealBloomPass bilinear fetches, the r187 migration note, a TSL Inspector issue, PlayCanvas' WebGPU readback staging buffer pool issue and Editor GLSL transpilation setting, plus Babylon.js JsRuntimeHost async WebAssembly settling. Building on the previous aesthetics-of-processing theme, the focus shifts to flat surfaces as thickness, fluid motion, and diagnostic planes. Two dependency-free WebGL prototypes were implemented.",
+  "links": [
+    {
+      "label": "Codrops: Infinite Liquid Glass Grid",
+      "url": "https://tympanus.net/codrops/2026/09/08/building-an-infinite-liquid-glass-grid-with-three-js-webgpu-and-tsl/"
+    },
+    {
+      "label": "Codrops: Drawing With Light",
+      "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+    },
+    {
+      "label": "three.js PR #34486 LightProbeGrid incremental baking",
+      "url": "https://github.com/mrdoob/three.js/pull/34486"
+    },
+    {
+      "label": "three.js PR #34479 UnrealBloomPass bilinear fetches",
+      "url": "https://github.com/mrdoob/three.js/pull/34479"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "three.js Issue #34489 TSL toInspector skipped",
+      "url": "https://github.com/mrdoob/three.js/issues/34489"
+    },
+    {
+      "label": "PlayCanvas Issue #9297 WebGPU readback staging buffers",
+      "url": "https://github.com/playcanvas/engine/issues/9297"
+    },
+    {
+      "label": "PlayCanvas Editor PR #2208 GLSL shader transpilation setting",
+      "url": "https://github.com/playcanvas/editor/pull/2208"
+    },
+    {
+      "label": "Babylon.js JsRuntimeHost PR #232 async WebAssembly",
+      "url": "https://github.com/BabylonJS/JsRuntimeHost/pull/232"
+    },
+    {
+      "label": "Main sample: Liquid Glass Probe Cloth",
+      "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+    },
+    {
+      "label": "Derived sample: Inspector Readback Pool Scope",
+      "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Codrops の 2026-09-08 記事は、flat plane、SDF rounded rectangle、height map、normal、chromatic dispersion、Fresnel、rim を組み合わせ、実ジオメトリなしの liquid glass を WebGPU / TSL で作っている。さらに XPBD 風の GPU cloth simulation に更新され、drag の遅れや揺れを表面の質感にしている点が重要。2. Codrops の 2026-09-07 Drawing With Light は、tube を CPU で再構築せず、progress / angle だけを持つパラメータ格子としてアップロードし、TSL vertex stage で位置・tangent・normal を再構成する。線をポストプロセス的な飾りから、光を受ける立体へ戻す発想として使える。3. three.js PR #34486 は LightProbeGrid incremental baking が Sep 7 に merge 済み。前回の主題だったが、今日の liquid glass / cloth と合わせると、probe が順に焼ける状態をガラス面の厚みや歪みへ流し込める。4. three.js migration guide は Sep 9 更新で 186→187 の WebGLRenderer setViewport / setScissor 挙動変更を記載している。render target 使用時に pixel ratio scale が変わるため、ポストプロセス、readback、小矩形probe、multi-view debug 面は座標系を再確認する必要がある。5. PlayCanvas issue #9297 は WebGPU readback staging buffer の毎フレーム生成・破棄を pool 化できるという提案。SceneDepthReader / Picker のような readback を演出入力にする場合、ここは性能だけでなく「診断面を常時出せるか」の条件になる。",
+      "bodyEn": "1. Codrops' September 8 article builds liquid glass from flat planes using an SDF rounded rectangle, height map, normals, chromatic dispersion, Fresnel, and rim lighting in WebGPU / TSL. The later GPU cloth simulation update turns drag lag and wobble into surface character. 2. Codrops' September 7 Drawing With Light article uploads tubes as a parameter grid carrying only progress and angle, then reconstructs position, tangent, and normal in the TSL vertex stage. It moves lines from decorative overlays back into lit geometry. 3. three.js PR #34486 merged on September 7, adding incremental LightProbeGrid baking. Combined with liquid glass and cloth, completed probe state can drive thickness and distortion. 4. The three.js migration guide was updated on September 9 and notes a 186 to 187 change: WebGLRenderer setViewport / setScissor no longer scale by pixel ratio when a render target is bound. Postprocessing, readback rectangles, probe captures, and multi-view debug planes need coordinate checks. 5. PlayCanvas issue #9297 proposes pooling WebGPU readback staging buffers instead of creating and destroying one every frame. For SceneDepthReader / Picker-driven visuals, this determines whether a diagnostic plane can remain live.",
+      "links": [
+        {
+          "label": "Codrops Liquid Glass",
+          "url": "https://tympanus.net/codrops/2026/09/08/building-an-infinite-liquid-glass-grid-with-three-js-webgpu-and-tsl/"
+        },
+        {
+          "label": "Codrops Drawing With Light",
+          "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+        },
+        {
+          "label": "three.js #34486",
+          "url": "https://github.com/mrdoob/three.js/pull/34486"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas #9297",
+          "url": "https://github.com/playcanvas/engine/issues/9297"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Infinite Liquid Glass Grid の面白さは、ガラスを MeshPhysicalMaterial や本物の厚いジオメトリで作らず、flat plane の shader 内で距離場、height、normal、refraction を作るところにある。しかも動画テクスチャ自身を曲げるため、scene capture や transmission 用 render target を避けられる。これは #34479 の bilinear fetch と同じく、重い処理を減らして、その分を動きや量へ戻す設計。Drawing With Light は逆に、flat な meshline を「光を受ける tube」へ戻している。両者を並べると、今週の大きな傾向は flat / line / debug lane のような安い表面に、厚み・法線・遅延・履歴を与えて立体的な体験にすることだと見える。",
+      "bodyEn": "The interesting part of Infinite Liquid Glass Grid is that it avoids MeshPhysicalMaterial and heavy glass geometry, building distance fields, height, normals, and refraction inside the shader on flat planes. Because it bends each card's own video texture, it avoids scene capture and transmission render targets. Like #34479's bilinear fetch optimization, it removes heavy work and spends the budget on motion and quantity. Drawing With Light goes the other way: it turns flat meshline-like strokes back into lit tubes. Together they show this week's pattern: give cheap surfaces such as planes, lines, and debug lanes thickness, normals, delay, and history until they become spatial experiences.",
+      "links": [
+        {
+          "label": "Liquid Glass article",
+          "url": "https://tympanus.net/codrops/2026/09/08/building-an-infinite-liquid-glass-grid-with-three-js-webgpu-and-tsl/"
+        },
+        {
+          "label": "Drawing With Light article",
+          "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+        },
+        {
+          "label": "three.js #34479",
+          "url": "https://github.com/mrdoob/three.js/pull/34479"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Liquid Glass Probe Cloth」。flat card を SDF と疑似heightでガラス化し、LightProbeGrid の bake progress を厚み・色温度・屈折量へ割り当てる。drag で球面グリッドがずれ、probe が焼けた領域だけが温かく反射する。短期では実probeなしの擬似進捗で十分。中期では #34486 の probeIndex / pass / count / durationMs を入力にする。派生案は「Inspector Readback Pool Scope」。TSL Inspector の node path、PlayCanvas readback staging buffer、GLSL transpilation toggle、blur tap budget を1枚の診断面として見せる。これは作品というより、ライブ演出中の安全計器をビジュアルに寄せるための検証。",
+      "bodyEn": "The main idea is Liquid Glass Probe Cloth: make flat cards glassy with SDF and fake height, then map LightProbeGrid bake progress to thickness, color temperature, and refraction. Drag offsets the spherical grid; baked regions reflect warmer light. A fake progress signal is enough short term. Mid term, feed in #34486 probeIndex, pass, count, and durationMs. The derived idea is Inspector Readback Pool Scope: show TSL Inspector node paths, PlayCanvas readback staging buffers, a GLSL transpilation toggle, and blur tap budget on one diagnostic plane. It is less a standalone artwork than a visual safety instrument for live graphics.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "fake glass は、2D SDF から edge distance を作り、近傍差分で normal を推定し、その normal で video / image / procedural texture のUVをずらすだけでも成立する。重要なのは、全部を postprocess に逃がさず、material 側の quality knob として tap数、bevel幅、dispersion、rim幅を持つこと。tube 系は CPU mesh rebuild を避け、progress / angle / instanceIndex / buffer offset を attribute にして vertex shader 側で形を決めると、音反応や pointer 反応を uniform で済ませられる。readback 系は SceneDepthReader / Picker の結果を毎フレーム使うと staging buffer churn が見えやすいので、pool の有無を telemetry として可視化しておく価値がある。three.js r187 の setViewport / setScissor 変更は render target 座標の pixel ratio 前提を崩すため、read rect、mini viewport、bloom mip、XR eye viewport を同じ正規化座標に揃えるチェックを入れたい。",
+      "bodyEn": "Fake glass can work with a 2D SDF edge distance, finite-difference normals, and UV displacement of video, image, or procedural textures. The key is to keep quality knobs in the material, such as tap count, bevel width, dispersion, and rim width, instead of hiding everything in postprocessing. For tubes, avoid CPU mesh rebuilds by storing progress, angle, instanceIndex, and buffer offsets as attributes and deciding the shape in the vertex shader; audio and pointer response can then be uniform-driven. For readback, SceneDepthReader / Picker every frame can expose staging buffer churn, so visualizing pool state as telemetry is useful. The three.js r187 setViewport / setScissor change affects render-target pixel-ratio assumptions, so read rectangles, mini viewports, bloom mips, and XR eye viewports should be checked against one normalized coordinate convention.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas #9297",
+          "url": "https://github.com/playcanvas/engine/issues/9297"
+        },
+        {
+          "label": "Drawing With Light",
+          "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: #34486 の incremental bake は、examples 側の変更だけでなく WebGPU / WebGL fallback の pass snapshot と texture binding stability を追う。#34479/#34478 は bloom / gaussian blur の tap budget を、音反応やdatamosh風履歴へ戻す方向で継続。新規案件: Codrops Liquid Glass の GPU cloth / MSDF text deformation、Drawing With Light の shader-defined tube、three.js #34489 の toInspector skipped issue、PlayCanvas #9297 の readback buffer pool。寝かせる案件: PlayCanvas Editor #2247/#2248 の Sentry/MCP 周辺は制作基盤としては有用だが、今日の表現軸からは距離があるので、GLSL transpilation setting #2208 だけを継続監視する。",
+      "bodyEn": "Continue tracking #34486 beyond the example changes, especially pass snapshots and texture binding stability across WebGPU / WebGL fallback. Keep #34479/#34478 as tap budget that can be returned to audio response or datamosh-like history. New watch items: Codrops Liquid Glass GPU cloth and MSDF text deformation, Drawing With Light shader-defined tubes, three.js #34489 toInspector skipped issue, and PlayCanvas #9297 readback buffer pool. Park PlayCanvas Editor #2247/#2248 around Sentry/MCP for this report's expression axis; keep watching GLSL transpilation setting #2208 only.",
+      "links": [
+        {
+          "label": "three.js #34489",
+          "url": "https://github.com/mrdoob/three.js/issues/34489"
+        },
+        {
+          "label": "PlayCanvas Editor #2208",
+          "url": "https://github.com/playcanvas/editor/pull/2208"
+        },
+        {
+          "label": "PlayCanvas #9297",
+          "url": "https://github.com/playcanvas/engine/issues/9297"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "短期で試すなら、本命サンプル `outputs/2026-09-10_liquid_glass_probe_cloth.html` を開く。1 は fake glass SDF、2 は probe bake progress、3 は cloth lag、4 は合成。drag で球面グリッドと光の寄りを変え、click / Space で bake pulse を入れる。次に足すなら、各cardへ video texture か過去の sample canvas を貼り、probe進捗に応じて屈折tap数を増やす。2本目の `outputs/2026-09-10_inspector_readback_pool_scope.html` は、1 Inspector path、2 readback pool、3 GLSL transpilation gate、4 tap budget 合成。次に足すなら、実際の `performance.mark()` と readback size を JSON log 化して shader に渡す。",
+      "bodyEn": "For a short test, open the main sample `outputs/2026-09-10_liquid_glass_probe_cloth.html`. Mode 1 shows fake glass SDF, 2 probe bake progress, 3 cloth lag, and 4 the composition. Drag shifts the spherical grid and light; click / Space emits a bake pulse. Next, put a video texture or past sample canvas on each card and increase refraction tap count as probes complete. The second sample `outputs/2026-09-10_inspector_readback_pool_scope.html` shows 1 Inspector paths, 2 readback pool, 3 GLSL transpilation gate, and 4 tap budget composite. Next, feed real `performance.mark()` and readback size JSON logs into the shader.",
+      "links": [
+        {
+          "label": "Main sample: Liquid Glass Probe Cloth",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample: Inspector Readback Pool Scope",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Codrops Liquid Glass / Drawing With Light、three.js #34486/#34479/#34489 と migration guide、PlayCanvas #9297/#2208、Babylon.js JsRuntimeHost #232。アイデア検討: 前回の incremental bake / tap merge / AppStats を、今日の fake glass / tube / readback pool と接続し、安い表面へ厚みと診断情報を持たせる方向に整理。サンプル実装: 本命 `2026-09-10_liquid_glass_probe_cloth.html`、派生 `2026-09-10_inspector_readback_pool_scope.html` を作成。結果の検証: JSON parse、HTML parse、script構文チェック、upsert / publishを実行する。短期: fake glass card に過去sampleを貼り、probe progressで屈折を変える。中長期: loader、GI bake、readback、Inspector、cloth / tube geometry を同じ「状態が見える表面」に統合する。",
+      "bodyEn": "Collection: Codrops Liquid Glass / Drawing With Light, three.js #34486/#34479/#34489 and migration guide, PlayCanvas #9297/#2208, Babylon.js JsRuntimeHost #232. Ideation: connect the previous incremental bake / tap merge / AppStats themes to fake glass, tubes, and readback pools, organizing them as cheap surfaces with thickness and diagnostics. Implementation: created `2026-09-10_liquid_glass_probe_cloth.html` and `2026-09-10_inspector_readback_pool_scope.html`. Verification: run JSON parse, HTML parse, script syntax checks, upsert, and publish. Short term: attach past samples to fake glass cards and modulate refraction by probe progress. Mid term: merge loader, GI bake, readback, Inspector, cloth, and tube geometry into one state-visible surface system.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は「GPU処理の段取りを見せる」から「表面そのものを処理状態にする」へ進んでいる。9/4-9/7 は submit、readback、owner slot、TAA、AppStats、incremental bake が処理の譜面だった。今日の Codrops 2件は、それを見た目の素材へ戻すヒントになった。組み合わせ候補は、LightProbeGrid progress x liquid glass card x readback pool x emissive-only bloom。probe が焼けた面だけ厚くなり、readback が詰まるとガラスが曇り、tap budget が回復するとrimと残像が戻る。育てる価値が高いテーマは「状態が見える表面」。カードUIではなく、空間演出、舞台照明、VJ、インスタレーション向けに展開しやすい。",
+      "bodyEn": "The recent trend is moving from showing GPU processing stages to making the surface itself carry processing state. September 4 to 7 focused on submit, readback, owner slots, TAA, AppStats, and incremental bake as process scores. Today's two Codrops pieces convert that back into material vocabulary. A strong combination is LightProbeGrid progress x liquid glass card x readback pool x emissive-only bloom. Baked surfaces become thicker, readback congestion fogs the glass, and recovered tap budget restores rims and afterimages. The high-value theme is state-visible surfaces, aimed at spatial staging, lighting, VJ, and installation work rather than card UI.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-10_liquid_glass_probe_cloth.html` を実装した。依存なしの raw WebGL fragment shader で、SDF rounded card、疑似height normal、chromatic offset、probe bake progress、cloth lag を合成する。短時間で見られるポイントは「flat plane だけでも glass / cloth / GI進捗らしさが出るか」。発展案は video texture、自前canvas、または過去サンプルをcardに貼り、probe progress / AppStats / audio band で屈折量を変えること。派生として `outputs/2026-09-10_inspector_readback_pool_scope.html` も実装した。TSL Inspector の skipped node、readback staging buffer pool、GLSL transpilation gate、tap budget を1枚の診断面にまとめ、ライブ制作中の安全計器を表現へ寄せる検証にした。",
+      "bodyEn": "The main prototype is `outputs/2026-09-10_liquid_glass_probe_cloth.html`: a dependency-free raw WebGL fragment shader combining SDF rounded cards, fake-height normals, chromatic offsets, probe bake progress, and cloth lag. The quick question is whether flat planes can read as glass, cloth, and GI progress. Next, attach video textures, local canvases, or past samples to the cards and drive refraction by probe progress, AppStats, or audio bands. The derived prototype is `outputs/2026-09-10_inspector_readback_pool_scope.html`, combining skipped TSL Inspector nodes, readback staging buffer pools, GLSL transpilation gates, and tap budget into one diagnostic plane.",
+      "links": [
+        {
+          "label": "Main sample: Liquid Glass Probe Cloth",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample: Inspector Readback Pool Scope",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の2本は、入力値と状態ログをそのまま素材化しやすい。1本目は pointer、pulse、mode、probe progress、疑似cell id をデータ化できる。展示では来場者の移動や音量でglass thicknessが変わり、焼けた領域だけ映像が読みやすくなる構成にできる。2本目は Inspector count、readback size、pool hit/miss、transpilation enabled、tap count、GPU duration を入れると、運用時の異常を美術的な変化として出せる。組み合わせるなら、Web Audio の low band = probe warmth、mid band = cloth viscosity、high band = chromatic dispersion、カメラ/MediaPipe = dirty region、WebXR depth = readback lane、過去の日次サンプル = card texture がよい。",
+      "bodyEn": "Both samples can turn inputs and state logs directly into material. The first can record pointer, pulse, mode, probe progress, and pseudo cell id. In an installation, visitor movement or volume could change glass thickness, while baked regions reveal video more clearly. The second can ingest Inspector count, readback size, pool hit/miss, transpilation enabled, tap count, and GPU duration, making runtime anomalies visible as artwork. Strong combinations: Web Audio low band for probe warmth, mid band for cloth viscosity, high band for chromatic dispersion, camera/MediaPipe for dirty regions, WebXR depth for readback lanes, and past daily samples as card textures.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-10_liquid_glass_probe_cloth.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-10_inspector_readback_pool_scope.html"
+        }
+      ]
+    }
+  ]
+}
