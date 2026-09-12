@@ -1,0 +1,227 @@
+{
+  "date": "2026-09-12",
+  "headline": "生成庭園と名前建築を状態が見える表面へつなぐ",
+  "headlineEn": "Connecting generative gardens and name architecture to state-visible surfaces",
+  "summary": "Codrops の Still、Turning Names Into Digital Architecture、Three.js Conference Paris レポート、PlayCanvas Engine v2.22.1、Babylon.js 9.26.0、three.js WebGPURenderer / TSL / WebXR single-pass 周辺を調査した。前回の ribbon / SOG LOD / object ID 診断面を、今日は「密度場、墨の影、織り、輪郭サンプル、反射する線構造」へ接続し、依存なし WebGL 試作を2本追加した。",
+  "summaryEn": "Today covers Codrops' Still, Turning Names Into Digital Architecture, the Three.js Conference Paris report, PlayCanvas Engine v2.22.1, Babylon.js 9.26.0, and the three.js WebGPURenderer / TSL / WebXR single-pass track. Building on yesterday's ribbon / SOG LOD / object ID diagnostic surfaces, the focus shifts to density fields, ink-wash shadows, weave, contour samples, and reflective line structures. Two dependency-free WebGL prototypes were added.",
+  "links": [
+    {
+      "label": "Codrops: Still - Generative Garden in WebGPU",
+      "url": "https://tympanus.net/codrops/2026/09/09/still-from-akira-to-ink-wash-building-a-generative-garden-in-webgpu/"
+    },
+    {
+      "label": "Codrops: Turning Names Into Digital Architecture",
+      "url": "https://tympanus.net/codrops/2026/09/09/turning-names-into-digital-architecture-with-three-js/"
+    },
+    {
+      "label": "Codrops: Inside the First Three.js Conference in Paris",
+      "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "three.js WebGPURenderer manual",
+      "url": "https://github.com/mrdoob/three.js/blob/dev/manual/pages/webgpurenderer.html"
+    },
+    {
+      "label": "three.js PR #34153 WebXR single-pass",
+      "url": "https://github.com/mrdoob/three.js/pull/34153"
+    },
+    {
+      "label": "Main sample: Ink Garden Density Weave",
+      "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+    },
+    {
+      "label": "Derived sample: Name Architecture Contour Tube",
+      "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Codrops の Still は、WebGPU / TSL の生成庭園を、toon shading、ink-wash shadow、silk weave、VAT flowers、procedural tendrils の組み合わせとして分解している。9/11 の「ほどける診断面」に対して、今日は「織り直される密度場」として扱える。2. Turning Names Into Digital Architecture は、文字を hidden canvas の pixel mask から contour trace し、各文字を固定点数の輪郭へそろえ、曲線に沿って3D構造へ変形する。前回の ribbon split を、横糸だけでなく「輪郭の対応点」へ広げるヒントになる。3. Three.js Conference Paris レポートでは、GSAP 4 の Three.js 連携、HTML in Canvas / THREE.HTMLTexture、AI + Gaussian splats + real-time generation が話題化している。カードUIではなく、DOM/Canvas/WebGL の境界や生成メディアの制御系をウォッチ対象にする価値がある。4. PlayCanvas Engine v2.22.1 は引き続き最新リリースで、Gsplat LOD の empty level / distance default 修正が重要。昨日の SOG LOD 欠落表現を、今日の density field の空白や濃淡へ接続できる。5. Babylon.js 9.26.0 は最新リリースで、OpenUSD loader、object ID geometry textures、Gaussian splatting stream diagnostics、SkyMaterial HDR / cloudiness がまとまっている。これは「アセット状態、選択ID、空の状態」を同じ診断表面に戻す材料になる。",
+      "bodyEn": "1. Codrops' Still decomposes a WebGPU / TSL generative garden into toon shading, ink-wash shadows, silk weave, VAT flowers, and procedural tendrils. After yesterday's unraveling diagnostic surfaces, today's lens is a density field that can weave itself back together. 2. Turning Names Into Digital Architecture traces letters from a hidden canvas pixel mask, normalizes each glyph to a fixed number of contour points, and deforms those points into a 3D structure along a curve. It extends yesterday's ribbon split into contour correspondence. 3. The Three.js Conference Paris report highlights GSAP 4's Three.js integration, HTML in Canvas / THREE.HTMLTexture, and AI with Gaussian splats and real-time generation. For this project, the interesting part is not card UI but the boundary between DOM, Canvas, WebGL, and controlled generative media. 4. PlayCanvas Engine v2.22.1 remains the latest release, with the Gsplat LOD empty level and distance default fix. Yesterday's SOG LOD absence can become today's density-field gaps and tone. 5. Babylon.js 9.26.0 remains the latest release, bundling OpenUSD loading, object ID geometry textures, Gaussian splatting stream diagnostics, and SkyMaterial HDR / cloudiness. These are good ingredients for returning asset state, selection IDs, and sky state to one diagnostic surface.",
+      "links": [
+        {
+          "label": "Still",
+          "url": "https://tympanus.net/codrops/2026/09/09/still-from-akira-to-ink-wash-building-a-generative-garden-in-webgpu/"
+        },
+        {
+          "label": "Turning Names",
+          "url": "https://tympanus.net/codrops/2026/09/09/turning-names-into-digital-architecture-with-three-js/"
+        },
+        {
+          "label": "Three.js Conference Paris",
+          "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Still の面白さは、リアルな自然を追うのではなく、浮世絵や屏風のような「面、縁、染み、織り目」の文法をリアルタイム3Dへ移している点。shadow map を墨のにじみにし、screen UV の weave を全体にかけ、植物は VAT と procedural pass を重ねる。ここには、9/10 の liquid glass と9/11 の ribbon LOD を次の段階へ進めるヒントがある。つまり、GPU state を単なる debug lane として出すのではなく、密度、染み、布目、成長段階として見る。Turning Names は、入力された名前を1回限りのジオメトリへ変えるので、ユーザー入力の可視化が単なるテキスト表示から、輪郭対応、曲線押し出し、反射map、brace構造へ広がる。",
+      "bodyEn": "Still is compelling because it does not chase photoreal nature; it transfers the grammar of prints and folding screens - planes, edges, stains, and weave - into real-time 3D. Shadow maps become ink bleed, screen UVs carry a frame-wide weave, and plants combine VAT with procedural passes. This extends September 10's liquid glass and September 11's ribbon LOD: GPU state should not only appear as debug lanes, but as density, stain, fabric, and lifecycle. Turning Names turns user input into one-off geometry, moving input visualization beyond displayed text into contour correspondence, curved extrusion, reflection maps, and brace structures.",
+      "links": [
+        {
+          "label": "Still",
+          "url": "https://tympanus.net/codrops/2026/09/09/still-from-akira-to-ink-wash-building-a-generative-garden-in-webgpu/"
+        },
+        {
+          "label": "Turning Names",
+          "url": "https://tympanus.net/codrops/2026/09/09/turning-names-into-digital-architecture-with-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Ink Garden Density Weave」。SOG LOD / object ID / readback / probe bake の状態を、庭の密度map、墨の影、布目、花の lifecycle に割り当てる。安定している領域は織り目が揃い、欠落や遅延がある領域はにじみや空白になる。短期では procedural density だけで十分。中期では PlayCanvas SOG LOD、Babylon stream diagnostics、three.js AppStats / build timing を RGBA state texture として入れる。派生案は「Name Architecture Contour Tube」。ユーザーの名前や入力語を fixed-count contour として扱い、輪郭点が曲線に沿って管・brace・反射線へ変わる。次に足すなら、HTMLTexture や hidden canvas の実文字maskを読み、入力ごとに線構造を生成する。",
+      "bodyEn": "The main idea is Ink Garden Density Weave: map SOG LOD, object ID, readback, and probe-bake state into garden density, ink shadow, fabric weave, and flower lifecycle. Stable regions align as fabric; missing or delayed regions become stains and gaps. Short term, procedural density is enough. Mid term, feed PlayCanvas SOG LOD, Babylon stream diagnostics, and three.js AppStats / build timing as an RGBA state texture. The derived idea is Name Architecture Contour Tube: treat user names or input words as fixed-count contours, then transform contour points into tubes, braces, and reflective lines along curves. Next, read actual letter masks from HTMLTexture or hidden canvas and regenerate the line structure per input.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "墨の影は shadow value をそのまま暗くするより、noise を混ぜた smoothstep で大きなwashを作り、別の細かいnoiseで輪郭線を揺らすと絵画的に読める。布目は object local ではなく screen UV にかけると、個別物体の質感ではなく画面全体の支持体になる。花や葉の lifecycle は、VAT の authored motion と procedural shed / sway を分けると、再ベイクなしで展示や音反応に対応しやすい。文字建築は、全glyphを同じ点数へ正規化しておくと morph / tube / brace が安定する。PlayCanvas / Babylon の stream diagnostics は、そのまま表へ出すより R=stability、G=detail、B=error、A=age のような texture にした方が shader 側で使いやすい。three.js WebGPURenderer は WebGPU / WebGL2 fallback、TSL、async init を前提にするため、今日のサンプルのような raw WebGL でも、将来移植するときは fallback 座標と build timing を入力化しておきたい。",
+      "bodyEn": "Ink shadows read better when shadow values become a large smoothstep wash mixed with noise, while a second finer noise disturbs the contour. Applying weave in screen UV makes it a support material for the whole frame rather than a per-object texture. For flowers and leaves, separating authored VAT motion from procedural shed / sway keeps the system responsive to exhibitions and audio without rebaking. Name architecture becomes stable when every glyph is normalized to the same number of points, making morphs, tubes, and braces predictable. PlayCanvas / Babylon stream diagnostics are easier to use in shaders when packed as R=stability, G=detail, B=error, A=age. Since three.js WebGPURenderer assumes WebGPU / WebGL2 fallback, TSL, and async initialization, even today's raw WebGL samples should eventually expose fallback coordinates and build timing as inputs.",
+      "links": [
+        {
+          "label": "three.js WebGPURenderer manual",
+          "url": "https://github.com/mrdoob/three.js/blob/dev/manual/pages/webgpurenderer.html"
+        },
+        {
+          "label": "PlayCanvas #9297 readback staging buffers",
+          "url": "https://github.com/playcanvas/engine/issues/9297"
+        },
+        {
+          "label": "Babylon.js 9.26.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/10 の liquid glass / readback pool、9/11 の ribbon SOG LOD / object ID plate は、今日の density weave と contour tube に統合する。新規案件: Codrops Still の VAT flowers、screen-space silk weave、procedural tendrils、Turning Names の fixed-count contour / line architecture、Three.js Conference の HTML in Canvas / THREE.HTMLTexture と GSAP 4 + Three.js 連携。寝かせる案件: GUI単体、一般的なプロダクトコンフィギュレータ事例、カードUI系は別スレッド前提で保留。技術監視は PlayCanvas v2.22.x の Gsplat LOD / SceneDepthReader、Babylon.js 9.26.x の Inspector diagnostics / OpenUSD、three.js #34153 / #34147 の XR pass削減を続ける。",
+      "bodyEn": "Continue September 10's liquid glass / readback pool and September 11's ribbon SOG LOD / object ID plate by merging them into today's density weave and contour tube. New items: Still's VAT flowers, screen-space silk weave, and procedural tendrils; Turning Names' fixed-count contour and line architecture; and the conference themes of HTML in Canvas / THREE.HTMLTexture plus GSAP 4 + Three.js integration. Park standalone GUI topics, generic product configurators, and card UI. Technical watch remains PlayCanvas v2.22.x Gsplat LOD / SceneDepthReader, Babylon.js 9.26.x Inspector diagnostics / OpenUSD, and three.js #34153 / #34147 XR pass reduction.",
+      "links": [
+        {
+          "label": "Three.js Conference Paris",
+          "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+        },
+        {
+          "label": "three.js #34153",
+          "url": "https://github.com/mrdoob/three.js/pull/34153"
+        },
+        {
+          "label": "three.js #34147",
+          "url": "https://github.com/mrdoob/three.js/pull/34147"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命 `outputs/2026-09-12_ink_garden_density_weave.html` を開く。1 は density anchors、2 は toon ink wash、3 は silk weave、4 は合成。drag で寝ている身体のような密度anchorを動かし、click / Space で花びらが抜けるpulseを入れる。次に足すなら、PlayCanvas SOG LOD や Babylon stream diagnostics を疑似densityではなく実ログtextureとして流し込む。2本目の `outputs/2026-09-12_name_architecture_contour_tube.html` は、1 contour samples、2 tube morph、3 brace reflection、4 合成。drag で曲線pathを曲げ、click / Space でmachining pulseを入れる。次に足すなら、hidden canvas で実際に入力文字を描いて輪郭抽出し、fixed-count contour へリサンプルする。",
+      "bodyEn": "First open the main sample `outputs/2026-09-12_ink_garden_density_weave.html`. Mode 1 shows density anchors, 2 toon ink wash, 3 silk weave, and 4 the composite. Drag moves the sleeping-body-like density anchor; click / Space emits a petal-shedding pulse. Next, feed PlayCanvas SOG LOD or Babylon stream diagnostics as a real log texture instead of procedural density. The second sample, `outputs/2026-09-12_name_architecture_contour_tube.html`, shows 1 contour samples, 2 tube morph, 3 brace reflection, and 4 composite. Drag bends the path; click / Space sends a machining pulse. Next, draw actual input text to a hidden canvas, trace it, and resample it into fixed-count contours.",
+      "links": [
+        {
+          "label": "Main sample: Ink Garden Density Weave",
+          "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+        },
+        {
+          "label": "Derived sample: Name Architecture Contour Tube",
+          "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Codrops Still / Turning Names / Three.js Conference Paris、PlayCanvas v2.22.1、Babylon.js 9.26.0、three.js WebGPURenderer manual / XR single-pass PR。アイデア検討: 前回の ribbon / LOD / object ID を、密度場、墨、布目、輪郭、金属線へ接続した。サンプル実装: 本命 `2026-09-12_ink_garden_density_weave.html` と派生 `2026-09-12_name_architecture_contour_tube.html` を作成。結果の検証: JSON parse、HTML parse、script構文チェック、gallery build、upsert publish を実行する。短期: procedural shader だけで density / weave / contour の見え方を詰める。中長期: 実SOG LOD、USD loader progress、object ID、HTMLTexture、Web Audio、XR multiviewを同じ state-visible surface へ統合する。",
+      "bodyEn": "Collection: Codrops Still / Turning Names / Three.js Conference Paris, PlayCanvas v2.22.1, Babylon.js 9.26.0, and three.js WebGPURenderer manual / XR single-pass PR. Ideation: connected yesterday's ribbon / LOD / object ID to density fields, ink, weave, contours, and metallic lines. Implementation: created `2026-09-12_ink_garden_density_weave.html` and `2026-09-12_name_architecture_contour_tube.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and upsert publish. Short term: refine density / weave / contour using procedural shaders only. Mid term: merge real SOG LOD, USD loader progress, object IDs, HTMLTexture, Web Audio, and XR multiview into one state-visible surface.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "9/4 以降の流れは、submit / readback / owner slot / TAA / AppStats / probe bake の「処理譜面」から、glass / cloth / ribbon / object ID の「状態が見える表面」へ移ってきた。今日の Still は、その表面をさらに絵画的な支持体にする。Turning Names は、入力そのものを構造にする。組み合わせ候補は、Still の density field x Infinite Loom の ribbon split x Babylon object ID x PlayCanvas SOG LOD x three.js HTMLTexture。育てる価値が高いテーマは「再生成される支持体」。画面は単なるキャンバスではなく、読み込み、選択、音、身体、XRの左右差で、布目が揺れ、墨がにじみ、輪郭が建築化する場所になる。",
+      "bodyEn": "Since September 4, the thread has moved from processing scores - submit, readback, owner slots, TAA, AppStats, probe bake - toward state-visible surfaces such as glass, cloth, ribbons, and object IDs. Still turns that surface into a painterly support. Turning Names turns input itself into structure. A strong combination is Still's density field x Infinite Loom's ribbon split x Babylon object ID x PlayCanvas SOG LOD x three.js HTMLTexture. The high-value theme is a regenerating support surface: the screen is not just a canvas, but a place where loading, selection, audio, bodies, and XR eye differences move weave, ink, and architectural contours.",
+      "links": [
+        {
+          "label": "Still",
+          "url": "https://tympanus.net/codrops/2026/09/09/still-from-akira-to-ink-wash-building-a-generative-garden-in-webgpu/"
+        },
+        {
+          "label": "Turning Names",
+          "url": "https://tympanus.net/codrops/2026/09/09/turning-names-into-digital-architecture-with-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-12_ink_garden_density_weave.html` を実装した。依存なし raw WebGL fragment shader で、楕円anchorのdensity map、noise入りink wash、screen-space silk weave、procedural flower pulse を合成する。短時間で見るポイントは「LODやstream状態を、エラーではなく墨・密度・布目として読ませられるか」。派生として `outputs/2026-09-12_name_architecture_contour_tube.html` も実装した。A/O風の固定輪郭を曲線pathに沿ってmorphし、tube line、brace、baked reflection風ハイライトへ変える。短時間で見るポイントは「入力文字の輪郭対応を、UIではなく空間構造として扱えるか」。",
+      "bodyEn": "The main prototype is `outputs/2026-09-12_ink_garden_density_weave.html`, a dependency-free raw WebGL fragment shader combining elliptical-anchor density maps, noisy ink wash, screen-space silk weave, and procedural flower pulses. The quick question is whether LOD and stream state can read as ink, density, and fabric instead of errors. The derived prototype is `outputs/2026-09-12_name_architecture_contour_tube.html`, morphing fixed A/O-like contours along a curved path into tube lines, braces, and baked-reflection-like highlights. The quick question is whether input glyph correspondence can become spatial structure rather than UI.",
+      "links": [
+        {
+          "label": "Main sample: Ink Garden Density Weave",
+          "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+        },
+        {
+          "label": "Derived sample: Name Architecture Contour Tube",
+          "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は pointer、density anchor、flower pulse、weave intensity、contour strength、mode をログ化できる。音反応なら low band = densityの広がり、mid band = flower shed、high band = weaveの鋭さに割り当てると、VJや展示で状態変化が自然に見える。WebXRでは depth sensing や左右目の負荷差を ink wash の濃淡にできる。2本目は contour id、path bend、morph amount、brace count、reflection pulse をログ化できる。HTMLTexture / hidden canvas と組み合わせれば、観客の名前や短い言葉をその場で構造化し、Babylon object ID や PlayCanvas SOG LOD と重ねて「誰の入力がどの構造を作ったか」を可視化できる。過去案との接続では、9/10 の glass surface に今日の weave を掛け、9/11 の ribbon LOD を花の密度や文字tubeの欠落へ転用すると、負荷・入力・質感が一つの演出軸にまとまる。",
+      "bodyEn": "The first sample can log pointer, density anchor, flower pulse, weave intensity, contour strength, and mode. For audio response, low bands can expand density, mids can shed flowers, and highs can sharpen weave, making state changes feel natural in VJ or installation settings. WebXR depth sensing or per-eye load differences can become ink-wash tone. The second sample can log contour id, path bend, morph amount, brace count, and reflection pulse. Combined with HTMLTexture / hidden canvas, audience names or short words could become live structures, then be layered with Babylon object IDs or PlayCanvas SOG LOD to show which input created which structure. Connecting to earlier ideas, put today's weave over September 10's glass surface and reuse September 11's ribbon LOD as flower density or missing tube sections, consolidating load, input, and material into one expressive axis.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-12_ink_garden_density_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-12_name_architecture_contour_tube.html"
+        }
+      ]
+    }
+  ]
+}
