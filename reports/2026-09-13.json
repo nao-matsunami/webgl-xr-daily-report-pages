@@ -1,0 +1,215 @@
+{
+  "date": "2026-09-13",
+  "headline": "ネイティブSplatとUSD診断を状態が動く譜面へ束ねる",
+  "headlineEn": "Binding native splats and USD diagnostics into a moving state score",
+  "summary": "three.js r186、r187へ向かうTSL / WebGPURenderer PR、PlayCanvas Engine v2.22.1、Babylon.js 9.26.0 / USD loader、Codrops の9月上旬WebGL事例を調査した。9/12の density weave / name contour から、今日は native Gaussian splat、LOD empty level、frustum raycast、USD worker queue、object ID、stream diagnostics を「欠落や遅延が演出になる状態譜面」として整理し、依存なしWebGL試作を2本追加した。",
+  "summaryEn": "Today reviews three.js r186, the TSL / WebGPURenderer PR track toward r187, PlayCanvas Engine v2.22.1, Babylon.js 9.26.0 / USD loading, and early-September Codrops WebGL examples. Extending September 12's density weave / name contour direction, the focus is native Gaussian splats, empty LOD levels, frustum raycast, USD worker queues, object IDs, and stream diagnostics as state scores where absence and latency become visible expression. Two dependency-free WebGL prototypes were added.",
+  "links": [
+    {
+      "label": "three.js r186 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+    },
+    {
+      "label": "three.js PR stream on SemanticDiff",
+      "url": "https://app.semanticdiff.com/gh/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.1",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.1"
+    },
+    {
+      "label": "Babylon.js 9.26.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Babylon.js USD loader announcement",
+      "url": "https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Splat LOD Frustum Orbit",
+      "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+    },
+    {
+      "label": "Derived sample: USD Worker ObjectID Score",
+      "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r186 は 2026-09-08 リリースで、native Gaussian splat renderer、WebGPU / WebXR、TSL、async compile / dispose、timestamp、readback、MSAA / XR layer まわりが一気に見える節目になった。2. r187へ向かうPR列では `three/tsl` tree-shake、`.toInspector()` の非texture node表示、node build効率化、WebGPURenderer canvas optional / compileAsync valid state など、作る表現の裏側を軽く・見える化する流れが続く。3. PlayCanvas Engine v2.22.1 は Gsplat LOD の empty level / distance default 修正が要点で、LODの欠落を隠すより「どこが空で、どこが補間されているか」を演出入力にしやすい。4. Babylon.js 9.26.0 は OpenUSD WebAssembly loader、object ID geometry textures、Gaussian splatting stream diagnostics、SkyMaterial HDR / cloudiness がまとまった。USD worker queue と object ID を同じ譜面に置ける。5. Codrops は 3D Face Mask、Unwoven、ASCII Logo、Three.js Datamosh、Dreamfold など、9月上旬だけでも WebGL / Three.js の身体・織り・文字・履歴表現が濃い。",
+      "bodyEn": "1. three.js r186, released on 2026-09-08, is a major checkpoint for native Gaussian splats, WebGPU / WebXR, TSL, async compile / dispose, timestamps, readback, MSAA, and XR layers. 2. The r187 PR stream continues toward lighter and more inspectable internals: tree-shakeable `three/tsl`, non-texture nodes in `.toInspector()`, more efficient node builds, optional WebGPURenderer canvas, and valid `compileAsync()` state. 3. PlayCanvas Engine v2.22.1 centers on Gsplat LOD empty levels and distance defaults, making LOD absence useful as an expressive input instead of something to hide. 4. Babylon.js 9.26.0 combines the OpenUSD WebAssembly loader, object ID geometry textures, Gaussian splatting stream diagnostics, and SkyMaterial HDR / cloudiness, which lets USD worker queues and object IDs live in one score. 5. Codrops' early September run - 3D Face Mask, Unwoven, ASCII Logo, Three.js Datamosh, and Dreamfold - keeps pushing body, weave, glyph, and history expressions in WebGL / Three.js.",
+      "links": [
+        {
+          "label": "three.js r186",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+        },
+        {
+          "label": "SemanticDiff three.js PRs",
+          "url": "https://app.semanticdiff.com/gh/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas v2.22.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.1"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "three.js r186 の native Gaussian splat は、7月以降このプロジェクトで追ってきた SOG / splat / LOD / raycast を、外部ビューワの題材から three.js 本体の表現素材へ近づけた点が大きい。PlayCanvas の empty LOD 修正は地味だが、空レベルを「壊れ」ではなく「どの階層がまだ届いていないか」として演出化する入口になる。Babylon の USD loader は、OpenUSDをWebAssembly + Workerで動かし、stage composition と command queue を分離するので、9/6 の USD worker stage scan を実データへ寄せやすい。Codrops側では 3D Face Mask / Unwoven / ASCII / Datamosh が、身体、織り、文字、履歴という4つの入力を同じshader状態へ混ぜる実例群として効いている。",
+      "bodyEn": "three.js r186 matters because native Gaussian splats move the SOG / splat / LOD / raycast thread followed here since July from external viewer material toward core three.js expression material. PlayCanvas' empty LOD fix is subtle, but it makes empty levels readable as 'which level has not arrived yet' instead of mere breakage. Babylon's USD loader runs OpenUSD through WebAssembly and a Worker, separating stage composition from the command queue, so September 6's USD worker stage scan can move closer to real data. On the Codrops side, 3D Face Mask, Unwoven, ASCII, and Datamosh provide a compact set of body, weave, glyph, and history inputs for shader state.",
+      "links": [
+        {
+          "label": "RadianceFields: three.js r186 native Gaussian splats",
+          "url": "https://radiancefields.com/three.js-ships-its-native-gaussian-splat-renderer-and-splat-raycasting-in-r186"
+        },
+        {
+          "label": "Babylon USD announcement",
+          "url": "https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Splat LOD Frustum Orbit」。native splat renderer / raycast / object frustum / LOD empty level を、軌道する粒子密度、空白レベル、両眼風のfrustum線、readback scanとして描く。短期では procedural splat だけで十分に見える。中期では three.js GaussianSplat の raycast hit、PlayCanvas GSplat LOD node、Babylon stream diagnostics を1枚の状態textureへ詰める。派生案は「USD Worker ObjectID Score」。USD loader の Worker queue、command buffer、object ID geometry texture、Inspector stream diagnostics を譜面化し、ロード中の段取りそのものを演出にする。次に足すなら、OpenUSD loader の progress / command count / materialization time をJSONログにしてshaderへ渡す。",
+      "bodyEn": "The main idea is Splat LOD Frustum Orbit: draw native splat renderer / raycast / object frustum / empty LOD levels as orbiting particle density, missing levels, stereo-like frustum lanes, and readback scans. Procedural splats are enough for a short test; mid term, pack three.js GaussianSplat raycast hits, PlayCanvas GSplat LOD nodes, and Babylon stream diagnostics into one state texture. The derived idea is USD Worker ObjectID Score: turn USD loader worker queues, command buffers, object ID geometry textures, and Inspector stream diagnostics into a visual score where loading choreography becomes the show. Next, feed OpenUSD loader progress, command counts, and materialization timing as JSON logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "SplatのLOD欠落は、alphaを落として消すだけだと不具合に見える。空レベルを別色のgap maskにし、frustumやraycast線と同期させると「まだ届いていない情報」として読める。object ID texture は選択輪郭だけでなく、色相、線密度、stream age のindexとして使うと診断と美術が重なる。USD loader は worker queue、command queue、data buffer、materialization の4段階に分けると、長いロードを退屈なprogress barではなく時間構造にできる。three.js r186/r187系の TSL lint / toInspector / tree-shake / compileAsync は、表現側では「shader内部を見せても破綻しない設計」への圧として捉えるとよい。",
+      "bodyEn": "If empty splat LOD levels merely fade alpha, they look broken. A separate gap mask synchronized with frustum and raycast lines reads as missing information that has not arrived yet. Object ID textures can drive not only selection outlines, but hue, line density, and stream age, merging diagnostics with art direction. USD loading becomes more legible when split into worker queue, command queue, data buffer, and materialization stages; long loads become time structure instead of progress bars. The r186/r187 TSL lint, toInspector, tree-shaking, and compileAsync work can be read as pressure toward shader systems whose internals can be shown without collapsing.",
+      "links": [
+        {
+          "label": "three.js r186 release notes",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+        },
+        {
+          "label": "Babylon.js 9.26.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/10のreadback pool、9/11のobject ID / SOG LOD、9/12のdensity weave / contour tubeを今日のsplat frustumとUSD譜面へ統合する。新規案件: three.js r187へ向かう TSL tree-shake / Inspector / node build PR、PlayCanvas v2.22.xのGSplat LOD修正、Babylon.js OpenUSD loaderのフォーラム反応とサンプル拡張、Codrops 3D Face Mask / Unwoven / Datamosh。寝かせる案件: 一般的なカンファレンス感想、カード型UI、説明用ダッシュボード単体。見るべき実装軸は、ロード中・欠落中・選択中の状態をshaderでどう美しく残すか。",
+      "bodyEn": "Continue merging September 10's readback pool, September 11's object ID / SOG LOD, and September 12's density weave / contour tube into today's splat frustum and USD score. New watch items: the r187 TSL tree-shake / Inspector / node build PR stream, PlayCanvas v2.22.x GSplat LOD fixes, Babylon OpenUSD loader forum feedback and examples, and Codrops' 3D Face Mask / Unwoven / Datamosh. Park generic conference takeaways, card UI, and standalone explanatory dashboards. The implementation axis to watch is how loading, missing, and selected state can remain beautiful in shaders.",
+      "links": [
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-13_splat_lod_frustum_orbit.html` を開く。1 は splat density、2 は empty LOD gaps、3 は frustum / raycast lanes、4 は合成。dragでviewerを動かし、click / Spaceでrefresh pulseを入れる。次に足すなら、実GSplatのLOD level / distance / raycast hitをJSONで保存してuniform texture化する。2本目の `outputs/2026-09-13_usd_worker_objectid_score.html` は、1 worker queue、2 object-ID plates、3 stream diagnostics、4 合成。dragでinspection lens、click / Spaceでcommand buffer flush。次に足すなら、Babylon USD loaderのprogressとInspector stream diagnosticsを実ログとして流し込む。",
+      "bodyEn": "First open `outputs/2026-09-13_splat_lod_frustum_orbit.html`. Mode 1 shows splat density, 2 empty LOD gaps, 3 frustum / raycast lanes, and 4 the composite. Drag moves the viewer; click / Space triggers a refresh pulse. Next, save real GSplat LOD level / distance / raycast hit data as JSON and pack it into a uniform texture. The second sample, `outputs/2026-09-13_usd_worker_objectid_score.html`, shows 1 worker queue, 2 object-ID plates, 3 stream diagnostics, and 4 composite. Drag moves the inspection lens; click / Space flushes a command buffer. Next, feed real Babylon USD loader progress and Inspector stream diagnostics logs.",
+      "links": [
+        {
+          "label": "Main sample: Splat LOD Frustum Orbit",
+          "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+        },
+        {
+          "label": "Derived sample: USD Worker ObjectID Score",
+          "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r186 / r187 PR列、PlayCanvas v2.22.1、Babylon.js 9.26.0 / USD announcement、Codrops Creative Hubを確認。アイデア検討: density weaveとname contourを、splat LOD / frustum / USD worker / object IDへ接続。サンプル実装: 本命 `2026-09-13_splat_lod_frustum_orbit.html` と派生 `2026-09-13_usd_worker_objectid_score.html` を作成。結果の検証: JSON parse、HTML parse、script構文チェック、gallery build、publish pushを実行する。短期: procedural splat / queue / ID plateで状態表現の読みやすさを見る。中長期: 実loader / renderer / Inspector / raycastログを状態textureへ統合する。",
+      "bodyEn": "Collection: checked three.js r186 / r187 PR stream, PlayCanvas v2.22.1, Babylon.js 9.26.0 / USD announcement, and Codrops Creative Hub. Ideation: connected density weave and name contour to splat LOD, frustum, USD workers, and object IDs. Implementation: created `2026-09-13_splat_lod_frustum_orbit.html` and `2026-09-13_usd_worker_objectid_score.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish push. Short term: evaluate readability with procedural splats, queues, and ID plates. Mid term: integrate real loader / renderer / Inspector / raycast logs into state textures.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "9月前半の流れは、GPUの状態を「見えるdebug」から「演奏できる表面」へ移す方向で一貫している。submit / readback / owner slot / TAA / probe bake / ribbon / density / contour に、今日 native splat と USD worker が加わった。組み合わせ候補は、Splat LOD gap x USD worker queue x object ID texture x density weave x face landmark。育てる価値が高いテーマは「欠落が美しく残るレンダリング」。完全に読み込み終わった完成画より、届く途中の情報、遅れて返る情報、選択された情報が、墨、布目、粒度、線、反射として重なる状態が面白い。",
+      "bodyEn": "The first half of September has consistently moved GPU state from visible debug toward playable surfaces. Submit, readback, owner slots, TAA, probe baking, ribbons, density, and contours now gain native splats and USD workers. Strong combinations are Splat LOD gap x USD worker queue x object ID texture x density weave x face landmarks. The theme worth growing is rendering where absence remains beautiful: not only the finished image after everything loads, but information arriving, returning late, or being selected, layered as ink, fabric, grain, lines, and reflection.",
+      "links": [
+        {
+          "label": "3D Face Mask with Three.js",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "Babylon USD announcement",
+          "url": "https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-13_splat_lod_frustum_orbit.html` を実装した。依存なし raw WebGL fragment shader で、splat density、empty LOD gap、両眼風frustum / raycast lane、readback scanを合成する。短時間で見るポイントは「Splatの欠落がただの破綻ではなく、視点・距離・更新の情報として読めるか」。派生として `outputs/2026-09-13_usd_worker_objectid_score.html` も実装した。USD worker queue、command buffer、object ID plates、stream diagnosticsを譜面化する。短時間で見るポイントは「ロード処理の内部状態が、待ち時間ではなく空間演出になるか」。",
+      "bodyEn": "The main prototype is `outputs/2026-09-13_splat_lod_frustum_orbit.html`, a dependency-free raw WebGL fragment shader composing splat density, empty LOD gaps, stereo-like frustum / raycast lanes, and readback scans. The quick question is whether splat absence reads as viewpoint, distance, and update information rather than breakage. The derived prototype is `outputs/2026-09-13_usd_worker_objectid_score.html`, turning USD worker queues, command buffers, object ID plates, and stream diagnostics into a score. The quick question is whether internal loading state becomes spatial staging rather than waiting time.",
+      "links": [
+        {
+          "label": "Main sample: Splat LOD Frustum Orbit",
+          "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+        },
+        {
+          "label": "Derived sample: USD Worker ObjectID Score",
+          "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は pointer、mode、pulse、splat density、gap mask、frustum lane、readback scanをログ化できる。展示では来場者の位置や視線をviewerとして扱い、近い領域ほど高密度、遠い領域ほどgapを残すと、空間の記憶が粒度として見える。WebXRでは左右目の負荷差をfrustum laneの色やgap幅に使える。2本目は worker stage、command age、object ID、selected ID、stream age、diagnostic barをログ化できる。Babylon USD loader、PlayCanvas SOG stream、three.js compileAsync / toInspectorを同じJSON schemaにすれば、エンジン横断の「状態演出レイヤー」になる。過去案との接続では、9/12のweaveをgap maskへ掛け、9/11のribbonをworker pathへ、9/10のliquid glassをobject ID plateの反射へ戻すと、ロード・選択・LOD・質感がひとつの連続表現になる。",
+      "bodyEn": "The first sample can log pointer, mode, pulse, splat density, gap mask, frustum lanes, and readback scans. In an installation, visitor position or gaze can become the viewer: nearby regions become dense, distant regions keep gaps, turning spatial memory into grain. In WebXR, per-eye load differences can color frustum lanes or widen gaps. The second sample can log worker stage, command age, object ID, selected ID, stream age, and diagnostic bars. If Babylon USD loading, PlayCanvas SOG streaming, and three.js compileAsync / toInspector share a JSON schema, they become a cross-engine state-performance layer. Connecting to earlier ideas, apply September 12's weave to the gap mask, reuse September 11's ribbon as worker paths, and return September 10's liquid glass to object ID plate reflections, making loading, selection, LOD, and material one continuous expression.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-13_splat_lod_frustum_orbit.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-13_usd_worker_objectid_score.html"
+        }
+      ]
+    }
+  ]
+}
