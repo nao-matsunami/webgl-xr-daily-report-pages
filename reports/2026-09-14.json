@@ -1,0 +1,211 @@
+{
+  "date": "2026-09-14",
+  "headline": "影カスケード、material map、Inspector nodeを演出用の監査面にする",
+  "headlineEn": "Turning shadow cascades, material maps, and Inspector nodes into expressive audit surfaces",
+  "summary": "three.js r186、r187へ向かう TSL / Inspector / WebGPURenderer PR、PlayCanvas Engine v2.22.2、Babylon.js 9.26.0、Codrops の 9/12 Yestalgia と 9/9 Still / name architecture を調査した。9/13 の splat LOD / USD worker / object ID 譜面から、今日は shadow cascade、StandardMaterial texture map iteration、TSL toInspector / build cache、ink / archive / name contour を「内部状態がそのまま画面になる監査面」として整理し、依存なし raw WebGL 試作を2本追加した。",
+  "summaryEn": "Today reviews three.js r186, the r187-bound TSL / Inspector / WebGPURenderer PR stream, PlayCanvas Engine v2.22.2, Babylon.js 9.26.0, and Codrops' September 12 Yestalgia plus September 9 Still / name-architecture articles. Extending September 13's splat LOD / USD worker / object ID score, the focus moves to shadow cascades, StandardMaterial texture map iteration, TSL toInspector / build cache, ink, archive, and name contours as audit surfaces where internal state becomes the image. Two dependency-free raw WebGL prototypes were added.",
+  "links": [
+    {
+      "label": "three.js r186 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+    },
+    {
+      "label": "three.js r187 PR stream on SemanticDiff",
+      "url": "https://app.semanticdiff.com/gh/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.2",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.2"
+    },
+    {
+      "label": "Babylon.js 9.26.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.0"
+    },
+    {
+      "label": "Codrops Articles",
+      "url": "https://tympanus.net/codrops/category/articles/"
+    },
+    {
+      "label": "Main sample: Cascade Material State Scope",
+      "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+    },
+    {
+      "label": "Derived sample: Yestalgia Ink Signal Garden",
+      "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の最新リリースは r186 のまま。release notes では TSL lint、WebGPURenderer / WebGLRenderer の async compile・readback・MSAA・XR layer、native Gaussian splat、Object3D dispose / intersectsFrustum など、内部状態を扱う材料がまとまっている。2. r187へ向かうPR列では、`three/tsl` tree-shake、`.toInspector()` の非texture node表示、node build効率化、cache key の hashArray 化、WebGPURenderer canvas optional / compileAsync valid state が目立つ。Inspector と build cache を「見えるshader配線」として使いやすくなる流れ。3. PlayCanvas Engine v2.22.2 は 2026-09-11 リリースで、shadow cascade count変更時のshader選択修正と、StandardMaterial texture map iteration が prototype properties を無視する問題の修正が中心。影とmaterial mapの状態監査が今日の本命テーマ。4. Babylon.js は 9.26.0 が最新で、OpenUSD WebAssembly loader、object ID geometry textures、Gaussian splatting stream diagnostics、SkyMaterial HDR / cloudiness が継続して重要。5. Codrops では 9/12 の Yestalgia、9/10 の Three.js Conference 記事、9/9 の name architecture と Still が新しめの視覚事例。技術ニュースではないが、archive / identity / ink / procedural garden をWebGL表現に戻す材料になる。",
+      "bodyEn": "1. three.js' latest release remains r186. Its notes bundle TSL linting, WebGPURenderer / WebGLRenderer async compile, readback, MSAA, XR layers, native Gaussian splats, Object3D dispose, and intersectsFrustum: all useful material for internal-state expression. 2. The r187 PR stream highlights tree-shakeable `three/tsl`, non-texture nodes in `.toInspector()`, more efficient node builds, hashArray cache keys, optional WebGPURenderer canvas, and valid compileAsync state. This moves Inspector and build caches closer to visible shader wiring. 3. PlayCanvas Engine v2.22.2, released on 2026-09-11, focuses on correct shadow shader selection when cascade counts change and StandardMaterial texture map iteration including prototype properties. Shadow and material-map audits are the main theme today. 4. Babylon.js 9.26.0 remains the latest, with OpenUSD WebAssembly loading, object ID geometry textures, Gaussian splatting stream diagnostics, and SkyMaterial HDR / cloudiness still relevant. 5. Codrops' September 12 Yestalgia, September 10 Three.js Conference article, and September 9 name architecture / Still pieces provide recent visual material for archive, identity, ink, and procedural gardens.",
+      "links": [
+        {
+          "label": "three.js r186 release",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+        },
+        {
+          "label": "three.js PR stream",
+          "url": "https://app.semanticdiff.com/gh/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas v2.22.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.2"
+        },
+        {
+          "label": "Babylon.js 9.26.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.0"
+        },
+        {
+          "label": "Codrops Articles",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "PlayCanvas v2.22.2 の shadow cascade / StandardMaterial 修正は小さく見えるが、表現面では「どのcascadeが選ばれ、どのtexture mapが列挙されているか」をリアルタイムの監査面にできる。影の段差や material map の継承漏れは、通常は隠すべきバグだが、shader表現では状態の節目として使える。three.js r187 PR列の `.toInspector()` と node build cache は、TSLの中間状態を画面に出す入口になる。Babylon の object ID / stream diagnostics は 9/13 のUSD譜面の続きとして、選択・ロード・描画対象を色相や線密度へ変換できる。Codrops の Yestalgia はノスタルジックなWeb体験のアートディレクションを、StillはWebGPUのインク庭園を、name architectureは入力文字列を3D構造へ変える例として効いている。",
+      "bodyEn": "PlayCanvas v2.22.2's shadow cascade and StandardMaterial fixes look small, but expressively they let us ask which cascade was selected and which texture maps were iterated as a live audit surface. Shadow discontinuities and missed inherited material maps are usually bugs to hide; in shader work they can become state markers. The three.js r187 `.toInspector()` and node-build-cache work opens a route for drawing TSL intermediate state. Babylon's object IDs and stream diagnostics continue September 13's USD score, converting selection, loading, and render targets into hue and line density. Codrops' Yestalgia contributes nostalgic art direction, Still contributes ink-garden procedural thinking, and name architecture turns input text into 3D structure.",
+      "links": [
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Codrops: Yestalgia / Still / name architecture listing",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「Cascade Material State Scope」。shadow cascade count、cascade split、shader variant selection、StandardMaterial の own / inherited texture map iteration、TSL Inspector node を1枚の監査面として重ねる。ドラッグ位置を audit lens として、近いcascade・選択material・Inspector nodeだけが光る。短期ではprocedural gridで十分に読める。中期ではPlayCanvasのcascade count / material texture map keys、three.js TSL node builder state、Babylon object IDを同じJSON schemaに入れる。派生案は「Yestalgia Ink Signal Garden」。Codrops の Yestalgia / Still / name architecture を、archive signal、ink growth、name contourとして混ぜ、技術ログではなく体験の記憶をshader入力化する。",
+      "bodyEn": "The main idea is Cascade Material State Scope: layer shadow cascade counts, cascade splits, shader variant selection, StandardMaterial own / inherited texture-map iteration, and TSL Inspector nodes into one audit surface. Dragging moves an audit lens so only nearby cascades, selected materials, and Inspector nodes glow. A procedural grid is enough for a short test; mid term, pack PlayCanvas cascade counts / material texture-map keys, three.js TSL node-builder state, and Babylon object IDs into one JSON schema. The derived idea is Yestalgia Ink Signal Garden: combine Codrops' Yestalgia, Still, and name architecture as archive signals, ink growth, and name contours, turning experiential memory into shader input rather than pure technical logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "shadow cascade は split circle / lane / picked shader variant を分けると、単なる影品質設定ではなく視点距離の譜面になる。StandardMaterial の texture map iteration は、own property と prototype property を色分けすると、継承されたmaterial kitの見落としを視覚的に検出できる。TSL `.toInspector()` は texture nodeだけでなく scalar / vector / Fn result まで表示対象にできると、shader authoring 中の「見えない中間値」を演出へ回しやすい。cache key はhash値そのものを出すより、cache hit / miss / rebuild pulse / node depth に分解したほうがパフォーマンス診断と美術が両立する。WebGL1互換の最小試作では、fwidthやWebGL2前提を避け、line / ring / box SDF と procedural noise だけで十分な状態表現を作るのが扱いやすい。",
+      "bodyEn": "Shadow cascades become a viewpoint-distance score when split circles, lanes, and picked shader variants are separated visually. StandardMaterial texture-map iteration can color own properties and prototype properties differently, making missed inherited material kits visible. If TSL `.toInspector()` covers scalar, vector, and Fn results in addition to texture nodes, otherwise invisible intermediate shader values become expressive inputs. Cache keys work better as cache hit / miss / rebuild pulse / node depth than as raw hashes, balancing performance diagnosis and art direction. For a WebGL1-compatible minimum prototype, avoid fwidth and WebGL2 assumptions; line / ring / box SDFs and procedural noise are enough to draw rich state surfaces.",
+      "links": [
+        {
+          "label": "three.js WebGPURenderer docs",
+          "url": "https://github.com/mrdoob/three.js/blob/dev/docs/pages/WebGPURenderer.html.md"
+        },
+        {
+          "label": "PlayCanvas Engine",
+          "url": "https://github.com/playcanvas/engine"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/13 の splat LOD gap / USD worker / object ID score、9/12 の density weave / name contour、9/10 の readback pool を、今日の cascade / material map / Inspector auditへ接続する。新規案件: PlayCanvas v2.22.2後のshadow / material関連修正、three.js r187のTSL Inspector / build cache / WebGPURenderer compileAsync PR、Babylon.js OpenUSD loaderとInspector V2 diagnosticsのフォローアップ、Codrops のYestalgia系ノスタルジックWeb演出。寝かせる案件: カードUI、一般的なカンファレンス感想、単なるライブラリ更新一覧。見るべき軸は、エンジン内部の選択や継承がユーザーに触れる演出になるか。",
+      "bodyEn": "Continue connecting September 13's splat LOD gaps / USD worker / object ID score, September 12's density weave / name contour, and September 10's readback pool to today's cascade / material-map / Inspector audit. New watch items: post-v2.22.2 PlayCanvas shadow and material fixes, r187 three.js TSL Inspector / build cache / WebGPURenderer compileAsync PRs, Babylon OpenUSD loader and Inspector V2 diagnostics follow-ups, and Codrops' nostalgic Yestalgia-style web direction. Park card UI, generic conference impressions, and bare library update lists. The key axis is whether engine-internal choices and inheritance can become user-touchable expression.",
+      "links": [
+        {
+          "label": "three.js PR stream",
+          "url": "https://app.semanticdiff.com/gh/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-14_cascade_material_state_scope.html` を開く。1 は shadow cascade split、2 は inherited texture map、3 は TSL Inspector node、4 は合成。dragで監査lens、click / Spaceでrefresh pulse。次に足すなら、PlayCanvas sceneからcascade count / shadow shader variant / material map keyを実ログ化し、three.js TSL node名とBabylon object IDを同じ配列へ入れる。派生の `outputs/2026-09-14_yestalgia_ink_signal_garden.html` は、1 archive signal、2 ink growth、3 name contour、4 合成。次に足すなら、名前文字列、スクロール履歴、クリック時刻を seed にして、来訪ごとに違う庭を生成する。",
+      "bodyEn": "First open `outputs/2026-09-14_cascade_material_state_scope.html`. Mode 1 shows shadow cascade splits, 2 inherited texture maps, 3 TSL Inspector nodes, and 4 the composite. Drag moves the audit lens; click / Space triggers a refresh pulse. Next, log PlayCanvas cascade counts / shadow shader variants / material map keys and pack them with three.js TSL node names and Babylon object IDs. The derived `outputs/2026-09-14_yestalgia_ink_signal_garden.html` shows 1 archive signals, 2 ink growth, 3 name contours, and 4 composite. Next, seed the garden with name strings, scroll history, and click timing so every visit grows differently.",
+      "links": [
+        {
+          "label": "Main sample: Cascade Material State Scope",
+          "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+        },
+        {
+          "label": "Derived sample: Yestalgia Ink Signal Garden",
+          "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r186 release、three.js r187 PR stream、PlayCanvas v2.22.2、Babylon.js 9.26.0、Codrops 9/12-9/9記事を確認。アイデア検討: 9/13のsplat / USD / object ID譜面から、shadow cascade / material map / Inspector nodeへ監査対象を拡張。サンプル実装: 本命 `2026-09-14_cascade_material_state_scope.html` と派生 `2026-09-14_yestalgia_ink_signal_garden.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publish pushを行う。短期: procedural WebGLで内部状態の読みやすさを見る。中長期: 実エンジンログを状態texture化し、debugと表現を分けずに扱う。",
+      "bodyEn": "Collection: checked the three.js r186 release, three.js r187 PR stream, PlayCanvas v2.22.2, Babylon.js 9.26.0, and Codrops September 12-9 articles. Ideation: extended September 13's splat / USD / object-ID score into shadow cascades, material maps, and Inspector nodes. Implementation: added `2026-09-14_cascade_material_state_scope.html` and `2026-09-14_yestalgia_ink_signal_garden.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish push. Short term: use procedural WebGL to test readability of internal states. Mid term: turn real engine logs into state textures so debug and expression are handled together.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "9月前半は「GPU状態のライブ譜面」から「内部監査を見せる演出」へ移っている。submit、readback、owner slot、TAA、probe bake、ribbon、density、contour、splat LOD、USD workerに、今日はshadow cascade、material map iteration、Inspector nodeが加わった。組み合わせると強いのは、cascade split x splat LOD gap x USD worker queue x object ID x ink growth。育てる価値が高いテーマは「バグに見える境界を、状態の美しさに変える」。影の境目、継承されたmap、未到着LOD、ロード中command、非表示nodeを、それぞれ線・粒・墨・反射・scanへ変換できる。",
+      "bodyEn": "The first half of September is moving from live GPU-state scores toward expressive internal audits. Submit, readback, owner slots, TAA, probe baking, ribbons, density, contours, splat LOD, and USD workers are now joined by shadow cascades, material-map iteration, and Inspector nodes. Strong combinations are cascade splits x splat LOD gaps x USD worker queues x object IDs x ink growth. The theme worth growing is turning boundaries that look like bugs into beautiful state: shadow edges, inherited maps, missing LODs, loading commands, and hidden nodes can become lines, grains, ink, reflection, and scans.",
+      "links": [
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops Articles",
+          "url": "https://tympanus.net/codrops/category/articles/"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-14_cascade_material_state_scope.html` を実装した。依存なし raw WebGL fragment shader で、shadow cascade split、texture map grid、prototype継承lane、TSL Inspector node ray、cache rebuild pulseを描く。短時間で見るポイントは「renderer / material の内部選択が、単なるdebugではなく触れる舞台面になるか」。派生として `outputs/2026-09-14_yestalgia_ink_signal_garden.html` も実装した。archive signal、ink growth、name architecture contourを重ねる。短時間で見るポイントは「技術ログを体験記憶や名前の構造へ接続したとき、抽象的でも個人性が出るか」。",
+      "bodyEn": "The main prototype is `outputs/2026-09-14_cascade_material_state_scope.html`, a dependency-free raw WebGL fragment shader drawing shadow cascade splits, texture-map grids, prototype inheritance lanes, TSL Inspector node rays, and cache rebuild pulses. The quick question is whether renderer / material internal choices become a touchable stage surface rather than plain debug. The derived prototype is `outputs/2026-09-14_yestalgia_ink_signal_garden.html`, layering archive signals, ink growth, and name-architecture contours. The quick question is whether technical logs can connect to experiential memory and name structure while still feeling personal.",
+      "links": [
+        {
+          "label": "Main sample: Cascade Material State Scope",
+          "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+        },
+        {
+          "label": "Derived sample: Yestalgia Ink Signal Garden",
+          "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は pointer、mode、pulse、cascade split、shader variant、texture map key、own/prototype flag、Inspector node type、cache hit/missをデータ化できる。制作ツールではmaterial previewの横に置くdebug overlayとして、展示では観客の位置に応じてshadow cascadeが変わる光の地形として使える。WebXRでは左右目のcascade差やmultiview状態を別色にすると、負荷や品質の偏りを空間内で見られる。2本目は pointer、seed、archive signal、ink density、name contour phase、interaction timingをログ化できる。MediaPipeの手や顔のlandmarkをink currentへ入れ、名前やブランド語をcontour周波数へ入れると、個人化されたWebGL庭園になる。過去案との接続では、9/13のobject IDを1本目のmaterial cellへ、9/12のdensity weaveを2本目のinkへ、9/10のreadback poolをpulse timingへ戻すと、監査・記憶・質感が同じ時間軸で育つ。",
+      "bodyEn": "The first sample can log pointer, mode, pulse, cascade split, shader variant, texture-map key, own/prototype flags, Inspector node type, and cache hit/miss. In production tools it can sit beside material previews as a debug overlay; in installations it can become a light terrain whose shadow cascades change with audience position. In WebXR, coloring per-eye cascade differences or multiview state separately would expose load and quality imbalance in space. The second sample can log pointer, seed, archive signal, ink density, name-contour phase, and interaction timing. Feeding MediaPipe hand or face landmarks into the ink current and names or brand words into contour frequency would create a personalized WebGL garden. Connecting back, put September 13 object IDs into the first sample's material cells, September 12 density weave into the second sample's ink, and September 10 readback pools into pulse timing so audit, memory, and material grow on one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-14_cascade_material_state_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-14_yestalgia_ink_signal_garden.html"
+        }
+      ]
+    }
+  ]
+}

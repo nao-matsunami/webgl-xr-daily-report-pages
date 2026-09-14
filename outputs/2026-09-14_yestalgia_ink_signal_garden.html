@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-09-14 Yestalgia Ink Signal Garden</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #10120f; color: #f1eadb; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; left: 18px; top: 16px; max-width: 700px; pointer-events: none; }
+    h1 { margin: 0 0 8px; font-size: 15px; font-weight: 700; letter-spacing: 0; }
+    p { margin: 0; font-size: 12px; line-height: 1.5; color: #c2baaa; }
+    .mode { color: #9bf0d0; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <h1>Yestalgia Ink Signal Garden <span class="mode" id="modeLabel">composite</span></h1>
+    <p>1 playful archive signals / 2 ink growth / 3 name-architecture contours / 4 composite. Drag to steer the memory current. Click or Space to seed a new bloom.</p>
+  </div>
+  <script>
+    const canvas = document.getElementById('gl');
+    const gl = canvas.getContext('webgl', { antialias: false });
+    const modeLabel = document.getElementById('modeLabel');
+    const labels = ['archive signals', 'ink growth', 'name contours', 'composite'];
+    let pointer = [0.5, 0.48];
+    let mode = 3;
+    let pulse = 0;
+    const start = performance.now();
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    const vertex = `
+      attribute vec2 position;
+      void main() { gl_Position = vec4(position, 0.0, 1.0); }
+    `;
+
+    const fragment = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform vec2 pointer;
+      uniform float time;
+      uniform float pulse;
+      uniform float mode;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(41.3, 289.7))) * 19341.17);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), u.x), u.y);
+      }
+
+      float line(float v, float w) {
+        return 1.0 - smoothstep(w, w * 2.0, abs(v));
+      }
+
+      float ring(vec2 p, float r, float w) {
+        return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r));
+      }
+
+      vec3 archiveSignals(vec2 uv) {
+        vec2 grid = fract(uv * vec2(10.0, 6.0));
+        vec2 id = floor(uv * vec2(10.0, 6.0));
+        float scan = line(grid.x - fract(time * 0.16 + id.y * 0.09), 0.016);
+        float tag = step(0.7, hash(id));
+        float stripe = line(sin((uv.y + time * 0.08) * 72.0), 0.08);
+        vec3 col = vec3(0.035, 0.035, 0.030);
+        col += vec3(0.95, 0.32, 0.18) * scan * (0.3 + tag);
+        col += vec3(0.1, 0.42, 0.78) * stripe * smoothstep(0.9, 0.2, abs(uv.x - pointer.x));
+        col += vec3(1.0, 0.82, 0.34) * line(grid.y - 0.2 - 0.18 * tag, 0.012);
+        return col;
+      }
+
+      vec3 inkGrowth(vec2 uv) {
+        vec2 p = uv - pointer;
+        p.x *= resolution.x / resolution.y;
+        float n = noise(uv * 6.0 + vec2(time * 0.08, -time * 0.05));
+        float veins = line(sin((uv.x * 1.7 + uv.y * 2.5 + n * 1.6) * 18.0 - time), 0.045);
+        float bloom = smoothstep(0.72, 0.05, length(p) + 0.13 * n - pulse * 0.18);
+        float wash = smoothstep(0.22, 0.92, n + 0.25 * sin(time + uv.y * 4.0));
+        vec3 col = vec3(0.03, 0.04, 0.032);
+        col += vec3(0.06, 0.20, 0.16) * wash;
+        col += vec3(0.06, 0.36, 0.26) * bloom;
+        col += vec3(0.48, 0.82, 0.61) * veins * bloom;
+        col += vec3(0.02, 0.012, 0.01) * smoothstep(0.15, 0.75, bloom);
+        return col;
+      }
+
+      vec3 nameContours(vec2 uv) {
+        vec2 p = (uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
+        float angle = atan(p.y, p.x);
+        float dist = length(p);
+        float word = sin(angle * 6.0 + time * 0.6) * 0.04 + sin(angle * 11.0 - time * 0.35) * 0.025;
+        float contour = line(dist - (0.16 + word), 0.009) + line(dist - (0.28 - word * 0.7), 0.008) + line(dist - (0.40 + word * 0.45), 0.007);
+        float structure = line(fract((angle + 3.14159) * 2.9 + time * 0.12) - 0.5, 0.035) * smoothstep(0.52, 0.08, dist);
+        vec3 col = vec3(0.025, 0.025, 0.035);
+        col += vec3(0.78, 0.88, 1.0) * contour;
+        col += vec3(0.98, 0.56, 0.32) * structure;
+        col += vec3(0.55, 1.0, 0.72) * ring(p - (pointer - 0.5) * vec2(resolution.x / resolution.y, 1.0), 0.06 + pulse * 0.18, 0.012);
+        return col;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec3 a = archiveSignals(uv);
+        vec3 b = inkGrowth(uv);
+        vec3 c = nameContours(uv);
+        vec3 composite = a * 0.72 + b * 0.9 + c * 0.78;
+        composite += vec3(0.12, 0.08, 0.03) * smoothstep(0.9, 0.15, length(uv - pointer));
+        float m1 = 1.0 - step(0.5, abs(mode - 0.0));
+        float m2 = 1.0 - step(0.5, abs(mode - 1.0));
+        float m3 = 1.0 - step(0.5, abs(mode - 2.0));
+        float m4 = 1.0 - step(0.5, abs(mode - 3.0));
+        vec3 col = a * m1 + b * m2 + c * m3 + composite * m4;
+        gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.9)), 1.0);
+      }
+    `;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, vertex));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragment));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, 'resolution'),
+      pointer: gl.getUniformLocation(program, 'pointer'),
+      time: gl.getUniformLocation(program, 'time'),
+      pulse: gl.getUniformLocation(program, 'pulse'),
+      mode: gl.getUniformLocation(program, 'mode')
+    };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.max(1, Math.floor(innerWidth * dpr));
+      const h = Math.max(1, Math.floor(innerHeight * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function setPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer = [
+        Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+        Math.min(1, Math.max(0, 1 - (event.clientY - rect.top) / rect.height))
+      ];
+    }
+
+    addEventListener('pointermove', setPointer);
+    addEventListener('pointerdown', (event) => { setPointer(event); pulse = 1; });
+    addEventListener('keydown', (event) => {
+      if (event.key >= '1' && event.key <= '4') {
+        mode = Number(event.key) - 1;
+        modeLabel.textContent = labels[mode];
+      }
+      if (event.code === 'Space') pulse = 1;
+    });
+
+    function frame(now) {
+      resize();
+      pulse *= 0.925;
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+      gl.uniform1f(uniforms.time, (now - start) / 1000);
+      gl.uniform1f(uniforms.pulse, pulse);
+      gl.uniform1f(uniforms.mode, mode);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
