@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Figma内3D、メディアシーケンス、object IDを品質予算の譜面にする | 2026-09-15</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.15</p>
+      <h1>Figma内3D、メディアシーケンス、object IDを品質予算の譜面にする</h1>
+      <p class="hero-subtitle">Turning in-Figma 3D, media sequences, and object IDs into a quality-budget score</p>
+      <p>three.js r186、PlayCanvas Engine v2.22.2、Babylon.js 9.26.0 / npm 9.26.1、Codrops の Depth / Yestalgia / Still を調査した。9/14 の shadow cascade / material map / Inspector 監査面から、今日はデザインツール内3Dレンダー、低品質操作と高品質配置の切替、pointer-driven media sequence、object ID / MultiTexture / dithered tile fade を「品質予算が見える状態譜面」として整理し、依存なし raw WebGL 試作を2本追加した。</p>
+      <p class="en-copy">Today reviews three.js r186, PlayCanvas Engine v2.22.2, Babylon.js 9.26.0 / npm 9.26.1, and Codrops' Depth, Yestalgia, and Still articles. Extending September 14's shadow-cascade / material-map / Inspector audit surface, the focus moves to in-design-tool 3D rendering, the shift between low-quality interaction and high-quality placement, pointer-driven media sequences, and object ID / MultiTexture / dithered tile fade as a visible quality-budget score. Two dependency-free raw WebGL prototypes were added.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-14.html">← 2026.09.14</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-15 Object ID MultiTexture Tile Fade</h3>
+              <p>1 object ID plates / 2 MultiTexture lanes / 3 dithered tile fade / 4 composite. Drag to inspect. Click or Space to flush a stream packet.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-15 Figma Depth Media Budget</h3>
+              <p>1 plugin render budget / 2 pointer-driven media sequence / 3 material sweep / 4 composite. Drag to move the review cursor. Click or Space to place a high-quality image layer.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-15_figma_depth_media_budget.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js の最新GitHub releaseは r186。WebGLRenderer / WebGPURenderer の compileAsync、readback、MSAA、XR layer、native Gaussian splat、SunLight cascaded shadow map、renderer.resetState / dispose など、描画品質と内部状態を扱う材料がまとまっている。2. PlayCanvas Engine は v2.22.2 が最新で、shadow cascade count変更時のshader選択修正と StandardMaterial texture map iteration のprototype property対応が継続して今日も効く。3. Babylon.js は changelog上の最新セクションが 9.26.0、npm package上では 9.26.1 が公開されている。9.26.0 の OpenUSD WebAssembly scene loader、object ID geometry textures、Gaussian splatting stream diagnostics、SkyMaterial HDR / cloudiness は、状態を色や密度へ変換する題材として強い。4. Codrops では 9/13 の Depth 記事が新規材料。Figma plugin内でThree.jsを動かし、操作中は軽く、配置時に高品質画像を返す構造、pointerで240 frame sequenceを制御するhero、material sweepが特に参考になる。5. 9/12 Yestalgia と 9/9 Still は、更新可能なcreative site / intersection observer / shared loop / ink gardenとして、今日の品質予算譜面に体験のリズムを足す補助線になる。</p>
+          <p class="en-copy">1. The latest three.js GitHub release is r186, with WebGLRenderer / WebGPURenderer compileAsync, readback, MSAA, XR layers, native Gaussian splats, SunLight cascaded shadow maps, renderer.resetState / dispose, and other material around render quality and internal state. 2. PlayCanvas Engine v2.22.2 remains the latest, and its shadow cascade shader selection plus StandardMaterial prototype texture-map iteration fixes still matter today. 3. Babylon.js' changelog currently starts at 9.26.0 while npm shows 9.26.1 packages. 9.26.0's OpenUSD WebAssembly scene loader, object ID geometry textures, Gaussian splatting stream diagnostics, and SkyMaterial HDR / cloudiness are strong sources for mapping state into color and density. 4. Codrops' September 13 Depth article is the new creative reference: Three.js running inside a Figma plugin, lighter rendering while interacting, high-quality image placement on export, a pointer-controlled 240-frame hero sequence, and material sweeps. 5. September 12 Yestalgia and September 9 Still add useful rhythm: updateable creative-site blocks, intersection observers, a shared loop, and ink-garden behavior.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas v2.22.2</a></li>
+          
+            <li><a href="https://raw.githubusercontent.com/BabylonJS/Babylon.js/master/CHANGELOG.md" target="_blank" rel="noreferrer">Babylon.js changelog</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/13/building-depth-designing-and-developing-a-3d-renderer-inside-figma/" target="_blank" rel="noreferrer">Codrops Depth article</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Depth が面白いのは、WebGL表現を最終ページだけではなくデザインツールの作業面へ入れている点。操作中に品質を落とし、最終配置では影やedgeを戻す設計は、rendererの状態変化そのものをUIのリズムにできる。さらにheroでは完全live 3Dを諦め、制御済みのframe sequenceとreal-time layerを混ぜている。これは「全部をリアルタイム化しない」ことがむしろ高品質なインタラクションになる例。Babylon の object ID geometry textures / stream diagnostics は、選択・ロード・診断を色の層として扱える。PlayCanvas のcascade / material map修正は、9/14の監査面を現実のengine logへ近づける。</p>
+          <p class="en-copy">Depth is interesting because WebGL is moved into the working surface of a design tool, not just the final page. Lowering quality during interaction and restoring shadows / edges for final placement turns renderer-state changes into UI rhythm. Its hero also abandons fully live 3D in favor of a controlled frame sequence mixed with real-time layers; not rendering everything live becomes the route to higher-quality interaction. Babylon's object ID geometry textures and stream diagnostics can be treated as color layers for selection, loading, and inspection. PlayCanvas' cascade and material-map fixes keep September 14's audit surface close to real engine logs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/09/13/building-depth-designing-and-developing-a-3d-renderer-inside-figma/" target="_blank" rel="noreferrer">Depth case study</a></li>
+          
+            <li><a href="https://raw.githubusercontent.com/BabylonJS/Babylon.js/master/CHANGELOG.md" target="_blank" rel="noreferrer">Babylon.js changelog</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Figma Depth Media Budget」。plugin window、canvas上のimage layer、pointer-driven frame sequence、material sweep、render budgetを1枚のshader面で見る。drag中は粗いpreview grid、clickで高品質placement pulse、pointer.xでmedia sequenceを送る。短期ではprocedural islandで十分。中期ではFigma plugin / design review tool / Web editorの実操作ログを入れて、操作中品質、最終書き出し品質、poster優先、lazy sequence開始を可視化する。派生案は「Object ID MultiTexture Tile Fade」。Babylonのobject ID、MultiTexture的な複数texture lane、dithered tile fade、USD material到着を状態texture化し、9/13のUSD worker譜面と9/14のmaterial map監査面を接続する。</p>
+          <p class="en-copy">The main idea is Figma Depth Media Budget: view the plugin window, image layer placement, pointer-driven frame sequence, material sweep, and render budget on one shader surface. Dragging shows a coarse preview grid, clicking emits a high-quality placement pulse, and pointer.x advances the media sequence. A procedural island is enough short term; mid term, feed real Figma-plugin / design-review / web-editor logs so interaction quality, final export quality, poster-first loading, and delayed sequence start become visible. The derived idea is Object ID MultiTexture Tile Fade: turn Babylon object IDs, MultiTexture-style lanes, dithered tile fade, and USD material arrival into a state texture connecting September 13's USD worker score and September 14's material-map audit.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>Depth型の体験では、操作中preview、poster、media sequence、final stillを同じ品質では扱わないのが肝。shader側では qualityBudget、sequenceFrame、materialSweep、placementPulse をuniform化すると扱いやすい。three.js r186文脈では compileAsync / readback / resetState / dispose / native splat / SunLight cascade を、品質切替のeventとして記録できる。Babylon object ID geometry textures は選択色だけでなく、tile residency、USD material arrival、stream diagnostics と同じRGBA state textureへ入れると展開しやすい。PlayCanvas StandardMaterial map iterationは、own / prototype / missing map を別laneにすることで、制作ツールの「見落とし検出」を演出へ変換できる。</p>
+          <p class="en-copy">Depth-like experiences should not treat interaction preview, poster, media sequence, and final still as the same quality tier. On the shader side, qualityBudget, sequenceFrame, materialSweep, and placementPulse are useful uniforms. In the three.js r186 context, compileAsync, readback, resetState, dispose, native splats, and SunLight cascades can be logged as quality-switch events. Babylon object ID geometry textures become more useful when packed with tile residency, USD material arrival, and stream diagnostics into one RGBA state texture. PlayCanvas StandardMaterial map iteration can split own / prototype / missing maps into lanes, turning missed-asset detection inside a production tool into expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine" target="_blank" rel="noreferrer">PlayCanvas Engine</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/13 の splat LOD / USD worker / object ID、9/14 の cascade / material map / Inspector、今日の Depth / media sequence / tile fade を統合する。新規案件: Babylon npm 9.26.1 とGitHub changelog差分の追跡、three.js r187へ向かうTSL Inspector / cache / compileAsync PR、PlayCanvas v2.22.2以降のshadow / material / streamed SOG関連、CodropsのDepth後続やFigma内3D tooling系事例。寝かせる案件: カードUI、単なるFigma plugin一覧、通常のmarketing hero分析。見るべき軸は、品質を落とす瞬間やmediaへ逃がす瞬間が、表現として誠実に見えるか。</p>
+          <p class="en-copy">Continue by integrating September 13's splat LOD / USD worker / object IDs, September 14's cascade / material-map / Inspector audit, and today's Depth / media sequence / tile fade. New watch items: the difference between Babylon npm 9.26.1 and the GitHub changelog, r187-bound three.js TSL Inspector / cache / compileAsync PRs, PlayCanvas post-v2.22.2 shadow / material / streamed-SOG changes, and more Figma-in-3D tooling examples after Depth. Park card UI, generic Figma plugin lists, and ordinary marketing-hero analysis. The key question is whether quality reduction and media fallback can feel honest and expressive.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://www.npmjs.com/package/babylonjs" target="_blank" rel="noreferrer">Babylon.js npm</a></li>
+          
+            <li><a href="https://app.semanticdiff.com/gh/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js PR stream</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-15_figma_depth_media_budget.html` を開く。1 はplugin render budget、2 はpointer-driven media sequence、3 はmaterial sweep、4 は合成。dragでreview cursor、click / Spaceでhigh-quality image layer配置のpulseを見る。次に足すなら、実際のpointer velocityでpreview qualityを落とし、停止後にcompileAsync完了 / final still配置へ戻す。派生の `outputs/2026-09-15_objectid_multitexture_tile_fade.html` は、1 object ID plates、2 MultiTexture lanes、3 dithered tile fade、4 合成。次に足すなら、Babylon Inspector diagnostics JSONを読み、object ID / texture residency / USD material arrived / stream packet count を実データ化する。</p>
+          <p class="en-copy">First open `outputs/2026-09-15_figma_depth_media_budget.html`. Mode 1 shows plugin render budget, 2 pointer-driven media sequence, 3 material sweep, and 4 the composite. Drag moves the review cursor; click / Space emits a high-quality image-layer placement pulse. Next, use real pointer velocity to lower preview quality and return to compileAsync completion / final still placement after the pointer stops. The derived `outputs/2026-09-15_objectid_multitexture_tile_fade.html` shows 1 object ID plates, 2 MultiTexture lanes, 3 dithered tile fade, and 4 composite. Next, load Babylon Inspector diagnostics JSON and pack object ID, texture residency, USD material arrival, and stream packet count into real data.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r186 release、PlayCanvas v2.22.2、Babylon.js changelog / npm package、Codrops Depth / Yestalgia / Still を確認。アイデア検討: 昨日のcascade / material / Inspector監査面から、デザインツール内3D、media sequence、object ID texture、tile fadeへ拡張。サンプル実装: 本命 `2026-09-15_figma_depth_media_budget.html` と派生 `2026-09-15_objectid_multitexture_tile_fade.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publish pushを行う。短期: procedural WebGLで品質予算の読みやすさを見る。中長期: 実ツールログをstate textureへ落として、debug、export、演出を同じ時間軸で扱う。</p>
+          <p class="en-copy">Collection: checked the three.js r186 release, PlayCanvas v2.22.2, Babylon.js changelog / npm package, and Codrops Depth / Yestalgia / Still. Ideation: extended yesterday's cascade / material / Inspector audit surface into in-design-tool 3D, media sequences, object-ID textures, and tile fade. Implementation: added `2026-09-15_figma_depth_media_budget.html` and `2026-09-15_objectid_multitexture_tile_fade.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish push. Short term: test readability of the quality budget in procedural WebGL. Mid term: translate real tool logs into state textures so debugging, export, and expression share one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>9月前半の流れは、GPU状態のライブ譜面、内部監査、そして今日の品質予算へ進んでいる。submit/readback、owner slot、TAA、probe bake、ribbon、density、splat LOD、USD worker、cascade、material map、Inspector nodeに、Depthのpreview/final切替とmedia sequenceが加わった。組み合わせると強いのは、object ID x material sweep x tile residency x pointer velocity x final still placement。育てる価値が高いテーマは「リアルタイムでない部分も含めて、体験全体をGPU表現として扱う」。media sequenceやposterは妥協ではなく、品質と反応速度の配分を可視化する材料になる。</p>
+          <p class="en-copy">The first half of September has moved from live GPU-state scores to internal audits and now to quality budgets. Submit/readback, owner slots, TAA, probe baking, ribbons, density, splat LOD, USD workers, cascades, material maps, and Inspector nodes are joined by Depth's preview/final switch and media sequence. Strong combinations are object ID x material sweep x tile residency x pointer velocity x final still placement. The theme worth growing is treating the whole experience, including non-real-time parts, as GPU expression. Media sequences and posters are not compromises; they are material for visualizing the allocation of quality and responsiveness.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/09/13/building-depth-designing-and-developing-a-3d-renderer-inside-figma/" target="_blank" rel="noreferrer">Depth article</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/09/still-from-akira-to-ink-wash-building-a-generative-garden-in-webgpu/" target="_blank" rel="noreferrer">Codrops Still</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-15_figma_depth_media_budget.html` を実装した。依存なし raw WebGL fragment shader で、plugin preview grid、quality budget line、pointer-controlled island sequence、poster / lazy media signal、material sweep、final placement pulseを描く。短時間で見るポイントは「操作中の粗さと最終配置の綺麗さが、演出として同じ画面に共存できるか」。派生として `outputs/2026-09-15_objectid_multitexture_tile_fade.html` も実装した。object ID plate、MultiTexture lane、dithered tile fade、USD material arrival風cellを描く。短時間で見るポイントは「object IDやtexture residencyを、診断ではなく質感の粒度として読めるか」。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-15_figma_depth_media_budget.html`, a dependency-free raw WebGL fragment shader drawing a plugin preview grid, quality-budget line, pointer-controlled island sequence, poster / lazy-media signal, material sweep, and final placement pulse. The quick question is whether interaction roughness and final-placement polish can coexist as one expression. The derived prototype is `outputs/2026-09-15_objectid_multitexture_tile_fade.html`, drawing object-ID plates, MultiTexture lanes, dithered tile fade, and USD-material-arrival-like cells. The quick question is whether object IDs and texture residency can read as material grain rather than only diagnostics.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は pointer、pointer velocity、qualityBudget、sequenceFrame、posterReady、mediaLoaded、materialSweep、placementPulse、finalExportScale をデータ化できる。制作ツールではFigma / web editor / CMS previewの隣に置き、どの瞬間に品質を落としているかをチームで共有できる。展示では来場者の動きに応じて、低品質previewから高品質stillへ戻る「生成されるポスター」として使える。WebXRでは片目ごとのqualityBudgetやlate media layerを色分けすると、空間内の負荷配分が見える。2本目は objectId、textureLane、tileResidency、fadePhase、usdMaterialReady、streamPacket、inspectorSelectionをログ化できる。Babylon / PlayCanvas / three.js の実診断JSONを同じRGBA textureへ入れ、MediaPipeの手や視線をinspection lensにすれば、asset loadingやmaterial stateを身体で触れる可視化になる。過去案との接続では、9/13のUSD workerを2本目のpacketへ、9/14のmaterial map iterationをtextureLaneへ、9/12のdensity weaveをtile fadeのdither patternへ戻すと、制作ツール、状態監査、アート表現が一本につながる。</p>
+          <p class="en-copy">The first sample can log pointer, pointer velocity, qualityBudget, sequenceFrame, posterReady, mediaLoaded, materialSweep, placementPulse, and finalExportScale. In production tools it can sit beside Figma, web-editor, or CMS previews so a team can discuss when quality is reduced. In installations it becomes a generated poster that returns from low-quality preview to high-quality still based on visitor motion. In WebXR, coloring per-eye qualityBudget or late media layers would expose spatial load allocation. The second sample can log objectId, textureLane, tileResidency, fadePhase, usdMaterialReady, streamPacket, and inspectorSelection. Feeding Babylon / PlayCanvas / three.js diagnostic JSON into the same RGBA texture, then using MediaPipe hand or gaze as the inspection lens, would make asset loading and material state touchable. Connecting back, route September 13's USD worker into the second sample's packet stream, September 14's material-map iteration into texture lanes, and September 12's density weave into tile-fade dithering so tooling, state audit, and art expression become one track.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://raw.githubusercontent.com/BabylonJS/Babylon.js/master/CHANGELOG.md" target="_blank" rel="noreferrer">Babylon.js CHANGELOG</a></li>
+          
+            <li><a href="https://www.npmjs.com/package/babylonjs" target="_blank" rel="noreferrer">Babylon.js npm package</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/13/building-depth-designing-and-developing-a-3d-renderer-inside-figma/" target="_blank" rel="noreferrer">Codrops: Building Depth</a></li>
+          
+            <li><a href="../outputs/2026-09-15_figma_depth_media_budget.html" target="_blank" rel="noreferrer">Main sample: Figma Depth Media Budget</a></li>
+          
+            <li><a href="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" target="_blank" rel="noreferrer">Derived sample: Object ID MultiTexture Tile Fade</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-15_objectid_multitexture_tile_fade.html" loading="lazy" title="2026-09-15 Object ID MultiTexture Tile Fade"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
