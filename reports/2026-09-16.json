@@ -1,0 +1,207 @@
+{
+  "date": "2026-09-16",
+  "headline": "HTMLTexture、TAA入力、splat streamを触れる検査面へ戻す",
+  "headlineEn": "Turning HTMLTexture, TAA inputs, and splat streams back into tactile inspection surfaces",
+  "summary": "three.js r186後のPR stream、Babylon.js 9.26.1、PlayCanvas v2.22.2、Three.js Conference Parisの更新を調査した。9/15のFigma内3D / media sequence / object ID tile fadeから、今日はHTML in Canvas、TAA input登録、TSL Inspector preview、Gaussian splat coarse-first streaming、RootMotionを「画面内UIと3D状態が同じ検査面になる」方向へ接続し、依存なしraw WebGL試作を2本追加した。",
+  "summaryEn": "Today reviews the post-r186 three.js PR stream, Babylon.js 9.26.1, PlayCanvas v2.22.2, and updates from the Three.js Conference in Paris. Extending September 15's in-Figma 3D / media sequence / object-ID tile fade, the focus connects HTML in Canvas, TAA input registration, TSL Inspector previews, Gaussian splat coarse-first streaming, and RootMotion into a shared inspection surface where UI and 3D state live together. Two dependency-free raw WebGL prototypes were added.",
+  "links": [
+    {
+      "label": "three.js r186 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+    },
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "Babylon.js 9.26.1 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.1"
+    },
+    {
+      "label": "Babylon.js pull requests",
+      "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.2",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.2"
+    },
+    {
+      "label": "Codrops: Inside the First Three.js Conference in Paris",
+      "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+    },
+    {
+      "label": "Main sample: HTMLTexture TAA Inspector Stage",
+      "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+    },
+    {
+      "label": "Derived sample: Splat Culling RootMotion Scope",
+      "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の最新releaseは r186 のまま。ただしPR streamでは 9/15 に TAA Nodes: Register inputs ahead of consumers #34565、9/14 に TextureNode: Detect filter and type changes #34556 が開いており、9/15の品質予算を temporal / texture state の検査へ進める材料が出ている。2. three.js側では TSL Inspectorの非texture node自動preview #34534、three/tsl tree-shake #34533、WebGPURenderer canvas optional #34525 も継続ウォッチ対象。3. Babylon.js 9.26.1 は MultiTexture、dithered tile fade、GPU particle per-particle size、USD material / instancing / morph / skinning改善を含み、9/15のobject ID / tile fade案をさらに具体化できる。4. Babylon PR streamでは Gaussian splatting coarse-first streaming and local-space culling #18910、RootMotion #18908、Inspector Lite text/sprite layer #18905 が開いている。5. CodropsのThree.js Conference更新では HTML in Canvas / THREE.HTMLTexture、generative media、radiance field streaming、TSL、texture atlases / KTX2 / batching / WebGPU budget が語られており、UI、shader、streaming、physical installationを同じ制作文脈で考えやすい。",
+      "bodyEn": "1. The latest three.js release remains r186, but the post-release PR stream now includes TAA Nodes: Register inputs ahead of consumers #34565 on September 15 and TextureNode: Detect filter and type changes #34556 on September 14, moving yesterday's quality-budget topic toward temporal and texture-state inspection. 2. TSL Inspector automatic previews for non-texture nodes #34534, three/tsl tree shaking #34533, and optional canvas creation in WebGPURenderer #34525 remain worth watching. 3. Babylon.js 9.26.1 includes MultiTexture, dithered tile fade, GPU particle per-particle size, and USD material / instancing / morph / skinning improvements, giving concrete fuel to yesterday's object-ID and tile-fade track. 4. The Babylon PR stream now includes Gaussian splatting coarse-first streaming and local-space culling #18910, RootMotion #18908, and Inspector Lite text / sprite layers #18905. 5. Codrops' Three.js Conference update highlights HTML in Canvas / THREE.HTMLTexture, generative media, radiance-field streaming, TSL, texture atlases / KTX2 / batching / WebGPU budgets, making UI, shaders, streaming, and physical installation easier to consider as one production context.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon.js 9.26.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.1"
+        },
+        {
+          "label": "Babylon.js PR list",
+          "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+        },
+        {
+          "label": "Three.js Conference article",
+          "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日いちばん効くのは、Conference記事内の HTML in Canvas / THREE.HTMLTexture の話。9/15のFigma内3Dでは「デザインツール内に3Dを置く」だったが、今日は逆に「DOM的なUIを3D textureとして扱う」方向にできる。TAA input登録やTSL Inspector previewは、UIが単なるoverlayではなくrenderer状態を説明するtextureになると活きる。Babylonのcoarse-first splat streaming / local-space cullingは、重いradiance fieldやsplatを最初から完成形として出すのではなく、粗い到着、局所cull、詳細化を体験の時間軸にできる点が面白い。RootMotionは、動きの抽出をshader inputへ入れると、キャラクターの移動、足跡、camera staging、streaming priorityを同じ地図へ載せられる。",
+      "bodyEn": "The strongest reference today is the Conference article's HTML in Canvas / THREE.HTMLTexture thread. September 15 put 3D inside a design tool; today flips the direction by treating DOM-like UI as a 3D texture. TAA input registration and TSL Inspector previews become more useful when UI is not just an overlay but a texture explaining renderer state. Babylon's coarse-first splat streaming and local-space culling are interesting because heavy radiance fields or splats do not need to appear finished at once; coarse arrival, local culling, and refinement can become the timeline of the experience. RootMotion becomes a shader input for placing character movement, footsteps, camera staging, and streaming priority on one map.",
+      "links": [
+        {
+          "label": "Three.js Conference article",
+          "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+        },
+        {
+          "label": "Babylon.js pull requests",
+          "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「HTMLTexture TAA Inspector Stage」。canvas上にHTMLTexture風のUI lane、TAA input/consumer dependency、TSL Inspector previewを重ね、dragでprobe、clickで再登録pulseを見る。短期ではprocedural UI textureで十分。中期では実DOMをCanvas2Dに描いてWebGL texture化し、TAA history reset、TextureNode filter/type change、Inspector node previewのeventを同じタイムラインへ入れる。派生案は「Splat Culling RootMotion Scope」。coarse-first splat arrival、local-space frustum culling、RootMotion traceを1画面で扱い、streaming priorityがキャラクター移動やcamera aimで変わる様子を可視化する。",
+      "bodyEn": "The main idea is HTMLTexture TAA Inspector Stage: layer HTMLTexture-like UI lanes, TAA input / consumer dependencies, and a TSL Inspector preview on a canvas; drag moves the probe and click emits a re-registration pulse. Short term, procedural UI texture is enough. Mid term, draw real DOM to Canvas2D, upload it as a WebGL texture, and put TAA history reset, TextureNode filter/type changes, and Inspector node-preview events on the same timeline. The derived idea is Splat Culling RootMotion Scope: visualize coarse-first splat arrival, local-space frustum culling, and RootMotion traces together so streaming priority visibly changes with character motion and camera aim.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "HTMLTexture系を試す時は、UIを最初から完全なDOM同期にしないほうが扱いやすい。まずは Canvas2D snapshots、dirty rect、texture upload budget、pointer hit region、TAA reset reason を小さなstate schemaにする。three.js PR #34565 の方向からは inputRegisteredBeforeConsumer、historyValid、consumerFrame、resetPulse のような値が作れる。TextureNode filter/type changeは textureVersion、filterMode、sampleType、needsRebuild へ落とせる。Babylon 9.26.1系は objectId、textureLane、tileFade、particleSize、usdMaterialReady に加え、coarseLevel、localCullMask、rootTravel、rootTurn を足すと、asset streamとmotion streamを1枚のRGBA textureへ詰めやすい。",
+      "bodyEn": "For HTMLTexture-style work, avoid full DOM synchronization at first. Start with Canvas2D snapshots, dirty rectangles, texture-upload budget, pointer hit regions, and TAA reset reasons as a small state schema. From the direction of three.js PR #34565, useful values are inputRegisteredBeforeConsumer, historyValid, consumerFrame, and resetPulse. TextureNode filter / type changes can map to textureVersion, filterMode, sampleType, and needsRebuild. For Babylon 9.26.1 work, add coarseLevel, localCullMask, rootTravel, and rootTurn to yesterday's objectId, textureLane, tileFade, particleSize, and usdMaterialReady so asset streams and motion streams can fit into one RGBA texture.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon.js 9.26.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.1"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/13 USD worker / object ID、9/14 cascade / material map / Inspector、9/15 Depth / tile fade、今日のHTMLTexture / TAA / splat cullingを統合する。新規案件: three.js #34565 / #34556 / #34534 の動き、Babylon #18910 / #18908 / #18905、PlayCanvas v2.22.2以降のshadow / StandardMaterial / SOG周辺、Conference記事から派生するHTMLTexture実装やradiance field streaming事例。寝かせる案件: 単なるUI texture装飾、カード型showcase、TAAを見た目だけのtrailにする案。短期は検査面として読めるか、中長期は実データが入っても破綻しないschemaかを見る。",
+      "bodyEn": "Continue integrating September 13's USD worker / object IDs, September 14's cascade / material-map / Inspector surface, September 15's Depth / tile fade, and today's HTMLTexture / TAA / splat culling. New watch items are three.js #34565 / #34556 / #34534, Babylon #18910 / #18908 / #18905, post-v2.22.2 PlayCanvas shadow / StandardMaterial / SOG work, and implementations or case studies around HTMLTexture and radiance-field streaming following the Conference article. Park decorative UI textures, card-style showcases, and TAA-as-only-a-visual-trail ideas. Short term, test whether it reads as an inspection surface; mid term, test whether the schema survives real data.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Codrops tutorials",
+          "url": "https://tympanus.net/codrops/category/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-16_htmltexture_taa_inspector_stage.html` を開く。1はHTMLTexture lane、2はTAA input register、3はInspector preview、4は合成。dragでUI texture probe、click / Spaceで再登録pulseを見る。次に足すなら、実DOMをCanvas2D snapshotにしてtexture uploadし、pointer velocityが高い時だけdirty rectを間引く。派生の `outputs/2026-09-16_splat_culling_rootmotion_scope.html` は、1 coarse-first stream、2 local-space culling、3 RootMotion trace、4合成。次に足すなら、Babylon #18910風のcoarseLevel / localCullMaskと、RootMotionのtravel / turningをJSONで読み込む。",
+      "bodyEn": "First open `outputs/2026-09-16_htmltexture_taa_inspector_stage.html`. Mode 1 shows HTMLTexture lanes, 2 TAA input registration, 3 Inspector previews, and 4 the composite. Drag moves the UI texture probe; click / Space emits a re-registration pulse. Next, upload a real DOM Canvas2D snapshot as a texture and thin dirty rectangles only when pointer velocity is high. The derived `outputs/2026-09-16_splat_culling_rootmotion_scope.html` shows 1 coarse-first streaming, 2 local-space culling, 3 RootMotion traces, and 4 the composite. Next, load Babylon #18910-style coarseLevel / localCullMask and RootMotion travel / turning from JSON.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r186後PR、Babylon 9.26.1 / open PR、PlayCanvas v2.22.2、Three.js Conference記事を確認。アイデア検討: 9/15のFigma / Depth / object ID tile fadeから、UI texture、TAA dependency、Inspector preview、splat stream、RootMotionへ拡張。サンプル実装: 本命 `2026-09-16_htmltexture_taa_inspector_stage.html` と派生 `2026-09-16_splat_culling_rootmotion_scope.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを行う。短期: procedural textureで読解性を確認。中長期: 実DOM snapshot、renderer event log、splat streaming telemetry、animation root-motion logを同じstate textureへ入れる。",
+      "bodyEn": "Collection: checked post-r186 three.js PRs, Babylon 9.26.1 / open PRs, PlayCanvas v2.22.2, and the Three.js Conference article. Ideation: extended September 15's Figma / Depth / object-ID tile fade into UI textures, TAA dependencies, Inspector previews, splat streams, and RootMotion. Implementation: added `2026-09-16_htmltexture_taa_inspector_stage.html` and `2026-09-16_splat_culling_rootmotion_scope.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: test readability with procedural textures. Mid term: feed real DOM snapshots, renderer event logs, splat streaming telemetry, and animation root-motion logs into the same state texture.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "9月の流れは、GPU状態のライブ譜面から、制作ツールの監査面、そして今日のUI/3D混在検査面へ来た。submit/readback、owner slot、TAA、probe bake、density、splat LOD、USD worker、cascade、material map、Depth、tile fadeに、HTMLTexture / TAA registration / Inspector preview / coarse stream / RootMotionが加わる。組み合わせると強いのは、UI texture x temporal validity x texture residency x object ID x motion trace。育てる価値が高いテーマは「画面上のUIも、3D assetも、streamingの途中経過も、同じshader stateとして扱う」こと。単に派手にするより、見えない内部状態をユーザーが触れるものに変えるほうがこのプロジェクトらしい。",
+      "bodyEn": "September has moved from live GPU-state scores to production-tool audit surfaces and now to mixed UI / 3D inspection surfaces. Submit/readback, owner slots, TAA, probe baking, density, splat LOD, USD workers, cascades, material maps, Depth, and tile fade are joined by HTMLTexture, TAA registration, Inspector previews, coarse streams, and RootMotion. Strong combinations are UI texture x temporal validity x texture residency x object ID x motion trace. The theme worth growing is treating on-screen UI, 3D assets, and streaming-in-progress as the same shader state. For this project, turning hidden internal state into something the user can touch is more valuable than simply making the image louder.",
+      "links": [
+        {
+          "label": "Three.js Conference article",
+          "url": "https://tympanus.net/codrops/2026/09/10/inside-the-first-three-js-conference-in-paris/"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-16_htmltexture_taa_inspector_stage.html` を実装した。依存なしraw WebGL fragment shaderで、HTMLTexture風UI lane、TAA input/consumer登録、Inspector preview、probe lens、re-register pulseを描く。短時間で見るポイントは「UI layerが単なる説明ではなく、renderer stateのtextureとして見えるか」。派生として `outputs/2026-09-16_splat_culling_rootmotion_scope.html` を実装した。coarse-first stream、local-space frustum culling、RootMotion trace、stream pulseを描く。短時間で見るポイントは「読み込み途中の粗さやcullingが、破綻ではなく舞台の進行として読めるか」。",
+      "bodyEn": "The main prototype is `outputs/2026-09-16_htmltexture_taa_inspector_stage.html`, a dependency-free raw WebGL fragment shader drawing HTMLTexture-like UI lanes, TAA input / consumer registration, Inspector previews, a probe lens, and a re-registration pulse. The quick question is whether the UI layer reads not as explanation but as a texture of renderer state. The derived prototype is `outputs/2026-09-16_splat_culling_rootmotion_scope.html`, drawing coarse-first streams, local-space frustum culling, RootMotion traces, and stream pulses. The quick question is whether loading roughness and culling read as stage progression rather than breakage.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は uiDirtyRect、textureUploadMs、pointerHitRegion、taaInputRegistered、taaHistoryValid、textureVersion、filterMode、inspectorNodeType、previewRendered をデータ化できる。Web editor、Figma plugin、CMS preview、slide toolの隣に置けば、UI変更とrenderer変更がいつ同期しているかを見せられる。WebXRでは手元のUI panelをHTMLTexture化し、視線や手でprobeするとTAA historyやtexture rebuildが空間内に光る。2本目は coarseLevel、localCullMask、splatPacketCount、visibleSplatCount、rootTravel、rootTurn、cameraAim、streamPriority をログ化できる。radiance field / Gaussian splat / character animationを組み合わせ、来場者の動きや音の低域でstream priorityを変える展示にもできる。過去案との接続では、9/13のUSD worker packetをsplatPacketCountへ、9/14のmaterial map iterationをtextureVersionへ、9/15のtileFadeをcoarseLevelごとのfadeへ戻すと、制作ログ、品質予算、空間演出が同じ譜面になる。",
+      "bodyEn": "The first sample can log uiDirtyRect, textureUploadMs, pointerHitRegion, taaInputRegistered, taaHistoryValid, textureVersion, filterMode, inspectorNodeType, and previewRendered. Placed beside a web editor, Figma plugin, CMS preview, or slide tool, it can show when UI changes and renderer changes are synchronized. In WebXR, a hand-level UI panel could become an HTMLTexture, and gaze or hand probes could light up TAA history or texture rebuilds in space. The second sample can log coarseLevel, localCullMask, splatPacketCount, visibleSplatCount, rootTravel, rootTurn, cameraAim, and streamPriority. Combining radiance fields, Gaussian splats, and character animation could support installations where visitor movement or low audio bands change streaming priority. Connecting back, route September 13's USD worker packets into splatPacketCount, September 14's material-map iteration into textureVersion, and September 15's tileFade into per-coarse-level fade so production logs, quality budgets, and spatial staging become one score.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-16_htmltexture_taa_inspector_stage.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-16_splat_culling_rootmotion_scope.html"
+        }
+      ]
+    }
+  ]
+}
