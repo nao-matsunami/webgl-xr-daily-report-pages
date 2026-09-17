@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPU選択、stochastic alpha、mesh blendを触れる制作状態へ寄せる | 2026-09-17</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.17</p>
+      <h1>GPU選択、stochastic alpha、mesh blendを触れる制作状態へ寄せる</h1>
+      <p class="hero-subtitle">Turning GPU selection, stochastic alpha, and mesh blending into tactile production state</p>
+      <p>three.js r186、PlayCanvas v2.22.2、SuperSplat Editor 3.0、Babylon.js 9.26.2、Codropsの直近WebGL/Three.js事例を調査した。9/16のHTMLTexture / TAA / splat cullingから、今日はGPU上の選択、stochastic alpha、mesh blending、KHR_interactivity、ProceduralTexture uniform更新を「重いシーンでも触れる制作状態」として整理し、依存なしraw WebGL試作を2本追加した。</p>
+      <p class="en-copy">Today reviews three.js r186, PlayCanvas v2.22.2, SuperSplat Editor 3.0, Babylon.js 9.26.2, and recent Codrops WebGL / Three.js work. Extending September 16's HTMLTexture / TAA / splat-culling thread, the focus turns GPU selection, stochastic alpha, mesh blending, KHR_interactivity, and ProceduralTexture uniform updates into production states that remain tactile even in heavy scenes. Two dependency-free raw WebGL prototypes were added.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-17_stochastic_brush_memory_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-16.html">← 2026.09.16</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-17 Stochastic Brush Memory Scope</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-17_stochastic_brush_memory_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-17 Mesh Blend Interactivity Stage</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.jsの最新releaseは r186。WebGPURenderer、TSL、async dispose、compileComputeAsync、DirectRenderPipeline、WebXR WebGPU MSAA、packed_4x8_integer_dot_product、Inspector / node builder系の更新がまとまっており、9月前半に扱ってきたGPU状態の可視化を公式release単位で整理し直せる。2. PlayCanvas Engine v2.22.2は、cascade count変更時のshadow shader選択とStandardMaterial texture map iterationの修正。v2.22.0のVAT Characters、Depth Effects、Custom MSAA Resolve、MSAA Depth Fog、Transform Feedback Separateなどと合わせ、debug / demos / graphics advancedの題材が太い。3. SuperSplat Editor 3.0はWebGPU専用化し、projection、frustum culling、compaction、depth sorting、draw submission、selection、histogram、export streamingをGPU中心に再構成した。4. Babylon.js 9.26.2はLensRenderingPipeline修正、mesh blending post process、ProceduralTexture uniform setter拡張、KHR_interactivity Phase 1、Inspector Lite text/sprite layer、Gaussian splatting coarse-first streaming / local-space cullingを含む。5. CodropsではReel Flux、Vivid、Resn、Depth inside Figmaなど、WebGLだけで完結しない制作ツール / ブランド体験 / pixel effectの事例が続き、renderer stateをUIやCMSや編集体験へ戻す流れが強い。</p>
+          <p class="en-copy">1. The latest three.js release is r186. WebGPURenderer, TSL, async dispose, compileComputeAsync, DirectRenderPipeline, WebXR WebGPU MSAA, packed_4x8_integer_dot_product, and Inspector / node-builder work give a release-level way to reorganize the GPU-state visualization explored earlier in September. 2. PlayCanvas Engine v2.22.2 fixes shadow-shader selection when cascade count changes and StandardMaterial texture-map iteration. Together with v2.22.0's VAT Characters, Depth Effects, Custom MSAA Resolve, MSAA Depth Fog, and Transform Feedback Separate examples, the debug / demos / graphics advanced track is rich. 3. SuperSplat Editor 3.0 is WebGPU-only and moves projection, frustum culling, compaction, depth sorting, draw submission, selection, histograms, and export streaming toward GPU-centered workflows. 4. Babylon.js 9.26.2 includes LensRenderingPipeline fixes, mesh blending post process, wider ProceduralTexture uniform setter inputs, KHR_interactivity Phase 1, Inspector Lite text / sprite layers, and Gaussian splatting coarse-first streaming / local-space culling. 5. Codrops keeps showing production cases such as Reel Flux, Vivid, Resn, and Depth inside Figma, pointing beyond standalone WebGL demos toward renderer state returning into UI, CMS, and editing experiences.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-editor-3-0-rebuilt-on-webgpu/" target="_blank" rel="noreferrer">SuperSplat Editor 3.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops All Demos</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の中心はSuperSplat 3.0。重いGaussian sceneを軽く見せるだけでなく、編集、選択、histogram、exportの途中状態までGPU compute側へ移している点が重要。特にStochastic Alphaは、動いている間だけsort負荷を下げ、止まったら正確なsorted frameへ戻すという時間設計そのものが演出に使える。Sphere Brushは、depth-picked pathとsurface footprintを持つので、9/16のprobe / culling案と接続しやすい。Babylon 9.26.2のmesh blending post processとKHR_interactivityは、見た目のblendだけでなく、状態遷移、trigger、procedural uniform updateを1つのshader面へ載せる材料になる。</p>
+          <p class="en-copy">The key case today is SuperSplat 3.0. It is not just making heavy Gaussian scenes lighter; it moves editing, selection, histograms, and export-in-progress state toward GPU compute. Stochastic Alpha is especially useful because it intentionally lowers sorting cost while moving and returns to a precise sorted frame when still, making the time design itself expressive. Sphere Brush has a depth-picked path and surface footprint, so it connects cleanly to September 16's probe / culling track. Babylon 9.26.2's mesh blending post process and KHR_interactivity are not just visual blending; they provide material for mapping state transitions, triggers, and procedural uniform updates onto one shader surface.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-editor-3-0-rebuilt-on-webgpu/" target="_blank" rel="noreferrer">SuperSplat Editor 3.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Stochastic Brush Memory Scope」。重いsplat sceneのediting中だけ画が粗くなるのを隠さず、stochastic coverage、brush footprint、selection color grade、export chunkを可視化する。dragでbrush path、clickでselection pulseを出し、止まるとsorted/rest frameへ寄るような体験にする。派生案は「Mesh Blend Interactivity Stage」。mesh blending post processを、単なるfadeではなく、KHR_interactivityのtrigger graph、ProceduralTexture uniform setter、Inspector text/sprite layerの状態表示と混ぜる。イベントが来るたびにmeshの境界、node graph、uniform laneが同じpulseで変わる。</p>
+          <p class="en-copy">The main idea is Stochastic Brush Memory Scope: do not hide the rougher image during heavy splat editing; instead visualize stochastic coverage, brush footprints, selection color grades, and export chunks. Drag creates a brush path, click emits a selection pulse, and the scene should drift back toward a sorted / rest frame when still. The derived idea is Mesh Blend Interactivity Stage: treat mesh blending post process not as a simple fade but as a blend of KHR_interactivity trigger graphs, ProceduralTexture uniform setters, and Inspector text / sprite layer state. Each event changes mesh boundaries, node graphs, and uniform lanes with the same pulse.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>Stochastic Alpha系は、renderMode、cameraMoving、sortedFrameMs、stochasticEnabled、coverageSeed、gaussianCount、selectedCount、brushRadius、footprintMode、depthPickValidを小さなstate schemaにすると試しやすい。Sphere Brushのpathは点列として持ち、各点にworld position、depth discontinuity、radius、operation(add/remove/intersect)を付けると、後から同じstrokeをreplayできる。mesh blending / KHR_interactivityは、triggerId、stateBefore、stateAfter、transitionWeight、proceduralUniformName、uniformType、uniformValue、postProcessMixをRGBA laneへ詰める。9/16のHTMLTexture/TAA inspectorと組み合わせるなら、UI snapshotのdirty rectとselection dirty regionを同じtexture atlasに入れる。</p>
+          <p class="en-copy">For Stochastic Alpha work, start with a small state schema: renderMode, cameraMoving, sortedFrameMs, stochasticEnabled, coverageSeed, gaussianCount, selectedCount, brushRadius, footprintMode, and depthPickValid. Store Sphere Brush paths as point lists, with world position, depth discontinuity, radius, and operation (add / remove / intersect) on each point, so strokes can be replayed later. For mesh blending / KHR_interactivity, pack triggerId, stateBefore, stateAfter, transitionWeight, proceduralUniformName, uniformType, uniformValue, and postProcessMix into RGBA lanes. When combining with September 16's HTMLTexture / TAA Inspector work, place UI snapshot dirty rectangles and selection dirty regions into one texture atlas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-editor-3-0-rebuilt-on-webgpu/" target="_blank" rel="noreferrer">SuperSplat Editor 3.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/13のUSD worker / object ID、9/14のcascade / material map / Inspector、9/15のDepth / tile fade、9/16のHTMLTexture / TAA / splat culling、今日のstochastic selection / mesh blendを統合する。新規案件: SuperSplat 3.0のWebGPU-only data model、Sphere Brush、Stochastic Alpha、BabylonのKHR_interactivity Phase 1とmesh blending、PlayCanvas v2.22系のDepth Effects / MSAA Depth Fog / Transform Feedback examples。寝かせる案件: ただの粒子密度変更、brush trailだけのVJ化、カードUI化。短期は「重い処理中にどう見せるか」、中長期は「編集状態を保存・再生・展示できるデータにするか」。</p>
+          <p class="en-copy">Continue integrating September 13's USD worker / object ID, September 14's cascade / material-map / Inspector surface, September 15's Depth / tile fade, September 16's HTMLTexture / TAA / splat culling, and today's stochastic selection / mesh blend. New watch items are SuperSplat 3.0's WebGPU-only data model, Sphere Brush, Stochastic Alpha, Babylon's KHR_interactivity Phase 1 and mesh blending, and PlayCanvas v2.22 Depth Effects / MSAA Depth Fog / Transform Feedback examples. Park simple particle-density changes, brush-trail-only VJ pieces, and card UI variants. Short term: how does heavy processing appear while it is happening? Mid term: can editing state become data that is saved, replayed, and exhibited?</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/articles/" target="_blank" rel="noreferrer">Codrops Articles</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-17_stochastic_brush_memory_scope.html` を開く。1はstochastic alpha、2はsphere brush path、3はselection color grade、4は合成。dragでbrush、click / Spaceでselection pulseを見る。次に足すなら、実際のsplat edit logをJSONで読み込み、cameraMoving時だけstochastic coverageを強める。派生の `outputs/2026-09-17_mesh_blend_interactivity_stage.html` は、1 mesh blend、2 interactivity graph、3 procedural uniform lanes、4合成。次に足すなら、KHR_interactivity風のtrigger/state graphをJSON化し、transitionWeightでpost process mixを動かす。</p>
+          <p class="en-copy">First open `outputs/2026-09-17_stochastic_brush_memory_scope.html`. Mode 1 shows stochastic alpha, 2 sphere brush paths, 3 selection color grades, and 4 the composite. Drag moves the brush; click / Space emits a selection pulse. Next, load a real splat edit log from JSON and strengthen stochastic coverage only while cameraMoving is true. The derived `outputs/2026-09-17_mesh_blend_interactivity_stage.html` shows 1 mesh blend, 2 interactivity graph, 3 procedural uniform lanes, and 4 the composite. Next, model a KHR_interactivity-style trigger / state graph in JSON and drive post-process mix with transitionWeight.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r186、PlayCanvas v2.22.2、SuperSplat 3.0、Babylon 9.26.2、Codrops直近記事とdemo一覧を確認。アイデア検討: 9/16のHTMLTexture / TAA / splat cullingから、GPU edit state、stochastic alpha、selection brush、mesh blend、KHR_interactivityへ拡張。サンプル実装: 本命 `2026-09-17_stochastic_brush_memory_scope.html` と派生 `2026-09-17_mesh_blend_interactivity_stage.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを行う。短期: procedural shaderで読解性を確認。中長期: SuperSplat / Babylon / PlayCanvasの実ログを読み、編集状態のreplay surfaceへ育てる。</p>
+          <p class="en-copy">Collection: checked three.js r186, PlayCanvas v2.22.2, SuperSplat 3.0, Babylon 9.26.2, and recent Codrops articles / demos. Ideation: extended September 16's HTMLTexture / TAA / splat culling into GPU edit state, stochastic alpha, selection brushes, mesh blending, and KHR_interactivity. Implementation: added `2026-09-17_stochastic_brush_memory_scope.html` and `2026-09-17_mesh_blend_interactivity_stage.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: verify readability with procedural shaders. Mid term: read real SuperSplat / Babylon / PlayCanvas logs and grow this into an editing-state replay surface.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、shaderの見た目そのものより、renderer / editor / loader / inspectorの途中状態が表現対象になっていること。submit/readback、TAA、Inspector、object ID、tile fade、HTMLTexture、splat cullingに、今日はstochastic alpha、GPU selection、mesh blend、KHR_interactivityが加わった。組み合わせ候補は、UI dirty rect x brush footprint x stochastic render mode x mesh transition x object ID。育てる価値が高いテーマは「編集の最中が作品になる」。完成後の絵ではなく、選ぶ、粗く表示する、混ぜる、保存する、再生するという制作操作を、観客が触れるstageとして扱う。</p>
+          <p class="en-copy">The recent trend is that renderer / editor / loader / inspector states in progress are becoming the subject, not just shader appearance. Submit/readback, TAA, Inspector, object IDs, tile fade, HTMLTexture, and splat culling are now joined by stochastic alpha, GPU selection, mesh blending, and KHR_interactivity. Strong combinations are UI dirty rectangle x brush footprint x stochastic render mode x mesh transition x object ID. The theme worth growing is editing in progress as the work itself: selecting, rough rendering, blending, saving, and replaying become a stage the audience can touch.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-editor-3-0-rebuilt-on-webgpu/" target="_blank" rel="noreferrer">SuperSplat Editor 3.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-17_stochastic_brush_memory_scope.html` を実装した。依存なしraw WebGL fragment shaderで、stochastic alpha風のsplat coverage、sphere brush footprint、selection color grade、stamp pulseを描く。短時間で見るポイントは「重い編集時の粗い表示が、劣化ではなく操作状態として読めるか」。派生として `outputs/2026-09-17_mesh_blend_interactivity_stage.html` を実装した。mesh blend post process風の境界、KHR_interactivity風のtrigger graph、ProceduralTexture uniform laneを描く。短時間で見るポイントは「triggerとuniform更新が、単なる設定値ではなく画面のリズムとして読めるか」。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-17_stochastic_brush_memory_scope.html`, a dependency-free raw WebGL fragment shader drawing stochastic-alpha-like splat coverage, sphere-brush footprints, selection color grades, and stamp pulses. The quick question is whether rough rendering during heavy editing reads as operational state rather than degradation. The derived prototype is `outputs/2026-09-17_mesh_blend_interactivity_stage.html`, drawing mesh-blend-post-process-like boundaries, a KHR_interactivity-like trigger graph, and ProceduralTexture uniform lanes. The quick question is whether triggers and uniform updates read as screen rhythm rather than mere settings.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は cameraMoving、sortedFrameMs、stochasticMode、coverageSeed、brushPath、depthPickValid、selectionFootprint、selectedCount、colorTemperature、exportChunkIndexをデータ化できる。Web上のsplat editor、展示用scan cleaner、建築アーカイブ、商品3D scan viewerに入れると、編集履歴そのものが演出になる。音と組み合わせるなら低域でbrush radius、高域でcoverage seed、無音時にsorted frameへ戻す。2本目は triggerId、stateBefore/After、transitionWeight、uniformName、uniformType、uniformValue、meshBlendAmount、postProcessMixをデータ化できる。CMSのpreview、WebXR操作panel、生成AI pipeline viewer、ライブVJのscene switcherと相性が良い。過去案との接続では、9/16のHTMLTexture dirty rectをuniform laneへ、9/15のtile fadeをmesh blend amountへ、9/13のUSD worker packetをexportChunkIndexへ戻すと、制作ログ、編集操作、最終レンダリングが同じ時間軸に並ぶ。</p>
+          <p class="en-copy">The first sample can log cameraMoving, sortedFrameMs, stochasticMode, coverageSeed, brushPath, depthPickValid, selectionFootprint, selectedCount, colorTemperature, and exportChunkIndex. In a web splat editor, exhibition scan cleaner, architectural archive, or product 3D scan viewer, the edit history itself becomes the performance. With audio, low bands can drive brush radius, high bands coverage seed, and silence the return to sorted frames. The second sample can log triggerId, stateBefore / stateAfter, transitionWeight, uniformName, uniformType, uniformValue, meshBlendAmount, and postProcessMix. It fits CMS previews, WebXR control panels, generative-AI pipeline viewers, and live VJ scene switchers. Connecting back, route September 16's HTMLTexture dirty rectangles into uniform lanes, September 15's tile fade into meshBlendAmount, and September 13's USD worker packets into exportChunkIndex so production logs, editing operations, and final rendering share one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-supersplat-editor-3-0-rebuilt-on-webgpu/" target="_blank" rel="noreferrer">SuperSplat Editor 3.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-09-17_stochastic_brush_memory_scope.html" target="_blank" rel="noreferrer">Main sample: Stochastic Brush Memory Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-17_mesh_blend_interactivity_stage.html" target="_blank" rel="noreferrer">Derived sample: Mesh Blend Interactivity Stage</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-17_stochastic_brush_memory_scope.html" loading="lazy" title="2026-09-17 Stochastic Brush Memory Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
