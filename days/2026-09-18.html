@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>splatの深度・影・HUDとstreaming LODを制作状態として束ねる | 2026-09-18</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.18</p>
+      <h1>splatの深度・影・HUDとstreaming LODを制作状態として束ねる</h1>
+      <p class="hero-subtitle">Bundling splat depth, shadows, HUDs, and streaming LOD as production state</p>
+      <p>three.js forum の r186 native splat実例、Gaussian Splat Lite 1.0、PlayCanvas Engine v2.22.2、Babylon.js 9.26.2、Codropsの直近WebGL/Three.js事例を調査した。9/17のstochastic brush / mesh blendから、今日はsplat depth、invisible hull shadow、canvas HUD post pass、worker sort、camera-driven LOD streaming、crossfade cacheへ進め、依存なしraw WebGL試作を2本追加した。</p>
+      <p class="en-copy">Today reviews a three.js forum r186 native-splat showcase, Gaussian Splat Lite 1.0, PlayCanvas Engine v2.22.2, Babylon.js 9.26.2, and recent Codrops WebGL / Three.js work. Extending September 17's stochastic brush / mesh-blend thread, the focus moves into splat depth, invisible hull shadows, canvas HUD post passes, worker sorting, camera-driven LOD streaming, and crossfade caches. Two dependency-free raw WebGL prototypes were added.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-18_stream_worker_lod_score.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-17.html">← 2026.09.17</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-18 Stream Worker LOD Score</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-18_stream_worker_lod_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-18 Splat Depth HUD Relight Scope</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js forumで9月16日に公開されたGunpla splat city事例は、r186 native splat rendererを使い、scan由来のbaked lightingへrelight passを重ね、splatsがshadowを落とせない問題をconvex hullのinvisible shadow casterで補い、HUDをDOM overlayではなくcanvas textureとしてpost passへ入れている。2. Gaussian Splat Lite 1.0はWebGPU / WebGL2両対応、large-scene streaming、depth rendering、WebGPU compute culling / radix sort / indirect draw、Worker/WASM sort、stochastic render mode、SOG/RAD streamingをまとめており、昨日のstochastic alphaを実装設計へ近づける材料になる。3. PlayCanvas Engine v2.22.2の最新fixはshadow cascade count変更時のshader選択とStandardMaterial texture map iterationで、v2.22.0のscene depth / GSplat depth / MSAA / transform feedback系と合わせると「深度と影をデバッグ対象として見せる」方向が続く。4. Babylon.js 9.26.2はmesh blending post process、KHR_interactivity Phase 1、ProceduralTexture uniform setter拡張、Gaussian splatting coarse-first streaming / local-space cullingを含み、trigger、uniform、stream状態を同じ譜面に載せやすい。5. Codropsの直近Three.js/WebGLチュートリアル群は、liquid glass、face mask、shape-aware ASCII、datamosh、depth relightingなど、素材を画面上で再解釈するpost processの流れを強めている。</p>
+          <p class="en-copy">1. A September 16 three.js forum Gunpla splat city showcase uses the r186 native splat renderer, adds a relight pass over baked scan lighting, compensates for splats not casting shadows with a convex-hull invisible shadow caster, and feeds the HUD into the post pass as a canvas texture rather than a DOM overlay. 2. Gaussian Splat Lite 1.0 combines WebGPU / WebGL2 support, large-scene streaming, depth rendering, WebGPU compute culling / radix sort / indirect drawing, Worker / WASM sorting, stochastic rendering, and SOG / RAD streaming, moving yesterday's stochastic-alpha idea closer to an implementation architecture. 3. PlayCanvas Engine v2.22.2 fixes shadow-shader selection on cascade-count changes and StandardMaterial texture-map iteration; combined with v2.22.0 scene depth / GSplat depth / MSAA / transform feedback work, depth and shadows keep becoming debuggable visual surfaces. 4. Babylon.js 9.26.2 includes mesh blending post process, KHR_interactivity Phase 1, wider ProceduralTexture uniform setters, and Gaussian-splatting coarse-first streaming / local-space culling, making triggers, uniforms, and stream states easy to score on the same timeline. 5. Recent Codrops Three.js / WebGL tutorials strengthen the post-process thread: liquid glass, face masks, shape-aware ASCII, datamosh, and depth relighting all reinterpret source material on screen.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/two-gunpla-scanned-as-3d-gaussian-splats-relit-inside-a-three-js-city/94407" target="_blank" rel="noreferrer">Gunpla splat city showcase</a></li>
+          
+            <li><a href="https://discourse.threejs.org/t/gaussian-splat-lite-1-0-webgpu-streaming-lod-and-depth-rendering-for-three-js/94234" target="_blank" rel="noreferrer">Gaussian Splat Lite 1.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Gunpla splat cityで面白いのは、splatを単体表示せず、generated city、relight pass、invisible shadow hull、cockpit monitor post pass、worker loading screenまで1つの画面文法にしている点。9/13以降のobject ID / USD worker / HTMLTexture / stochastic brushの流れとつながり、重いロードや欠けた物理を「別レイヤーでごまかす」のではなく、演出の一部として見せている。Gaussian Splat Liteは、stream budget、LOD crossfade、depth draw、stochastic fallback、worker sortが明確に分かれているので、各状態をRGBA laneとして可視化しやすい。</p>
+          <p class="en-copy">The Gunpla splat city case is interesting because it does not display splats in isolation; generated city, relight pass, invisible shadow hull, cockpit-monitor post pass, and worker loading screen all become one screen language. This connects to the object-ID / USD-worker / HTMLTexture / stochastic-brush thread since September 13: heavy loading and missing physical behavior are not hidden in a separate layer but made part of the expression. Gaussian Splat Lite separates stream budget, LOD crossfade, depth drawing, stochastic fallback, and worker sorting clearly, so each state can be visualized as an RGBA lane.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/two-gunpla-scanned-as-3d-gaussian-splats-relit-inside-a-three-js-city/94407" target="_blank" rel="noreferrer">Gunpla splat city showcase</a></li>
+          
+            <li><a href="https://discourse.threejs.org/t/gaussian-splat-lite-1-0-webgpu-streaming-lod-and-depth-rendering-for-three-js/94234" target="_blank" rel="noreferrer">Gaussian Splat Lite 1.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Splat Depth HUD Relight Scope」。splat coverage、depth、relight、invisible hull shadow、cockpit HUD textureを1つのpost passで混ぜ、dragでdusk key light、clickでfire glow pulseを出す。派生案は「Stream Worker LOD Score」。camera-driven LOD budget、Worker/WASM sort queue、SOG/RAD chunk fade、stochastic fallbackを譜面のように見せ、dragで予算中心、clickでchunk enqueueを動かす。どちらも完成画ではなく、負荷・遅延・補正・不足を触れる表示へ変える。</p>
+          <p class="en-copy">The main idea is Splat Depth HUD Relight Scope: mix splat coverage, depth, relighting, invisible hull shadows, and cockpit HUD texture in one post pass. Drag moves the dusk key light; click emits a fire-glow pulse. The derived idea is Stream Worker LOD Score: show camera-driven LOD budgets, Worker / WASM sort queues, SOG / RAD chunk fades, and stochastic fallback like a musical score. Drag steers the budget center; click enqueues a chunk. Both turn load, delay, compensation, and incompleteness into tactile display instead of only a finished image.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>splat relight側は、coverage、depth、bakedLighting、relightVector、hullShadowMask、hudTexture、scanlineMask、workerLoadingPhaseを小さなstate textureに分けると実装しやすい。shadow casterは厳密meshでなくても、splat中心点の2D convex hullや低解像depth silhouetteから始められる。stream側は、chunkId、lodLevel、requestedBytes、decodedBytes、gpuUploadedBytes、sortTicket、sortAgeMs、lastValidOrder、fadeWeight、stochasticActiveを持つと、GSLやPlayCanvas SOG系の状態を共通表示に落としやすい。9/17のbrushPathはselectionFootprintとしてdepth passに戻し、9/16のHTMLTexture dirty rectはHUD texture更新のコスト表示に戻す。</p>
+          <p class="en-copy">For splat relighting, split coverage, depth, bakedLighting, relightVector, hullShadowMask, hudTexture, scanlineMask, and workerLoadingPhase into small state textures. The shadow caster can begin as a 2D convex hull over splat centers or a low-resolution depth silhouette rather than a strict mesh. For streaming, track chunkId, lodLevel, requestedBytes, decodedBytes, gpuUploadedBytes, sortTicket, sortAgeMs, lastValidOrder, fadeWeight, and stochasticActive to map GSL or PlayCanvas SOG state into a common display. Feed September 17's brushPath back as a selectionFootprint in the depth pass, and September 16's HTMLTexture dirty rectangles back into HUD texture upload cost.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/gaussian-splat-lite-1-0-webgpu-streaming-lod-and-depth-rendering-for-three-js/94234" target="_blank" rel="noreferrer">Gaussian Splat Lite 1.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/13のUSD worker / object ID、9/16のHTMLTexture / TAA / splat culling、9/17のstochastic brush / mesh blendを、今日のdepth HUD / stream workerへ統合する。新規案件: three.js forumのnative splat実例、Gaussian Splat Liteのquick-start / repo、Babylon 9.26.2のKHR_interactivity / mesh blending / coarse-first streaming、PlayCanvas v2.22系のscene depth / GSplat depth / SOG examples。寝かせる案件: 単なるHUD風飾り、単なるloading bar、splatを粒子背景として流すだけのもの。短期はstate texture化、中長期は実splat viewerのログ再生・展示化。</p>
+          <p class="en-copy">Continue integrating September 13's USD worker / object ID, September 16's HTMLTexture / TAA / splat culling, and September 17's stochastic brush / mesh blend into today's depth HUD / stream worker track. New watch items are native-splat forum showcases, Gaussian Splat Lite quick-start / repo, Babylon 9.26.2 KHR_interactivity / mesh blending / coarse-first streaming, and PlayCanvas v2.22 scene-depth / GSplat-depth / SOG examples. Park decorative HUDs, plain loading bars, and splats used only as particle backdrops. Short term: state textures. Mid term: replay and exhibit real splat-viewer logs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/two-gunpla-scanned-as-3d-gaussian-splats-relit-inside-a-three-js-city/94407" target="_blank" rel="noreferrer">three.js forum splat showcase</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-18_splat_depth_hud_relight_scope.html` を開く。1はdepth splat、2はinvisible hull shadow、3はcockpit HUD post pass、4は合成。dragでライト方向、click / Spaceでfire glow pulseを確認する。次に足すなら、HUDを実Canvas2D texture化し、文字やミニマップをpost passで歪ませる。派生の `outputs/2026-09-18_stream_worker_lod_score.html` は、1 stream budget、2 worker sort queue、3 crossfade cache、4合成。次に足すなら、実chunk JSONを読み、sortAgeMsとfadeWeightをlaneごとに表示する。</p>
+          <p class="en-copy">First open `outputs/2026-09-18_splat_depth_hud_relight_scope.html`. Mode 1 shows depth splats, 2 invisible hull shadows, 3 cockpit HUD post pass, and 4 the composite. Drag changes light direction; click / Space emits a fire-glow pulse. Next, make the HUD a real Canvas2D texture and distort text / minimap in the post pass. The derived `outputs/2026-09-18_stream_worker_lod_score.html` shows 1 stream budget, 2 worker sort queue, 3 crossfade cache, and 4 composite. Next, load real chunk JSON and display sortAgeMs and fadeWeight per lane.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js forumのGunpla splat city、Gaussian Splat Lite、PlayCanvas v2.22.2、Babylon 9.26.2、Codrops Tutorialsを確認。アイデア検討: 9/17のstochastic brush / mesh blendを、depth rendering、invisible shadow hull、HUD post pass、stream LOD、worker sortへ拡張。サンプル実装: 本命 `2026-09-18_splat_depth_hud_relight_scope.html` と派生 `2026-09-18_stream_worker_lod_score.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを行う。短期: procedural表示で可読性を見る。中長期: 実GSL / SuperSplat / PlayCanvas SOGログを読み、状態再生surfaceへ育てる。</p>
+          <p class="en-copy">Collection: checked the three.js forum Gunpla splat city, Gaussian Splat Lite, PlayCanvas v2.22.2, Babylon 9.26.2, and Codrops Tutorials. Ideation: extended September 17's stochastic brush / mesh blend into depth rendering, invisible shadow hulls, HUD post passes, stream LOD, and worker sorting. Implementation: added `2026-09-18_splat_depth_hud_relight_scope.html` and `2026-09-18_stream_worker_lod_score.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: check readability with procedural displays. Mid term: read real GSL / SuperSplat / PlayCanvas SOG logs and grow this into a state replay surface.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日の流れは、rendererが苦手なものを補正する副産物が、そのまま表現言語になっていること。9/16はHTMLTexture / TAA / culling、9/17はstochastic alpha / brush / mesh blend、今日はdepth / shadow hull / HUD texture / worker LOD。組み合わせると、画面はsceneではなく「制作中のsceneを支える状態の地図」になる。育てる価値が高いテーマは、splat viewerや3D scan editorのproduction telemetryを、観客が触れるpost-process instrumentへ変えること。</p>
+          <p class="en-copy">The recent throughline is that the byproducts used to compensate for renderer limitations become the expressive language: September 16 had HTMLTexture / TAA / culling, September 17 had stochastic alpha / brush / mesh blend, and today has depth / shadow hull / HUD texture / worker LOD. Together, the screen becomes not just a scene but a map of the states supporting a scene in production. The theme worth growing is turning production telemetry from splat viewers and 3D scan editors into a post-process instrument the audience can touch.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/gaussian-splat-lite-1-0-webgpu-streaming-lod-and-depth-rendering-for-three-js/94234" target="_blank" rel="noreferrer">Gaussian Splat Lite 1.0</a></li>
+          
+            <li><a href="https://discourse.threejs.org/t/two-gunpla-scanned-as-3d-gaussian-splats-relit-inside-a-three-js-city/94407" target="_blank" rel="noreferrer">Gunpla splat city showcase</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-18_splat_depth_hud_relight_scope.html` を実装した。依存なしraw WebGL fragment shaderで、疑似splat depth、relight、invisible hull shadow、cockpit HUD post passを描く。短時間で見るポイントは「HUDが上に貼った説明ではなく、sceneと同じ歪み・走査線・深度感を持つレンダリング部品として読めるか」。派生として `outputs/2026-09-18_stream_worker_lod_score.html` を実装した。camera-driven LOD grid、worker sort queue、crossfade cacheを描く。短時間で見るポイントは「streamingの待ち時間が、loading表示ではなく構成リズムとして読めるか」。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-18_splat_depth_hud_relight_scope.html`, a dependency-free raw WebGL fragment shader drawing pseudo splat depth, relighting, invisible hull shadows, and a cockpit HUD post pass. The quick question is whether the HUD reads not as explanatory overlay but as a render component with the same distortion, scanlines, and depth feel as the scene. The derived prototype is `outputs/2026-09-18_stream_worker_lod_score.html`, drawing a camera-driven LOD grid, worker sort queue, and crossfade cache. The quick question is whether streaming delay reads as compositional rhythm rather than loading UI.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は splatCoverage、splatDepth、relightVector、hullShadowMask、hudDirtyRect、scanlinePhase、loadingPhase、fireGlowPulse をデータ化できる。都市スキャン、展示アーカイブ、ゲーム内scanner、商品viewerに入れると、欠けた影やbaked lightingを補正する処理そのものが物語になる。音と組み合わせるなら低域でhull shadow、ミッドでrelight、ハイでHUD scanlineを動かす。2本目は chunkId、lodLevel、requestState、decodeState、uploadState、sortAgeMs、lastValidOrder、fadeWeight、stochasticActive をデータ化できる。WebXR gallery、large scan portfolio、field recording map、ライブVJの素材cache表示に使える。過去案との接続では、9/17のbrushPathをselection footprintへ、9/16のHTMLTexture dirty rectをHUD upload laneへ、9/13のUSD worker queueをsort queueへ接続すると、編集、ロード、レンダリング補正が同じタイムライン上で読める。</p>
+          <p class="en-copy">The first sample can log splatCoverage, splatDepth, relightVector, hullShadowMask, hudDirtyRect, scanlinePhase, loadingPhase, and fireGlowPulse. In city scans, exhibition archives, in-game scanners, or product viewers, the correction process for missing shadows and baked lighting becomes part of the story. With audio, lows can drive hull shadows, mids relighting, and highs HUD scanlines. The second sample can log chunkId, lodLevel, requestState, decodeState, uploadState, sortAgeMs, lastValidOrder, fadeWeight, and stochasticActive. It fits WebXR galleries, large scan portfolios, field-recording maps, and live VJ material-cache displays. Connecting back, route September 17's brushPath into selection footprints, September 16's HTMLTexture dirty rectangles into HUD upload lanes, and September 13's USD worker queue into sort queues so editing, loading, and rendering compensation share one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://discourse.threejs.org/t/two-gunpla-scanned-as-3d-gaussian-splats-relit-inside-a-three-js-city/94407" target="_blank" rel="noreferrer">Two Gunpla scanned as 3D Gaussian Splats</a></li>
+          
+            <li><a href="https://discourse.threejs.org/t/gaussian-splat-lite-1-0-webgpu-streaming-lod-and-depth-rendering-for-three-js/94234" target="_blank" rel="noreferrer">Gaussian Splat Lite 1.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+            <li><a href="../outputs/2026-09-18_splat_depth_hud_relight_scope.html" target="_blank" rel="noreferrer">Main sample: Splat Depth HUD Relight Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-18_stream_worker_lod_score.html" target="_blank" rel="noreferrer">Derived sample: Stream Worker LOD Score</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-18_stream_worker_lod_score.html" loading="lazy" title="2026-09-18 Stream Worker LOD Score"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
