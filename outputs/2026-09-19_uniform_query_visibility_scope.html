@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-09-19 Uniform Query Visibility Scope</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07090a; color: #eef5f0; font-family: system-ui, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; left: 18px; top: 16px; max-width: 690px; font-size: 12px; line-height: 1.55; color: rgba(238,245,240,.82); pointer-events: none; }
+    .hud b { color: white; font-weight: 700; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud"><b>Uniform query visibility scope</b><br>1 uniform struct array / 2 normalized occlusion query / 3 CSM shadow + blur branch / 4 composite. Drag to move the visibility probe. Click or Space to refresh the uniform group.</div>
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+  if (!gl) {
+    document.body.insertAdjacentHTML("beforeend", "<p>WebGL is not available.</p>");
+    return;
+  }
+
+  const vertex = `
+    attribute vec2 position;
+    void main() { gl_Position = vec4(position, 0.0, 1.0); }
+  `;
+
+  const fragment = `
+    precision highp float;
+    uniform vec2 resolution;
+    uniform vec2 pointer;
+    uniform float time;
+    uniform float pulse;
+    uniform float mode;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(127.1, 311.7));
+      p += dot(p, p + 37.13);
+      return fract(p.x * p.y);
+    }
+
+    float line(vec2 p, vec2 a, vec2 b, float w) {
+      vec2 pa = p - a;
+      vec2 ba = b - a;
+      float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      return smoothstep(w, 0.0, length(pa - ba * h));
+    }
+
+    float box(vec2 p, vec2 b) {
+      vec2 d = abs(p) - b;
+      return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    }
+
+    vec3 uniformArray(vec2 uv) {
+      vec2 p = uv * 2.0 - 1.0;
+      p.x *= resolution.x / resolution.y;
+      vec3 col = vec3(0.012, 0.017, 0.018);
+      for (int y = 0; y < 5; y++) {
+        for (int x = 0; x < 8; x++) {
+          vec2 id = vec2(float(x), float(y));
+          vec2 c = (id + 0.5) / vec2(8.0, 5.0) * 2.0 - 1.0;
+          c.x *= 1.52;
+          vec2 q = p - c;
+          float cell = smoothstep(0.012, 0.0, abs(box(q, vec2(0.12, 0.12))));
+          float member = fract(id.x * 0.37 + id.y * 0.21 + time * 0.07);
+          float update = smoothstep(0.20, 0.86, 0.5 + 0.5 * sin(time * 1.5 + id.x + id.y * 2.0 + pulse * 2.5));
+          float hot = smoothstep(0.24, 0.0, length(c - (pointer * 2.0 - 1.0) * vec2(1.52, 1.0)));
+          col += cell * mix(vec3(0.05, 0.15, 0.18), vec3(0.55, 0.78, 0.52), update) * (0.55 + hot);
+          col += cell * step(0.67, member) * vec3(0.30, 0.18, 0.48);
+          col += line(q, vec2(-0.10, -0.04), vec2(0.10, -0.04 + 0.08 * update), 0.005) * vec3(0.92, 0.78, 0.38);
+        }
+      }
+      return col;
+    }
+
+    vec3 visibilityQuery(vec2 uv) {
+      vec2 p = uv * 2.0 - 1.0;
+      p.x *= resolution.x / resolution.y;
+      vec3 col = vec3(0.014, 0.015, 0.021);
+      vec2 probe = (pointer * 2.0 - 1.0) * vec2(1.35, 0.82);
+      for (int i = 0; i < 16; i++) {
+        float fi = float(i);
+        vec2 c = vec2(sin(fi * 2.399) * 1.03, cos(fi * 1.713) * 0.66);
+        float radius = 0.08 + 0.05 * hash(vec2(fi, 4.0));
+        float dist = length(p - c);
+        float visible = smoothstep(1.15, 0.08, length(c - probe)) * (0.55 + 0.45 * sin(time + fi));
+        float disc = smoothstep(radius, radius - 0.015, dist);
+        float ring = smoothstep(0.010, 0.0, abs(dist - radius * (1.2 + visible * 0.7)));
+        col += disc * mix(vec3(0.10, 0.12, 0.18), vec3(0.18, 0.62, 0.48), visible);
+        col += ring * vec3(0.88, 0.64, 0.32);
+      }
+      float probeRing = smoothstep(0.012, 0.0, abs(length(p - probe) - 0.22 - pulse * 0.08));
+      col += probeRing * vec3(0.98, 0.95, 0.58);
+      for (int i = 0; i < 7; i++) {
+        float y = -0.82 + float(i) * 0.27;
+        float lane = line(p, vec2(-1.35, y), vec2(1.34, y + 0.03 * sin(time + float(i))), 0.0035);
+        col += lane * vec3(0.08, 0.22, 0.25);
+      }
+      return col;
+    }
+
+    vec3 shadowBlurBranch(vec2 uv) {
+      vec2 p = uv * 2.0 - 1.0;
+      p.x *= resolution.x / resolution.y;
+      vec3 col = vec3(0.012, 0.014, 0.017);
+      for (int i = 0; i < 5; i++) {
+        float fi = float(i);
+        float split = -0.78 + fi * 0.39;
+        float cascade = smoothstep(0.018, 0.0, abs(p.y - split - 0.03 * sin(p.x * 3.0 + time + fi)));
+        float branch = smoothstep(0.018, 0.0, abs(p.y - split - 0.14 - 0.05 * sin(p.x * 5.0 - time * 0.4)));
+        col += cascade * mix(vec3(0.16, 0.22, 0.30), vec3(0.72, 0.46, 0.20), fi / 5.0);
+        col += branch * vec3(0.18, 0.42, 0.64);
+      }
+      for (int i = 0; i < 34; i++) {
+        float fi = float(i);
+        vec2 c = vec2(sin(fi * 1.41 + time * 0.12), cos(fi * 2.13 - time * 0.09)) * vec2(1.15, 0.70);
+        float b = exp(-dot(p - c, p - c) / (0.020 + 0.012 * sin(fi)));
+        col += b * vec3(0.028, 0.035, 0.045);
+      }
+      float gaussianTap = 0.0;
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i) - 4.0;
+        gaussianTap += line(p, vec2(-0.55 + fi * 0.07, -0.92), vec2(-0.40 + fi * 0.09, 0.92), 0.0025);
+      }
+      col += gaussianTap * vec3(0.35, 0.55, 0.92);
+      return col;
+    }
+
+    void main() {
+      vec2 uv = gl_FragCoord.xy / resolution.xy;
+      vec3 a = uniformArray(uv);
+      vec3 b = visibilityQuery(uv);
+      vec3 c = shadowBlurBranch(uv);
+      float m = floor(mode + 0.5);
+      vec3 col = a;
+      if (m == 2.0) col = b;
+      if (m == 3.0) col = c;
+      if (m == 4.0) col = a * 0.70 + b * 0.78 + c * 0.74;
+      col += pulse * pow(max(0.0, 1.0 - distance(uv, pointer) * 2.2), 3.0) * vec3(0.96, 0.64, 0.28);
+      gl_FragColor = vec4(pow(max(col, vec3(0.0)), vec3(0.92)), 1.0);
+    }
+  `;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, "position");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, "resolution"),
+    pointer: gl.getUniformLocation(program, "pointer"),
+    time: gl.getUniformLocation(program, "time"),
+    pulse: gl.getUniformLocation(program, "pulse"),
+    mode: gl.getUniformLocation(program, "mode")
+  };
+
+  let pointer = [0.54, 0.49];
+  let pulse = 0;
+  let mode = 4;
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(innerWidth * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  addEventListener("resize", resize);
+  addEventListener("pointermove", (event) => {
+    pointer = [event.clientX / innerWidth, 1 - event.clientY / innerHeight];
+  });
+  addEventListener("pointerdown", () => { pulse = 1; });
+  addEventListener("keydown", (event) => {
+    if (event.key >= "1" && event.key <= "4") mode = Number(event.key);
+    if (event.code === "Space") pulse = 1;
+  });
+
+  resize();
+  const start = performance.now();
+  function frame(now) {
+    pulse *= 0.925;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.time, (now - start) / 1000);
+    gl.uniform1f(uniforms.pulse, pulse);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>

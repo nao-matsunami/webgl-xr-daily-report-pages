@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>uniform更新、occlusion query、frame graphを可視状態として扱う | 2026-09-19</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.19</p>
+      <h1>uniform更新、occlusion query、frame graphを可視状態として扱う</h1>
+      <p class="hero-subtitle">Treating uniform updates, occlusion queries, and frame graphs as visible state</p>
+      <p>three.js の9月17日PR群、Babylon.js 9.27.1 / 9.27.0、PlayCanvas Engine v2.22.2と関連リポジトリ、Codropsの9月中旬WebGL/Three.js事例を調査した。9/18のsplat depth / stream worker LODから、今日はuniform struct array、NodeManager更新、normalized occlusion query、CSM shadow branch、frame graph内のsplat・sprite・particle geometry passへ進め、依存なしraw WebGL試作を2本追加した。</p>
+      <p class="en-copy">Today reviews September 17 three.js PRs, Babylon.js 9.27.1 / 9.27.0, PlayCanvas Engine v2.22.2 and related repositories, plus mid-September Codrops WebGL / Three.js examples. Extending September 18's splat depth / stream-worker LOD thread, the focus moves into uniform struct arrays, NodeManager updates, normalized occlusion queries, CSM shadow branches, and frame-graph geometry passes for splats, sprites, and particles. Two dependency-free raw WebGL prototypes were added.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-19_uniform_query_visibility_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-18.html">← 2026.09.18</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-19 Uniform Query Visibility Scope</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-19_uniform_query_visibility_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-19 Framegraph Splat Geometry Pass</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.jsのPR一覧では9月17日に `UniformArrayNode - Allow the User to Pass Structs`、`NodeManager: Update RENDER and FRAME uniform groups once per id`、`WebGPURenderer: Fix polygonOffset with reversed depth buffer`、`Only use SunLight in larger scenes` などが並び、TSL / WebGPUの状態管理がさらに実装面へ寄っている。2. three.jsではMaterialXLoaderのnodedef defaults / displacement / Texture resolve、E2EのWebGPU device loss retryやbrowser capture分離も続いており、9/18のsplat streamだけでなく、asset graphとtest graphも可視化対象になる。3. Babylon.js 9.27.1はnormalized occlusion query visibility API、frame graph geometry renderingでのGaussian splats / sprites / particles対応、WGSL CSM shadow branch修正、ImageBitmap sourceのblob URL round-trip回避、Gaussian splatting fixed FOV / streaming compound compact修正を含む。4. Babylon.js 9.27.0はKHR_interactivity export supportを追加し、9.26.2のKHR_interactivity Phase 1 import / mesh blending / ProceduralTexture uniform setters / coarse-first streamingから、glTF interactivityを入出力両方の状態として扱える段階に近づいた。5. PlayCanvasはEngine v2.22.2が最新安定で、組織リポジトリではengine、supersplat、supersplat-viewer、editorが9月中旬も更新されている。scene depth、GSplat depth、SOG streaming、SuperSplat編集状態を横断ログにする流れは継続でよい。</p>
+          <p class="en-copy">1. The three.js PR list for September 17 includes `UniformArrayNode - Allow the User to Pass Structs`, `NodeManager: Update RENDER and FRAME uniform groups once per id`, `WebGPURenderer: Fix polygonOffset with reversed depth buffer`, and `Only use SunLight in larger scenes`, moving TSL / WebGPU state management closer to implementation detail. 2. MaterialXLoader fixes for nodedef defaults / displacement / Texture resolution and E2E work around WebGPU device-loss retry and browser-capture separation mean asset graphs and test graphs are also visualization targets, not only September 18's splat stream. 3. Babylon.js 9.27.1 adds a normalized occlusion-query visibility API, frame-graph geometry rendering support for Gaussian splats / sprites / particles, a WGSL CSM shadow-branch fix, an ImageBitmap path that avoids blob URL round trips, and Gaussian-splatting fixed-FOV / streaming-compound compact fixes. 4. Babylon.js 9.27.0 adds KHR_interactivity export support, pairing with 9.26.2 import-side KHR_interactivity Phase 1, mesh blending, ProceduralTexture uniform setters, and coarse-first streaming. 5. PlayCanvas Engine v2.22.2 remains the latest stable release, while engine, supersplat, supersplat-viewer, and editor repositories continued updating in mid-September. The thread of cross-logging scene depth, GSplat depth, SOG streaming, and SuperSplat editing state remains worth continuing.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://github.com/orgs/playcanvas/repositories" target="_blank" rel="noreferrer">PlayCanvas repositories</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目点は、派手な完成画ではなく、renderer内部の「更新単位」が細かく見え始めていること。three.jsのUniformArrayNode / NodeManager PRは、uniform groupがいつ、どのidで更新されるかを表現入力にできる。Babylon.js 9.27.1のnormalized occlusion queryは、見えているかどうかを0/1ではなく連続値として演出へ戻せる。frame graphでsplat / sprite / particleをgeometry renderingへ入れる流れは、9/18のsplat depth / stream worker LODを、post passではなくrender graphそのものの譜面として扱える材料になる。Codrops側ではInfinite Liquid Glass Grid、Elemental Sandbox、Stillなど、WebGPU/TSL/GLSLが画面の質感だけでなく、構造や生成システムを見せる方向へ寄っている。</p>
+          <p class="en-copy">The interesting signal today is not a flashy finished image but the increasing visibility of renderer update units. three.js UniformArrayNode / NodeManager PRs make it possible to treat when and under which id a uniform group updates as an expressive input. Babylon.js 9.27.1 normalized occlusion queries return visibility as a continuous signal rather than a simple yes/no. Frame-graph geometry rendering for splats / sprites / particles lets September 18's splat depth / stream-worker LOD become a score inside the render graph rather than only a post pass. On the Codrops side, Infinite Liquid Glass Grid, Elemental Sandbox, Still, and related examples push WebGPU / TSL / GLSL toward showing structure and generative systems, not just surface texture.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Uniform Query Visibility Scope」。uniform struct array、RENDER / FRAME group update、normalized occlusion query、CSM shadow branch、background blur tapsを1枚の監査面にして、dragでvisibility probe、clickでuniform refresh pulseを走らせる。派生案は「Framegraph Splat Geometry Pass」。frame graph lanesの中にsplat / sprite / particle geometry pass、ImageBitmap upload path、streaming compound compact、fixed horizontal FOV correctionを重ね、dragでcamera gate、clickでcompact pulseを動かす。どちらも「結果の画」ではなく、描画を成立させる内部状態を楽器化する方向。</p>
+          <p class="en-copy">The main idea is Uniform Query Visibility Scope: place uniform struct arrays, RENDER / FRAME group updates, normalized occlusion queries, CSM shadow branches, and background-blur taps on one inspection surface. Drag moves the visibility probe; click triggers a uniform-refresh pulse. The derived idea is Framegraph Splat Geometry Pass: layer splat / sprite / particle geometry passes, ImageBitmap upload paths, streaming-compound compaction, and fixed horizontal-FOV correction into frame-graph lanes. Drag moves the camera gate; click emits a compact pulse. Both turn the internal state that makes rendering possible into an instrument rather than a final picture.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>uniform系は `groupId`, `frameId`, `renderId`, `structIndex`, `dirtyBit`, `uploadBytes`, `lastUsedNode`, `visibilityWeight` を小さなtexture laneに落とすと、three.js TSL / WebGPUとBabylon ProceduralTexture uniform setterの両方に対応しやすい。occlusion queryは `visibleSamples / totalSamples` を正規化し、0.0から1.0の連続値でshaderへ戻すと、HUD、scanline、sound reactive、splat densityに使える。frame graph系は `passName`, `resourceId`, `geometryKind`, `splatCount`, `spriteCount`, `particleCount`, `imageBitmapFastPath`, `compactGeneration`, `fovMode` を持つと、Babylon frame graphとPlayCanvas / SuperSplatのstream状態を同じビューに置ける。</p>
+          <p class="en-copy">For uniform work, map `groupId`, `frameId`, `renderId`, `structIndex`, `dirtyBit`, `uploadBytes`, `lastUsedNode`, and `visibilityWeight` into small texture lanes. This can bridge three.js TSL / WebGPU and Babylon ProceduralTexture uniform setters. For occlusion queries, normalize `visibleSamples / totalSamples` and feed the continuous 0.0 to 1.0 value back into shaders for HUDs, scanlines, sound response, or splat density. For frame graphs, track `passName`, `resourceId`, `geometryKind`, `splatCount`, `spriteCount`, `particleCount`, `imageBitmapFastPath`, `compactGeneration`, and `fovMode` so Babylon frame graph state and PlayCanvas / SuperSplat streaming state can share one view.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/18のsplat depth / stream worker LODを、今日のframe graph geometry passへ接続する。9/17のstochastic brushはvisibilityWeightやocclusion queryで密度を変える入力に戻す。9/16のHTMLTexture dirty rectはImageBitmap fast path / blob URL回避の計測laneへ戻す。新規案件: three.jsのUniformArrayNode / NodeManager / MaterialXLoader / E2E WebGPU retry、Babylon 9.27.1のocclusion query APIとframe graph、KHR_interactivity export、PlayCanvas / SuperSplat / supersplat-viewerの9月中旬更新。寝かせる案件: 単なるdiagnostic overlay、数値表だけのdebug UI。短期はstate textureの読みやすさ、中長期は実viewerのframe graph replay。</p>
+          <p class="en-copy">Continue connecting September 18's splat depth / stream-worker LOD into today's frame-graph geometry pass. Feed September 17's stochastic brush back as density input controlled by visibilityWeight or occlusion queries. Feed September 16's HTMLTexture dirty rectangles into an ImageBitmap fast-path / blob-URL-avoidance measurement lane. New watch items are three.js UniformArrayNode / NodeManager / MaterialXLoader / E2E WebGPU retry, Babylon 9.27.1 occlusion-query API and frame graph, KHR_interactivity export, and mid-September PlayCanvas / SuperSplat / supersplat-viewer updates. Park plain diagnostic overlays and number-table debug UIs. Short term: readable state textures. Mid term: real viewer frame-graph replay.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/orgs/playcanvas/repositories" target="_blank" rel="noreferrer">PlayCanvas repositories</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-19_uniform_query_visibility_scope.html` を開く。1はuniform struct array、2はnormalized occlusion query、3はCSM shadow + blur branch、4は合成。dragでvisibility probe、click / Spaceでuniform refresh pulseを見る。次に足すなら、実際のrendererログをJSONで読み、dirtyBitやvisibleSamplesをlaneごとに反映する。派生の `outputs/2026-09-19_framegraph_splat_geometry_pass.html` は、1 frame graph lanes、2 splat / sprite / particle geometry、3 ImageBitmap + streaming compact、4合成。次に足すなら、pass dependency graphを線で結び、compactGenerationが変わった瞬間だけsplatが欠ける表現を足す。</p>
+          <p class="en-copy">First open `outputs/2026-09-19_uniform_query_visibility_scope.html`. Mode 1 shows uniform struct arrays, 2 normalized occlusion queries, 3 CSM shadow + blur branches, and 4 the composite. Drag moves the visibility probe; click / Space emits a uniform-refresh pulse. Next, load real renderer logs as JSON and map dirtyBit or visibleSamples per lane. The derived `outputs/2026-09-19_framegraph_splat_geometry_pass.html` shows 1 frame-graph lanes, 2 splat / sprite / particle geometry, 3 ImageBitmap + streaming compact, and 4 composite. Next, connect the pass dependency graph with lines and make splats drop only when compactGeneration changes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js PR一覧、Babylon.js 9.27.1 / 9.27.0 / 9.26.2、PlayCanvas Engine v2.22.2と組織repo更新、Codrops Tutorials / Creative Hubを確認。アイデア検討: 9/18のsplat streamを、uniform更新、occlusion visibility、frame graph geometry passへ分解。サンプル実装: 本命 `2026-09-19_uniform_query_visibility_scope.html` と派生 `2026-09-19_framegraph_splat_geometry_pass.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを行う。短期: procedural laneで可読性を見る。中長期: three.js / Babylon / PlayCanvasの実ログを同じschemaへ寄せ、レンダリング状態の時系列アーカイブにする。</p>
+          <p class="en-copy">Collection: checked the three.js PR list, Babylon.js 9.27.1 / 9.27.0 / 9.26.2, PlayCanvas Engine v2.22.2 and organization repository updates, plus Codrops Tutorials / Creative Hub. Ideation: decomposed September 18's splat stream into uniform updates, occlusion visibility, and frame-graph geometry passes. Implementation: added `2026-09-19_uniform_query_visibility_scope.html` and `2026-09-19_framegraph_splat_geometry_pass.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: test readability with procedural lanes. Mid term: normalize real three.js / Babylon / PlayCanvas logs into one schema and archive rendering state over time.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、GPU表現そのものよりも、その手前の「更新・検証・転送・見えている度合い」が主役になってきたこと。9/13のUSD worker / object ID、9/16のHTMLTexture / TAA / culling、9/17のstochastic brush / mesh blend、9/18のsplat depth / stream worker、今日のuniform / occlusion / frame graphは、全部「描画の裏側が画面の意味になる」流れでつながる。組み合わせ候補としては、occlusion visibilityで音量や粒子密度を変え、uniform dirtyBitで画面の拍を作り、frame graph passの依存線をWebXR空間の光路として見せると強い。</p>
+          <p class="en-copy">The recent trend is that not only GPU expression itself but the preceding states of update, validation, transfer, and visibility are becoming protagonists. September 13's USD worker / object ID, September 16's HTMLTexture / TAA / culling, September 17's stochastic brush / mesh blend, September 18's splat depth / stream worker, and today's uniform / occlusion / frame graph work all connect through one theme: the backstage of rendering becomes the meaning on screen. Strong combinations include driving volume or particle density with occlusion visibility, making screen rhythm from uniform dirtyBits, and showing frame-graph pass dependencies as light paths in WebXR space.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-19_uniform_query_visibility_scope.html` を実装した。依存なしraw WebGL fragment shaderで、uniform struct array、occlusion query、CSM shadow branch、blur tapを4モードで描く。短時間で見るポイントは「uniformやqueryがdebug数値ではなく、画面の密度・明滅・拍として読めるか」。派生として `outputs/2026-09-19_framegraph_splat_geometry_pass.html` を実装した。frame graph lane、splat / sprite / particle geometry、ImageBitmap upload / streaming compactを4モードで描く。短時間で見るポイントは「pass依存とstream compactの変化が、splatの欠落や復帰として読めるか」。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-19_uniform_query_visibility_scope.html`, a dependency-free raw WebGL fragment shader drawing uniform struct arrays, occlusion queries, CSM shadow branches, and blur taps in four modes. The quick question is whether uniforms and queries read as density, flicker, and rhythm rather than debug numbers. The derived prototype is `outputs/2026-09-19_framegraph_splat_geometry_pass.html`, drawing frame-graph lanes, splat / sprite / particle geometry, and ImageBitmap upload / streaming compaction in four modes. The quick question is whether pass dependencies and streaming compaction read as splat loss and recovery.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `groupId`, `frameId`, `renderId`, `structIndex`, `dirtyBit`, `uploadBytes`, `visibleSamples`, `totalSamples`, `shadowBranch`, `blurTapWeight` をデータ化できる。shader playground、WebGPU renderer QA、3D scan viewer、interactive installationで、見えている量や更新負荷を演出入力に戻せる。音と組み合わせるなら、visibleSamplesで音量、dirtyBitでキック、uploadBytesでノイズ帯域を動かす。2本目は `passName`, `resourceId`, `geometryKind`, `splatCount`, `spriteCount`, `particleCount`, `imageBitmapFastPath`, `compactGeneration`, `fixedFov`, `dependencyDepth` をデータ化できる。WebXR galleryやlarge scene viewerでは、frame graphの依存が空間内の導線や光路として使える。過去案との接続では、9/18のchunk fadeをcompactGenerationへ、9/17のbrush footprintをocclusion probeへ、9/16のHTMLTexture dirty rectをImageBitmap laneへ入れると、編集・転送・可視性が同じ時間軸に揃う。</p>
+          <p class="en-copy">The first sample can log `groupId`, `frameId`, `renderId`, `structIndex`, `dirtyBit`, `uploadBytes`, `visibleSamples`, `totalSamples`, `shadowBranch`, and `blurTapWeight`. In shader playgrounds, WebGPU renderer QA, 3D scan viewers, or installations, visible amount and update cost can become expressive inputs. With audio, visibleSamples can drive volume, dirtyBit the kick, and uploadBytes a noise band. The second sample can log `passName`, `resourceId`, `geometryKind`, `splatCount`, `spriteCount`, `particleCount`, `imageBitmapFastPath`, `compactGeneration`, `fixedFov`, and `dependencyDepth`. In WebXR galleries or large-scene viewers, frame-graph dependencies can become paths or light routes in space. Connecting back, route September 18's chunk fade into compactGeneration, September 17's brush footprint into occlusion probes, and September 16's HTMLTexture dirty rectangles into ImageBitmap lanes so editing, transfer, and visibility share one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.22.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.2</a></li>
+          
+            <li><a href="https://github.com/orgs/playcanvas/repositories" target="_blank" rel="noreferrer">PlayCanvas repositories</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-09-19_uniform_query_visibility_scope.html" target="_blank" rel="noreferrer">Main sample: Uniform Query Visibility Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-19_framegraph_splat_geometry_pass.html" target="_blank" rel="noreferrer">Derived sample: Framegraph Splat Geometry Pass</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-19_uniform_query_visibility_scope.html" loading="lazy" title="2026-09-19 Uniform Query Visibility Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

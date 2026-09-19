@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 90</span>
+        <span>days: 91</span>
         <span>page: 1 / 8</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -317,6 +317,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-19">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.19</p>
+              <h2>uniform更新、occlusion query、frame graphを可視状態として扱う</h2>
+              <p class="card-subtitle">Treating uniform updates, occlusion queries, and frame graphs as visible state</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-19" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の9月17日PR群、Babylon.js 9.27.1 / 9.27.0、PlayCanvas Engine v2.22.2と関連リポジトリ、Codropsの9月中旬WebGL/Three.js事例を調査した。9/18のsplat depth / stream worker LODから、今日はuniform struct array、NodeManager更新、normalized occlusion query、CSM shadow branch、frame graph内のsplat・sprite・particle geometry passへ進め、依存なしraw WebGL試作を2本追加した。</p>
+          <p class="description en-copy">Today reviews September 17 three.js PRs, Babylon.js 9.27.1 / 9.27.0, PlayCanvas Engine v2.22.2 and related repositories, plus mid-September Codrops WebGL / Three.js examples. Extending September 18's splat depth / stream-worker LOD thread, the focus moves into uniform struct arrays, NodeManager updates, normalized occlusion queries, CSM shadow branches, and frame-graph geometry passes for splats, sprites, and particles. Two dependency-free raw WebGL prototypes were added.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-09-19.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-09-19_uniform_query_visibility_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-18">
           <div class="card-top">
             <div>
@@ -566,29 +589,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-09-06.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-09-06_usd_worker_stage_scan.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-05">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.05</p>
-              <h2>TAAの蓄積、ASCII化、安定UBO slotをGPU状態の記憶として扱う</h2>
-              <p class="card-subtitle">Treating TAA accumulation, ASCII quantization, and stable UBO slots as GPU-state memory</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-05" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の TAAUtils追加、TSL Guideへの名称整理、WebGLRenderer viewport/scissorのpixel ratio修正、SSGI/SVGF/blue-noise実験、PlayCanvas の physics timeScale / public step、raycastAll sort順とcollision maskのドキュメント修正、splat depth warning整理、Babylon.js の owner-keyed WebGPU uniform buffer slots、FlexPanel / em/rem GUI units、ShadowOnlyMaterial IBL shadowsを調査した。前回のsubmit/readback/object IDから、今日は「時間的に蓄積する絵」と「draw contextごとに安定するGPU資源」を、見える記憶とヒット判定の演出へ接続した。</p>
-          <p class="description en-copy">Today covers three.js TAAUtils, the TSL Guide rename, WebGLRenderer viewport/scissor pixel-ratio fixes, SSGI/SVGF/blue-noise work, PlayCanvas physics timeScale and public step(), raycastAll sorting and collision-mask documentation, splat-depth warning cleanup, Babylon.js owner-keyed WebGPU uniform-buffer slots, FlexPanel / em-rem GUI units, and ShadowOnlyMaterial IBL shadows. Building on submit/readback/object IDs, the focus shifts to temporal image accumulation and draw-context-stable GPU resources as visible memory and hit-testing choreography.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-09-05.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-09-05_temporal_ascii_denoise_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       
