@@ -1,0 +1,207 @@
+{
+  "date": "2026-09-20",
+  "headline": "VATの紙の記憶とocclusion可視率を、演奏できるレンダー状態へ戻す",
+  "headlineEn": "Returning VAT paper memory and occlusion visibility to playable render state",
+  "summary": "Codrops Creative Hub の Paper Crumple (VAT)、three.js r186 と r187へ向かうWebGPU/TSL/occlusion周辺、Babylon.js 9.27.1のnormalized occlusion queryとframe graph geometry rendering、PlayCanvas Engine v2.22.2を調査した。9/19のuniform/query/framegraph可視化から、今日はVAT・物理・影の履歴を1枚の紙の状態譜面にする本命試作と、occlusion可視率・pass依存・音帯域uniformをつなぐ派生試作を追加した。",
+  "summaryEn": "Today reviews Codrops Creative Hub's Paper Crumple (VAT), three.js r186 and WebGPU / TSL / occlusion work heading toward r187, Babylon.js 9.27.1 normalized occlusion queries and frame-graph geometry rendering, plus PlayCanvas Engine v2.22.2. Extending September 19's uniform / query / frame-graph visibility work, the main prototype turns VAT, physics, and shadow history into a paper-state score, while the derived prototype connects occlusion visibility, pass dependencies, and audio-band uniforms.",
+  "links": [
+    {
+      "label": "Codrops Creative Hub - Paper Crumple (VAT)",
+      "url": "https://tympanus.net/codrops/hub/all/codrops/"
+    },
+    {
+      "label": "three.js r186 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+    },
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "Babylon.js 9.27.1 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.27.1"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.2",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.2"
+    },
+    {
+      "label": "Main sample: VAT Crumple Memory Sheet",
+      "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+    },
+    {
+      "label": "Derived sample: Occlusion Framegraph Audio Mixer",
+      "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. Codrops Creative Hubに9月19日公開の Paper Crumple (VAT) が追加された。cannon-es / physics / Three.js / WebGL のタグが付いており、紙の変形を物理結果だけでなくvertex animation texture的な時間記憶として扱う題材になる。2. three.js r186は9月8日に公開され、WebGPURenderer、occlusion query、timestamp query、shared uniform buffer、DirectRenderPipeline、SunLight cascaded shadow maps、PMREM blur、ImageBitmapLoaderなどの修正・追加がまとまっている。3. three.js PR streamではr187へ向けてTSL tree-shake、toInspector、compileAsync、WebGPURenderer canvas optional、GPU terrain vector overlayなどが続いており、9/19のuniform/query可視化を実ログに近づけられる。4. Babylon.js 9.27.1はnormalized occlusion query visibility API、Gaussian splats / sprites / particlesをframe graph geometry renderingへ入れる更新、WebGPU occlusion query begin sequencing、ImageBitmap fast path、streaming compound compact修正を含む。5. PlayCanvas Engine v2.22.2はcascade count変更時のshadow shader選択とStandardMaterial texture map iteration修正が中心で、9/14-9/19で追ってきたshadow/material/state laneを地味に支える更新として扱える。",
+      "bodyEn": "1. Codrops Creative Hub added Paper Crumple (VAT) on September 19, tagged with cannon-es, physics, Three.js, and WebGL. It is useful as a subject where paper deformation can be treated not only as physics output but as vertex-animation-texture time memory. 2. three.js r186 was released on September 8 and includes a broad cluster around WebGPURenderer, occlusion queries, timestamp queries, shared uniform buffers, DirectRenderPipeline, SunLight cascaded shadow maps, PMREM blur, and ImageBitmapLoader. 3. The current three.js PR stream toward r187 continues with TSL tree shaking, toInspector, compileAsync, optional WebGPURenderer canvas, and GPU terrain vector overlays, which can move September 19's uniform / query visualization closer to real logs. 4. Babylon.js 9.27.1 includes a normalized occlusion-query visibility API, frame-graph geometry rendering for Gaussian splats / sprites / particles, WebGPU occlusion-query begin sequencing, an ImageBitmap fast path, and streaming compound compaction fixes. 5. PlayCanvas Engine v2.22.2 focuses on shadow shader selection when cascade count changes and StandardMaterial texture-map iteration, supporting the shadow / material / state lanes tracked since September 14.",
+      "links": [
+        {
+          "label": "Paper Crumple (VAT) listing",
+          "url": "https://tympanus.net/codrops/hub/all/codrops/"
+        },
+        {
+          "label": "three.js r186",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+        },
+        {
+          "label": "Babylon.js 9.27.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.27.1"
+        },
+        {
+          "label": "PlayCanvas v2.22.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.2"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Paper Crumple (VAT) が面白いのは、物理シミュレーションの結果を毎フレーム計算するのではなく、時間方向に焼いた変形や衝突記憶として見せられる点。これは9/18のsplat stream workerや9/19のuniform query visibilityと同じく、「完成画の裏にある時間状態」を表現へ戻す素材になる。Babylon.js側のnormalized occlusion queryは、見える/見えないを0/1ではなく連続値にし、VATの折れ、影の濃さ、音量、粒子密度へ直接つなげられる。frame graphにsplat / sprite / particle geometry passが入る流れは、紙片・粒子・影・音が同じpass graph上で遷移する演出に向いている。",
+      "bodyEn": "Paper Crumple (VAT) is compelling because deformation and collision can be shown as baked temporal memory rather than recalculated physics every frame. Like September 18's splat stream worker and September 19's uniform query visibility work, it returns hidden time state behind the final image to the expressive surface. Babylon.js normalized occlusion queries make visibility continuous rather than binary, which can directly drive VAT folds, shadow density, audio volume, or particle density. The move to include splats / sprites / particles in frame-graph geometry rendering suits staging where paper fragments, particles, shadows, and sound evolve on one pass graph.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/codrops/"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は「VAT Crumple Memory Sheet」。紙の頂点変位、cannon-es風の衝突impulse、shadow memory laneを1枚のGLSL譜面にし、dragで折れを引っ張り、clickでcrumple impulseを刻む。単なる紙のモックではなく、VAT frame、impulse id、shadow history、crease energyを将来の実ログに置き換えやすい構造にする。派生案は「Occlusion Framegraph Audio Mixer」。normalized visibilityをpass依存グラフと音帯域uniformに接続し、見えている量でsplat密度、音量、pass rebuild pulseが変わる小さな検査面にする。",
+      "bodyEn": "The main idea is VAT Crumple Memory Sheet: a GLSL score combining paper vertex displacement, cannon-es-like collision impulses, and shadow-memory lanes. Drag pulls the fold field; click stamps a crumple impulse. It is not just a paper mockup: its VAT frame, impulse id, shadow history, and crease energy can later be replaced with real logs. The derived idea is Occlusion Framegraph Audio Mixer: connect normalized visibility to pass dependencies and audio-band uniforms so visible amount can drive splat density, volume, and pass-rebuild pulses on a small inspection surface.",
+      "links": [
+        {
+          "label": "VAT Crumple Memory Sheet",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Occlusion Framegraph Audio Mixer",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "VAT系は `vertexId`, `vatFrame`, `foldEnergy`, `collisionImpulse`, `shadowAge`, `creaseNormal`, `paperRestUv` を小さなtexture laneに落とすと、Three.jsのInstancedMesh / DataTexture / shaderMaterialへ移しやすい。occlusion系は `visibleSamples`, `totalSamples`, `visibilityWeight`, `queryAge`, `passId`, `resourceId` を連続値として保持し、音反応では低域=shadow memory、中域=fold impulse、高域=visibility sparkleへ割り当てると読みやすい。frame graph系は `passName`, `dependencyDepth`, `geometryKind`, `imageBitmapFastPath`, `compactGeneration`, `rebuildPulse` を持つと、Babylonのframe graphとPlayCanvas / SuperSplatのstream状態を同じschemaに寄せられる。",
+      "bodyEn": "For VAT work, map `vertexId`, `vatFrame`, `foldEnergy`, `collisionImpulse`, `shadowAge`, `creaseNormal`, and `paperRestUv` into small texture lanes so they can move easily into Three.js InstancedMesh / DataTexture / shaderMaterial work. For occlusion, keep `visibleSamples`, `totalSamples`, `visibilityWeight`, `queryAge`, `passId`, and `resourceId` as continuous values. For audio response, low band can control shadow memory, mid band fold impulse, and high band visibility sparkle. For frame graphs, `passName`, `dependencyDepth`, `geometryKind`, `imageBitmapFastPath`, `compactGeneration`, and `rebuildPulse` can bridge Babylon frame graph state with PlayCanvas / SuperSplat streaming state.",
+      "links": [
+        {
+          "label": "three.js r186",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r186"
+        },
+        {
+          "label": "Babylon.js 9.27.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.27.1"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/19のuniform struct array / occlusion query / frame graphを、今日のVAT paper stateとaudio uniformへ接続する。9/18のstream worker LODはcompactGenerationやpass rebuild pulseに戻す。9/17のstochastic brushはfold attractorやvisibility listenerとして再利用できる。新規案件: Paper Crumple (VAT) の制作者デモ本体、three.js r187 milestone / PR stream、Babylon.jsのocclusion query API実使用例、PlayCanvas/SuperSplat側のSOGや編集ログ。寝かせる案件: 紙の見た目だけを追うモック、単なるdebug overlay、音量バーだけの可視化。",
+      "bodyEn": "Continue connecting September 19's uniform struct arrays / occlusion queries / frame graph to today's VAT paper state and audio uniforms. Route September 18's stream-worker LOD into compactGeneration and pass-rebuild pulses. Reuse September 17's stochastic brush as a fold attractor or visibility listener. New watch items: the full Paper Crumple (VAT) creator demo, the three.js r187 milestone / PR stream, real uses of Babylon's occlusion-query API, and PlayCanvas / SuperSplat SOG or edit logs. Park paper-look-only mocks, plain debug overlays, and audio-bar-only visualizations.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas repositories",
+          "url": "https://github.com/orgs/playcanvas/repositories"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-20_vat_crumple_memory_sheet.html` を開く。1はVAT fold field、2はphysics impulse rings、3はshadow memory lanes、4は合成。dragでfold attractor、click / Spaceでcrumple impulse。次に足すなら、実際の紙メッシュや布メッシュの頂点履歴をDataTexture化し、foldEnergyで音を鳴らす。派生の `outputs/2026-09-20_occlusion_framegraph_audio_mixer.html` は、1 normalized visibility、2 pass dependency mixer、3 audio-band uniforms、4合成。次に足すなら、Web Audioの実FFTを入れてvisibilityWeightと掛け合わせる。",
+      "bodyEn": "First open `outputs/2026-09-20_vat_crumple_memory_sheet.html`. Mode 1 shows the VAT fold field, 2 physics impulse rings, 3 shadow-memory lanes, and 4 the composite. Drag moves the fold attractor; click / Space stamps a crumple impulse. Next, DataTexture real paper or cloth vertex history and trigger sound from foldEnergy. The derived `outputs/2026-09-20_occlusion_framegraph_audio_mixer.html` shows 1 normalized visibility, 2 pass dependency mixer, 3 audio-band uniforms, and 4 composite. Next, add real Web Audio FFT and multiply it by visibilityWeight.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Codrops Creative Hub、three.js r186 release / pull requests、Babylon.js releases、PlayCanvas Engine releasesを確認。アイデア検討: 9/19のuniform/query/framegraphを、紙の時間記憶、occlusion可視率、音uniformへ展開。サンプル実装: 本命 `2026-09-20_vat_crumple_memory_sheet.html` と派生 `2026-09-20_occlusion_framegraph_audio_mixer.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural状態で操作感と読みやすさを見る。中長期: VAT bake / physics impulse / visibility query / frame graph logを共通state textureへ統合する。",
+      "bodyEn": "Collection: checked Codrops Creative Hub, three.js r186 release / pull requests, Babylon.js releases, and PlayCanvas Engine releases. Ideation: expanded September 19's uniform / query / frame-graph work into paper time memory, occlusion visibility, and audio uniforms. Implementation: added `2026-09-20_vat_crumple_memory_sheet.html` and `2026-09-20_occlusion_framegraph_audio_mixer.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: test interaction feel and readability with procedural state. Mid term: merge VAT bake / physics impulse / visibility query / frame-graph logs into a common state texture.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、shaderの見た目から一段下がって、renderer・loader・physics・audioが持つ「時間的な状態」を表現素材にする方向へ進んでいる。9/16のHTMLTexture / TAA、9/17のbrush / interactivity、9/18のsplat stream、9/19のuniform / occlusion / frame graph、今日のVAT / paper memoryは、全部「更新されるものが画面の主役になる」系譜。組み合わせる価値が高いのは、紙や布のVATをWebXR空間に置き、occlusion visibilityで音や影を絞り、frame graph dependencyを空間内の導線や光路として見せる案。",
+      "bodyEn": "The recent arc is moving one level below shader appearance into renderer, loader, physics, and audio temporal state as expressive material. September 16's HTMLTexture / TAA, September 17's brush / interactivity, September 18's splat stream, September 19's uniform / occlusion / frame graph, and today's VAT / paper memory all belong to one lineage: updated state becomes the protagonist. The high-value combination is placing paper or cloth VAT in WebXR space, using occlusion visibility to gate sound and shadow, and rendering frame-graph dependencies as paths or light routes in space.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-20_vat_crumple_memory_sheet.html` を実装した。依存なしraw WebGL fragment shaderで、VAT fold field、physics impulse rings、shadow memory lanesを4モードで描く。短時間で見るポイントは、紙の折れが「形」だけでなく、衝突・影・時間の記憶として読めるか。派生として `outputs/2026-09-20_occlusion_framegraph_audio_mixer.html` を実装した。normalized visibility、pass dependency graph、audio-band uniformsを4モードで描く。短時間で見るポイントは、見えている量がpassや音の強弱に変換されているように読めるか。",
+      "bodyEn": "The main prototype is `outputs/2026-09-20_vat_crumple_memory_sheet.html`, a dependency-free raw WebGL fragment shader drawing a VAT fold field, physics impulse rings, and shadow-memory lanes in four modes. The quick question is whether the paper fold reads not only as shape but as collision, shadow, and time memory. The derived prototype is `outputs/2026-09-20_occlusion_framegraph_audio_mixer.html`, drawing normalized visibility, a pass-dependency graph, and audio-band uniforms in four modes. The quick question is whether visible amount reads as changing pass and sound intensity.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は `vatFrame`, `vertexId`, `foldEnergy`, `collisionImpulse`, `shadowAge`, `creaseNormal`, `attractorPosition`, `paperRestUv` をデータ化できる。展示では、紙・布・フィルム・スキャン済み衣装の変形履歴を空間演出や音に接続できる。Web上では商品パッケージ、ポスター、地図、チケットなどを、触るほど履歴を持つインタラクティブ素材にできる。2本目は `visibleSamples`, `visibilityWeight`, `passId`, `dependencyDepth`, `bandEnergy`, `rebuildPulse`, `compactGeneration` をデータ化できる。Web Audio、WebXR、3D scan viewer、large scene viewerと組み合わせると、見えている量が音量・粒子密度・pass発光・LOD表示を自然に制御する。過去案との接続では、9/18のstream workerをcompactGeneration、9/19のocclusion queryをvisibilityWeight、9/17のbrushをattractorPosition、9/16のHTMLTexture dirty rectをpassIdへ戻すと、編集・転送・可視性・音が同じ時間軸に揃う。",
+      "bodyEn": "The first sample can log `vatFrame`, `vertexId`, `foldEnergy`, `collisionImpulse`, `shadowAge`, `creaseNormal`, `attractorPosition`, and `paperRestUv`. In installations, deformation history from paper, cloth, film, or scanned costumes can drive spatial staging and sound. On the web, product packaging, posters, maps, or tickets can become interactive materials that accumulate touch history. The second sample can log `visibleSamples`, `visibilityWeight`, `passId`, `dependencyDepth`, `bandEnergy`, `rebuildPulse`, and `compactGeneration`. Combined with Web Audio, WebXR, 3D scan viewers, or large-scene viewers, visible amount can naturally control volume, particle density, pass glow, and LOD display. Connecting back, route September 18's stream worker into compactGeneration, September 19's occlusion query into visibilityWeight, September 17's brush into attractorPosition, and September 16's HTMLTexture dirty rectangles into passId so editing, transfer, visibility, and sound share one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-20_vat_crumple_memory_sheet.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-20_occlusion_framegraph_audio_mixer.html"
+        }
+      ]
+    }
+  ]
+}
