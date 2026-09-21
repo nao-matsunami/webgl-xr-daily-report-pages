@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>深度・PMREM・USD/SOGの処理寿命を、見えるステージ状態にする | 2026-09-21</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.21</p>
+      <h1>深度・PMREM・USD/SOGの処理寿命を、見えるステージ状態にする</h1>
+      <p class="hero-subtitle">Turning depth, PMREM, and USD/SOG processing lifetimes into visible stage state</p>
+      <p>three.js の最新issue / r187移行メモ、PlayCanvas Engine v2.22.x と v2.23 beta、Babylon.js 9.26.x / USD loader / Inspector Lite / Gaussian splat streaming、SuperSplat 3.0のWebGPU化を調査した。9/20のVAT紙メモリとocclusion framegraphから、今日は depth-stencil sampling / PMREM cube lifecycle / fallback resource leak を扱う本命試作と、OpenUSD worker command buffers / streamed SOG coarse-first tiles / inspector diagnostics を扱う派生試作を追加した。</p>
+      <p class="en-copy">Today reviews recent three.js issues and the r187 migration notes, PlayCanvas Engine v2.22.x plus v2.23 beta, Babylon.js 9.26.x with USD loading / Inspector Lite / Gaussian splat streaming, and SuperSplat 3.0's WebGPU rebuild. Extending September 20's VAT paper memory and occlusion frame graph, the main prototype stages depth-stencil sampling, PMREM cube lifecycle, and fallback resource leaks, while the derived prototype stages OpenUSD worker command buffers, streamed SOG coarse-first tiles, and inspector diagnostics.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-20.html">← 2026.09.20</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-21 USD SOG Stage Queue Scope</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-21 Depth Lifecycle Refraction Scope</h3>
+              <p>WebGL is not available.</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js issue streamでは、9月17-18日に WebGPURenderer のdepth-stencil sampling、transparent Line2リサイズ時の使用中texture破棄、WebGL2 fallbackのGL program / shader / VAO破棄漏れ、GTAONode depth multisampled texture compile問題が並んでいる。9/19-20のocclusion / framegraph / VATから、今日は「深度textureの寿命とfallback資源の後始末」を表現入力として扱う。2. three.js migration guide の 186→187 には、PMREMがcube render targetベースになり CubeUVReflectionMapping が削除されること、WebGPURenderer / WebGLRendererがWeakRef / FinalizationRegistryを内部利用すること、XR camera行列やrender target bound時のviewport/scissor pixel ratioの変更が出ている。3. PlayCanvas Engine v2.22.2はshadow cascade count変更時のshader選択とStandardMaterial map iteration修正が中心。v2.22.0には SceneDepthReader、multisampled depth resolve、custom MSAA resolve、WireRenderer、SOG / GSplat LODなどが大きくまとまっている。4. npm上では playcanvas 2.23.0-beta 系も更新されており、v2.22の深度・MSAA・SOG基盤の次を追う対象になる。5. Babylon.js 9.26.xでは OpenUSD WebAssembly scene loader、Inspector Lite text / sprite layer、KHR_interactivity Phase 1、mesh blending post process、Gaussian splatting coarse-first streaming、USD materials / instancing / skinning改善が続いている。USD loaderはOpenUSD/WASM workerがstageをcomposeし、command queueとdata bufferをBabylon.js sceneに変換する構造なので、今日の派生試作はここをステージキューとして可視化した。</p>
+          <p class="en-copy">1. The three.js issue stream for September 17-18 includes WebGPURenderer depth-stencil sampling, texture destruction during transparent Line2 resize, WebGL2 fallback leaks for GL programs / shaders / VAOs, and a GTAONode multisampled-depth compile problem. Extending September 19-20's occlusion / frame graph / VAT work, today's report treats depth-texture lifetime and fallback cleanup as expressive input. 2. The three.js 186 to 187 migration guide notes PMREM moving to cube render targets with CubeUVReflectionMapping removed, WebGPURenderer / WebGLRenderer using WeakRef / FinalizationRegistry internally, XR camera matrix changes, and viewport / scissor pixel-ratio behavior changes when a render target is bound. 3. PlayCanvas Engine v2.22.2 focuses on shadow cascade shader selection and StandardMaterial map iteration fixes. v2.22.0 bundles SceneDepthReader, multisampled depth resolve, custom MSAA resolve, WireRenderer, and SOG / GSplat LOD work. 4. npm already shows playcanvas 2.23.0 beta builds, making the next depth / MSAA / SOG layer worth watching. 5. Babylon.js 9.26.x continues with the OpenUSD WebAssembly scene loader, Inspector Lite text / sprite layers, KHR_interactivity Phase 1, mesh blending post process, Gaussian splatting coarse-first streaming, and USD material / instancing / skinning improvements. The USD loader composes a stage in an OpenUSD/WASM worker and turns command queues plus data buffers into Babylon.js scene objects, which today's derived prototype visualizes as a stage queue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/issues" target="_blank" rel="noreferrer">three.js issues</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073" target="_blank" rel="noreferrer">Babylon.js USD announcement</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>SuperSplat Editor 3.0のWebGPU再構築は、Web上の3D scan / splat編集が単に軽くなるだけでなく、streaming、coarse-first表示、LOD、編集履歴、camera-aware budgetを表現状態として取り出せる可能性を示している。Babylon.jsのUSD loaderは、USD asset -&gt; OpenUSD/WASM worker -&gt; binary command buffers -&gt; scene という明快なパイプラインを持つ。これは9/6のUSD worker stage scan、9/18のsplat stream worker、9/20のframegraph audio mixerと接続しやすい。three.js側のdepth-stencil / PMREM / fallback leak系issueは、華やかな新機能ではないが、透明線、反射、AO、XR視点、リサイズの破綻を「壊れ方の演出」へ変換できる。</p>
+          <p class="en-copy">SuperSplat Editor 3.0's WebGPU rebuild suggests that web-based 3D scan / splat editing is not only becoming faster, but also exposing streaming, coarse-first display, LOD, edit history, and camera-aware budget as expressive state. Babylon.js's USD loader has a clear pipeline: USD asset to OpenUSD/WASM worker to binary command buffers to scene. That connects directly to September 6's USD worker stage scan, September 18's splat stream worker, and September 20's frame-graph audio mixer. The three.js depth-stencil / PMREM / fallback leak issues are not glamorous features, but they can turn failures in transparent lines, reflections, AO, XR viewpoints, and resize behavior into a staged failure language.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas homepage / SuperSplat news</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073" target="_blank" rel="noreferrer">Babylon.js USD announcement</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues" target="_blank" rel="noreferrer">three.js issues</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Depth Lifecycle Refraction Scope」。depth-stencil sampling、PMREM cube lifecycle、WebGL fallback resource leakを、画面上の検査レンズでなぞる。dragで深度検査位置、click / Spaceでresizeやcompile pulseを起こし、使用中textureや未破棄programが残像のように見える。派生案は「USD SOG Stage Queue Scope」。OpenUSD workerのcompose / extract / command buffer / data buffer / scene materializeをステージ列にし、SOG coarse-first tileとInspector Lite診断を重ねる。dragでstage pressure、clickで新しい抽出pulse。</p>
+          <p class="en-copy">The main idea is Depth Lifecycle Refraction Scope: trace depth-stencil sampling, PMREM cube lifecycle, and WebGL fallback resource leaks with an inspection lens. Drag moves the depth inspection point; click / Space triggers a resize or compile pulse, leaving in-use textures and undisposed programs as afterimages. The derived idea is USD SOG Stage Queue Scope: stage OpenUSD worker compose / extract / command buffer / data buffer / scene materialization, then layer SOG coarse-first tiles and Inspector Lite diagnostics on top. Drag controls stage pressure; click starts a new extraction pulse.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Depth Lifecycle Refraction Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">USD SOG Stage Queue Scope</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>depth lifecycle系は `depthFormat`, `stencilMask`, `sampleCount`, `textureAge`, `resizeGeneration`, `compileId`, `destroyQueued`, `fallbackBackend`, `liveProgramCount`, `liveVaoCount` をログ化すると、本物のrenderer状態に差し替えやすい。PMREM / reflection系は `cubeFace`, `mipLevel`, `roughness`, `mappingKind`, `disposedAtFrame`, `xrCameraSourceEye` を持つと、r187移行のcube render target化やXR camera変更を可視化できる。USD / SOG系は `stageId`, `commandOffset`, `payloadBytes`, `meshCount`, `materialCount`, `skeletonCount`, `tileId`, `coarseReady`, `refineReady`, `lodError`, `cameraBudget`, `inspectorWarning` を共通state textureへ詰めるとよい。</p>
+          <p class="en-copy">For depth lifecycle work, logging `depthFormat`, `stencilMask`, `sampleCount`, `textureAge`, `resizeGeneration`, `compileId`, `destroyQueued`, `fallbackBackend`, `liveProgramCount`, and `liveVaoCount` makes it easy to swap in real renderer state later. PMREM / reflection work should carry `cubeFace`, `mipLevel`, `roughness`, `mappingKind`, `disposedAtFrame`, and `xrCameraSourceEye` so the r187 cube-render-target transition and XR camera changes can be visualized. USD / SOG work can pack `stageId`, `commandOffset`, `payloadBytes`, `meshCount`, `materialCount`, `skeletonCount`, `tileId`, `coarseReady`, `refineReady`, `lodError`, `cameraBudget`, and `inspectorWarning` into a shared state texture.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073" target="_blank" rel="noreferrer">Babylon.js USD announcement</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/19のuniform / occlusion / frame graph、9/20のVAT paper memory / occlusion audio mixerを、今日のdepth lifecycleとUSD/SOG stage queueへ戻す。新規案件: three.js #34600 / #34598 / #34597周辺、r187 migrationのPMREM / WeakRef / XR camera / viewport変更、PlayCanvas 2.23 beta、Babylon.js 9.26.x以降のUSDとInspector Lite更新、SuperSplat Editor 3.0の実編集ログ。寝かせる案件: 単なるwarning list、見た目だけの反射デモ、読み込み進捗バーだけのUSD表示。</p>
+          <p class="en-copy">Continue routing September 19's uniform / occlusion / frame graph work and September 20's VAT paper memory / occlusion audio mixer back into today's depth lifecycle and USD/SOG stage queue. New watch items: three.js #34600 / #34598 / #34597, r187 migration topics around PMREM / WeakRef / XR camera / viewport changes, PlayCanvas 2.23 beta, Babylon.js USD and Inspector Lite updates after 9.26.x, and real SuperSplat Editor 3.0 edit logs. Park plain warning lists, reflection-only visual demos, and USD loading progress bars.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/issues" target="_blank" rel="noreferrer">three.js issues</a></li>
+          
+            <li><a href="https://www.npmjs.com/package/playcanvas?activeTab=versions" target="_blank" rel="noreferrer">PlayCanvas npm versions</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-21_depth_lifecycle_refraction_scope.html` を開く。1はdepth-stencil sampling、2はPMREM cube lifecycle、3はfallback resource leak、4は合成。dragで検査レンズ、click / Spaceでresize / compile pulse。次に足すなら、実three.jsアプリでリサイズ、compileAsync、PMREM生成、WebGL fallback破棄を `performance.mark()` とカウンタで記録し、このshaderへ流す。派生の `outputs/2026-09-21_usd_sog_stage_queue_scope.html` は、1 OpenUSD worker command buffers、2 streamed SOG coarse-first tiles、3 inspector diagnostics、4合成。次に足すなら、USDZやSOGの実読み込みログをJSONにしてstage queueへ入れる。</p>
+          <p class="en-copy">First open `outputs/2026-09-21_depth_lifecycle_refraction_scope.html`. Mode 1 shows depth-stencil sampling, 2 PMREM cube lifecycle, 3 fallback resource leaks, and 4 the composite. Drag moves the inspection lens; click / Space triggers a resize / compile pulse. Next, record resize, compileAsync, PMREM generation, and WebGL fallback cleanup in a real three.js app with `performance.mark()` and counters, then feed them into this shader. The derived `outputs/2026-09-21_usd_sog_stage_queue_scope.html` shows 1 OpenUSD worker command buffers, 2 streamed SOG coarse-first tiles, 3 inspector diagnostics, and 4 the composite. Next, convert real USDZ or SOG loading logs into JSON and feed the stage queue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js issue / migration guide、PlayCanvas release / npm versions / homepage news、Babylon.js release / forum announcementを確認。アイデア検討: 9/20の紙の時間記憶とocclusion mixerを、renderer資源寿命とloader/streaming stageへ展開。サンプル実装: 本命 `2026-09-21_depth_lifecycle_refraction_scope.html` と派生 `2026-09-21_usd_sog_stage_queue_scope.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural状態で各modeが区別できるかを見る。中長期: 実renderer log / loader log / SOG edit logを共通state textureへ統合する。</p>
+          <p class="en-copy">Collection: checked three.js issues / migration guide, PlayCanvas releases / npm versions / homepage news, and Babylon.js releases / forum announcement. Ideation: expanded September 20's paper time memory and occlusion mixer into renderer-resource lifetime and loader / streaming stages. Implementation: added `2026-09-21_depth_lifecycle_refraction_scope.html` and `2026-09-21_usd_sog_stage_queue_scope.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: check that each procedural mode reads clearly. Mid term: unify real renderer logs, loader logs, and SOG edit logs into one state texture.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向はかなりはっきりしてきた。見た目のshaderそのものより、rendererが抱える非同期処理、GPU資源の寿命、loader worker、splat streaming、検査UIの状態が主役になっている。9/16のdirty rect、9/18のstream worker、9/19のuniform/query/framegraph、9/20のVAT/occlusion audio、今日のdepth lifecycle / USD stageは全部「状態を舞台にする」系譜。組み合わせ候補として強いのは、1) USD/SOG/GSplatを読み込む過程を音・光・粒子密度にする、2) depth / occlusion / PMREMの壊れかけ状態をポストプロセスの美学にする、3) Inspectorやdebug overlayをそのまま演奏可能なUIにする、の3つ。</p>
+          <p class="en-copy">The recent trend is now clear. The shader look itself is less central than the asynchronous work, GPU-resource lifetime, loader workers, splat streaming, and inspection UI state held by renderers. September 16's dirty rectangles, September 18's stream worker, September 19's uniform / query / frame graph, September 20's VAT / occlusion audio, and today's depth lifecycle / USD stage all belong to a lineage of staging state. The strongest combinations are: 1. making USD / SOG / GSplat loading drive sound, light, and particle density; 2. turning near-failure states in depth / occlusion / PMREM into a postprocess aesthetic; 3. making Inspector and debug overlays directly playable.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-21_depth_lifecycle_refraction_scope.html` を実装した。依存なしraw WebGL fragment shaderで、depth-stencil sampling、PMREM cube lifecycle、fallback resource leakを4モードで描く。短時間で見るポイントは、rendererの壊れやすい資源寿命が視覚リズムとして読めるか。派生として `outputs/2026-09-21_usd_sog_stage_queue_scope.html` を実装した。OpenUSD worker command buffers、streamed SOG coarse-first tiles、inspector diagnosticsを4モードで描く。短時間で見るポイントは、読み込み・抽出・粗表示・診断が一本のstage queueとして読めるか。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-21_depth_lifecycle_refraction_scope.html`, a dependency-free raw WebGL fragment shader showing depth-stencil sampling, PMREM cube lifecycle, and fallback resource leaks in four modes. The quick question is whether fragile renderer-resource lifetime reads as visual rhythm. The derived prototype is `outputs/2026-09-21_usd_sog_stage_queue_scope.html`, showing OpenUSD worker command buffers, streamed SOG coarse-first tiles, and inspector diagnostics in four modes. The quick question is whether loading, extraction, coarse display, and diagnostics read as one stage queue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `depthFormat`, `stencilMask`, `sampleCount`, `textureAge`, `resizeGeneration`, `pmremFace`, `mipLevel`, `liveProgramCount`, `destroyQueued` をデータ化できる。Web展示では、リサイズやfallback切替で画面が壊れる瞬間を意図的な反射・屈折・AOノイズとして扱える。XRでは視点行列の由来や片目基準のcamera transformを空間の偏りとして見せられる。2本目は `stageId`, `commandOffset`, `payloadBytes`, `meshCount`, `materialCount`, `tileId`, `coarseReady`, `refineReady`, `lodError`, `inspectorWarning` をデータ化できる。3D scan viewer、商品3D configurator、建築BIM/USD viewer、ライブVJ素材管理と相性がよい。過去案との接続では、9/6のUSD worker stage scanを今日のstageIdへ、9/18のsplat streamをtileId/coarseReadyへ、9/19のframegraphをcommandOffsetへ、9/20のVAT paper memoryをmaterialize後の変形履歴へ戻すと、読み込みから演出までが一つの時間軸になる。</p>
+          <p class="en-copy">The first sample can log `depthFormat`, `stencilMask`, `sampleCount`, `textureAge`, `resizeGeneration`, `pmremFace`, `mipLevel`, `liveProgramCount`, and `destroyQueued`. In web installations, moments where resize or fallback transitions break the image can become intentional reflection, refraction, or AO noise. In XR, the source of the viewpoint matrix or a one-eye camera transform can appear as spatial bias. The second sample can log `stageId`, `commandOffset`, `payloadBytes`, `meshCount`, `materialCount`, `tileId`, `coarseReady`, `refineReady`, `lodError`, and `inspectorWarning`. It pairs well with 3D scan viewers, product configurators, architectural BIM/USD viewers, and live VJ asset management. Connecting back, route September 6's USD worker stage scan into stageId, September 18's splat stream into tileId / coarseReady, September 19's frame graph into commandOffset, and September 20's VAT paper memory into post-materialization deformation history, so loading and performance become one timeline.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/issues" target="_blank" rel="noreferrer">three.js issues</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://www.npmjs.com/package/playcanvas?activeTab=versions" target="_blank" rel="noreferrer">PlayCanvas npm versions</a></li>
+          
+            <li><a href="https://playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas homepage / SuperSplat news</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/usd-comes-to-babylon-js-preliminary-runtime-loading-support/64073" target="_blank" rel="noreferrer">Babylon.js USD announcement</a></li>
+          
+            <li><a href="../outputs/2026-09-21_depth_lifecycle_refraction_scope.html" target="_blank" rel="noreferrer">Main sample: Depth Lifecycle Refraction Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" target="_blank" rel="noreferrer">Derived sample: USD SOG Stage Queue Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-21_usd_sog_stage_queue_scope.html" loading="lazy" title="2026-09-21 USD SOG Stage Queue Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
