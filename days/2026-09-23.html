@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPU上の選択・ソート・移行チェックを、触れる制作台にする | 2026-09-23</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.23</p>
+      <h1>GPU上の選択・ソート・移行チェックを、触れる制作台にする</h1>
+      <p class="hero-subtitle">Turning GPU selection, sorting, and migration checks into a tactile workbench</p>
+      <p>SuperSplat Editor 3.0のWebGPU化、three.js 186→187 migrationとTSL performance discussion、three.js WGSL/TSL interop example、Babylon.js WebGPU/WebXR documentationと9月のPR群、Codropsの9月WebGL/Three.js事例を確認した。9/22のcleanup / staging pool / PMREM migrationから、今日はGPU computeで動く選択・ヒストグラム・radix sort・間接描画を本命試作にし、派生ではTSLのnode redundancy、pipeline compile heat、migration checklistを触れる検査面にした。</p>
+      <p class="en-copy">Today checks SuperSplat Editor 3.0's WebGPU rebuild, the three.js 186 to 187 migration guide and TSL performance discussion, the three.js WGSL/TSL interop example, Babylon.js WebGPU / WebXR documentation and September PRs, plus September Codrops WebGL / Three.js examples. Extending September 22's cleanup / staging pool / PMREM migration line, the main prototype turns GPU-compute selection, histograms, radix sorting, and indirect drawing into a workbench; the derived prototype turns TSL node redundancy, pipeline compile heat, and migration checklists into a tactile inspection surface.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-22.html">← 2026.09.22</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-23 TSL Compile Heat Migration Lens</h3>
+              <p>1 node redundancy / 2 pipeline compile heat / 3 migration checklist / 4 composite lens</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-23 GPU Workbench Selection Sort Scope</h3>
+              <p>1 compute projector / 2 radix sort bins / 3 selection histogram / 4 composite workbench</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. SuperSplat Editor 3.0は、投影、frustum culling、compaction、depth sorting、draw submissionを毎フレームGPU compute側へ寄せ、GPU radix sortとindirect drawingを使う方向に作り替えられている。9/18以降のstream worker / LOD / cleanupの話を、今日は「編集操作そのものがGPU上の作業台になる」方向へ進める。2. three.js 186→187 migration guideでは、PMREM cube render target化、CubeUVReflectionMapping削除、WeakRef / FinalizationRegistry、XR camera matrix、render target bound時のviewport/scissor pixel ratio、pixelationPassのNumber化が並ぶ。9/22のPMREM migration試作を、チェックリスト化と検査レンズへ展開する。3. three.js TSL performance issue #34386は、TSLの遅さをJS node graphよりも巨大WGSL shaderのpipeline compile熱として捉えている。node redundancy、shader size、Metal pipeline compileという軸は、VJや展示で「compileの熱」を見せる演出に使える。4. three.js WGSL/TSL interoperability exampleは、TSL graphと手書きWGSLの橋渡しを実例として持つ。表現面では、node graph、manual shader island、sampler/texture bridgeを1つの画面に置く教材・演出UIの芯になる。5. Babylon.js側はWebGPUとWebGLを併走しつつ、WebGPU-backed WebXRではXRGPUBindingやprojection layerの条件を明示している。9月のPR群ではDoF、KHR_interactivity、dithered material fade、fluid renderer、MultiTextureが継続しており、WebGPU/WebXRのfallbackやfeature parityを日次ウォッチ対象に残す。</p>
+          <p class="en-copy">1. SuperSplat Editor 3.0 moves projection, frustum culling, compaction, depth sorting, and draw submission into GPU compute every frame, using GPU radix sort and indirect drawing. Extending the stream-worker / LOD / cleanup line since September 18, today's report treats editing itself as a GPU workbench. 2. The three.js 186 to 187 migration guide lists PMREM cube render targets, removal of CubeUVReflectionMapping, WeakRef / FinalizationRegistry, XR camera matrix changes, render-target-bound viewport / scissor pixel-ratio changes, and pixelationPass accepting a Number. Yesterday's PMREM migration prototype becomes a checklist and inspection lens. 3. The three.js TSL performance issue #34386 frames TSL cost less as JS node-graph time and more as pipeline compile heat from oversized WGSL shaders. Node redundancy, shader size, and Metal pipeline compile are expressive axes for showing compile heat in VJ or installation work. 4. The three.js WGSL/TSL interoperability example provides a concrete bridge between TSL graphs and hand-written WGSL. Expressively, it can become the core of a learning or performance UI that places node graphs, manual shader islands, and sampler / texture bridges on one canvas. 5. Babylon.js continues WebGPU and WebGL side by side, while WebGPU-backed WebXR requires explicit XRGPUBinding / projection-layer support. September PRs around DoF, KHR_interactivity, dithered material fade, fluid rendering, and MultiTexture keep WebGPU / WebXR fallback and feature parity on the watch list.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/blog/blob/main/blog/2026-09-09-new-in-supersplat-editor-3-0-rebuilt-on-webgpu.md" target="_blank" rel="noreferrer">SuperSplat 3.0 blog source</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34386" target="_blank" rel="noreferrer">TSL performance optimizations</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/blob/dev/examples/webgpu_tsl_interoperability.html" target="_blank" rel="noreferrer">WGSL/TSL interoperability</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU support</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>SuperSplat 3.0で面白いのは、単にWebGPU対応になったことではなく、選択、ヒストグラム、範囲選択、色合わせ、boundsなど、編集UIの操作までGPU computeへ寄っている点。これは「描画エンジンが速くなった」ではなく、「ユーザーの編集行為がGPU上の可視状態になる」変化として見ると面白い。Codrops側では9月も3D ASCII、paper crumple、liquid glass、face mask、datamoshなど、素材の変形や履歴の見せ方が強い。そこにSuperSplatのGPU作業台を組み合わせると、scan editor / product page / live stageで、選択範囲やsort pressureがそのまま光、粒子、ノイズ、音の密度へ変換できる。</p>
+          <p class="en-copy">What matters in SuperSplat 3.0 is not merely WebGPU support; selection, histograms, range selection, color matching, bounds, and other editor operations also move toward GPU compute. Rather than just a faster renderer, it is a shift where user editing becomes visible GPU state. September Codrops examples keep exploring 3D ASCII, paper crumple, liquid glass, face masks, and datamosh-like history. Combining those with the SuperSplat GPU workbench suggests scan editors, product pages, and live stages where selection regions and sort pressure directly become light, particles, noise, or sound density.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/blog/blob/main/blog/2026-09-09-new-in-supersplat-editor-3-0-rebuilt-on-webgpu.md" target="_blank" rel="noreferrer">SuperSplat 3.0</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「GPU Workbench Selection Sort Scope」。SuperSplat 3.0のcompute projector、GPU radix sort、selection histogram、indirect drawを抽象化し、dragでinspection lens、click / Spaceでstream chunkを入れる。1 compute projector、2 radix sort bins、3 selection histogram、4 composite workbench。編集行為そのものを舞台の照明卓のように扱う。派生案は「TSL Compile Heat Migration Lens」。TSL performance discussionのnode redundancy、pipeline compile heat、migration checklistを抽象化し、dragでlens、click / Spaceでshader rebuild。1 node redundancy、2 pipeline compile heat、3 migration checklist、4 composite lens。移行や最適化を退屈な保守ではなく、触れる熱分布として見せる。</p>
+          <p class="en-copy">The main idea is GPU Workbench Selection Sort Scope. It abstracts SuperSplat 3.0's compute projector, GPU radix sort, selection histograms, and indirect drawing. Drag moves the inspection lens; click / Space streams a new chunk. Mode 1 is compute projector, 2 radix sort bins, 3 selection histogram, and 4 composite workbench. Editing itself becomes a lighting desk for a stage. The derived idea is TSL Compile Heat Migration Lens. It abstracts node redundancy, pipeline compile heat, and migration checklists from the TSL performance discussion. Drag moves the lens; click / Space rebuilds the shader. Mode 1 is node redundancy, 2 pipeline compile heat, 3 migration checklist, and 4 composite lens. Migration and optimization become a tactile heat map rather than dull maintenance.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">GPU Workbench Selection Sort Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">TSL Compile Heat Migration Lens</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>SuperSplat系を実データ化するなら `sceneId`, `chunkId`, `gaussianCount`, `visibleCount`, `selectedCount`, `histogramBin`, `sortPass`, `radixDigit`, `compactCount`, `indirectDrawCount`, `gpuHeapMb`, `exportChunkBytes` を持つとよい。TSL/three.js移行系は `nodeId`, `nodeKind`, `duplicateExpression`, `wgslBytes`, `jsBuildMs`, `pipelineCompileMs`, `backend`, `cacheHit`, `migrationItem`, `migrationStatus`, `pixelSizeNumber`, `pmremFace`, `weakRefTracked` を入れると、昨日のcleanup / PMREM試作と接続しやすい。Babylon WebGPU/WebXR側は `xrBindingSupported`, `projectionLayerReady`, `fallbackEngine`, `featureParityGap`, `layerKind`, `materialFade`, `fluidParticleSize` をログ化すると、fallbackが単なるエラーではなく演出状態になる。</p>
+          <p class="en-copy">For SuperSplat-style data, log `sceneId`, `chunkId`, `gaussianCount`, `visibleCount`, `selectedCount`, `histogramBin`, `sortPass`, `radixDigit`, `compactCount`, `indirectDrawCount`, `gpuHeapMb`, and `exportChunkBytes`. For TSL / three.js migration, use `nodeId`, `nodeKind`, `duplicateExpression`, `wgslBytes`, `jsBuildMs`, `pipelineCompileMs`, `backend`, `cacheHit`, `migrationItem`, `migrationStatus`, `pixelSizeNumber`, `pmremFace`, and `weakRefTracked` so it connects cleanly to yesterday's cleanup / PMREM prototype. For Babylon WebGPU / WebXR, logging `xrBindingSupported`, `projectionLayerReady`, `fallbackEngine`, `featureParityGap`, `layerKind`, `materialFade`, and `fluidParticleSize` makes fallback an expressive state rather than just an error.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/blog/blob/main/blog/2026-09-09-new-in-supersplat-editor-3-0-rebuilt-on-webgpu.md" target="_blank" rel="noreferrer">SuperSplat 3.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34386" target="_blank" rel="noreferrer">TSL performance issue</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU support</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/22のcleanup / staging pool / PMREM migrationを、今日のGPU workbench / compile heatへ接続する。9/21のUSD/SOG stage queueはchunkId / exportChunkBytes / compactCountとして戻せる。9/20のaudio occlusion mixerはsort pressureやpipelineCompileMsで音帯域を変える方向がよい。新規案件: SuperSplat 3.0以後のeditor compute / storage layout / export streaming、three.js r187 migration guide更新、TSL performance issueのPR化、WGSL/TSL interop exampleの変化、Babylon WebGPU-XR phase issuesとKHR_interactivity / dithered fade / fluid rendererの進行。寝かせる案件: WebGPUは速いという一般論、単なるrelease note羅列、カードUI系の視覚表現。</p>
+          <p class="en-copy">Continue connecting September 22's cleanup / staging pool / PMREM migration into today's GPU workbench / compile heat. September 21's USD / SOG stage queue can return as `chunkId`, `exportChunkBytes`, and `compactCount`. September 20's audio occlusion mixer should use sort pressure or `pipelineCompileMs` to drive audio bands. New watch items: SuperSplat editor compute / storage layout / export streaming after 3.0, three.js r187 migration guide changes, whether the TSL performance issue becomes PRs, changes to the WGSL/TSL interop example, Babylon WebGPU-XR phase issues, and KHR_interactivity / dithered fade / fluid renderer progress. Park generic WebGPU-is-fast takes, plain release-note lists, and card-UI visual work.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas" target="_blank" rel="noreferrer">PlayCanvas repositories</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-23_gpu_workbench_selection_sort_scope.html` を開く。1はcompute projector、2はradix sort bins、3はselection histogram、4は合成。dragで検査レンズ、click / Spaceでstream chunk pulse。次に足すなら、実際の3DGSやSOG viewerから `visibleCount`, `selectedCount`, `sortPass`, `compactCount`, `indirectDrawCount` をJSONに出し、このshaderへ流す。派生の `outputs/2026-09-23_tsl_compile_heat_migration_lens.html` は、1 node redundancy、2 pipeline compile heat、3 migration checklist、4合成。次に足すなら、three.js移行チェックリストと `performance.mark()` で取ったbuild/compile時間を入れ、移行失敗の項目だけlensで熱く光らせる。</p>
+          <p class="en-copy">First open `outputs/2026-09-23_gpu_workbench_selection_sort_scope.html`. Mode 1 shows compute projector, 2 radix sort bins, 3 selection histogram, and 4 the composite. Drag moves the inspection lens; click / Space sends a stream-chunk pulse. Next, export `visibleCount`, `selectedCount`, `sortPass`, `compactCount`, and `indirectDrawCount` from a real 3DGS or SOG viewer and feed them into the shader. The derived `outputs/2026-09-23_tsl_compile_heat_migration_lens.html` shows 1 node redundancy, 2 pipeline compile heat, 3 migration checklist, and 4 composite. Next, feed a three.js migration checklist plus build / compile timings from `performance.mark()` and make only failed migration items glow hot under the lens.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: SuperSplat 3.0、three.js migration guide / TSL performance issue / WGSL-TSL interop example、Babylon WebGPU docs / PR一覧、Codrops 9月事例を確認。アイデア検討: 昨日のcleanup / pool / migrationから、今日はGPU上で行われる編集作業とcompile/migration熱へ移した。サンプル実装: 本命 `2026-09-23_gpu_workbench_selection_sort_scope.html` と派生 `2026-09-23_tsl_compile_heat_migration_lens.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを実施する。短期: proceduralなlens操作で作業台らしさが読めるかを見る。中長期: 3DGS editor log、three.js compile log、Babylon WebGPU-XR fallback logを1つのstate textureへ束ねる。</p>
+          <p class="en-copy">Collection: checked SuperSplat 3.0, the three.js migration guide / TSL performance issue / WGSL-TSL interop example, Babylon WebGPU docs / PR list, and September Codrops examples. Ideation: moved from yesterday's cleanup / pool / migration into GPU-hosted editing work and compile / migration heat. Implementation: added `2026-09-23_gpu_workbench_selection_sort_scope.html` and `2026-09-23_tsl_compile_heat_migration_lens.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: check whether procedural lens interaction reads like a workbench. Mid term: unify 3DGS editor logs, three.js compile logs, and Babylon WebGPU-XR fallback logs into one state texture.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、renderer内部の不可視状態をただdebug表示する段階から、制作操作そのものをshader / audio / interactionへ変換する段階へ進んでいる。9/16のHTMLTexture dirty rect、9/18のstream worker LOD、9/19のuniform/query/framegraph、9/20のocclusion audio、9/21のUSD/SOG queue、9/22のcleanup / staging pool / PMREM migration、今日のGPU workbench / compile heatは、すべて「裏側の処理が作品の拍になる」方向でつながる。育てる価値が高いテーマは、1) scan/editor操作ログをVJ入力にする、2) compile/migration/fallbackの保守状態を熱分布として見せる、3) readback/sort/selectionの遅延を音と粒子の密度へ変換する、の3つ。</p>
+          <p class="en-copy">The recent arc has moved from showing hidden renderer internals as debug output to translating production operations themselves into shader, audio, and interaction. September 16's HTMLTexture dirty rect, September 18's stream-worker LOD, September 19's uniform / query / frame graph, September 20's occlusion audio, September 21's USD / SOG queue, September 22's cleanup / staging pool / PMREM migration, and today's GPU workbench / compile heat all point to hidden processing becoming the beat of the work. The highest-value themes are: 1. turning scan / editor operation logs into VJ input; 2. showing compile / migration / fallback maintenance state as heat distribution; 3. translating readback / sort / selection latency into sound and particle density.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-23_gpu_workbench_selection_sort_scope.html` を実装した。依存なしraw WebGL fragment shaderで、compute projector、radix sort bins、selection histogram、composite workbenchを4モードで描く。短時間で見るポイントは、編集操作のGPU内部状態が舞台装置のように読めるか。派生として `outputs/2026-09-23_tsl_compile_heat_migration_lens.html` を実装した。node redundancy、pipeline compile heat、migration checklist、composite lensを4モードで描く。短時間で見るポイントは、移行チェックやcompile負荷が“触れる熱”として読めるか。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-23_gpu_workbench_selection_sort_scope.html`, a dependency-free raw WebGL fragment shader showing compute projector, radix sort bins, selection histogram, and composite workbench in four modes. The quick question is whether internal GPU state from editing operations reads like stage equipment. The derived prototype is `outputs/2026-09-23_tsl_compile_heat_migration_lens.html`, showing node redundancy, pipeline compile heat, migration checklist, and composite lens in four modes. The quick question is whether migration checks and compile load read as touchable heat.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `gaussianCount`, `visibleCount`, `selectedCount`, `histogramBin`, `sortPass`, `compactCount`, `indirectDrawCount`, `gpuHeapMb`, `exportChunkBytes` を入力にできる。3D scan viewer、AR memory archive、ライブVJ、商品ページの360度ビューワで、選択数やsort圧を光量、粒子密度、glitch、音の帯域へ割り当てられる。2本目は `nodeId`, `wgslBytes`, `jsBuildMs`, `pipelineCompileMs`, `cacheHit`, `migrationItem`, `migrationStatus`, `backend`, `pmremFace`, `pixelSizeNumber` を入力にできる。移行支援UI、shader学習ツール、WebGPU feature inspector、開発中の作品サイトの健全性表示に向く。過去案との接続では、9/22のcleanup pressureをcompile heatへ、9/21のstage queueをstream chunkへ、9/20のaudio mixerをsort pressureへ、9/18のchunk fadeをhistogram selectionへ戻すと、制作・描画・片付け・移行が1つのライブデータ譜面になる。</p>
+          <p class="en-copy">The first sample can take `gaussianCount`, `visibleCount`, `selectedCount`, `histogramBin`, `sortPass`, `compactCount`, `indirectDrawCount`, `gpuHeapMb`, and `exportChunkBytes` as inputs. In 3D scan viewers, AR memory archives, live VJ sets, or product 360 viewers, selection counts and sort pressure can drive light level, particle density, glitches, or audio bands. The second sample can take `nodeId`, `wgslBytes`, `jsBuildMs`, `pipelineCompileMs`, `cacheHit`, `migrationItem`, `migrationStatus`, `backend`, `pmremFace`, and `pixelSizeNumber`. It fits migration assistant UIs, shader learning tools, WebGPU feature inspectors, and health displays for in-progress creative sites. Connecting back, route September 22's cleanup pressure into compile heat, September 21's stage queue into stream chunks, September 20's audio mixer into sort pressure, and September 18's chunk fade into histogram selection so production, rendering, cleanup, and migration become one live data score.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/blog/blob/main/blog/2026-09-09-new-in-supersplat-editor-3-0-rebuilt-on-webgpu.md" target="_blank" rel="noreferrer">SuperSplat Editor 3.0: Rebuilt on WebGPU</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34386" target="_blank" rel="noreferrer">three.js TSL performance optimizations issue</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/blob/dev/examples/webgpu_tsl_interoperability.html" target="_blank" rel="noreferrer">three.js WGSL/TSL interoperability example</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU support documentation</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub WebGL/Three.js examples</a></li>
+          
+            <li><a href="../outputs/2026-09-23_gpu_workbench_selection_sort_scope.html" target="_blank" rel="noreferrer">Main sample: GPU Workbench Selection Sort Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" target="_blank" rel="noreferrer">Derived sample: TSL Compile Heat Migration Lens</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-23_tsl_compile_heat_migration_lens.html" loading="lazy" title="2026-09-23 TSL Compile Heat Migration Lens"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

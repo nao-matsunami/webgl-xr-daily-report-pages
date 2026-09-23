@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-09-23 TSL Compile Heat Migration Lens</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#05070b;color:#eef3ff;font:13px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:16px;top:14px;max-width:560px;pointer-events:none;text-shadow:0 1px 9px #000}
+    .hud h1{margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:0}
+    .hud p{margin:3px 0;color:#bac7d5}
+    .pill{display:inline-block;margin:7px 7px 0 0;padding:3px 7px;border:1px solid #f6d27a55;background:#180f05cc;border-radius:4px;color:#fff0c1}
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>TSL Compile Heat Migration Lens</h1>
+  <p>1 node redundancy / 2 pipeline compile heat / 3 migration checklist / 4 composite lens</p>
+  <p>Drag the lens across the graph. Click or Space to rebuild the shader.</p>
+  <span class="pill" id="modeLabel">mode 4</span><span class="pill">migration probe</span>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  const label = document.getElementById('modeLabel');
+  if (!gl) {
+    document.body.innerHTML = '<pre>WebGL is not available.</pre>';
+    return;
+  }
+
+  const vertex = `
+attribute vec2 position;
+void main(){ gl_Position = vec4(position,0.0,1.0); }
+`;
+
+  const fragment = `
+precision highp float;
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform float pulse;
+uniform float mode;
+
+float hash(vec2 p){ return fract(sin(dot(p,vec2(41.17,289.31))) * 43758.5453); }
+float circle(vec2 p, float r){ return 1.0 - smoothstep(r, r+0.01, length(p)); }
+float ring(vec2 p, float r, float w){ return 1.0 - smoothstep(w, w*2.0, abs(length(p)-r)); }
+float line(vec2 p, vec2 a, vec2 b, float w){
+  vec2 pa=p-a, ba=b-a;
+  float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
+  return 1.0-smoothstep(w,w*2.0,length(pa-ba*h));
+}
+float box(vec2 p, vec2 b){
+  vec2 d=abs(p)-b;
+  return length(max(d,0.0))+min(max(d.x,d.y),0.0);
+}
+float modeGate(float n){ return 1.0 - step(0.5, abs(mode - n)); }
+vec3 heat(float x){
+  return mix(mix(vec3(0.05,0.08,0.18),vec3(0.24,0.65,1.0),smoothstep(0.05,0.48,x)),vec3(1.0,0.52,0.12),smoothstep(0.48,1.0,x));
+}
+
+vec3 nodeGraph(vec2 uv, vec2 lens){
+  vec3 col=vec3(0.015,0.018,0.035);
+  for(int i=0;i<24;i++){
+    float fi=float(i);
+    vec2 p=vec2(-0.78+1.56*hash(vec2(fi,2.0)),-0.62+1.24*hash(vec2(fi,3.0)));
+    vec2 q=vec2(-0.78+1.56*hash(vec2(fi+5.0,4.0)),-0.62+1.24*hash(vec2(fi+5.0,5.0)));
+    float local=hash(vec2(fi,7.0));
+    float l=line(uv,p,q,0.0035);
+    col += heat(local)*l*0.38;
+    float n=circle(uv-p,0.026+0.012*local);
+    float duplicate=smoothstep(0.28,0.0,length(p-lens*0.42));
+    col += mix(vec3(0.18,0.44,0.75),vec3(1.0,0.72,0.2),duplicate)*n*(0.45+duplicate);
+  }
+  col += vec3(0.75,0.95,1.0)*ring(uv-lens*0.42,0.35,0.006)*(0.4+0.5*pulse);
+  return col;
+}
+
+vec3 compileHeat(vec2 uv, vec2 lens){
+  vec3 col=vec3(0.02,0.015,0.025);
+  for(int i=0;i<8;i++){
+    float fi=float(i);
+    float y=-0.62+fi*0.18;
+    float build=0.18+0.78*hash(vec2(fi,11.0));
+    float jit=0.5+0.5*sin(time*1.2+fi);
+    float width=mix(0.22,0.9,build)*(0.85+0.15*jit+0.35*pulse*exp(-fi*0.2));
+    float rail=1.0-smoothstep(0.0,0.01,abs(box(uv-vec2(-0.08,y),vec2(width,0.038))));
+    float fill=smoothstep(-0.92,-0.90,uv.x)*smoothstep(-0.92+width*2.0,-0.90+width*2.0,uv.x);
+    col += heat(build)*rail*fill*(0.45+0.35*jit);
+    col += vec3(0.95,0.78,0.32)*line(uv,vec2(-0.9,y+0.055),vec2(-0.9+width*2.0,y+0.055),0.0025);
+  }
+  for(int i=0;i<5;i++){
+    float a=float(i)*1.256+time*0.28;
+    vec2 p=lens*0.28+vec2(cos(a),sin(a))*0.18;
+    col += vec3(1.0,0.42,0.16)*ring(uv-p,0.09+0.03*sin(time+float(i)),0.007)*0.42;
+  }
+  return col;
+}
+
+vec3 checklist(vec2 uv, vec2 lens){
+  vec3 col=vec3(0.014,0.018,0.018);
+  for(int i=0;i<12;i++){
+    float fi=float(i);
+    float y=0.72-fi*0.13;
+    float status=hash(vec2(fi,19.0));
+    float lane=1.0-smoothstep(0.0,0.011,abs(box(uv-vec2(0.08,y),vec2(0.74,0.041))));
+    float bad=smoothstep(0.66,0.94,status);
+    float inLens=smoothstep(0.34,0.02,length(vec2(uv.x*0.75,uv.y)-lens*vec2(0.25,0.55)));
+    vec3 ok=mix(vec3(0.12,0.47,0.42),vec3(0.95,0.27,0.12),bad);
+    col += ok*lane*(0.28+0.5*inLens);
+    float tick=line(uv,vec2(-0.63,y),vec2(-0.60,y-0.018),0.004)+line(uv,vec2(-0.60,y-0.018),vec2(-0.55,y+0.025),0.004);
+    float cross=line(uv,vec2(-0.635,y-0.023),vec2(-0.555,y+0.023),0.004)+line(uv,vec2(-0.635,y+0.023),vec2(-0.555,y-0.023),0.004);
+    col += mix(vec3(0.55,1.0,0.72)*tick,vec3(1.0,0.36,0.2)*cross,bad)*(0.45+inLens);
+  }
+  col += vec3(1.0,0.88,0.43)*ring(uv-lens*vec2(0.25,0.55),0.37,0.008)*(0.5+0.4*pulse);
+  return col;
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.0-resolution.xy)/min(resolution.x,resolution.y);
+  vec2 lens=pointer*2.0-1.0;
+  lens.y*=-1.0;
+  vec3 a=nodeGraph(uv,lens);
+  vec3 b=compileHeat(uv,lens);
+  vec3 c=checklist(uv,lens);
+  vec3 col=a*0.72+b*0.66+c*0.68;
+  col += vec3(0.9,0.78,0.35)*pow(max(0.0,1.0-length(uv-lens*0.36)),7.0)*(0.3+pulse);
+  col = mix(col,a,modeGate(1.0));
+  col = mix(col,b,modeGate(2.0));
+  col = mix(col,c,modeGate(3.0));
+  float vign=smoothstep(1.35,0.25,length(uv));
+  col = pow(max(col*vign,0.0),vec3(0.9));
+  gl_FragColor=vec4(col,1.0);
+}
+`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (error) {
+    document.body.innerHTML = '<pre style="white-space:pre-wrap;padding:20px">' + error.message + '</pre>';
+    return;
+  }
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const pos = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    time: gl.getUniformLocation(program, 'time'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    pulse: gl.getUniformLocation(program, 'pulse'),
+    mode: gl.getUniformLocation(program, 'mode')
+  };
+
+  let pointer = [0.45, 0.5];
+  let mode = 4;
+  let impulse = 0;
+  const start = performance.now();
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.floor(innerWidth * dpr));
+    const h = Math.max(1, Math.floor(innerHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+
+  addEventListener('pointermove', (event) => {
+    pointer = [event.clientX / innerWidth, event.clientY / innerHeight];
+  });
+  addEventListener('pointerdown', () => { impulse = 1; });
+  addEventListener('keydown', (event) => {
+    if (event.key >= '1' && event.key <= '4') {
+      mode = Number(event.key);
+      label.textContent = 'mode ' + mode;
+    }
+    if (event.code === 'Space') impulse = 1;
+  });
+
+  function frame(now) {
+    resize();
+    impulse *= 0.93;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform1f(uniforms.time, (now - start) * 0.001);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.pulse, impulse);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
