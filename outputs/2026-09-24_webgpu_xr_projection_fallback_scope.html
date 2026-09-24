@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-09-24 WebGPU XR Projection Fallback Scope</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#07070c;color:#f4f0ff;font:13px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:16px;top:14px;max-width:620px;pointer-events:none;text-shadow:0 1px 9px #000}
+    .hud h1{margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:0}
+    .hud p{margin:3px 0;color:#c7c0d8}
+    .pill{display:inline-block;margin:7px 7px 0 0;padding:3px 7px;border:1px solid #ffc76b55;background:#1a1005cc;border-radius:4px;color:#fff1ca}
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>WebGPU XR Projection Fallback Scope</h1>
+  <p>1 projection layer / 2 XR binding checks / 3 fallback lanes / 4 composite harness</p>
+  <p>Drag to move the view probe. Click or Space to pulse a session restart.</p>
+  <span class="pill" id="modeLabel">mode 4</span><span class="pill">XR fallback probe</span>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  const label = document.getElementById('modeLabel');
+  if (!gl) {
+    document.body.innerHTML = '<pre>WebGL is not available.</pre>';
+    return;
+  }
+
+  const vertex = `
+attribute vec2 position;
+void main(){ gl_Position = vec4(position,0.0,1.0); }
+`;
+
+  const fragment = `
+precision highp float;
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform float pulse;
+uniform float mode;
+
+float hash(vec2 p){ return fract(sin(dot(p,vec2(29.7,191.3))) * 43758.5453); }
+float box(vec2 p, vec2 b){
+  vec2 d = abs(p) - b;
+  return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+}
+float line(vec2 p, vec2 a, vec2 b, float w){
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa,ba) / dot(ba,ba), 0.0, 1.0);
+  return 1.0 - smoothstep(w, w * 2.1, length(pa - ba * h));
+}
+float ring(vec2 p, float r, float w){ return 1.0 - smoothstep(w, w * 2.0, abs(length(p) - r)); }
+float gate(float n){ return 1.0 - step(0.5, abs(mode - n)); }
+vec3 status(float x){
+  return mix(mix(vec3(0.07,0.13,0.24),vec3(0.22,0.86,0.80),smoothstep(0.15,0.58,x)),vec3(1.0,0.44,0.18),smoothstep(0.58,1.0,x));
+}
+
+vec3 projectionLayer(vec2 uv, vec2 probe){
+  vec3 col = vec3(0.018,0.020,0.040);
+  for(int eye=0; eye<2; eye++){
+    float fe = float(eye);
+    vec2 center = vec2(mix(-0.36,0.36,fe), 0.03 + 0.03*sin(time + fe));
+    vec2 q = uv - center;
+    q.x *= 1.08 + 0.05*sin(time*0.7+fe);
+    float shell = ring(q, 0.33, 0.006);
+    float fovea = 1.0 - smoothstep(0.0,0.20,length(q - probe*0.13));
+    col += mix(vec3(0.16,0.44,0.74),vec3(0.95,0.70,0.22),fovea) * shell * (0.42 + pulse);
+    for(int i=0;i<7;i++){
+      float fi = float(i);
+      float a = -1.1 + fi*0.36 + 0.04*sin(time+fi);
+      vec2 ray = vec2(cos(a),sin(a))*0.32;
+      col += vec3(0.25,0.78,1.0) * line(uv, center, center + ray, 0.0025) * (0.18 + 0.35*fovea);
+    }
+  }
+  col += vec3(1.0,0.78,0.36) * ring(uv - probe*0.20,0.22,0.005) * (0.5 + pulse);
+  return col;
+}
+
+vec3 bindingChecks(vec2 uv, vec2 probe){
+  vec3 col = vec3(0.016,0.018,0.030);
+  for(int i=0;i<14;i++){
+    float fi = float(i);
+    float y = 0.75 - fi * 0.115;
+    float pass = hash(vec2(fi,4.0));
+    float hot = step(0.70, pass + 0.12*sin(time*0.9+fi));
+    float lane = 1.0 - smoothstep(0.0,0.012,abs(box(uv - vec2(0.08,y), vec2(0.78,0.034))));
+    float local = smoothstep(0.36,0.02,length(vec2(uv.x*0.70,uv.y)-probe*vec2(0.18,0.48)));
+    col += status(pass + local*0.25) * lane * (0.32 + 0.45*local);
+    float mark = mix(
+      line(uv,vec2(-0.65,y),vec2(-0.61,y-0.018),0.004)+line(uv,vec2(-0.61,y-0.018),vec2(-0.55,y+0.022),0.004),
+      line(uv,vec2(-0.65,y-0.024),vec2(-0.55,y+0.024),0.004)+line(uv,vec2(-0.65,y+0.024),vec2(-0.55,y-0.024),0.004),
+      hot
+    );
+    col += mix(vec3(0.55,1.0,0.78),vec3(1.0,0.38,0.20),hot) * mark * (0.45 + pulse);
+  }
+  return col;
+}
+
+vec3 fallbackLanes(vec2 uv, vec2 probe){
+  vec3 col = vec3(0.020,0.016,0.028);
+  for(int i=0;i<6;i++){
+    float fi = float(i);
+    float y = -0.58 + fi*0.22;
+    float t = fract(time*0.10 + fi*0.11 + pulse*0.18);
+    float lane = line(uv,vec2(-0.86,y),vec2(0.86,y+0.05*sin(time+fi)),0.006);
+    float marker = 1.0 - smoothstep(0.0,0.035,length(uv - vec2(-0.82 + 1.64*t, y + 0.05*sin(time+fi))));
+    float branch = smoothstep(0.46,0.03,length(vec2(-0.82 + 1.64*t, y)-probe*0.34));
+    col += vec3(0.18,0.45,0.62) * lane * 0.42;
+    col += status(hash(vec2(fi,9.0)) + branch*0.3) * marker * (0.55 + pulse);
+    col += vec3(1.0,0.62,0.22) * line(uv,vec2(-0.35,y),vec2(-0.10,y+0.10),0.0025) * (0.22 + branch);
+  }
+  for(int i=0;i<22;i++){
+    float fi = float(i);
+    vec2 p = vec2(-0.86 + 1.72*hash(vec2(fi,2.0)), -0.76 + 1.52*hash(vec2(fi,3.0)));
+    col += vec3(0.42,0.72,1.0) * ring(uv-p,0.018+0.018*hash(vec2(fi,5.0)),0.003) * 0.30;
+  }
+  return col;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x,resolution.y);
+  vec2 probe = pointer * 2.0 - 1.0;
+  probe.y *= -1.0;
+  vec3 a = projectionLayer(uv,probe);
+  vec3 b = bindingChecks(uv,probe);
+  vec3 c = fallbackLanes(uv,probe);
+  vec3 col = a * 0.72 + b * 0.70 + c * 0.68;
+  col += vec3(1.0,0.74,0.25) * pow(max(0.0,1.0-length(uv-probe*0.25)),7.0) * (0.22 + pulse);
+  col = mix(col,a,gate(1.0));
+  col = mix(col,b,gate(2.0));
+  col = mix(col,c,gate(3.0));
+  col *= smoothstep(1.35,0.30,length(uv));
+  gl_FragColor = vec4(pow(max(col,0.0),vec3(0.90)),1.0);
+}
+`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (error) {
+    document.body.innerHTML = '<pre style="white-space:pre-wrap;padding:20px">' + error.message + '</pre>';
+    return;
+  }
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const pos = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    resolution: gl.getUniformLocation(program, 'resolution'),
+    time: gl.getUniformLocation(program, 'time'),
+    pointer: gl.getUniformLocation(program, 'pointer'),
+    pulse: gl.getUniformLocation(program, 'pulse'),
+    mode: gl.getUniformLocation(program, 'mode')
+  };
+
+  let pointer = [0.46, 0.50];
+  let mode = 4;
+  let impulse = 0;
+  const start = performance.now();
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.floor(innerWidth * dpr));
+    const h = Math.max(1, Math.floor(innerHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+
+  addEventListener('pointermove', (event) => {
+    pointer = [event.clientX / innerWidth, event.clientY / innerHeight];
+  });
+  addEventListener('pointerdown', () => { impulse = 1; });
+  addEventListener('keydown', (event) => {
+    if (event.key >= '1' && event.key <= '4') {
+      mode = Number(event.key);
+      label.textContent = 'mode ' + mode;
+    }
+    if (event.code === 'Space') impulse = 1;
+  });
+
+  function frame(now) {
+    resize();
+    impulse *= 0.93;
+    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+    gl.uniform1f(uniforms.time, (now - start) * 0.001);
+    gl.uniform2f(uniforms.pointer, pointer[0], pointer[1]);
+    gl.uniform1f(uniforms.pulse, impulse);
+    gl.uniform1f(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>

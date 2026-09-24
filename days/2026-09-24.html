@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>リソース回復とWebGPU-XRの条件分岐を、触れる診断面にする | 2026-09-24</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.24</p>
+      <h1>リソース回復とWebGPU-XRの条件分岐を、触れる診断面にする</h1>
+      <p class="hero-subtitle">Turning resource recovery and WebGPU-XR branching into tactile diagnostic surfaces</p>
+      <p>PlayCanvas v2.22.3のWebGPU resource cleanup / recovery cancellation修正、three.js r186後のTSL / WebGPU migration継続、Babylon.js WebGPU-XR documentationと9月のWebGPU系open issue、Codrops 9月のWebGL / Three.js事例を確認した。9/23のGPU workbench / compile heatから、今日は破棄・回復・shadow resetを本命試作にし、派生ではXRGPUBinding / projection layer / fallback branchを触れる検査面にした。</p>
+      <p class="en-copy">Today checks PlayCanvas v2.22.3's WebGPU resource cleanup and recovery cancellation fix, ongoing post-r186 three.js TSL / WebGPU migration work, Babylon.js WebGPU-XR documentation and September WebGPU-related open issues, plus September Codrops WebGL / Three.js examples. Extending September 23's GPU workbench / compile heat, the main prototype visualizes destroy, recovery, and shadow reset state; the derived prototype turns XRGPUBinding, projection layers, and fallback branches into a tactile inspection surface.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-23.html">← 2026.09.23</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-24 WebGPU XR Projection Fallback Scope</h3>
+              <p>1 projection layer / 2 XR binding checks / 3 fallback lanes / 4 composite harness</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-24 Recovery Cleanup Heat Scope</h3>
+              <p>1 resource lifetime / 2 recovery queue / 3 shadow reset / 4 composite heat scope</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Engine v2.22.3は、skydome DoF、WebGPU resource cleanup / recovery cancellation、clustered shadow lights resetを修正している。9/22のcleanup / staging pool、9/23のGPU workbenchから、今日は破棄と回復のタイミングを演出入力として見る。2. three.jsはr186以降もWebGPURenderer / TSL / migration guideが活発で、WebGPU renderer manualはWebGPU初期化が非同期であり、WebGL2 fallbackを持つuniversal rendererとして説明している。これはfallbackを失敗ではなく状態遷移として扱える材料。3. three.js r186 releaseではTSL lint追加が明記され、TSL performance issue #34386は巨大WGSL shaderとpipeline compileの熱を問題の中心としている。昨日のcompile heat lensは継続案件。4. Babylon.js WebGPU docsはWebGPUとWebGLの併走、WebGPUEngineの非同期初期化、WebGPU-backed WebXRではXRGPUBindingとprojection texture view条件の確認が必要なことを明示している。5. Babylon.js issue一覧ではWebGPU Engine deferred queue memory leak / premature device destruction、WGSL cascaded shadow syntax、WebGPU-XR harnessなどが9月の焦点として見える。WebGPU-XRはfeatureが増える段階から、検証・fallback・CIの段階へ寄っている。</p>
+          <p class="en-copy">1. PlayCanvas Engine v2.22.3 fixes skydome DoF, WebGPU resource cleanup / recovery cancellation, and clustered shadow light reset. Extending September 22 cleanup / staging pool and September 23 GPU workbench, today's report treats destroy and recovery timing as expressive input. 2. three.js remains active around WebGPURenderer, TSL, and migration. The WebGPU renderer manual describes asynchronous WebGPU initialization and a universal renderer with WebGL2 fallback, which suggests treating fallback as a state transition rather than a failure. 3. The three.js r186 release explicitly adds TSL linting, while TSL performance issue #34386 keeps oversized WGSL shader and pipeline compile heat at the center. Yesterday's compile heat lens remains a continuing thread. 4. Babylon.js WebGPU docs emphasize WebGPU / WebGL side-by-side support, asynchronous WebGPUEngine initialization, and WebGPU-backed WebXR checks for XRGPUBinding plus projection texture view support. 5. Babylon.js open issues show September focus on WebGPU Engine deferred queue memory leaks / premature device destruction, WGSL cascaded shadow syntax, and WebGPU-XR harness work. WebGPU-XR is shifting from adding features toward verification, fallback, and CI.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/blob/dev/manual/pages/webgpurenderer.html" target="_blank" rel="noreferrer">three.js WebGPU renderer manual</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU docs</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues" target="_blank" rel="noreferrer">Babylon.js issues</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>PlayCanvas v2.22.3のWebGPU cleanup / recovery修正は、見た目の派手さはないが、ライブ系・展示系・長時間稼働するWebGL/WebGPU作品では核心に近い。破棄、回復キャンセル、shadow light resetは、すべて“作品が壊れないための裏側の拍”になりうる。Babylon.jsのWebGPU-XR条件分岐も同じで、XRGPUBinding、projection texture view、fallback engine、feature parity gapを画面上の診断レイヤーとして見せると、XR非対応環境でも作品の状態が読める。Codropsの9月事例はPaper Crumple、Elemental Sandbox、Unwoven、ASCII、Datamoshなど、素材変形と履歴表現が多く、今日のrecovery/fallbackログをそこへ重ねると、修復中だけ紙面が歪む、fallback中だけASCII粒度が荒れる、といった演出にできる。</p>
+          <p class="en-copy">PlayCanvas v2.22.3's WebGPU cleanup / recovery fix is not flashy, but it is central for live, installation, and long-running WebGL / WebGPU works. Destruction, recovery cancellation, and shadow light reset can become the hidden beat that keeps a piece alive. Babylon.js WebGPU-XR branching is similar: XRGPUBinding, projection texture views, fallback engine, and feature parity gaps can become visible diagnostic layers, making the work's state readable even on non-XR devices. September Codrops examples lean into paper crumpling, elemental sandboxes, unwoven surfaces, ASCII, and datamosh history; overlaying recovery / fallback logs suggests effects like paper warping only during recovery or ASCII resolution dropping only during fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Recovery Cleanup Heat Scope」。resource lifetime ring、recovery queue、clustered shadow reset gridを抽象化し、dragでcleanup lens、click / Spaceでdestroy/recover pulseを入れる。1 resource lifetime、2 recovery queue、3 shadow reset、4 composite heat scope。派生案は「WebGPU XR Projection Fallback Scope」。projection layer、XR binding checks、fallback lanesを抽象化し、dragでview probe、click / Spaceでsession restart pulseを入れる。1 projection layer、2 XR binding checks、3 fallback lanes、4 composite harness。どちらもエラー処理ではなく、状態の変化を作品の視覚言語にする方向。</p>
+          <p class="en-copy">The main idea is Recovery Cleanup Heat Scope. It abstracts resource lifetime rings, recovery queues, and clustered shadow reset grids. Drag moves the cleanup lens; click / Space triggers a destroy / recover pulse. Mode 1 is resource lifetime, 2 recovery queue, 3 shadow reset, and 4 composite heat scope. The derived idea is WebGPU XR Projection Fallback Scope. It abstracts projection layers, XR binding checks, and fallback lanes. Drag moves the view probe; click / Space triggers a session restart pulse. Mode 1 is projection layer, 2 XR binding checks, 3 fallback lanes, and 4 composite harness. Both treat state changes as visual language rather than mere error handling.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Recovery Cleanup Heat Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">WebGPU XR Projection Fallback Scope</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>cleanup / recovery側は `resourceId`, `resourceKind`, `createdAt`, `destroyQueuedAt`, `destroyedAt`, `recoverAttempt`, `recoverCancelled`, `deviceLost`, `gpuHeapMb`, `shadowClusterReset`, `scenePassDepthReady` をログ化するとよい。WebGPU-XR側は `xrBindingSupported`, `projectionLayerReady`, `getViewDescriptorSupported`, `sessionMode`, `fallbackEngine`, `featureParityGap`, `leftEyeScale`, `rightEyeScale`, `projectionRestartCount` を持つ。three.js / TSL側は昨日と同じく `wgslBytes`, `pipelineCompileMs`, `cacheHit`, `migrationItem`, `backend` を維持し、PlayCanvas / Babylonのrecovery/fallback状態と同じtimeline textureへ入れると、エンジン横断の“安定性の譜面”になる。</p>
+          <p class="en-copy">For cleanup / recovery, log `resourceId`, `resourceKind`, `createdAt`, `destroyQueuedAt`, `destroyedAt`, `recoverAttempt`, `recoverCancelled`, `deviceLost`, `gpuHeapMb`, `shadowClusterReset`, and `scenePassDepthReady`. For WebGPU-XR, track `xrBindingSupported`, `projectionLayerReady`, `getViewDescriptorSupported`, `sessionMode`, `fallbackEngine`, `featureParityGap`, `leftEyeScale`, `rightEyeScale`, and `projectionRestartCount`. For three.js / TSL, keep yesterday's `wgslBytes`, `pipelineCompileMs`, `cacheHit`, `migrationItem`, and `backend`. Feeding PlayCanvas / Babylon recovery and fallback state into the same timeline texture creates a cross-engine score of stability.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.3</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon WebGPU documentation</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34386" target="_blank" rel="noreferrer">three.js TSL performance issue</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/23のGPU workbench / compile heatを、今日のcleanup / fallback harnessへ接続する。9/22のresource cleanup staging pool、9/21のUSD/SOG stage queue、9/20のaudio occlusion mixerは、すべてresource lifetime / recovery lane / fallback branchへ戻せる。新規案件: PlayCanvasのWebGPU cleanup関連PR、three.js WebGPURenderer optional canvas / compileAsync / TSL tree-shaking系PR、Babylon.js WebGPU Engine memory leak / device destruction / cascaded shadow syntax / WebGPU-XR harness issue、Codropsの9月後半事例。寝かせる案件: 単なる新機能リスト、WebGPU性能比較だけの話、カードUI寄りの題材。</p>
+          <p class="en-copy">Continue connecting September 23's GPU workbench / compile heat into today's cleanup / fallback harness. September 22's resource cleanup staging pool, September 21's USD / SOG stage queue, and September 20's audio occlusion mixer can all return as resource lifetime, recovery lanes, or fallback branches. New watch items: PlayCanvas WebGPU cleanup PRs, three.js WebGPURenderer optional canvas / compileAsync / TSL tree-shaking PRs, Babylon.js WebGPU Engine memory leak / device destruction / cascaded shadow syntax / WebGPU-XR harness issues, and late-September Codrops examples. Park plain feature lists, WebGPU performance comparisons by themselves, and card-UI-adjacent topics.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues" target="_blank" rel="noreferrer">Babylon.js issues</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-24_recovery_cleanup_heat_scope.html` を開く。1はresource lifetime、2はrecovery queue、3はshadow reset、4は合成。dragでcleanup lens、click / Spaceでdestroy/recover pulse。次に足すなら、実際のPlayCanvasアプリからdestroy queue、device lost、shadow reset、scene pass depth readyをJSONに出す。派生の `outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html` は、1 projection layer、2 XR binding checks、3 fallback lanes、4合成。次に足すなら、Babylon.jsのWebGPU-XR capability check結果を入力にし、fallback中だけprojection ringを分岐させる。</p>
+          <p class="en-copy">First open `outputs/2026-09-24_recovery_cleanup_heat_scope.html`. Mode 1 shows resource lifetime, 2 recovery queue, 3 shadow reset, and 4 the composite. Drag moves the cleanup lens; click / Space sends a destroy / recover pulse. Next, export destroy queue, device lost, shadow reset, and scene pass depth ready values from a real PlayCanvas app. The derived `outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html` shows 1 projection layer, 2 XR binding checks, 3 fallback lanes, and 4 composite. Next, feed Babylon.js WebGPU-XR capability check results and branch the projection ring only while fallback is active.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas v2.22.3、three.js WebGPU renderer manual / r186 release / TSL performance issue、Babylon.js WebGPU docs / issue一覧、Codrops 9月事例を確認。アイデア検討: 昨日のGPU workbench / compile heatから、今日は長時間稼働とXR分岐に必要なrecovery / fallbackへ焦点を移した。サンプル実装: 本命 `2026-09-24_recovery_cleanup_heat_scope.html` と派生 `2026-09-24_webgpu_xr_projection_fallback_scope.html` を追加。結果の検証: JSON parse、HTML parse、script構文確認、gallery build、publishを実施する。短期: procedural表示で破棄/回復の読みやすさを見る。中長期: 実ログを入れて、renderer healthを音・粒子・shaderへ流す。</p>
+          <p class="en-copy">Collection: checked PlayCanvas v2.22.3, the three.js WebGPU renderer manual / r186 release / TSL performance issue, Babylon.js WebGPU docs / issue list, and September Codrops examples. Ideation: moved from yesterday's GPU workbench / compile heat into recovery / fallback needed for long-running and XR-branching works. Implementation: added `2026-09-24_recovery_cleanup_heat_scope.html` and `2026-09-24_webgpu_xr_projection_fallback_scope.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: check readability of destroy / recovery through procedural visualization. Mid term: feed real logs into audio, particles, and shaders as renderer health.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日は、描画を作る技術から、描画を支える“整備状態”をどう作品化するかへ寄っている。9/20 audio mixerはocclusion/framegraphを音へ、9/21 stage queueはUSD/SOGの非同期工程へ、9/22 cleanup poolはresource lifetimeへ、9/23 GPU workbenchは選択/ソート/compileへ、今日はrecovery/fallbackへ広がった。育てる価値が高いテーマは、1) renderer healthを観客にも分かる光・音・粒子へ翻訳する、2) fallbackを品質劣化ではなく演出モードにする、3) XR非対応環境でもprojection / binding / layerの状態を美しく見せる、の3つ。</p>
+          <p class="en-copy">The recent line is shifting from techniques that create rendering to how the maintenance state supporting rendering can become part of the work. September 20 routed occlusion / frame graph into audio, September 21 exposed USD / SOG async queues, September 22 focused on resource lifetime, September 23 on selection / sorting / compile, and today on recovery / fallback. The high-value themes are: 1. translating renderer health into light, sound, and particles that viewers can read; 2. making fallback an expressive mode rather than mere quality loss; 3. presenting projection / binding / layer state beautifully even outside XR-capable devices.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-24_recovery_cleanup_heat_scope.html` を実装した。依存なしraw WebGL fragment shaderで、resource lifetime、recovery queue、shadow reset、composite heat scopeを4モードで描く。派生として `outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html` を実装した。projection layer、XR binding checks、fallback lanes、composite harnessを4モードで描く。どちらも短時間で開ける最小構成で、次に実ログを入れられるよう状態名をレポート内に残した。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-24_recovery_cleanup_heat_scope.html`, a dependency-free raw WebGL fragment shader showing resource lifetime, recovery queue, shadow reset, and composite heat scope in four modes. The derived prototype is `outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html`, showing projection layer, XR binding checks, fallback lanes, and composite harness in four modes. Both are minimal, quick-to-open sketches, with state names preserved in the report so real logs can be added next.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `resourceKind`, `destroyQueuedAt`, `recoverCancelled`, `deviceLost`, `gpuHeapMb`, `shadowClusterReset`, `scenePassDepthReady` を入力にできる。展示作品、WebGL常設ページ、ライブVJ、3D scan editorで、メモリ圧や回復中の状態を照明、ノイズ、音圧、粒子密度へ割り当てられる。2本目は `xrBindingSupported`, `projectionLayerReady`, `getViewDescriptorSupported`, `fallbackEngine`, `featureParityGap`, `projectionRestartCount` を入力にできる。WebXRデモの事前診断、XR非対応スマホ向けの美しいfallback、開発者向けinspectorに向く。過去案との接続では、9/23のcompile heatをfallback branchの熱へ、9/22のcleanup poolをresource lifetime ringへ、9/20のaudio mixerをdeviceLost pulseへつなぐと、壊れそうな瞬間ほど音と光が立ち上がる作品になる。</p>
+          <p class="en-copy">The first sample can take `resourceKind`, `destroyQueuedAt`, `recoverCancelled`, `deviceLost`, `gpuHeapMb`, `shadowClusterReset`, and `scenePassDepthReady` as inputs. In installations, permanent WebGL pages, live VJ sets, or 3D scan editors, memory pressure and recovery state can drive lighting, noise, audio pressure, or particle density. The second sample can take `xrBindingSupported`, `projectionLayerReady`, `getViewDescriptorSupported`, `fallbackEngine`, `featureParityGap`, and `projectionRestartCount`. It fits WebXR preflight diagnostics, beautiful fallback for non-XR phones, and developer inspectors. Connecting back, route September 23 compile heat into fallback branch heat, September 22 cleanup pool into resource lifetime rings, and September 20 audio mixer into device-lost pulses so the work gets louder and brighter when it is close to breaking.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.3 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/blob/dev/manual/pages/webgpurenderer.html" target="_blank" rel="noreferrer">three.js WebGPU renderer manual</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/34386" target="_blank" rel="noreferrer">three.js TSL performance optimizations issue</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU support documentation</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues" target="_blank" rel="noreferrer">Babylon.js open issues</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/codrops/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-09-24_recovery_cleanup_heat_scope.html" target="_blank" rel="noreferrer">Main sample: Recovery Cleanup Heat Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" target="_blank" rel="noreferrer">Derived sample: WebGPU XR Projection Fallback Scope</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-24_webgpu_xr_projection_fallback_scope.html" loading="lazy" title="2026-09-24 WebGPU XR Projection Fallback Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
