@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ソート精度、alpha深度、root motionを安定性の譜面として見る | 2026-09-25</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.25</p>
+      <h1>ソート精度、alpha深度、root motionを安定性の譜面として見る</h1>
+      <p class="hero-subtitle">Reading sort precision, alpha depth, and root motion as a stability score</p>
+      <p>three.js r186の正式リリース、PlayCanvas Engine v2.22.4のGSplat GPU sort precision修正、Babylon.js 9.28.0のalpha depth pre-pass / Gaussian Splatting data texture / RootMotion / OBJ texture waitを確認した。9/24のrecovery / fallback診断面から、今日は描画が破綻しそうな境界、素材が正しく到着する境界、キャラクターやsplatが時間的にずれる境界を、2本のraw WebGL試作として可視化した。</p>
+      <p class="en-copy">Today checks the official three.js r186 release, PlayCanvas Engine v2.22.4's GSplat GPU sort precision fix, and Babylon.js 9.28.0's alpha depth pre-pass, Gaussian Splatting data texture, RootMotion, and OBJ texture wait updates. Extending September 24's recovery / fallback diagnostic surfaces, the two raw WebGL prototypes visualize the boundary where rendering may break, assets arrive correctly, and characters or splats drift over time.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-25_sort_precision_lifetime_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-24.html">← 2026.09.24</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-25 Sort Precision Lifetime Scope</h3>
+              <p>1 splat sort precision / 2 renderer lifetime / 3 async readback lane / 4 composite stability field</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-25_sort_precision_lifetime_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-25 Alpha RootMotion Texture Score</h3>
+              <p>1 alpha depth pre-pass / 2 nearest splat texture / 3 root motion arc / 4 material arrival score</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js r186が9月24日に公開された。WebGPURenderer / WebGLRenderer / TSL / dispose / resetState / async readback / SunLight / PMREM / XRまわりの更新が広く入り、9/23-9/24のcompile heat / recovery面は継続案件として強くなった。2. PlayCanvas Engine v2.22.4はGSplat GPU sort flickerをsort key precision lossとして修正している。9/18以降のSOG/LOD/worker queueの流れに、今日は「精度喪失そのものを見る」視点を足す。3. PlayCanvasの最新ニュースではEditor 2.32のJoints / Parallax Occlusion / Splat LODが出ており、splat編集と物理的な拘束、表面の視差が同じ制作環境で近づいている。4. Babylon.js 9.28.0はStandardMaterialのalpha depth pre-pass、prefiltered cube texture load contract、RootMotionClip / RootMotionController、Gaussian Splatting data textureのnearest sampling、OBJ texture waitなどが入った。5. Codrops側ではPaper Crumple / Liquid Glass / Face Mask / ASCII / Datamoshが9月の参照軸で、エンジン更新の安定性ログを、紙の折れ、ガラス屈折、ASCII粒度、datamosh履歴へ接続できる。</p>
+          <p class="en-copy">1. three.js r186 was released on September 24. It brings broad WebGPURenderer / WebGLRenderer / TSL / dispose / resetState / async readback / SunLight / PMREM / XR updates, strengthening the September 23-24 compile heat and recovery surface thread. 2. PlayCanvas Engine v2.22.4 fixes GSplat GPU sort flicker as sort key precision loss. Extending the SOG / LOD / worker queue line since September 18, today adds a view of precision loss itself. 3. PlayCanvas latest news highlights Editor 2.32 with Joints, Parallax Occlusion, and Splat LOD, bringing splat editing, physical constraints, and surface parallax closer in the same authoring environment. 4. Babylon.js 9.28.0 adds StandardMaterial alpha depth pre-pass fixes, a prefiltered cube texture load contract, RootMotionClip / RootMotionController, nearest sampling for Gaussian Splatting data textures, and OBJ texture wait options. 5. Codrops September references include Paper Crumple, Liquid Glass, Face Mask, ASCII, and Datamosh, suggesting engine stability logs can connect to folded paper, glass refraction, ASCII granularity, and datamosh history.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://dev.playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas latest news</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の面白さは、表現機能そのものより「壊れ方を減らす更新」が表現の材料になる点にある。PlayCanvasのGSplat sort precision fixは、スプラットがちらつく瞬間を消すための修正だが、視覚表現では逆にsort keyの量子化やdepth laneの迷いを演出にできる。Babylon.jsのalpha depth pre-passとnearest GSplat data textureは、透明・splat・素材ロードの境界を安定化する更新なので、素材が読み込まれるまでの待ちやalphaCutOffの閾値を、見える楽譜にできる。three.js r186のdispose async / resetState / readback周辺は、長時間稼働する作品の健康状態を、画面の裏側から前景へ出すための材料。</p>
+          <p class="en-copy">The interesting point today is that updates reducing breakage can become expressive material. PlayCanvas's GSplat sort precision fix removes flicker, but for visual work the quantization of sort keys and uncertainty of depth lanes can be intentionally staged. Babylon.js alpha depth pre-pass and nearest GSplat data texture updates stabilize transparency, splats, and material loading, making texture waits and alphaCutOff thresholds readable as a visual score. three.js r186's async dispose, resetState, and readback-related updates provide material for bringing the health state of long-running works from the hidden layer into the foreground.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.22.4</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js 9.28.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js r186</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は「Sort Precision Lifetime Scope」。GSplat sort key precision、renderer resource lifetime、async readback laneを1枚の安定性スコープにする。1 splat sort precision、2 renderer lifetime、3 async readback lane、4 composite。dragでinspection probe、click / Spaceでprecision-loss pulse。派生案は「Alpha RootMotion Texture Score」。alpha depth pre-pass、nearest splat data texture、RootMotion path、material arrivalを楽譜化する。1 alpha depth pre-pass、2 nearest splat texture、3 root motion arc、4 material arrival score。次に足すなら、実アプリのsort key、alphaCutOff、asset texture wait、root motion deltaをJSONで注入する。</p>
+          <p class="en-copy">The main idea is Sort Precision Lifetime Scope: combine GSplat sort key precision, renderer resource lifetime, and async readback lanes into one stability scope. Mode 1 is splat sort precision, 2 renderer lifetime, 3 async readback lane, and 4 composite. Drag moves the inspection probe; click / Space injects a precision-loss pulse. The derived idea is Alpha RootMotion Texture Score: score alpha depth pre-pass, nearest splat data texture, RootMotion paths, and material arrival. Mode 1 is alpha depth pre-pass, 2 nearest splat texture, 3 root motion arc, and 4 material arrival score. Next, feed real sort keys, alphaCutOff values, asset texture waits, and root motion deltas as JSON.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Sort Precision Lifetime Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Alpha RootMotion Texture Score</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>sort / lifetime側は `splatId`, `depth`, `sortKey`, `quantizedSortKey`, `sortAgeMs`, `flickerScore`, `rendererBackend`, `disposeQueued`, `disposeResolved`, `readbackLatencyMs`, `pixelPackBufferActive` を持つとよい。alpha / asset側は `materialId`, `alphaSourceMask`, `alphaCutOff`, `depthPrePassReady`, `dataTextureSampling`, `rootMotionDelta`, `assetContainerReady`, `textureWaitMs`, `cubePrefilterReady` を持つ。前日までの `recoverCancelled`, `fallbackEngine`, `wgslBytes`, `pipelineCompileMs` と同じtimeline textureへ積むと、エンジン横断で「揺れ」「待ち」「回復」「破棄」を同一のshader入力として扱える。</p>
+          <p class="en-copy">For sort / lifetime, track `splatId`, `depth`, `sortKey`, `quantizedSortKey`, `sortAgeMs`, `flickerScore`, `rendererBackend`, `disposeQueued`, `disposeResolved`, `readbackLatencyMs`, and `pixelPackBufferActive`. For alpha / asset state, track `materialId`, `alphaSourceMask`, `alphaCutOff`, `depthPrePassReady`, `dataTextureSampling`, `rootMotionDelta`, `assetContainerReady`, `textureWaitMs`, and `cubePrefilterReady`. If these are stacked into the same timeline texture as yesterday's `recoverCancelled`, `fallbackEngine`, `wgslBytes`, and `pipelineCompileMs`, cross-engine shake, waiting, recovery, and disposal can be treated as one shader input family.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js 9.28.0 release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/24のrecovery / fallback、9/23のGPU workbench / compile heat、9/22のcleanup staging poolを、今日のsort precision / alpha pre-passへ接続する。新規案件: three.js r186後のr187 PR、WebGPURenderer dispose / resetState / async readbackの実利用例、PlayCanvasのSplat LOD Editor 2.32とGSplat sort修正の実データ、Babylon.js 9.28.0のRootMotion / alpha / nearest data textureのサンプル。寝かせる案件: ただのバージョン追跡、カードUI、shaderと関係しないCMS/SEO系トピック。</p>
+          <p class="en-copy">Continue connecting September 24 recovery / fallback, September 23 GPU workbench / compile heat, and September 22 cleanup staging pool into today's sort precision / alpha pre-pass direction. New watch items: post-r186 r187 three.js PRs, real uses of WebGPURenderer dispose / resetState / async readback, PlayCanvas Splat LOD Editor 2.32 and GSplat sort fix data, and Babylon.js 9.28.0 RootMotion / alpha / nearest data texture examples. Park plain version tracking, card UI, and CMS / SEO topics unrelated to shaders.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas blog</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-25_sort_precision_lifetime_scope.html` を開く。1はsplat sort precision、2はrenderer lifetime、3はasync readback lane、4は合成。dragでprobe、click / Spaceでprecision-loss pulse。次に足すなら、PlayCanvas / SuperSplatの実sort keyやLOD levelを使い、flickerが出やすいdepth帯だけ明るくする。派生の `outputs/2026-09-25_alpha_rootmotion_texture_score.html` は、alpha pre-pass、nearest splat data texture、root motion、material arrivalを同じ譜面にする。次に足すならBabylonのAssetContainer loadとRootMotionControllerのdeltaを実ログ化する。</p>
+          <p class="en-copy">First open `outputs/2026-09-25_sort_precision_lifetime_scope.html`. Mode 1 shows splat sort precision, 2 renderer lifetime, 3 async readback lane, and 4 composite. Drag moves the probe; click / Space triggers a precision-loss pulse. Next, use real PlayCanvas / SuperSplat sort keys and LOD levels so depth bands prone to flicker glow more strongly. The derived `outputs/2026-09-25_alpha_rootmotion_texture_score.html` scores alpha pre-pass, nearest splat data textures, root motion, and material arrival together. Next, log Babylon AssetContainer loads and RootMotionController deltas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r186、PlayCanvas v2.22.4 / Editor 2.32、Babylon.js 9.28.0、Codrops 9月WebGL/Three.js事例を確認。アイデア検討: 直近のrecovery / fallback / cleanupを、sort precisionとalpha/material arrivalへ接続した。サンプル実装: 本命 `2026-09-25_sort_precision_lifetime_scope.html` と派生 `2026-09-25_alpha_rootmotion_texture_score.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural状態で可読性を見る。中長期: 実ログを入れてrenderer health / material readiness / motion deltaの可視化に育てる。</p>
+          <p class="en-copy">Collection: checked three.js r186, PlayCanvas v2.22.4 / Editor 2.32, Babylon.js 9.28.0, and September Codrops WebGL / Three.js examples. Ideation: connected recent recovery / fallback / cleanup work to sort precision and alpha / material arrival. Implementation: added `2026-09-25_sort_precision_lifetime_scope.html` and `2026-09-25_alpha_rootmotion_texture_score.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: inspect readability through procedural states. Mid term: feed real logs to grow this into renderer health, material readiness, and motion delta visualization.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日の流れは、描画の華やかさではなく、描画が安定するまでの待ち、破棄、回復、精度、fallbackを表現素材にする方向へはっきり寄っている。9/20のocclusion/audio、9/21のstage queue、9/22のcleanup pool、9/23のcompile heat、9/24のrecovery/fallback、今日のsort precision/alpha arrivalは、全部「状態を隠さず見せる」テーマでつながる。育てる価値が高いテーマは、1) renderer health dashboardを美しいshader作品にする、2) splat/texture/alphaの不安定さを演出モードとして扱う、3) root motionやasset waitを音・粒子・線の譜面に変える、の3つ。</p>
+          <p class="en-copy">The recent direction is clearly less about flashy rendering itself and more about turning waiting, disposal, recovery, precision, and fallback before stable rendering into expressive material. September 20 occlusion / audio, September 21 stage queues, September 22 cleanup pools, September 23 compile heat, September 24 recovery / fallback, and today's sort precision / alpha arrival all connect through the theme of showing state instead of hiding it. The high-value themes are: 1. making renderer health dashboards into beautiful shader works; 2. treating splat / texture / alpha instability as an expressive mode; 3. translating root motion and asset waits into scores of sound, particles, and lines.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-25_sort_precision_lifetime_scope.html` を実装した。依存なしraw WebGL fragment shaderで、GSplat sort precision、renderer lifetime、async readback lane、composite stability fieldを4モードで描く。派生として `outputs/2026-09-25_alpha_rootmotion_texture_score.html` を実装した。alpha depth pre-pass、nearest splat data texture、root motion arc、material arrival scoreを4モードで描く。どちらもクリック/Spaceのpulseとdragのprobeを備え、次に実ログへ差し替えやすい最小構成にした。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-25_sort_precision_lifetime_scope.html`, a dependency-free raw WebGL fragment shader showing GSplat sort precision, renderer lifetime, async readback lanes, and a composite stability field in four modes. The derived prototype is `outputs/2026-09-25_alpha_rootmotion_texture_score.html`, showing alpha depth pre-pass, nearest splat data textures, root motion arcs, and material arrival score in four modes. Both include click / Space pulses and a draggable probe, keeping the structure minimal and ready for real log replacement.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `sortKey`, `quantizedSortKey`, `flickerScore`, `disposeQueued`, `readbackLatencyMs` を入力にできる。3DGS viewer、scan editor、WebXR gallery、VJ用のsplat空間で、ちらつきやreadback待ちを照明・線・ノイズ・音圧へ変換できる。2本目は `alphaCutOff`, `alphaSourceMask`, `dataTextureSampling`, `textureWaitMs`, `rootMotionDelta` を入力にできる。キャラクター演出、商品ビューワ、素材到着を見せるロード画面、透明素材の品質診断に向く。過去案との接続では、9/24 fallback branchを今日のalpha arrivalに、9/23 compile heatをreadback laneに、9/20 audio mixerをflickerScoreへつなぐと、安定していない瞬間だけ音と光が濃くなる作品に育つ。</p>
+          <p class="en-copy">The first sample can take `sortKey`, `quantizedSortKey`, `flickerScore`, `disposeQueued`, and `readbackLatencyMs` as inputs. In 3DGS viewers, scan editors, WebXR galleries, or VJ splat spaces, flicker and readback waits can drive lighting, lines, noise, and audio pressure. The second sample can take `alphaCutOff`, `alphaSourceMask`, `dataTextureSampling`, `textureWaitMs`, and `rootMotionDelta`. It fits character staging, product viewers, loading screens that expose material arrival, and transparent material quality diagnostics. Connecting back, route September 24 fallback branches into today's alpha arrival, September 23 compile heat into readback lanes, and September 20 audio mixer into flickerScore so sound and light intensify only when stability is not yet settled.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide#185--186" target="_blank" rel="noreferrer">three.js r186 migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://dev.playcanvas.com/" target="_blank" rel="noreferrer">PlayCanvas homepage / latest news</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js 9.28.0 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/tutorials/" target="_blank" rel="noreferrer">Codrops Tutorials</a></li>
+          
+            <li><a href="../outputs/2026-09-25_sort_precision_lifetime_scope.html" target="_blank" rel="noreferrer">Main sample: Sort Precision Lifetime Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-25_alpha_rootmotion_texture_score.html" target="_blank" rel="noreferrer">Derived sample: Alpha RootMotion Texture Score</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-25_sort_precision_lifetime_scope.html" loading="lazy" title="2026-09-25 Sort Precision Lifetime Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
