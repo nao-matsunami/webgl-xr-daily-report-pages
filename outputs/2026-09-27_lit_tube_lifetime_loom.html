@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2026-09-27 Lit Tube Lifetime Loom</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#060607;color:#fff8ed;font:13px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    canvas{display:block;width:100vw;height:100vh}
+    .hud{position:fixed;left:16px;top:14px;max-width:740px;pointer-events:none;text-shadow:0 1px 12px #160700}
+    h1{margin:0 0 6px;font-size:15px;letter-spacing:0}
+    p{margin:3px 0;color:#d4c5b4}
+    .pill{display:inline-block;margin:7px 7px 0 0;padding:3px 7px;border:1px solid #ffd18b66;background:#201107cc;border-radius:4px;color:#fff5d8}
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <h1>Lit Tube Lifetime Loom</h1>
+  <p>1 tube normals / 2 light return / 3 resource age weave / 4 composite loom</p>
+  <p>Drag to relight the loom. Click or Space to send a resource pulse through the tubes.</p>
+  <span class="pill" id="modeLabel">mode 4</span><span class="pill">raw WebGL shader</span>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('gl');
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+  const label = document.getElementById('modeLabel');
+  if (!gl) { document.body.innerHTML = '<pre>WebGL is not available.</pre>'; return; }
+  const vertex = 'attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}';
+  const fragment = `
+precision highp float;
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform float pulse;
+uniform float mode;
+
+float line(vec2 p, vec2 a, vec2 b, float w){
+  vec2 pa=p-a, ba=b-a;
+  float h=clamp(dot(pa,ba)/max(dot(ba,ba),0.0001),0.0,1.0);
+  return 1.0-smoothstep(w,w*2.0,length(pa-ba*h));
+}
+float gate(float n){return 1.0-step(0.5,abs(mode-n));}
+vec3 flame(float x){return mix(mix(vec3(0.030,0.018,0.015),vec3(0.96,0.34,0.12),smoothstep(0.0,0.55,x)),vec3(0.70,0.96,1.0),smoothstep(0.62,1.0,x));}
+
+float tube(vec2 uv, float id, vec2 light, out float side){
+  float x=uv.x+0.08*sin(uv.y*2.4+id);
+  float y=uv.y+0.10*sin(uv.x*2.0+time*0.35+id);
+  float path=sin(x*4.2+id*1.7+time*0.45)*0.28 + sin(x*9.0-id)*0.055;
+  float d=abs(y-path);
+  side=clamp((y-path)*9.0,-1.0,1.0);
+  float radius=0.035+0.010*sin(time+id);
+  float lightReturn=max(0.0,dot(normalize(vec2(side,0.42)),normalize(light-uv)));
+  return (1.0-smoothstep(radius,radius+0.020,d))*(0.28+0.72*pow(lightReturn,2.0));
+}
+
+vec3 normals(vec2 uv, vec2 light){
+  vec3 col=vec3(0.012,0.011,0.014);
+  for(int i=0;i<7;i++){
+    float side=0.0;
+    float t=tube(uv+vec2(0.0,-0.42+float(i)*0.14),float(i),light,side);
+    col+=mix(vec3(0.08,0.18,0.30),vec3(0.92,0.48,0.16),side*0.5+0.5)*t;
+  }
+  return col;
+}
+
+vec3 returnLight(vec2 uv, vec2 light){
+  vec3 col=vec3(0.015,0.012,0.012);
+  for(int i=0;i<9;i++){
+    float fi=float(i);
+    vec2 a=vec2(-0.85+fi*0.21,-0.78+0.12*sin(fi));
+    vec2 b=vec2(-0.58+fi*0.18,0.75+0.08*cos(fi*1.7));
+    float hit=line(uv,a,b,0.010+0.006*sin(time+fi));
+    float beam=line(uv,light,mix(a,b,0.5+0.35*sin(time*0.4+fi)),0.0025);
+    col+=flame(fract(fi*0.13+time*0.05))*hit*(0.42+0.45*sin(time+fi));
+    col+=vec3(0.62,0.92,1.0)*beam*(0.14+0.28*pulse);
+  }
+  return col;
+}
+
+vec3 ageWeave(vec2 uv, vec2 light){
+  vec3 col=vec3(0.012,0.010,0.012);
+  for(int i=0;i<16;i++){
+    float fi=float(i);
+    float age=fract(time*0.075+fi*0.071);
+    float y=-0.82+fi*0.11;
+    vec2 a=vec2(-0.92,y+0.05*sin(time+fi));
+    vec2 b=vec2(0.92,y+0.08*sin(time*0.6+fi*1.6));
+    float strand=line(uv,a,b,0.004+age*0.010);
+    float leak=step(0.72,age);
+    float focus=smoothstep(0.46,0.04,length(mix(a,b,age)-light));
+    col+=mix(vec3(0.28,0.15,0.08),vec3(1.0,0.36,0.16),leak)*strand*(0.28+age+focus+pulse*focus);
+  }
+  return col;
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.0-resolution.xy)/min(resolution.x,resolution.y);
+  vec2 light=pointer*2.0-1.0;
+  light.y*=-1.0;
+  vec3 a=normals(uv,light);
+  vec3 b=returnLight(uv,light);
+  vec3 c=ageWeave(uv,light);
+  vec3 col=a*0.76+b*0.68+c*0.72;
+  col=mix(col,a,gate(1.0));
+  col=mix(col,b,gate(2.0));
+  col=mix(col,c,gate(3.0));
+  col+=vec3(1.0,0.66,0.22)*pow(max(0.0,1.0-length(uv-light*0.42)),8.0)*(0.16+pulse);
+  col*=smoothstep(1.48,0.18,length(uv));
+  col+=0.010*sin(uv.x*180.0+uv.y*80.0+time*5.0);
+  gl_FragColor=vec4(pow(max(col,0.0),vec3(0.88)),1.0);
+}`;
+  function compile(type, source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+  let program;
+  try {
+    program=gl.createProgram();
+    gl.attachShader(program,compile(gl.VERTEX_SHADER,vertex));
+    gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fragment));
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+  } catch (error) { document.body.innerHTML='<pre style="white-space:pre-wrap;padding:20px">'+error.message+'</pre>'; return; }
+  const buffer=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  gl.useProgram(program);
+  const pos=gl.getAttribLocation(program,'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+  const u={resolution:gl.getUniformLocation(program,'resolution'),time:gl.getUniformLocation(program,'time'),pointer:gl.getUniformLocation(program,'pointer'),pulse:gl.getUniformLocation(program,'pulse'),mode:gl.getUniformLocation(program,'mode')};
+  let pointer=[0.60,0.46], mode=4, impulse=0;
+  const start=performance.now();
+  function resize(){const dpr=Math.min(devicePixelRatio||1,2);const w=Math.max(1,Math.floor(innerWidth*dpr));const h=Math.max(1,Math.floor(innerHeight*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}}
+  addEventListener('pointermove',e=>{pointer=[e.clientX/innerWidth,e.clientY/innerHeight];});
+  addEventListener('pointerdown',()=>{impulse=1;});
+  addEventListener('keydown',e=>{if(e.key>='1'&&e.key<='4'){mode=Number(e.key);label.textContent='mode '+mode;} if(e.code==='Space')impulse=1;});
+  function frame(now){resize();impulse*=0.92;gl.uniform2f(u.resolution,canvas.width,canvas.height);gl.uniform1f(u.time,(now-start)*0.001);gl.uniform2f(u.pointer,pointer[0],pointer[1]);gl.uniform1f(u.pulse,impulse);gl.uniform1f(u.mode,mode);gl.drawArrays(gl.TRIANGLES,0,6);requestAnimationFrame(frame);}
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>

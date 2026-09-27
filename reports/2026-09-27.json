@@ -1,0 +1,223 @@
+{
+  "date": "2026-09-27",
+  "headline": "fallbackの破棄漏れとlit tubeを、リソース寿命の光跡として読む",
+  "headlineEn": "Reading fallback deletion gaps and lit tubes as resource-lifetime light trails",
+  "summary": "three.js r187向けのWebGPURenderer WebGL2 fallback破棄漏れissue、TSL compute / FFT2D / GaussianBlurNode tap統合PR、PlayCanvas Engine v2.22.4のGSplat sort precision修正、Babylon.js 9.28.0、Codropsのlit GPU tubes / custom cursor trailを確認した。9/26のFFT/cursor brushから一段進め、今日はcreate/delete差分、program/shader/VAO lifetime、tube lighting、resource age weaveを、2本の依存なしraw WebGL試作にした。",
+  "summaryEn": "Today checks the three.js r187 WebGPURenderer WebGL2 fallback deletion-gap issue, TSL compute / FFT2D / GaussianBlurNode tap-merging PRs, PlayCanvas Engine v2.22.4's GSplat sort precision fix, Babylon.js 9.28.0, and Codrops' lit GPU tubes / custom cursor trail work. Extending September 26's FFT / cursor brush direction, the two dependency-free raw WebGL prototypes turn create/delete deltas, program/shader/VAO lifetimes, tube lighting, and resource-age weaving into inspectable visual surfaces.",
+  "links": [
+    {
+      "label": "three.js WebGPURenderer WebGL2 fallback deletion issue #34597",
+      "url": "https://github.com/mrdoob/three.js/issues/34597"
+    },
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js TSL wiki",
+      "url": "https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Playground",
+      "url": "https://tympanus.net/codrops/category/playground/"
+    },
+    {
+      "label": "Main sample: Fallback Delete Census Scope",
+      "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+    },
+    {
+      "label": "Derived sample: Lit Tube Lifetime Loom",
+      "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsではr187 milestoneのWebGPURenderer / WebGL2 fallback破棄漏れissue #34597 が重要。program / shader / VAOのdelete pathが見えないという報告は、9/24-9/26で追ってきたcleanup / lifetime / stability logをより具体的なカウンタに落とせる。2. three.js PR一覧ではFFT2D via TSL compute、GaussianBlurNode tap merge、TSL f16 / subgroup周辺が継続して見えており、昨日の周波数化を継続案件にする。3. PlayCanvas最新はv2.22.4で、GSplat GPU sort flickerをsort key precision lossとして修正。4. Babylon.js最新は9.28.0で、alpha depth pre-pass、RootMotion、Gaussian Splatting data texture、OBJ texture waitが継続テーマ。5. Codrops Playgroundではlit GPU tubes / TSL / WebGPUとInfinite Loomが、状態ログを線や編み目に変換する表現の参考になる。",
+      "bodyEn": "1. In three.js, r187 issue #34597 around WebGPURenderer / WebGL2 fallback deletion gaps is the key watch item. The report about missing delete paths for programs, shaders, and VAOs turns the cleanup / lifetime / stability logs tracked since September 24 into concrete counters. 2. The three.js PR list still shows FFT2D via TSL compute, GaussianBlurNode tap merging, and TSL f16 / subgroup work, continuing yesterday's frequency direction. 3. PlayCanvas' latest release is v2.22.4, fixing GSplat GPU sort flicker from sort key precision loss. 4. Babylon.js' latest release is 9.28.0, keeping alpha depth pre-pass, RootMotion, Gaussian Splatting data textures, and OBJ texture waits in view. 5. Codrops Playground's lit GPU tubes / TSL / WebGPU and Infinite Loom give useful references for turning state logs into lines and woven structures.",
+      "links": [
+        {
+          "label": "three.js issue #34597",
+          "url": "https://github.com/mrdoob/three.js/issues/34597"
+        },
+        {
+          "label": "three.js PRs",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops Playground",
+          "url": "https://tympanus.net/codrops/category/playground/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "three.js #34597は、単なるbug watchではなく、fallback pathで何が作られ、何が破棄され、何が残るかを可視化する設計課題として面白い。WebGPUがないiOSなどではWebGPURendererがWebGL2 backendで動くため、fallbackは保険ではなく実ユーザーの描画経路になる。Codropsのlit GPU tubesは、線に厚み・法線・照明を持たせることで、単なる軌跡を空間内の物体に変える。これをresource lifetimeへつなげると、program / shader / VAO / bufferの寿命がチューブの太さ、明るさ、ほつれとして読める。",
+      "bodyEn": "three.js #34597 matters not just as a bug watch item, but as a design prompt for visualizing what gets created, what gets deleted, and what remains on a fallback path. On WebGPU-less targets such as some iOS environments, WebGPURenderer's WebGL2 backend is not just insurance but the real rendering route. Codrops' lit GPU tubes show how thickness, normals, and lighting turn simple traces into spatial objects. Connected to resource lifetime, program / shader / VAO / buffer lifetimes can become tube thickness, brightness, and fraying.",
+      "links": [
+        {
+          "label": "three.js issue #34597",
+          "url": "https://github.com/mrdoob/three.js/issues/34597"
+        },
+        {
+          "label": "Codrops Playground: Drawing With Light",
+          "url": "https://tympanus.net/codrops/category/playground/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は `Fallback Delete Census Scope`。create/delete counter、program-shader-VAO leak lane、fallback backend lifetimeを4モードで見る。dragでinspection lens、click / Spaceでdispose cycle pulse。派生案は `Lit Tube Lifetime Loom`。同じ寿命ログを、lit tube、light return、resource age weaveへ変換する。短期ではprocedural counterで見え方を確認する。次に足すなら、実際のWebGL2RenderingContext prototype patchから `createProgram/deleteProgram/createShader/deleteShader/createVertexArray/deleteVertexArray/deleteBuffer` を採取し、1本目へ入れる。2本目はその差分をtube radius / emission / frayへ接続する。",
+      "bodyEn": "The main idea is `Fallback Delete Census Scope`: inspect create/delete counters, program-shader-VAO leak lanes, and fallback backend lifetimes across four modes. Drag moves the inspection lens; click / Space triggers a dispose-cycle pulse. The derived idea is `Lit Tube Lifetime Loom`: convert the same lifetime log into lit tubes, light return, and resource-age weaving. Short term, procedural counters are enough to check readability. Next, collect `createProgram/deleteProgram/createShader/deleteShader/createVertexArray/deleteVertexArray/deleteBuffer` from a real WebGL2RenderingContext prototype patch and feed them into the first sample. The second sample should map the deltas to tube radius, emission, and fray.",
+      "links": [
+        {
+          "label": "Fallback Delete Census Scope",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Lit Tube Lifetime Loom",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "fallback診断の最小schemaは `cycleId`, `createdPrograms`, `deletedPrograms`, `createdShaders`, `deletedShaders`, `createdVAOs`, `deletedVAOs`, `deletedBuffers`, `rendererDisposed`, `backendName`, `forceWebGL`, `deviceLost`, `fallbackReason`。splat / alpha / root motionとつなぐ場合は、PlayCanvas側の `sortFlicker`, `sortKeyPrecision`, Babylon側の `alphaCutOff`, `rootMotionDelta`, `textureWaitMs` を同じframeに乗せる。重要なのは、値をただ数えるだけでなく、差分が溜まる場所を画面上の「古くなる素材」として扱うこと。",
+      "bodyEn": "A minimal fallback-diagnostic schema is `cycleId`, `createdPrograms`, `deletedPrograms`, `createdShaders`, `deletedShaders`, `createdVAOs`, `deletedVAOs`, `deletedBuffers`, `rendererDisposed`, `backendName`, `forceWebGL`, `deviceLost`, and `fallbackReason`. To connect it with splat / alpha / root motion work, add PlayCanvas `sortFlicker` / `sortKeyPrecision` and Babylon `alphaCutOff` / `rootMotionDelta` / `textureWaitMs` on the same frame. The important move is not only counting values, but treating accumulated deltas as material that visibly ages on screen.",
+      "links": [
+        {
+          "label": "three.js issue #34597",
+          "url": "https://github.com/mrdoob/three.js/issues/34597"
+        },
+        {
+          "label": "PlayCanvas v2.22.4",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/24 recovery / fallback、9/25 sort precision / alpha arrival、9/26 FFT / cursor brushを、実create/delete counterへ接続する。新規案件: three.js #34597 / #34610 の修正経路、TSL FFT2D、GaussianBlurNode tap merge、Codrops lit tube renderer。寝かせる案件: カードUI、単なるcursor装飾、release noteの列挙だけで実装入力に落ちない項目。",
+      "bodyEn": "Continue connecting September 24 recovery / fallback, September 25 sort precision / alpha arrival, and September 26 FFT / cursor brush work to real create/delete counters. New watch items are the three.js #34597 / #34610 fix path, TSL FFT2D, GaussianBlurNode tap merging, and Codrops' lit tube renderer. Park card UI, simple cursor decoration, and release-note items that do not become implementation inputs.",
+      "links": [
+        {
+          "label": "three.js issue #34597",
+          "url": "https://github.com/mrdoob/three.js/issues/34597"
+        },
+        {
+          "label": "three.js PRs",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Codrops Playground",
+          "url": "https://tympanus.net/codrops/category/playground/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-27_fallback_delete_census_scope.html` を開く。1でcreate/delete、2でprogram/shader/VAO漏れのlane、3でbackend lifetime、4で合成を見る。次に `outputs/2026-09-27_lit_tube_lifetime_loom.html` を開き、同じ考え方がtube normals、light return、resource age weaveへ変わるか確認する。短期では、カウンタの差分がどの色・太さ・ちらつきなら読めるかを見る。中期では、実WebGL fallback計測をJSON化して差し替える。",
+      "bodyEn": "First open `outputs/2026-09-27_fallback_delete_census_scope.html`. Mode 1 shows create/delete counters, 2 program/shader/VAO leak lanes, 3 backend lifetime, and 4 the composite. Then open `outputs/2026-09-27_lit_tube_lifetime_loom.html` and check whether the same concept works as tube normals, light return, and resource-age weaving. Short term, judge which colors, widths, and flicker patterns make counter deltas readable. Mid term, replace the procedural values with real WebGL fallback measurements serialized as JSON.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #34597、three.js PR一覧、TSL wiki、PlayCanvas v2.22.4、Babylon.js 9.28.0、Codrops Playgroundを確認。アイデア検討: cleanup / fallback / FFT / cursor brushを、create/delete counterとlit tubeへ変換する方針にした。サンプル実装: 本命 `2026-09-27_fallback_delete_census_scope.html` と派生 `2026-09-27_lit_tube_lifetime_loom.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural値で読み味を確認。中長期: 実fallback計測とrenderer health dashboardへ接続。",
+      "bodyEn": "Collection: checked three.js #34597, the three.js PR list, the TSL wiki, PlayCanvas v2.22.4, Babylon.js 9.28.0, and Codrops Playground. Ideation: converted cleanup / fallback / FFT / cursor brush work into create/delete counters and lit tubes. Implementation: added `2026-09-27_fallback_delete_census_scope.html` and `2026-09-27_lit_tube_lifetime_loom.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: inspect readability with procedural values. Mid term: connect real fallback measurement and a renderer health dashboard.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、描画の裏側で起きる安定性・破棄・fallback・compile・sortの問題を、作品の制御信号として扱う方向に強く寄っている。9/21 stage queue、9/22 cleanup pool、9/23 compile heat、9/24 fallback、9/25 sort precision、9/26 FFT/cursor、今日のdelete censusは、すべてrendererの健康状態を表現素材化する流れ。組み合わせ候補は、delete差分を音のlow bandへ、compile heatをmid/highへ、splat sort flickerをtubeのほつれへ、alpha arrivalを光の戻りへ入れる構成。",
+      "bodyEn": "The recent tendency is clearly toward treating stability, disposal, fallback, compile, and sort problems behind rendering as control signals for works. September 21 stage queues, September 22 cleanup pools, September 23 compile heat, September 24 fallback, September 25 sort precision, September 26 FFT / cursor, and today's delete census all turn renderer health into expressive material. A strong combination is mapping delete deltas to low audio bands, compile heat to mid/high bands, splat sort flicker to tube fray, and alpha arrival to light return.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-27_fallback_delete_census_scope.html` を実装した。依存なしraw WebGL fragment shaderで、create/delete counter、program-shader-VAO leak lane、fallback backend lifetime、composite audit fieldを4モードで描く。派生として `outputs/2026-09-27_lit_tube_lifetime_loom.html` を実装した。tube normals、light return、resource age weave、composite loomを4モードで描く。どちらもdragとclick/Spaceのpulseを備え、実ログに差し替える前の視覚検証に向けた最小構成。",
+      "bodyEn": "The main prototype is `outputs/2026-09-27_fallback_delete_census_scope.html`, a dependency-free raw WebGL fragment shader showing create/delete counters, program-shader-VAO leak lanes, fallback backend lifetime, and a composite audit field across four modes. The derived prototype is `outputs/2026-09-27_lit_tube_lifetime_loom.html`, showing tube normals, light return, resource-age weaving, and a composite loom across four modes. Both include drag interaction and click / Space pulses as minimal visual tests before replacing procedural values with real logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は `createdPrograms`, `deletedPrograms`, `createdShaders`, `deletedShaders`, `createdVAOs`, `deletedVAOs`, `deletedBuffers`, `cycleId`, `disposePulse` を入力にできる。WebGPU fallback検査、長時間展示、mobile QA、renderer health dashboardに向く。2本目は同じ値に加えて `resourceAge`, `leakDelta`, `sortFlicker`, `alphaArrival`, `rootMotionDelta`, `pointerVelocity` を入力にできる。ライブ演出では、破棄されないリソースほどチューブが太く残り、sort flickerでほつれ、alpha arrivalで光が戻る。9/26のFFT sampleにdeleteDeltaを渡し、今日のtube sampleにFFT bandを戻せば、音・寿命・fallbackが相互に演奏される。",
+      "bodyEn": "The first sample can take `createdPrograms`, `deletedPrograms`, `createdShaders`, `deletedShaders`, `createdVAOs`, `deletedVAOs`, `deletedBuffers`, `cycleId`, and `disposePulse` as inputs. It fits WebGPU fallback inspection, long-running installations, mobile QA, and renderer health dashboards. The second can add `resourceAge`, `leakDelta`, `sortFlicker`, `alphaArrival`, `rootMotionDelta`, and `pointerVelocity`. In a live visual system, resources that are not deleted leave thicker tubes, sort flicker frays them, and alpha arrival brings the light back. Sending deleteDelta into yesterday's FFT sample and returning FFT bands to today's tube sample would make sound, lifetime, and fallback perform each other.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-27_fallback_delete_census_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-27_lit_tube_lifetime_loom.html"
+        }
+      ]
+    }
+  ]
+}
