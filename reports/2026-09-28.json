@@ -1,0 +1,227 @@
+{
+  "date": "2026-09-28",
+  "headline": "モバイルのpass負荷と水のcausticsを、renderer健康状態の光として読む",
+  "headlineEn": "Reading mobile pass pressure and water caustics as renderer-health light",
+  "summary": "three.js Migration Guideのr186→r187更新、Chrome AndroidのMSAA / EffectComposer stutter issue、WebGPURenderer UBO performance issue、PlayCanvas Engine v2.22.4、Babylon.js 9.28.0、Codropsのlit GPU tubes / Infinite Loom / Volatile Nexus、PlayCanvas weeklyのWater demoを確認した。9/27のfallback delete / lifetime loomを引き継ぎ、今日はモバイルpass負荷・UBO圧・MSAA cadenceと、水面caustics・root motion・alpha depth pre-passを、2本の依存なしraw WebGL試作にした。",
+  "summaryEn": "Today checks the three.js r186-to-r187 Migration Guide update, the Chrome Android MSAA / EffectComposer stutter issue, the WebGPURenderer UBO performance issue, PlayCanvas Engine v2.22.4, Babylon.js 9.28.0, Codrops' lit GPU tubes / Infinite Loom / Volatile Nexus, and the PlayCanvas weekly Water demo. Continuing September 27's fallback-delete / lifetime-loom direction, the two dependency-free raw WebGL prototypes turn mobile pass pressure, UBO pressure, MSAA cadence, water caustics, root motion, and alpha depth pre-pass into visual inspection surfaces.",
+  "links": [
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "three.js Chrome Android MSAA stutter issue #34599",
+      "url": "https://github.com/mrdoob/three.js/issues/34599"
+    },
+    {
+      "label": "three.js WebGPURenderer UBO performance issue #30560",
+      "url": "https://github.com/mrdoob/three.js/issues/30560"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Playground",
+      "url": "https://tympanus.net/codrops/category/playground/"
+    },
+    {
+      "label": "Water - studies in light & motion",
+      "url": "https://marklundin.github.io/water/"
+    },
+    {
+      "label": "Main sample: Mobile Pass Pressure Scope",
+      "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+    },
+    {
+      "label": "Derived sample: Caustic Rootmotion Water Probe",
+      "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js Migration Guideは9/27更新で、r187向けにPMREMのcube render target化、WeakRef / FinalizationRegistry、XR camera行列、render target束縛時のviewport/scissor pixel ratio、pixelationPassの引数、WebGPURenderer light登録の変更が並んだ。9/27のdelete censusを、実際の移行チェックリストへ接続できる。2. three.js issue #34599 はChrome AndroidでEffectComposer + GammaCorrectionShader / MSAA render passがstutterする報告。OutputPass移行やWebGPU例での比較も含め、mobile postprocess cadenceをサンプル化する価値がある。3. three.js issue #30560 はWebGPURendererのUBO systemが多数meshで重いという長期の高優先度issue。WebGL 60 FPSに対してWebGPU 15 FPSという報告は、bind group / uniform uploadの可視化テーマとして強い。4. PlayCanvas Engineはv2.22.4が最新で、GSplat sort key precision lossによるflicker修正が継続。5. Babylon.js 9.28.0はalpha depth pre-pass、RootMotionClip / Controller、Gaussian Splatting data texture nearest sampling、WGSL vPartIndex修正、OBJ texture waitが今日の実装入力になる。",
+      "bodyEn": "1. The three.js Migration Guide was edited on September 27 and its r187 notes include PMREMs based on cube render targets, WeakRef / FinalizationRegistry, XR camera matrix changes, viewport/scissor pixel-ratio changes when render targets are bound, the pixelationPass argument change, and a new WebGPURenderer light-registration path. This connects September 27's delete census to a concrete migration checklist. 2. three.js issue #34599 reports stutter on Chrome Android with EffectComposer plus GammaCorrectionShader / MSAA render passes. The OutputPass and WebGPU-example comparison makes mobile postprocess cadence worth prototyping. 3. three.js issue #30560 is a long-running high-priority WebGPURenderer UBO performance issue with many meshes; its WebGL 60 FPS versus WebGPU 15 FPS report is a strong prompt for visualizing bind-group / uniform-upload pressure. 4. PlayCanvas Engine v2.22.4 remains the latest release and fixes GSplat flicker from sort-key precision loss. 5. Babylon.js 9.28.0 brings alpha depth pre-pass, RootMotionClip / Controller, nearest sampling for Gaussian Splatting data textures, a WGSL vPartIndex fix, and OBJ texture waits as implementation inputs.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "three.js issue #34599",
+          "url": "https://github.com/mrdoob/three.js/issues/34599"
+        },
+        {
+          "label": "three.js issue #30560",
+          "url": "https://github.com/mrdoob/three.js/issues/30560"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codropsでは9月のWebGL / Three.js事例として、lit GPU tubes、Infinite Loom、Volatile Nexusが近い。特にVolatile Nexusはglass、caustics、wandering cubes、soundが同じ場で絡むため、9/27のresource lifetime tubeを水面の焦線や音の揺れへ伸ばせる。PlayCanvas weeklyのWater demoは、causticsを単なる見た目ではなく、探索・撮影・スタジオ切替を持つ小さな舞台として提示している点が良い。今日の派生試作では、Babylon.js 9.28.0のalpha depth pre-pass / root motionと混ぜ、光が水面だけでなくキャラクター移動や透明素材の順序にも戻る構図にした。",
+      "bodyEn": "The closest September WebGL / Three.js references on Codrops are lit GPU tubes, Infinite Loom, and Volatile Nexus. Volatile Nexus is especially useful because glass, caustics, wandering cubes, and sound coexist in one scene, suggesting a path from September 27's resource-lifetime tubes into water caustics and audio motion. The PlayCanvas weekly Water demo frames caustics not only as an effect, but as a small stage with exploration, capture, and studio modes. Today's derived prototype mixes that with Babylon.js 9.28.0 alpha depth pre-pass / root motion so that light returns through water, character motion, and transparent material ordering.",
+      "links": [
+        {
+          "label": "Codrops Playground",
+          "url": "https://tympanus.net/codrops/category/playground/"
+        },
+        {
+          "label": "Water demo",
+          "url": "https://marklundin.github.io/water/"
+        },
+        {
+          "label": "Babylon.js 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は `Mobile Pass Pressure Scope`。EffectComposer / OutputPass / MSAA / UBO / many render itemsを、pass lane、pressure cell、stutter ringとして4モードで読む。dragでprobe、click / Spaceでoutput pulse。派生案は `Caustic Rootmotion Water Probe`。Water demoのcaustics、Babylon.jsのroot motion、alpha depth pre-passを水面と透明素材の譜面にする。短期ではprocedural値で読み味を見る。次に足すなら、実端末で `frameMs`, `devicePixelRatio`, `renderTargetPixels`, `passCount`, `sampleCount`, `uniformUploadBytes`, `renderItemCount`, `outputPassEnabled` を記録し、本命sampleへ流し込む。派生sampleには `rootMotionDelta`, `alphaCutOff`, `textureWaitMs`, `causticEnergy`, `audioBand` を入れる。",
+      "bodyEn": "The main idea is `Mobile Pass Pressure Scope`: inspect EffectComposer / OutputPass / MSAA / UBO / many-render-item pressure as pass lanes, pressure cells, and stutter rings across four modes. Drag moves the probe; click / Space triggers an output pulse. The derived idea is `Caustic Rootmotion Water Probe`: turn the Water demo's caustics plus Babylon.js root motion and alpha depth pre-pass into a score of water and transparent-material order. Short term, procedural values are enough to judge readability. Next, record `frameMs`, `devicePixelRatio`, `renderTargetPixels`, `passCount`, `sampleCount`, `uniformUploadBytes`, `renderItemCount`, and `outputPassEnabled` on a real device and feed them into the main sample. Feed `rootMotionDelta`, `alphaCutOff`, `textureWaitMs`, `causticEnergy`, and `audioBand` into the derived sample.",
+      "links": [
+        {
+          "label": "Mobile Pass Pressure Scope",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Caustic Rootmotion Water Probe",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "mobile postprocess診断の最小schemaは `frameId`, `frameMs`, `refreshHz`, `devicePixelRatio`, `physicalPixels`, `renderTargetPixels`, `passCount`, `sampleCount`, `usesOutputPass`, `usesGammaCorrectionShader`, `composerEnabled`, `droppedFrameCount`。WebGPURenderer UBO側は `renderItemCount`, `meshCount`, `instancedCount`, `uniformUploadBytes`, `bindGroupCount`, `pipelineChanges`, `materialChanges`。Babylon / water側は `alphaCutOff`, `depthPrepassEnabled`, `rootMotionDelta`, `splatTextureFilter`, `vPartIndexPluginCount`, `objTextureWaitMs`, `causticEnergy`。9/27の `createdPrograms/deletedPrograms` と合わせると、作る・破棄する・通す・詰まるが同じtimeline textureに載る。",
+      "bodyEn": "A minimal mobile-postprocess diagnostic schema is `frameId`, `frameMs`, `refreshHz`, `devicePixelRatio`, `physicalPixels`, `renderTargetPixels`, `passCount`, `sampleCount`, `usesOutputPass`, `usesGammaCorrectionShader`, `composerEnabled`, and `droppedFrameCount`. For WebGPURenderer UBO pressure, use `renderItemCount`, `meshCount`, `instancedCount`, `uniformUploadBytes`, `bindGroupCount`, `pipelineChanges`, and `materialChanges`. For Babylon / water, use `alphaCutOff`, `depthPrepassEnabled`, `rootMotionDelta`, `splatTextureFilter`, `vPartIndexPluginCount`, `objTextureWaitMs`, and `causticEnergy`. Combined with September 27's `createdPrograms/deletedPrograms`, create, delete, pass, and stall events can share one timeline texture.",
+      "links": [
+        {
+          "label": "three.js issue #34599",
+          "url": "https://github.com/mrdoob/three.js/issues/34599"
+        },
+        {
+          "label": "three.js issue #30560",
+          "url": "https://github.com/mrdoob/three.js/issues/30560"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/24 recovery / fallback、9/27 delete census、今日のmobile pass pressureを、実端末のrenderer logへ接続する。新規案件: three.js Migration Guide r187のlight registration #34622、MSAA stutter #34599、UBO performance #30560、PlayCanvas Water demo、Babylon alpha depth pre-pass / root motion。寝かせる案件: カードUI、単なるrelease noteの列挙、WebGPUが速い/遅いという一般論だけで実装入力に落ちない比較。",
+      "bodyEn": "Continue connecting September 24 recovery / fallback, September 27 delete census, and today's mobile pass pressure to real-device renderer logs. New watch items are the three.js r187 light-registration change #34622, MSAA stutter #34599, UBO performance #30560, the PlayCanvas Water demo, and Babylon alpha depth pre-pass / root motion. Park card UI, plain release-note listing, and generic WebGPU-is-fast/slow comparisons that do not become implementation inputs.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Water demo",
+          "url": "https://marklundin.github.io/water/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-28_mobile_pass_pressure_scope.html` を開く。1でpass lane、2でUBO / render-item pressure、3でMSAA stutter ring、4で合成を見る。次に `outputs/2026-09-28_caustic_rootmotion_water_probe.html` を開き、1でcaustics、2でroot motion、3でalpha depth pre-pass、4で水と移動と透明順序の合成を見る。どちらもdragでprobeを動かし、click / Spaceでpulseを入れる。短期では色・線幅・ちらつきが読みやすいかを確認し、中期では実ログ差し替えに進む。",
+      "bodyEn": "First open `outputs/2026-09-28_mobile_pass_pressure_scope.html`. Mode 1 shows pass lanes, 2 UBO / render-item pressure, 3 MSAA stutter rings, and 4 the composite. Then open `outputs/2026-09-28_caustic_rootmotion_water_probe.html`. Mode 1 shows caustics, 2 root motion, 3 alpha depth pre-pass, and 4 the water / motion / transparency composite. Drag moves the probe and click / Space adds a pulse. Short term, judge whether color, line width, and flicker are readable; mid term, replace the procedural values with real logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js Migration Guide、#34599、#30560、PlayCanvas v2.22.4、Babylon.js 9.28.0、Codrops Playground、Water demoを確認。アイデア検討: 9/27のfallback delete / lifetimeを、mobile pass pressureとwater causticsへ展開。サンプル実装: 本命 `2026-09-28_mobile_pass_pressure_scope.html` と派生 `2026-09-28_caustic_rootmotion_water_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural sampleで視認性を確認。中長期: 実端末計測と水面/透明/移動の演出入力へ接続。",
+      "bodyEn": "Collection: checked the three.js Migration Guide, #34599, #30560, PlayCanvas v2.22.4, Babylon.js 9.28.0, Codrops Playground, and the Water demo. Ideation: extended September 27's fallback delete / lifetime work into mobile pass pressure and water caustics. Implementation: added `2026-09-28_mobile_pass_pressure_scope.html` and `2026-09-28_caustic_rootmotion_water_probe.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: inspect readability with procedural samples. Mid term: connect real-device measurement to water / transparency / motion staging.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、renderer lifecycleからrenderer pressureへ少し広がっている。9/21 stage queue、9/22 cleanup pool、9/23 compile heat、9/24 fallback、9/25 sort precision、9/26 FFT/cursor、9/27 delete censusに続き、今日はmobile cadence / UBO pressure / alpha-prepass / caustics。単なる内部状態の可視化ではなく、ユーザーの体感であるstutter、光の戻り、透明素材の順序、移動の重さを同じ譜面に乗せる方向が育てる価値が高い。組み合わせ候補は、deleteDeltaを水面の泡へ、frameMsをcausticの密度へ、uniformUploadBytesをrootMotionの歩幅へ、alphaCutOffを透明な焦線へ入れる構成。",
+      "bodyEn": "The recent track is widening from renderer lifecycle into renderer pressure. After September 21 stage queues, September 22 cleanup pools, September 23 compile heat, September 24 fallback, September 25 sort precision, September 26 FFT / cursor, and September 27 delete census, today adds mobile cadence, UBO pressure, alpha pre-pass, and caustics. The valuable direction is not merely showing internal state, but scoring user-felt stutter, returning light, transparent-material order, and motion weight together. Strong combinations include mapping deleteDelta to water bubbles, frameMs to caustic density, uniformUploadBytes to root-motion stride, and alphaCutOff to transparent caustic lines.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-28_mobile_pass_pressure_scope.html` を実装した。依存なしraw WebGL fragment shaderで、pass lanes、UBO / render-item pressure、MSAA stutter、compositeを4モードで描く。派生として `outputs/2026-09-28_caustic_rootmotion_water_probe.html` を実装した。caustic cells、root motion lanes、alpha depth pre-pass、composite water probeを4モードで描く。どちらもdragとclick/Space pulseを備え、実ログに差し替える前の視覚検証に向けた最小構成。",
+      "bodyEn": "The main prototype is `outputs/2026-09-28_mobile_pass_pressure_scope.html`, a dependency-free raw WebGL fragment shader showing pass lanes, UBO / render-item pressure, MSAA stutter, and a composite across four modes. The derived prototype is `outputs/2026-09-28_caustic_rootmotion_water_probe.html`, showing caustic cells, root-motion lanes, alpha depth pre-pass, and a composite water probe across four modes. Both include drag interaction and click / Space pulses as minimal visual tests before replacing procedural values with real logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は `frameMs`, `passCount`, `sampleCount`, `devicePixelRatio`, `renderTargetPixels`, `uniformUploadBytes`, `bindGroupCount`, `renderItemCount`, `droppedFrameCount` を入力にできる。WebGL / WebGPU比較、mobile QA、展示端末の自己診断、Webサイトの重さを演出へ反転する表現に向く。2本目は `causticEnergy`, `rootMotionDelta`, `alphaCutOff`, `depthPrepassEnabled`, `textureWaitMs`, `audioBand`, `pointerVelocity` を入力にできる。水、音、透明素材、キャラクター移動を同じ光の状態として扱える。9/27のdelete censusを1本目のpressureへ入れ、1本目のframeMsを2本目のcaustic密度へ戻せば、rendererの体調が水面と動きに滲む構成になる。",
+      "bodyEn": "The first sample can take `frameMs`, `passCount`, `sampleCount`, `devicePixelRatio`, `renderTargetPixels`, `uniformUploadBytes`, `bindGroupCount`, `renderItemCount`, and `droppedFrameCount` as inputs. It fits WebGL / WebGPU comparisons, mobile QA, self-diagnostics for installation devices, and experiences that turn website heaviness into the visual concept. The second can take `causticEnergy`, `rootMotionDelta`, `alphaCutOff`, `depthPrepassEnabled`, `textureWaitMs`, `audioBand`, and `pointerVelocity`. It lets water, sound, transparency, and character movement become one light state. Feeding September 27's delete census into the first sample's pressure and returning the first sample's frameMs to the second sample's caustic density would make renderer health bleed into water and motion.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-28_mobile_pass_pressure_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-28_caustic_rootmotion_water_probe.html"
+        }
+      ]
+    }
+  ]
+}
