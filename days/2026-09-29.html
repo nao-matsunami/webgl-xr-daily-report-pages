@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mipmap、LOD、parallax depthを、解像度が呼吸する検査面にする | 2026-09-29</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.09.29</p>
+      <h1>mipmap、LOD、parallax depthを、解像度が呼吸する検査面にする</h1>
+      <p class="hero-subtitle">Turning mipmaps, LOD, and parallax depth into an inspection surface where resolution breathes</p>
+      <p>three.js devのTexture mipmapsAutoUpdate、TSL cache、WebGPU light / gather / dispose周辺、PlayCanvas Engine v2.22.4とEditor 2.32のSplat LOD / Parallax Occlusion、Babylon.js 9.28.0のalpha depth pre-pass / RootMotion / Gaussian Splatting data texture、Gaussian Splat LiteのWebGPU / WebGL2 streaming LODを確認した。9/28のmobile pass pressureから、今日はtexture residency、mipmap更新、splat LOD、parallax height、alpha pre-passを2本の依存なしraw WebGL試作にした。</p>
+      <p class="en-copy">Today checks three.js dev work around Texture mipmapsAutoUpdate, TSL caching, WebGPU light / gather / disposal, PlayCanvas Engine v2.22.4 and Editor 2.32 Splat LOD / Parallax Occlusion, Babylon.js 9.28.0 alpha depth pre-pass / RootMotion / Gaussian Splatting data textures, and Gaussian Splat Lite's WebGPU / WebGL2 streaming LOD. Continuing September 28's mobile pass pressure, the two dependency-free raw WebGL prototypes turn texture residency, mipmap updates, splat LOD, parallax height, and alpha pre-pass into visual inspection surfaces.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-09-29_parallax_splat_depth_stage.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-09-28.html">← 2026.09.28</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-29 Parallax Splat Depth Stage</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-29_parallax_splat_depth_stage.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-09-29 Mipmap LOD Residency Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-09-29_mipmap_lod_residency_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js devでは9/21以降、Texture mipmapsAutoUpdate、WGSL gather for multisampled textures、WebGPU lightNode reference、TSL cached value / scalar constant / type conversion周辺、PMREM / WebGLNodesHandler、VAO caching / disposal、shader program deleteがまとまって見える。9/27-9/28のdelete census / mobile pass pressureから、今日は texture residency と mip更新の見える化へ進める。2. PlayCanvas Engineはv2.22.4が最新で、GSplat GPU sort flicker修正が継続。Editor 2.32ではJoint、ray-marched Parallax Occlusion、per-cascade shadow、reworked Gaussian splat LODがまとまっている。3. Babylon.js 9.28.0はalpha depth pre-pass、RootMotionClip / RootMotionController、Gaussian Splatting data texture nearest sampling、OBJ texture waitが引き続き重要。4. Gaussian Splat LiteはThree.js向けにWebGPU / WebGL2、streaming LOD、depth rendering、PLY / SPZ / SOG / RAD対応を掲げており、PlayCanvas / Babylon / three.js native splatの比較軸として使える。5. Codropsでは9月のWebGL / Three.js事例が、datamosh、ASCII、face mask、liquid glass、light tubesなど、解像度・深度・素材の揺れを前面化している。</p>
+          <p class="en-copy">1. Since September 21, three.js dev shows a cluster around Texture mipmapsAutoUpdate, WGSL gather for multisampled textures, WebGPU lightNode references, TSL cached values / scalar constants / type conversions, PMREM / WebGLNodesHandler, VAO caching / disposal, and shader-program deletion. Continuing September 27-28's delete census / mobile pass pressure, today moves into visible texture residency and mip updates. 2. PlayCanvas Engine v2.22.4 remains latest, continuing the GSplat GPU sort flicker fix. Editor 2.32 groups Joint, ray-marched Parallax Occlusion, per-cascade shadows, and reworked Gaussian splat LOD. 3. Babylon.js 9.28.0 keeps alpha depth pre-pass, RootMotionClip / RootMotionController, Gaussian Splatting data texture nearest sampling, and OBJ texture waits in focus. 4. Gaussian Splat Lite targets Three.js with WebGPU / WebGL2, streaming LOD, depth rendering, and PLY / SPZ / SOG / RAD support, making it a good comparison axis for PlayCanvas / Babylon / native three.js splats. 5. September Codrops WebGL / Three.js examples foreground resolution, depth, and material fluctuation through datamosh, ASCII, face masks, liquid glass, and light tubes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-playcanvas-editor-joints-parallax-occlusion-and-splat-lod/" target="_blank" rel="noreferrer">PlayCanvas Editor 2.32</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/WilliamLiu-1997/Gaussian-Splat-Lite" target="_blank" rel="noreferrer">Gaussian Splat Lite</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>PlayCanvas Editor 2.32のSplat LOD / Parallax Occlusionは、遠近・素材・深度を同じ操作面で調整する方向が見える。Gaussian Splat Liteは、Three.js内でdepth renderingとstreaming LODを扱うため、splatを背景素材で終わらせず通常の3Dと合成する制作入力になる。Codropsの9月事例では、datamoshやshape-aware ASCIIが「解像度の壊れ方」を作品の主役にしている。今日のサンプルでは、mipmapやLODを単なる最適化ではなく、どの解像度が今GPU上に居るかを見せる演出材料として扱う。</p>
+          <p class="en-copy">PlayCanvas Editor 2.32's Splat LOD / Parallax Occlusion points toward adjusting distance, material, and depth in one authoring surface. Gaussian Splat Lite treats depth rendering and streaming LOD inside Three.js, making splats production inputs that can be composited with normal 3D rather than just background captures. September Codrops examples such as datamosh and shape-aware ASCII make the breaking of resolution itself the subject. Today's samples treat mipmaps and LOD not just as optimization, but as expressive evidence of which resolution is resident on the GPU right now.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://blog.playcanvas.com/new-in-playcanvas-editor-joints-parallax-occlusion-and-splat-lod/" target="_blank" rel="noreferrer">PlayCanvas Editor 2.32</a></li>
+          
+            <li><a href="https://github.com/WilliamLiu-1997/Gaussian-Splat-Lite" target="_blank" rel="noreferrer">Gaussian Splat Lite</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命案は `Mipmap LOD Residency Scope`。mip ladder、texture residency cache、TSL node reuseを、触れる検査面として4モードで表示する。dragでinspector lens、click / Spaceでupdate pulse。派生案は `Parallax Splat Depth Stage`。PlayCanvasのparallax / splat LODとBabylonのalpha pre-pass / root motionを、深度舞台の譜面として見る。短期ではprocedural値で読み味を見る。次に足すなら、本命sampleに `mipLevel`, `mipmapsAutoUpdate`, `textureVersion`, `residentBytes`, `cacheHit`, `nodeReuseCount`, `programDeleteCount` を入れる。派生sampleには `lodLevel`, `splatBudget`, `parallaxSteps`, `alphaCutOff`, `rootMotionDelta`, `depthPrepassEnabled` を入れる。</p>
+          <p class="en-copy">The main idea is `Mipmap LOD Residency Scope`: show the mip ladder, texture residency cache, and TSL node reuse as a tactile inspection surface across four modes. Drag moves the inspector lens; click / Space triggers an update pulse. The derived idea is `Parallax Splat Depth Stage`: read PlayCanvas parallax / splat LOD and Babylon alpha pre-pass / root motion as a depth-stage score. Short term, procedural values are enough to judge readability. Next, feed the main sample with `mipLevel`, `mipmapsAutoUpdate`, `textureVersion`, `residentBytes`, `cacheHit`, `nodeReuseCount`, and `programDeleteCount`. Feed the derived sample with `lodLevel`, `splatBudget`, `parallaxSteps`, `alphaCutOff`, `rootMotionDelta`, and `depthPrepassEnabled`.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Mipmap LOD Residency Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Parallax Splat Depth Stage</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>texture / mipmap系の最小schemaは `frameId`, `textureId`, `textureVersion`, `mipLevel`, `mipmapsAutoUpdate`, `uploadedBytes`, `residentBytes`, `cacheHit`, `framebufferSourceCopied`, `colorSpace`, `disposeQueued`。TSL / WebGPU側は `nodeCount`, `cachedConversionCount`, `scalarConstCacheHit`, `gatherSampleCount`, `bindGroupCount`, `pipelineCompileMs`。splat / parallax / depth側は `lodLevel`, `lodError`, `splatBudget`, `streamPacketBytes`, `parallaxSteps`, `shadowCascade`, `alphaCutOff`, `rootMotionDelta`, `depthPrepassEnabled`。9/28の `frameMs`, `passCount`, `uniformUploadBytes` と合わせると、重さ、解像度、滞在、深度の4軸が同じtexture atlasに載る。</p>
+          <p class="en-copy">A minimal texture / mipmap schema is `frameId`, `textureId`, `textureVersion`, `mipLevel`, `mipmapsAutoUpdate`, `uploadedBytes`, `residentBytes`, `cacheHit`, `framebufferSourceCopied`, `colorSpace`, and `disposeQueued`. For TSL / WebGPU, use `nodeCount`, `cachedConversionCount`, `scalarConstCacheHit`, `gatherSampleCount`, `bindGroupCount`, and `pipelineCompileMs`. For splat / parallax / depth, use `lodLevel`, `lodError`, `splatBudget`, `streamPacketBytes`, `parallaxSteps`, `shadowCascade`, `alphaCutOff`, `rootMotionDelta`, and `depthPrepassEnabled`. Combined with September 28's `frameMs`, `passCount`, and `uniformUploadBytes`, heaviness, resolution, residency, and depth can share one texture atlas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>継続案件: 9/27 delete census、9/28 mobile pass pressure、今日のmipmap / residencyを、実renderer logから作るstate textureへ接続する。新規案件: three.js GaussianSplat docs、Texture mipmapsAutoUpdate、TSL cache系commit、PlayCanvas Editor 2.32のParallax Occlusion / Splat LOD、Gaussian Splat Liteのstreaming LOD / depth rendering。寝かせる案件: カードUI、単なるリリース一覧、mipmapを画質設定だけで終わらせる話、LODを遠景軽量化だけで扱う話。</p>
+          <p class="en-copy">Continue connecting September 27 delete census, September 28 mobile pass pressure, and today's mipmap / residency work to a state texture built from real renderer logs. New watch items are the three.js GaussianSplat docs, Texture mipmapsAutoUpdate, TSL cache commits, PlayCanvas Editor 2.32 Parallax Occlusion / Splat LOD, and Gaussian Splat Lite streaming LOD / depth rendering. Park card UI, plain release lists, treating mipmaps only as quality settings, and treating LOD only as distant-scene optimization.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/docs/pages/GaussianSplat.html" target="_blank" rel="noreferrer">three.js GaussianSplat docs</a></li>
+          
+            <li><a href="https://github.com/WilliamLiu-1997/Gaussian-Splat-Lite" target="_blank" rel="noreferrer">Gaussian Splat Lite</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-09-29_mipmap_lod_residency_scope.html` を開く。1でmip ladder、2でresident cache、3でTSL reuse、4で合成を見る。次に `outputs/2026-09-29_parallax_splat_depth_stage.html` を開き、1でparallax height、2でsplat LOD、3でalpha pre-pass / root motion、4で深度舞台の合成を見る。どちらもdragでprobeを動かし、click / Spaceでpulseを入れる。短期では、細いmip線やLOD blobが情報として読めるかを見る。中期では実ログ差し替えに進む。</p>
+          <p class="en-copy">First open `outputs/2026-09-29_mipmap_lod_residency_scope.html`. Mode 1 shows the mip ladder, 2 resident cache, 3 TSL reuse, and 4 the composite. Then open `outputs/2026-09-29_parallax_splat_depth_stage.html`. Mode 1 shows parallax height, 2 splat LOD, 3 alpha pre-pass / root motion, and 4 the depth-stage composite. Drag moves the probe and click / Space adds a pulse. Short term, judge whether the thin mip lines and LOD blobs read as information. Mid term, replace the procedural values with real logs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js commits / GaussianSplat docs、PlayCanvas Engine releases、PlayCanvas Editor 2.32 blog、Babylon.js releases、Gaussian Splat Lite、Codrops Creative Hubを確認。アイデア検討: 9/28のmobile pass pressureを、texture residency / mipmap / LOD / parallax depthへ展開。サンプル実装: 本命 `2026-09-29_mipmap_lod_residency_scope.html` と派生 `2026-09-29_parallax_splat_depth_stage.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural sampleで視認性を確認。中長期: 実renderer logとstreaming splat / parallax material / root motion入力へ接続。</p>
+          <p class="en-copy">Collection: checked three.js commits / GaussianSplat docs, PlayCanvas Engine releases, the PlayCanvas Editor 2.32 blog, Babylon.js releases, Gaussian Splat Lite, and Codrops Creative Hub. Ideation: extended September 28's mobile pass pressure into texture residency / mipmaps / LOD / parallax depth. Implementation: added `2026-09-29_mipmap_lod_residency_scope.html` and `2026-09-29_parallax_splat_depth_stage.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: inspect readability with procedural samples. Mid term: connect real renderer logs to streaming splats, parallax materials, and root-motion inputs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、GPUの体調を画面内の素材感へ戻す方向で固まってきた。9/24 fallback、9/25 sort precision、9/26 FFT / cursor、9/27 delete census、9/28 pass pressureに続き、今日はmipmap / residency / LOD / parallax depth。面白いのは、重さを単なる警告ではなく、解像度が出入りする呼吸として見せられる点。組み合わせ候補は、frameMsをmip更新周期へ、uniformUploadBytesをresident cellの熱へ、splatBudgetをparallax stepへ、alphaCutOffをmip境界の透明度へ入れる構成。</p>
+          <p class="en-copy">The recent direction is settling around returning GPU health to on-screen material feeling. After September 24 fallback, September 25 sort precision, September 26 FFT / cursor, September 27 delete census, and September 28 pass pressure, today adds mipmaps, residency, LOD, and parallax depth. The interesting part is showing heaviness not as a warning, but as resolution breathing in and out. Strong combinations include mapping frameMs to mip update cadence, uniformUploadBytes to resident-cell heat, splatBudget to parallax steps, and alphaCutOff to mip-boundary transparency.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命として `outputs/2026-09-29_mipmap_lod_residency_scope.html` を実装した。依存なしraw WebGL fragment shaderで、mip ladder、texture residency cache、TSL node reuse、compositeを4モードで描く。派生として `outputs/2026-09-29_parallax_splat_depth_stage.html` を実装した。parallax height、splat LOD、alpha pre-pass / root motion、composite depth stageを4モードで描く。どちらもdragとclick/Space pulseを備え、実ログに差し替える前の視覚検証に向けた最小構成。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-09-29_mipmap_lod_residency_scope.html`, a dependency-free raw WebGL fragment shader showing a mip ladder, texture residency cache, TSL node reuse, and a composite across four modes. The derived prototype is `outputs/2026-09-29_parallax_splat_depth_stage.html`, showing parallax height, splat LOD, alpha pre-pass / root motion, and a composite depth stage across four modes. Both include drag interaction and click / Space pulses as minimal visual tests before replacing procedural values with real logs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>1本目は `textureVersion`, `mipLevel`, `residentBytes`, `uploadedBytes`, `cacheHit`, `nodeReuseCount`, `programDeleteCount`, `frameMs` を入力にできる。WebGL / WebGPU比較、展示端末のGPU健康表示、画像/動画/HTMLTextureの更新演出、AI生成画像のprogressive revealに向く。2本目は `lodLevel`, `splatBudget`, `parallaxSteps`, `alphaCutOff`, `rootMotionDelta`, `shadowCascade`, `streamPacketBytes` を入力にできる。3D Gaussian Splatの探索、WebXR内の遠景品質、商品素材の疑似深度、音反応する透明素材、キャラクター移動と背景LODの同期に向く。1本目のresident heatを2本目のsplat LODへ戻すと、GPU上にある情報量がそのまま空間の奥行きになる。</p>
+          <p class="en-copy">The first sample can take `textureVersion`, `mipLevel`, `residentBytes`, `uploadedBytes`, `cacheHit`, `nodeReuseCount`, `programDeleteCount`, and `frameMs` as inputs. It fits WebGL / WebGPU comparisons, GPU-health displays for installations, image / video / HTMLTexture update staging, and progressive reveals for generated images. The second can take `lodLevel`, `splatBudget`, `parallaxSteps`, `alphaCutOff`, `rootMotionDelta`, `shadowCascade`, and `streamPacketBytes`. It fits 3D Gaussian Splat exploration, far-field quality in WebXR, fake product-material depth, audio-reactive transparent materials, and synchronization between character motion and background LOD. Feeding the first sample's resident heat into the second sample's splat LOD would make the amount of information present on the GPU become spatial depth.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js dev commits</a></li>
+          
+            <li><a href="https://threejs.org/docs/pages/GaussianSplat.html" target="_blank" rel="noreferrer">three.js GaussianSplat docs</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-playcanvas-editor-joints-parallax-occlusion-and-splat-lod/" target="_blank" rel="noreferrer">PlayCanvas Editor 2.32 blog</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/WilliamLiu-1997/Gaussian-Splat-Lite" target="_blank" rel="noreferrer">Gaussian Splat Lite</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-09-29_mipmap_lod_residency_scope.html" target="_blank" rel="noreferrer">Main sample: Mipmap LOD Residency Scope</a></li>
+          
+            <li><a href="../outputs/2026-09-29_parallax_splat_depth_stage.html" target="_blank" rel="noreferrer">Derived sample: Parallax Splat Depth Stage</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-09-29_parallax_splat_depth_stage.html" loading="lazy" title="2026-09-29 Parallax Splat Depth Stage"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
