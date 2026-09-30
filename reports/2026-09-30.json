@@ -1,0 +1,211 @@
+{
+  "date": "2026-09-30",
+  "headline": "レイヤ受付、depth picking、wide gridを、GPU状態の舞台にする",
+  "headlineEn": "Turning layer acceptance, depth picking, and wide grids into a stage for GPU state",
+  "summary": "PlayCanvas Engine v2.22.5 / v2.22.6、Babylon.js 9.28.0、three.js 186→187移行、Codrops Creative HubのWide grid / cursor / WebGL事例を確認した。9/29のmipmap / residency / parallax depthから、今日は「受け付けられなかった描画要素」「depth pickingの危険域」「alpha depth rows」「横方向grid shader」を2本の依存なしraw WebGL試作にした。",
+  "summaryEn": "Today checks PlayCanvas Engine v2.22.5 / v2.22.6, Babylon.js 9.28.0, the three.js 186 to 187 migration notes, and Codrops Creative Hub's wide-grid, cursor, and WebGL examples. Continuing September 29's mipmap / residency / parallax-depth thread, the two dependency-free raw WebGL prototypes turn rejected render elements, depth-picking risk, alpha depth rows, and a horizontal grid shader into visible inspection surfaces.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.22.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.6"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.5",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.5"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Layer Acceptance Depth Picking Scope",
+      "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+    },
+    {
+      "label": "Derived sample: Wide Grid Shader Alpha Stage",
+      "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.22.6は、materialを持たないmesh instanceをLayer#addMeshInstancesで受け付ける修正が入った。v2.22.5ではscreen配下elementの位置修正と、gsplat depth picking時のNVIDIA GPU hang回避が入っている。9/29のresidencyから一歩進めると、「GPUが何を受け付け、何を危険として避けるか」を見せる題材になる。2. Babylon.js 9.28.0は、alpha depth pre-pass、RootMotionClip / RootMotionController、Gaussian Splatting data texture nearest sampling、WGSL splat plugin修正がまとまっている。3. three.js 186→187移行では、PMREM cube render target化、renderer内部のWeakRef / FinalizationRegistry、XR camera matrix、render target時のviewport/scissor pixel ratio扱い、pixelationPassのpixelSize変更が目立つ。4. Codrops Creative Hubでは9/28のWide: Grid Layout With a WebGL Shader、9/24のCustom-Shaped Cursor Trail、9月前半のReel Flux / Elemental Sandbox / ASCII / Datamoshが、grid、cursor、TSL、postprocessを作品側の主役にしている。",
+      "bodyEn": "1. PlayCanvas Engine v2.22.6 fixes acceptance of mesh instances without materials in Layer#addMeshInstances. v2.22.5 fixes element positioning under screens and avoids NVIDIA GPU hangs during gsplat depth picking. Extending September 29's residency idea, this becomes a subject for showing what the GPU accepts and what it treats as dangerous. 2. Babylon.js 9.28.0 clusters alpha depth pre-pass, RootMotionClip / RootMotionController, nearest sampling for Gaussian Splatting data textures, and WGSL splat-plugin fixes. 3. The three.js 186 to 187 migration notes highlight PMREMs based on cube render targets, renderer internals using WeakRef / FinalizationRegistry, XR camera matrices, viewport/scissor pixel-ratio changes with render targets, and pixelationPass pixelSize changes. 4. Codrops Creative Hub's Wide grid shader, custom-shaped cursor trail, Reel Flux, Elemental Sandbox, ASCII, and datamosh examples put grid, cursor, TSL, and postprocess behavior at the center of the work.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.22.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.6"
+        },
+        {
+          "label": "PlayCanvas Engine v2.22.5",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.5"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "PlayCanvasのmaterialなしmesh受付修正は地味だが、実制作では「まだ素材が届いていないが配置だけはある」状態を捨てずに扱えることを意味する。v2.22.5のgsplat depth picking hang回避も、単に安定化ではなく、splatを編集・選択・測定する体験の信頼度を上げる話。Babylon 9.28.0のalpha depth pre-passとroot motionは、透明素材と移動の履歴を同じ深度面に載せられる。CodropsのWide gridは、横長レイアウトそのものをshader化する良い入口で、9/29のLOD / parallaxと接続すると、gridが単なるUIではなく品質・奥行き・負荷の譜面になる。",
+      "bodyEn": "The PlayCanvas fix for material-less mesh acceptance is quiet but useful: production scenes often contain placed objects whose material has not arrived yet. The v2.22.5 gsplat depth-picking hang avoidance is also about the reliability of editing, selecting, and measuring splats, not just stability. Babylon 9.28.0's alpha depth pre-pass and root motion let transparent material and movement history share the same depth surface. Codrops' Wide grid is a strong entry point for turning a horizontal layout itself into shader material; connected to September 29's LOD / parallax work, the grid becomes a score for quality, depth, and load.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.22.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.6"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命案は `Layer Acceptance Depth Picking Scope`。material gate、depth-pick hazard、alpha pre-passを4モードで見せ、dragでprobe、click / Spaceでrecovery pulseを入れる。materialなしmeshは赤い拒否セルから緑の受付セルへ変化し、depth picking危険域はsplatの熱として見える。派生案は `Wide Grid Shader Alpha Stage`。Codropsのwide grid発想とthree.jsのprojection / scissor移行、Babylonのalpha depth rowsを合わせ、横方向gridを深度と移行差分の舞台にする。短期ではproceduralで読み味を見る。次に足すなら、本命sampleに `meshInstanceId`, `materialReady`, `layerAccepted`, `depthPickRisk`, `gpuVendorRisk`, `alphaCutOff`, `rootMotionDelta` を入れる。派生sampleには `viewportScale`, `scissorRect`, `xrEye`, `pixelSize`, `alphaDepthEnabled`, `gridVelocity` を入れる。",
+      "bodyEn": "The main idea is `Layer Acceptance Depth Picking Scope`: show material gates, depth-pick hazards, and alpha pre-pass across four modes. Drag moves the probe; click / Space adds a recovery pulse. Meshes without materials shift from rejected red cells toward accepted green cells, while depth-picking danger appears as splat heat. The derived idea is `Wide Grid Shader Alpha Stage`: combine Codrops' wide-grid direction with three.js projection / scissor migration and Babylon alpha depth rows, turning a horizontal grid into a stage for depth and migration deltas. Short term, procedural fields are enough to judge readability. Next, feed the main sample with `meshInstanceId`, `materialReady`, `layerAccepted`, `depthPickRisk`, `gpuVendorRisk`, `alphaCutOff`, and `rootMotionDelta`. Feed the derived sample with `viewportScale`, `scissorRect`, `xrEye`, `pixelSize`, `alphaDepthEnabled`, and `gridVelocity`.",
+      "links": [
+        {
+          "label": "Layer Acceptance Depth Picking Scope",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Wide Grid Shader Alpha Stage",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "renderer / layer受付系の最小schemaは `frameId`, `meshInstanceId`, `layerId`, `materialReady`, `layerAccepted`, `fallbackMaterialUsed`, `screenParentId`, `elementPositionFixed`。splat picking系は `splatId`, `depthPickRisk`, `gpuVendorRisk`, `pickRadius`, `lastSafePickFrame`, `hangAvoided`。depth / alpha / motion系は `alphaCutOff`, `depthPrepassEnabled`, `rootMotionDelta`, `dataTextureSampling`, `wgslPluginState`。three.js移行系は `pmremTargetKind`, `weakRefTracked`, `finalizedAtFrame`, `xrSourceEye`, `viewportScaleApplied`, `scissorScaleApplied`, `pixelSizeNumber`。9/29の `textureVersion`, `residentBytes`, `mipLevel` と合わせると、素材到着、受付、選択、深度、破棄の一連が1枚のstate atlasになる。",
+      "bodyEn": "A minimal renderer / layer acceptance schema is `frameId`, `meshInstanceId`, `layerId`, `materialReady`, `layerAccepted`, `fallbackMaterialUsed`, `screenParentId`, and `elementPositionFixed`. For splat picking, use `splatId`, `depthPickRisk`, `gpuVendorRisk`, `pickRadius`, `lastSafePickFrame`, and `hangAvoided`. For depth / alpha / motion, use `alphaCutOff`, `depthPrepassEnabled`, `rootMotionDelta`, `dataTextureSampling`, and `wgslPluginState`. For three.js migration, use `pmremTargetKind`, `weakRefTracked`, `finalizedAtFrame`, `xrSourceEye`, `viewportScaleApplied`, `scissorScaleApplied`, and `pixelSizeNumber`. Combined with September 29's `textureVersion`, `residentBytes`, and `mipLevel`, material arrival, acceptance, selection, depth, and disposal become one state atlas.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "継続案件: 9/27 delete census、9/28 mobile pass pressure、9/29 mipmap / residency、今日のlayer acceptanceを同じGPU state atlasへ接続する。新規案件: PlayCanvas v2.23系のCPU render cost改善、PlayCanvas gsplat depth picking、Babylon alpha pre-pass / RootMotion / nearest splat texture、three.js r187移行のviewport/scissor / WeakRef / PMREM差分、CodropsのWide grid / cursor trail。寝かせる案件: カードUI、単なるリリース羅列、material missingをエラー表示で終わらせるだけの案、gridを装飾背景で終わらせる案。",
+      "bodyEn": "Continue connecting September 27 delete census, September 28 mobile pass pressure, September 29 mipmap / residency, and today's layer acceptance into one GPU state atlas. New watch items are PlayCanvas 2.23 CPU render-cost work, PlayCanvas gsplat depth picking, Babylon alpha pre-pass / RootMotion / nearest splat texture, three.js r187 viewport/scissor / WeakRef / PMREM changes, and Codrops' wide grid / cursor trail examples. Park card UI, plain release lists, treating missing materials as error banners only, and using grids as decorative backgrounds only.",
+      "links": [
+        {
+          "label": "PlayCanvas announcements",
+          "url": "https://forum.playcanvas.com/c/announcements/3"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-09-30_layer_acceptance_depth_picking_scope.html` を開く。1でmaterial gate、2でdepth-pick hazard、3でalpha pre-pass、4で合成を見る。次に `outputs/2026-09-30_wide_grid_shader_alpha_stage.html` を開き、1でwide grid、2でprojection/scissor shift、3でalpha depth rows、4で合成を見る。どちらもdragでprobeを動かし、click / Spaceでpulseを入れる。短期では、赤/緑の受付差分やdepth危険域が情報として読めるかを見る。中期では実renderer logに差し替える。",
+      "bodyEn": "First open `outputs/2026-09-30_layer_acceptance_depth_picking_scope.html`. Mode 1 shows material gate, 2 depth-pick hazard, 3 alpha pre-pass, and 4 the composite. Then open `outputs/2026-09-30_wide_grid_shader_alpha_stage.html`: mode 1 wide grid, 2 projection/scissor shift, 3 alpha depth rows, and 4 composite. Drag moves the probe and click / Space adds a pulse. Short term, judge whether red/green acceptance deltas and depth risk read as information. Mid term, replace the procedural fields with real renderer logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas Engine v2.22.5 / v2.22.6、Babylon.js 9.28.0、three.js Migration Guide、Codrops Creative Hubを確認。アイデア検討: 9/29のmipmap / residencyを、material到着、layer受付、depth picking、alpha pre-pass、wide gridへ展開。サンプル実装: 本命 `2026-09-30_layer_acceptance_depth_picking_scope.html` と派生 `2026-09-30_wide_grid_shader_alpha_stage.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publishを実施する。短期: procedural sampleで視認性を確認。中長期: PlayCanvas / Babylon / three.jsの実ログを同じstate atlasへ集約する。",
+      "bodyEn": "Collection: checked PlayCanvas Engine v2.22.5 / v2.22.6, Babylon.js 9.28.0, the three.js Migration Guide, and Codrops Creative Hub. Ideation: expanded September 29's mipmap / residency work into material arrival, layer acceptance, depth picking, alpha pre-pass, and wide grids. Implementation: added `2026-09-30_layer_acceptance_depth_picking_scope.html` and `2026-09-30_wide_grid_shader_alpha_stage.html`. Verification: run JSON parse, HTML parse, script syntax checks, gallery build, and publish. Short term: inspect readability with procedural samples. Mid term: aggregate real PlayCanvas / Babylon / three.js logs into one state atlas.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは「GPUが困る瞬間」を見せる方向に寄っている。9/24 fallback、9/25 sort precision、9/26 FFT / cursor、9/27 delete census、9/28 pass pressure、9/29 mipmap / residencyに続き、今日は受付と選択の安全性。面白いのは、material missingやdepth picking riskのような通常は裏側に隠す状態を、作品の中ではリズムや熱として使えること。組み合わせ候補は、materialReadyをgrid cellの色、depthPickRiskをsplatの熱、alphaCutOffを横線の透明度、viewport/scissor差分をwide gridの歪みに入れる構成。",
+      "bodyEn": "The recent arc is increasingly about showing the moments when the GPU struggles. After September 24 fallback, September 25 sort precision, September 26 FFT / cursor, September 27 delete census, September 28 pass pressure, and September 29 mipmap / residency, today focuses on acceptance and selection safety. The interesting part is that normally hidden states such as missing materials and depth-picking risk can become rhythm and heat inside the work. Good combinations include mapping materialReady to grid-cell color, depthPickRisk to splat heat, alphaCutOff to line transparency, and viewport/scissor deltas to wide-grid distortion.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命として `outputs/2026-09-30_layer_acceptance_depth_picking_scope.html` を実装した。依存なしraw WebGL fragment shaderで、material gate、depth-pick hazard、alpha pre-pass、compositeを4モードで描く。派生として `outputs/2026-09-30_wide_grid_shader_alpha_stage.html` を実装した。wide grid、projection/scissor shift、alpha depth rows、compositeを4モードで描く。どちらもdragとclick/Space pulseを備え、実ログ差し替え前の視覚検証に向けた最小構成。",
+      "bodyEn": "The main prototype is `outputs/2026-09-30_layer_acceptance_depth_picking_scope.html`, a dependency-free raw WebGL fragment shader showing material gates, depth-pick hazards, alpha pre-pass, and a composite across four modes. The derived prototype is `outputs/2026-09-30_wide_grid_shader_alpha_stage.html`, showing a wide grid, projection/scissor shift, alpha depth rows, and a composite across four modes. Both include drag interaction and click / Space pulses as minimal visual tests before replacing procedural values with real logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "1本目は `meshInstanceId`, `materialReady`, `layerAccepted`, `fallbackMaterialUsed`, `depthPickRisk`, `gpuVendorRisk`, `alphaCutOff`, `rootMotionDelta` を入力にできる。WebGLエディタの品質HUD、splat編集の安全域表示、未ロード素材を作品側の演出へ変えるprogressive reveal、XR空間での触れる/触れない判定に向く。2本目は `viewportScale`, `scissorRect`, `xrEye`, `pixelSize`, `alphaDepthEnabled`, `gridVelocity`, `frameMs` を入力にできる。横スクロールギャラリー、WebXRの両眼差分、large-format websiteのshader grid、音反応するalpha depth rowsに向く。1本目のacceptance heatを2本目のwide gridに入れると、読み込まれた/拒否された素材がそのままレイアウトの波になる。",
+      "bodyEn": "The first sample can take `meshInstanceId`, `materialReady`, `layerAccepted`, `fallbackMaterialUsed`, `depthPickRisk`, `gpuVendorRisk`, `alphaCutOff`, and `rootMotionDelta` as inputs. It fits WebGL editor quality HUDs, safety displays for splat editing, progressive reveals that turn unloaded materials into expressive staging, and touchable / untouchable judgments in XR space. The second can take `viewportScale`, `scissorRect`, `xrEye`, `pixelSize`, `alphaDepthEnabled`, `gridVelocity`, and `frameMs`. It fits horizontal galleries, WebXR eye deltas, shader grids for large-format websites, and audio-reactive alpha depth rows. Feeding the first sample's acceptance heat into the second sample's wide grid would make loaded and rejected assets become layout waves.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "../outputs/2026-09-30_layer_acceptance_depth_picking_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "../outputs/2026-09-30_wide_grid_shader_alpha_stage.html"
+        }
+      ]
+    }
+  ]
+}
