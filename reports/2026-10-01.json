@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-01",
+  "headline": "viewport/scissor、PMREM、alpha depthを、GPU状態の読み替え面にする",
+  "headlineEn": "Turn viewport/scissor, PMREM, and alpha depth into readable GPU-state surfaces",
+  "summary": "three.js 186→187移行、PlayCanvas Engine v2.22.6、Babylon.js 9.28.0、Codropsの9月後半のWebGL/TSL事例を確認した。9/30のlayer acceptance / depth picking / wide gridから、今日はviewport/scissorのピクセル比、cube PMREM、WeakRef/FinalizationRegistry的な寿命、material gate、alpha depth pre-pass、root motionを2本の依存なしraw WebGL試作にした。",
+  "summaryEn": "Reviewed the three.js 186-to-187 migration notes, PlayCanvas Engine v2.22.6, Babylon.js 9.28.0, and late-September Codrops WebGL/TSL examples. Extending 9/30's layer acceptance, depth picking, and wide grid thread, today's two dependency-free raw WebGL prototypes visualize viewport/scissor pixel-ratio behavior, cube PMREM, renderer lifetime lanes, material gates, alpha depth pre-pass, and root-motion traces.",
+  "links": [
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22.6",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.6"
+    },
+    {
+      "label": "PlayCanvas Engine v2.22 announcement thread",
+      "url": "https://forum.playcanvas.com/t/engine-v2-22-0/42557"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Tutorials",
+      "url": "https://tympanus.net/codrops/category/tutorials/"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Viewport Scissor PMREM Probe",
+      "url": "outputs/2026-10-01_viewport_scissor_pmrem_probe.html"
+    },
+    {
+      "label": "Derived sample: Material Alpha Motion Score",
+      "url": "outputs/2026-10-01_material_alpha_motion_score.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsの186→187移行は、PMREMのcube render target化、renderer内部のWeakRef / FinalizationRegistry、XR camera matrix、render target bound時のviewport/scissorピクセル比、pixelationPassのNumber化がまとまっており、9/30のwide gridを「画面分割そのものが状態を持つ表現」に発展させやすい。2. PlayCanvas Engine v2.22.6はmaterialなしmesh instanceのLayer#addMeshInstances受付修正で、9/30のlayer acceptanceを実装ログ化する良い継続点。3. Babylon.js 9.28.0はalpha depth pre-pass、cube/prefiltered texture load contract、RootMotion、Gaussian Splatting data texture nearest samplingが並び、描画順・読み込み完了・動きの履歴を同じ譜面にできる。4. Codropsはcustom-shaped cursor trail、liquid glass grid、VAT paper、Wide gridなど、入力形状やグリッドを単なる演出ではなくshaderの制御面として扱う流れが強い。",
+      "bodyEn": "1. The three.js 186-to-187 migration clusters PMREM cube render targets, renderer WeakRef/FinalizationRegistry usage, XR camera matrices, viewport/scissor pixel-ratio behavior with bound render targets, and pixelationPass Number inputs. That makes yesterday's wide-grid direction a natural screen-state visualization. 2. PlayCanvas Engine v2.22.6 fixes Layer#addMeshInstances acceptance for mesh instances without materials, continuing yesterday's layer-acceptance thread. 3. Babylon.js 9.28.0 combines alpha depth pre-pass, cube/prefiltered texture load contracts, RootMotion, and nearest sampling for Gaussian Splatting data textures, making draw order, load completion, and motion history share one score. 4. Codrops examples around cursor trails, liquid glass grids, VAT paper, and wide grids keep treating input shape and grids as shader control surfaces.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas Engine v2.22.6",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.22.6"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops Tutorials",
+          "url": "https://tympanus.net/codrops/category/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "PlayCanvas v2.22系の発表スレッドはVAT Characters、Depth Effects、Parallax Mapping、MSAA Depth Fogなど、エンジン機能と視覚デバッグが近い距離にある。three.js r187移行ではviewport/scissorのピクセル比扱いが変わるため、画面を4分割した診断ビューを実装素材にできる。Babylon 9.28.0のalpha depth pre-passとRootMotionは、半透明の表示順とキャラクター移動を同じ時間軸に乗せる発想が面白い。Codropsのcustom cursor / liquid glass / Wide gridは、ユーザー入力を「効果の中心」ではなく「shader stateを読む針」にする方向で使える。",
+      "bodyEn": "The PlayCanvas v2.22 announcement thread keeps engine features close to visual debugging: VAT Characters, Depth Effects, Parallax Mapping, and MSAA Depth Fog. three.js r187's viewport/scissor pixel-ratio migration makes a four-panel diagnostic screen useful as a creative surface. Babylon 9.28.0's alpha depth pre-pass and RootMotion suggest putting transparency order and character travel on one timeline. Codrops cursor, liquid glass, and wide-grid examples point toward using input as a needle for reading shader state, not just as an effect center.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.22 announcement thread",
+          "url": "https://forum.playcanvas.com/t/engine-v2-22-0/42557"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期: viewport/scissorの分割線、PMREM cube face、GC/Finalizationの寿命laneを4象限に置き、dragでscissor境界、clickでresize pulseを出す。派生: materialの到着/未到着、alphaCutOff、rootMotionDeltaを横譜面にして、透明度と移動のズレを演奏できるようにする。中長期: 実renderer logからviewportScale、scissorRect、pmremFace、textureAge、finalizedAtFrame、materialReady、alphaCutOff、rootMotionDeltaを取り、日々の試作を1つのstate atlas viewerへ統合する。",
+      "bodyEn": "Short term: place viewport/scissor dividers, PMREM cube faces, and GC/finalization lifetime lanes in a four-quadrant diagnostic view, with drag controlling scissor boundaries and clicks emitting resize pulses. Derived idea: turn material arrival, alphaCutOff, and rootMotionDelta into a horizontal score so transparency and travel drift can be played. Longer term: ingest real renderer logs for viewportScale, scissorRect, pmremFace, textureAge, finalizedAtFrame, materialReady, alphaCutOff, and rootMotionDelta, then merge the daily prototypes into one state-atlas viewer."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "three.js側はr187移行時にrender target bind中のsetViewport/setScissorを再確認する。過去コードでdevicePixelRatioを二重に掛けていると、postprocessやmini viewportの切り出しがずれる可能性がある。PMREMはcube render targetベースになるので、reflectionの見た目差をA/Bできるようにcaptureを残す。Babylon側はalpha sourceごとのdepth pre-passとalphaCutOffのbinding、OBJ texture wait、Gaussian Splatting data texture nearest samplingを見る。PlayCanvas側はmaterialなしmeshのlayer受付、SOG/gsplat LOD、depth picking、GPU sort precisionを同じログ項目で追う。",
+      "bodyEn": "For three.js, audit setViewport/setScissor when a render target is bound during r187 migration. Code that double-applies devicePixelRatio can misalign post effects or mini viewport crops. Since PMREM is cube-render-target based, keep A/B captures of reflection differences. For Babylon, watch alpha-source depth pre-pass behavior, alphaCutOff binding, OBJ texture waits, and nearest sampling for Gaussian Splatting data textures. For PlayCanvas, track material-less mesh layer acceptance, SOG/gsplat LOD, depth picking, and GPU sort precision in the same log schema."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187 release / dev commits、TSL compute / FFT2D / gather / mipmapsAutoUpdate、PlayCanvas v2.23のCPU cost改善、PlayCanvas Engine v2.22系patch、Babylon.js 9.28以降のalpha / RootMotion / GSplat関連、CodropsのTSL/WebGPUチュートリアル更新を継続監視する。特に、viewport/scissor・material acceptance・alpha depthの3つが同じ「描画できるか/どこに描くか/前後関係は正しいか」という検査軸に収束してきた。",
+      "bodyEn": "Continue watching three.js r187 release and dev commits, TSL compute/FFT2D/gather/mipmapsAutoUpdate work, PlayCanvas v2.23 CPU-cost improvements, PlayCanvas v2.22 patch releases, Babylon alpha/RootMotion/GSplat updates after 9.28, and Codrops TSL/WebGPU tutorials. The key convergence is viewport/scissor, material acceptance, and alpha depth all becoming one inspection axis: can it render, where does it render, and is its ordering correct?"
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-01_viewport_scissor_pmrem_probe.html` を開く。1でviewport/scissor境界、2でPMREM cube face、3で寿命lane、4で合成。dragでscissor probe、click/Spaceでresize pulseが走る。次に `outputs/2026-10-01_material_alpha_motion_score.html` を開き、material gate、alpha depth score、root motion traceを同じ操作で比較する。次に足すなら、実フレームログをJSONで読み込み、各laneの値を本物のrenderer stateに置き換える。",
+      "bodyEn": "Open `outputs/2026-10-01_viewport_scissor_pmrem_probe.html` first. Mode 1 shows viewport/scissor boundaries, mode 2 PMREM cube faces, mode 3 lifetime lanes, and mode 4 a composite; drag controls the scissor probe and click/Space emits a resize pulse. Then open `outputs/2026-10-01_material_alpha_motion_score.html` to compare material gates, alpha depth scores, and root-motion traces with the same controls. Next, load real frame logs as JSON and replace each lane with actual renderer state."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r187 migration、PlayCanvas v2.22.6、Babylon 9.28.0、Codrops late-September shader examplesを確認。アイデア検討: 9/30のlayer acceptance / depth picking / wide gridを、viewport/scissor、PMREM、material gate、alpha depth、root motionへ拡張。サンプル実装: 本命 `outputs/2026-10-01_viewport_scissor_pmrem_probe.html` と派生 `outputs/2026-10-01_material_alpha_motion_score.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、upsert/publish処理で確認する。継続案件はstate atlas化、新規案件はviewport/scissor probe、寝かせる案件はカードUI系と重い依存つきの本格WebGPU移植。",
+      "bodyEn": "Collection: reviewed the three.js r187 migration, PlayCanvas v2.22.6, Babylon 9.28.0, and late-September Codrops shader examples. Ideation: extended 9/30's layer acceptance, depth picking, and wide-grid thread toward viewport/scissor, PMREM, material gates, alpha depth, and root motion. Implementation: created the main sample `outputs/2026-10-01_viewport_scissor_pmrem_probe.html` and derived sample `outputs/2026-10-01_material_alpha_motion_score.html`. Verification: validate JSON, HTML parsing, script syntax, gallery build, and upsert/publish. Continuing item: state-atlas integration. New item: viewport/scissor probe. Parked item: card UI and heavy-dependency WebGPU ports."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは「見た目を作るshader」から「描画状態を読むshader」へ寄っている。9/29のmipmap/residency、9/30のlayer/depth、10/1のviewport/scissor/PMREMは、すべてGPU上の見えない条件を視覚表現に戻す方向。組み合わせ候補は、viewport/scissorを舞台の区切り、PMREM faceを環境の記憶、alpha depthを前後関係、root motionを時間の足跡として扱うこと。育てる価値が高いテーマは、debug HUDではなく、作品として成立するrenderer state theater。",
+      "bodyEn": "The recent arc is shifting from shaders that create appearance to shaders that read render state. 9/29's mipmap/residency, 9/30's layer/depth, and 10/1's viewport/scissor/PMREM all turn invisible GPU conditions back into visible expression. A promising combination treats viewport/scissor as stage partitions, PMREM faces as environmental memory, alpha depth as ordering, and root motion as time footprints. The theme worth growing is not a debug HUD, but renderer-state theater that can stand as an artwork."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-01_viewport_scissor_pmrem_probe.html`。r187移行で気になるviewport/scissorのピクセル比、PMREM cube face、renderer lifetimeを1枚のraw WebGLにした。派生は `outputs/2026-10-01_material_alpha_motion_score.html`。PlayCanvasのmaterial acceptanceとBabylonのalpha depth / RootMotionを、素材到着と透明度順序と動きの譜面として表示する。どちらも依存なしで、1-4キー、drag、click/Spaceで確認できる。",
+      "bodyEn": "The main prototype is `outputs/2026-10-01_viewport_scissor_pmrem_probe.html`, a raw WebGL view of r187-adjacent viewport/scissor pixel-ratio concerns, PMREM cube faces, and renderer lifetime. The derived prototype is `outputs/2026-10-01_material_alpha_motion_score.html`, showing PlayCanvas-style material acceptance and Babylon-style alpha depth/RootMotion as a score of asset arrival, transparency order, and motion. Both are dependency-free and support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は、入力値を `probeX/probeY/pulse/mode`、描画状態を `viewportScale/scissorRect/pmremFace/textureAge/finalizedAtFrame/materialReady/alphaCutOff/rootMotionDelta` として保存できる。音反応ならkickでresize pulse、hatでalpha lane、低域でPMREM faceの明度を揺らす。WebXRなら左右eyeのprojection/scissor差を可視化し、MediaPipeなら顔や手のlandmarkをscissor probeにする。展示では、来場者の移動がroot motion traceになり、透明な幕やgridが描画状態の変化として開閉する構成が合う。",
+      "bodyEn": "These two samples can store inputs as `probeX/probeY/pulse/mode` and render state as `viewportScale/scissorRect/pmremFace/textureAge/finalizedAtFrame/materialReady/alphaCutOff/rootMotionDelta`. For audio, kick can drive resize pulses, hi-hats can drive alpha lanes, and bass can modulate PMREM face brightness. For WebXR, visualize projection/scissor differences between eyes; for MediaPipe, map face or hand landmarks to the scissor probe. In an installation, visitor movement can become root-motion traces while translucent curtains or grids open and close as render-state changes."
+    }
+  ]
+}
