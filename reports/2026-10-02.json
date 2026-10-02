@@ -1,0 +1,125 @@
+{
+  "date": "2026-10-02",
+  "headline": "view bind group、partial upload、frame graphを、状態が動く譜面にする",
+  "headlineEn": "Turn view bind groups, partial uploads, and frame graphs into moving state scores",
+  "summary": "PlayCanvas Engine v2.23.0、Babylon.js 9.29.0、three.js r187 migration / milestone、Codropsの直近WebGL/TSL事例を確認した。10/1のviewport/scissor、PMREM、material alphaから、今日はWebGPU寄りのview uniform、bind group、partial upload、frame graph reducer、velocity output、cached texture retryを2本の依存なしraw WebGL試作にした。",
+  "summaryEn": "Reviewed PlayCanvas Engine v2.23.0, Babylon.js 9.29.0, the three.js r187 migration/milestone, and recent Codrops WebGL/TSL examples. Extending 10/1's viewport/scissor, PMREM, and material-alpha work, today's two dependency-free raw WebGL prototypes visualize WebGPU-adjacent view uniforms, bind groups, partial uploads, frame-graph reducers, velocity outputs, and cached texture retries.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Babylon.js 9.29.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.29.0"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "Codrops Tutorials",
+      "url": "https://tympanus.net/codrops/hub/tutorials/"
+    },
+    {
+      "label": "Main sample: View Bind Group Upload Scope",
+      "url": "outputs/2026-10-02_view_bindgroup_upload_scope.html"
+    },
+    {
+      "label": "Derived sample: Framegraph Velocity Retry Mixer",
+      "url": "outputs/2026-10-02_framegraph_velocity_retry_mixer.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.23.0が10/1に出ており、WebGPUでmesh instance matricesをpersistent storage bufferへ置く、partial vertex/index buffer upload、view uniform bufferへのper-pass uniform移動、view bind group経由のper-pass texture供給、pipeline再利用、material bind group、Gaussian Splatting LOD / stochastic alphaなど、描画状態の粒度を細かく保つ変更が多い。2. Babylon.js 9.29.0も10/1に出ており、frame graph min/max reducer、velocity outputのprevious world matrix追跡、CPU particlesのper-frame allocation削減、cached texture retry、WebGPU 3D texture mipmap修正が目立つ。3. three.js r187 migrationはPMREM cube render target、WeakRef / FinalizationRegistry、XR camera matrix、bound render target時のviewport/scissor、pixelationPass Number化を引き続き確認対象にする。4. CodropsのWide grid、custom-shaped cursor trail、Paper Crumpleなどは、入力や変形をshader状態の読み取り針にする流れとして継続して有効。",
+      "bodyEn": "1. PlayCanvas Engine v2.23.0 was released on Oct 1 and includes many changes that keep render state granular: persistent storage buffers for mesh instance matrices on WebGPU, partial vertex/index buffer uploads, per-pass uniforms moved into the view uniform buffer, per-pass textures supplied through the view bind group, render pipeline reuse, material bind groups, and Gaussian Splatting LOD/stochastic alpha work. 2. Babylon.js 9.29.0 also landed on Oct 1, with a frame-graph min/max reducer, previous world-matrix tracking for velocity outputs, fewer per-frame CPU-particle allocations, cached texture retries, and a WebGPU 3D texture mipmap fix. 3. The three.js r187 migration remains important for PMREM cube render targets, WeakRef/FinalizationRegistry, XR camera matrices, viewport/scissor with bound render targets, and pixelationPass Number inputs. 4. Codrops examples such as Wide grid, custom-shaped cursor trail, and Paper Crumple remain useful as references for turning input and deformation into needles that read shader state.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Codrops Tutorials",
+          "url": "https://tympanus.net/codrops/hub/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "PlayCanvas v2.23.0は、単にWebGPU対応を進めるというより、view / material / mesh / light / splatの状態境界を整理している点が面白い。これを視覚化すると、従来の派手なポストエフェクトではなく「いつ、どの単位でGPUに渡ったか」が作品のリズムになる。Babylon 9.29.0のframe graph min/max reducerとvelocity修正は、画面上の値の範囲と前フレームの記憶を同じ演出素材にできる。three.js r187のviewport/scissorやPMREM変更は、10/1の診断面を継続して実フレームログへ近づける接続点になる。",
+      "bodyEn": "PlayCanvas v2.23.0 is interesting because it is not only about WebGPU support; it clarifies state boundaries across view, material, mesh, light, and splat paths. Visualized creatively, the rhythm becomes when and at what granularity data reaches the GPU, rather than a flashy post effect. Babylon 9.29.0's frame-graph min/max reducer and velocity fixes make value ranges and previous-frame memory usable as one material. three.js r187's viewport/scissor and PMREM changes keep yesterday's diagnostic surfaces connected to real frame logs."
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期: view uniform buffer、material bind group、partial upload rangeを4象限のshader scoreにし、dragでcamera/view probe、clickでupload pulseを出す。派生: Babylon側のframe graph reducer、velocity history、cached texture retryを横レーンにし、回復や失敗を光るイベントとして見る。中長期: 10/1のviewport/scissor/PMREM、9/29のresidency、9/30のlayer/depthと統合し、render state atlasとして日々の試作を重ねていく。",
+      "bodyEn": "Short term: turn the view uniform buffer, material bind groups, and partial upload ranges into a four-quadrant shader score, with drag controlling the camera/view probe and clicks emitting upload pulses. Derived idea: make Babylon's frame-graph reducer, velocity history, and cached texture retries into horizontal lanes where recovery and failure become visible events. Longer term: merge this with 10/1's viewport/scissor/PMREM, 9/29's residency, and 9/30's layer/depth work as one render-state atlas."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "PlayCanvas v2.23.0を見ると、WebGPUではper-pass uniform、texture、material、mesh override、light slot、pipeline cacheの持ち方が実装品質に直結する。ログ化するなら `viewId/passId/bindGroupId/materialId/partialUploadOffset/partialUploadBytes/pipelineCacheHit/splatLodLevel/stochasticAlpha` を候補にする。Babylon 9.29.0側は `frameGraphBlock/minValue/maxValue/previousWorldMatrixValid/velocityMagnitude/textureRetryCount/cacheHit/mipmapLevel` が良い。three.js側は `viewportScale/scissorRect/pmremFace/textureAge/finalizedAtFrame/pixelSize` を継続して採る。",
+      "bodyEn": "PlayCanvas v2.23.0 suggests that WebGPU implementation quality depends heavily on how per-pass uniforms, textures, materials, mesh overrides, light slots, and pipeline caches are owned. Candidate log fields are `viewId/passId/bindGroupId/materialId/partialUploadOffset/partialUploadBytes/pipelineCacheHit/splatLodLevel/stochasticAlpha`. For Babylon 9.29.0, useful fields include `frameGraphBlock/minValue/maxValue/previousWorldMatrixValid/velocityMagnitude/textureRetryCount/cacheHit/mipmapLevel`. For three.js, continue collecting `viewportScale/scissorRect/pmremFace/textureAge/finalizedAtFrame/pixelSize`."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvas v2.23.xのpatchとGaussian Splatting / WebGPU renderer最適化、Babylon 9.29.xのframe graph / velocity / WebGPU texture修正、three.js r187の正式releaseとTSL / WebGPU PR、CodropsのTSL/WebGPU系チュートリアル更新を継続監視する。特に、partial uploadとframe graph reducerは、パフォーマンス改善でありながら視覚化すると非常に作品化しやすい。",
+      "bodyEn": "Watch PlayCanvas v2.23.x patches and Gaussian Splatting/WebGPU renderer optimizations, Babylon 9.29.x frame-graph/velocity/WebGPU texture fixes, the formal three.js r187 release plus TSL/WebGPU PRs, and new Codrops TSL/WebGPU tutorials. Partial uploads and frame-graph reducers are performance work, but they become very expressive when visualized."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-02_view_bindgroup_upload_scope.html` を開く。1でview UBO、2でmaterial bind group、3でpartial upload、4で合成。dragでview probe、click/Spaceでupload pulseが走る。次に `outputs/2026-10-02_framegraph_velocity_retry_mixer.html` を開き、min/max reducer、velocity history、texture retryを比較する。次に足すなら、実フレームログJSONを読み、laneの位置や色を本物のoffset、cache hit、retry countに置き換える。",
+      "bodyEn": "Open `outputs/2026-10-02_view_bindgroup_upload_scope.html` first. Mode 1 shows the view UBO, mode 2 material bind groups, mode 3 partial uploads, and mode 4 the composite; drag moves the view probe and click/Space emits an upload pulse. Then open `outputs/2026-10-02_framegraph_velocity_retry_mixer.html` to compare min/max reducers, velocity history, and texture retries. Next, load real frame-log JSON and replace lane positions and colors with actual offsets, cache hits, and retry counts."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas v2.23.0、Babylon 9.29.0、three.js r187 migration / milestone、Codrops tutorialsを確認。アイデア検討: 10/1のviewport/scissor/PMREM/material alphaを、view bind group、partial upload、frame graph reducer、velocity、texture retryへ拡張。サンプル実装: 本命 `outputs/2026-10-02_view_bindgroup_upload_scope.html` と派生 `outputs/2026-10-02_framegraph_velocity_retry_mixer.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、upsert/publish処理で確認する。継続案件はrender state atlas、新規案件はview bind group score、寝かせる案件はカードUI系と重い外部依存つきWebGPU移植。",
+      "bodyEn": "Collection: reviewed PlayCanvas v2.23.0, Babylon 9.29.0, the three.js r187 migration/milestone, and Codrops tutorials. Ideation: extended 10/1's viewport/scissor/PMREM/material-alpha work into view bind groups, partial uploads, frame-graph reducers, velocity, and texture retries. Implementation: created the main sample `outputs/2026-10-02_view_bindgroup_upload_scope.html` and derived sample `outputs/2026-10-02_framegraph_velocity_retry_mixer.html`. Verification: validate JSON, HTML parsing, script syntax, gallery build, and upsert/publish. Continuing item: render-state atlas. New item: view-bind-group score. Parked item: card UI and heavy-dependency WebGPU ports."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、GPUの大きな一枚絵ではなく、更新単位、所有単位、寿命、失敗からの回復を見せる方向へ寄っている。9/29のresidency、9/30のlayer/depth、10/1のviewport/scissor、10/2のbind group / frame graphは、全部「描画状態の粒度」を作品にする試みとしてつながる。育てる価値が高いテーマは、debug HUDを超えたrenderer state theater。観客の入力、音、WebXRのeye差、MediaPipeのlandmarkを、GPU状態を読む針として使うと強い。",
+      "bodyEn": "The recent trend is moving away from one large GPU picture and toward showing update granularity, ownership granularity, lifetime, and recovery from failure. 9/29's residency, 9/30's layer/depth, 10/1's viewport/scissor, and 10/2's bind-group/frame-graph work all connect as attempts to make render-state granularity into art. The theme worth growing is renderer-state theater beyond a debug HUD. Viewer input, audio, WebXR eye differences, and MediaPipe landmarks become stronger when used as needles for reading GPU state."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-02_view_bindgroup_upload_scope.html`。PlayCanvas v2.23.0のview uniform buffer、material bind group、partial uploadから着想したraw WebGLの状態スコープ。派生は `outputs/2026-10-02_framegraph_velocity_retry_mixer.html`。Babylon 9.29.0のframe graph min/max reducer、velocity output、cached texture retryを横譜面として表示する。どちらも依存なしで、1-4キー、drag、click/Spaceで確認できる。",
+      "bodyEn": "The main prototype is `outputs/2026-10-02_view_bindgroup_upload_scope.html`, a raw WebGL state scope inspired by PlayCanvas v2.23.0's view uniform buffers, material bind groups, and partial uploads. The derived prototype is `outputs/2026-10-02_framegraph_velocity_retry_mixer.html`, showing Babylon 9.29.0's frame-graph min/max reducer, velocity outputs, and cached texture retries as horizontal score lanes. Both are dependency-free and support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は、入力値を `probeX/probeY/pulse/mode`、描画状態を `viewId/passId/bindGroupId/materialId/partialUploadOffset/partialUploadBytes/pipelineCacheHit/frameGraphBlock/minValue/maxValue/velocityMagnitude/textureRetryCount/cacheHit` として保存できる。音反応ならkickでupload pulse、snareでtexture retry、低域でvelocity trailの長さを揺らす。WebXRなら左右eyeごとのview uniform差を2面に分け、MediaPipeなら手の速度をpartial upload範囲にする。展示では、来場者の動きでbind groupが組み替わり、失敗したtexture retryが光のノイズとして空間に残る構成が合う。",
+      "bodyEn": "These two samples can store inputs as `probeX/probeY/pulse/mode` and render state as `viewId/passId/bindGroupId/materialId/partialUploadOffset/partialUploadBytes/pipelineCacheHit/frameGraphBlock/minValue/maxValue/velocityMagnitude/textureRetryCount/cacheHit`. For audio, kick can trigger upload pulses, snare can drive texture retries, and bass can stretch velocity trails. For WebXR, split per-eye view-uniform differences into two surfaces; for MediaPipe, map hand velocity to partial-upload ranges. In an installation, visitor motion can rewire bind groups while failed texture retries remain as luminous noise in space."
+    }
+  ]
+}
