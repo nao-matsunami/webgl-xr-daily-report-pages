@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-10-03 Reducer Cursor Memory Score</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #050507; color: #f2ecdf; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: fixed; left: 18px; top: 16px; max-width: min(820px, calc(100vw - 36px)); pointer-events: none; text-shadow: 0 1px 18px #050507; }
+    .title { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #ffd48a; }
+    .meta { margin-top: 8px; font-size: 12px; line-height: 1.55; color: #ebe3d4; }
+    .mode { color: #89f0dc; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <div class="title">Reducer Cursor Memory Score</div>
+  <div class="meta">1 min/max reducer / 2 velocity memory / 3 shaped cursor ink / 4 composite - drag = brush and range - click or Space = retry spike - mode <span class="mode" id="mode">4</span></div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById("gl");
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+  const modeEl = document.getElementById("mode");
+  if (!gl) {
+    document.body.insertAdjacentHTML("beforeend", "<p style='padding:20px'>WebGL unavailable.</p>");
+    return;
+  }
+
+  const vertex = `
+attribute vec2 p;
+void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+  const fragment = `
+precision highp float;
+uniform vec2 r;
+uniform vec2 m;
+uniform float t;
+uniform float pulse;
+uniform int mode;
+
+float hash(vec2 p) {
+  p = fract(p * vec2(113.5, 271.9));
+  p += dot(p, p + 17.7);
+  return fract(p.x * p.y);
+}
+
+float line(float v, float p, float w) {
+  return smoothstep(w, 0.0, abs(v - p));
+}
+
+float box(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+mat2 rot(float a) {
+  float s = sin(a), c = cos(a);
+  return mat2(c, -s, s, c);
+}
+
+float starBrush(vec2 p) {
+  float a = atan(p.y, p.x);
+  float d = length(p);
+  float rays = 0.72 + 0.28 * cos(a * 5.0 + t * 0.7);
+  return smoothstep(0.18 * rays, 0.03 * rays, d);
+}
+
+vec3 reducer(vec2 uv, vec2 brush) {
+  vec3 col = vec3(0.016, 0.014, 0.018);
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= r.x / r.y;
+  for (int i = 0; i < 9; i++) {
+    float fi = float(i);
+    float y = -0.8 + fi * 0.2;
+    float signal = sin(p.x * (2.0 + fi * 0.8) + t * (0.34 + fi * 0.04));
+    float mn = -0.35 - 0.25 * brush.x + signal * 0.04;
+    float mx = 0.35 + 0.22 * brush.y - signal * 0.04;
+    float lane = line(p.y, y, 0.011);
+    float active = smoothstep(mn, mn + 0.02, p.x) * smoothstep(mx, mx - 0.02, p.x);
+    float minMark = line(p.x, mn, 0.012);
+    float maxMark = line(p.x, mx, 0.012);
+    float block = lane * active;
+    col += block * mix(vec3(0.08, 0.22, 0.24), vec3(0.23, 0.55, 0.46), fi / 9.0);
+    col += lane * (minMark * vec3(0.2, 0.92, 0.8) + maxMark * vec3(1.0, 0.42, 0.26));
+  }
+  col += pulse * line(fract(uv.x * 10.0 + uv.y * 5.0 - t * 0.5), 0.5, 0.035) * vec3(0.85, 0.7, 0.34);
+  return col;
+}
+
+vec3 velocityMemory(vec2 uv, vec2 brush) {
+  vec3 col = vec3(0.011, 0.014, 0.02);
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= r.x / r.y;
+  vec2 head = (brush * 2.0 - 1.0) * vec2(r.x / r.y, 1.0);
+  for (int i = 0; i < 26; i++) {
+    float fi = float(i);
+    float age = fi / 26.0;
+    vec2 c = head - vec2(sin(t * 0.7 + fi * 0.35), cos(t * 0.53 + fi * 0.21)) * age * 0.72;
+    vec2 q = (p - c) * rot(age * 2.0 + t * 0.08);
+    float streak = smoothstep(0.018, 0.0, abs(box(q, vec2(0.08 + age * 0.16, 0.006 + age * 0.015))));
+    float v = 1.0 - age;
+    col += streak * mix(vec3(0.12, 0.28, 0.7), vec3(0.96, 0.76, 0.32), v);
+  }
+  col += exp(-5.0 * length(p - head)) * vec3(0.12, 0.22, 0.18);
+  return col;
+}
+
+vec3 cursorInk(vec2 uv, vec2 brush) {
+  vec3 col = vec3(0.02, 0.016, 0.012);
+  vec2 p = uv * 2.0 - 1.0;
+  p.x *= r.x / r.y;
+  vec2 b = (brush * 2.0 - 1.0) * vec2(r.x / r.y, 1.0);
+  float paper = hash(floor(uv * vec2(120.0, 80.0))) * 0.06;
+  col += paper;
+  for (int i = 0; i < 15; i++) {
+    float fi = float(i);
+    vec2 c = b - vec2(sin(t * 0.42 + fi), cos(t * 0.36 + fi * 1.31)) * fi * 0.028;
+    vec2 q = (p - c) * rot(fi * 0.32 + t * 0.1);
+    float ink = starBrush(q * (1.6 + fi * 0.05));
+    float retry = line(fract((uv.x + hash(vec2(fi, 2.0))) * (4.0 + fi * 0.3) - t * 0.12), 0.5, 0.02);
+    col += ink * mix(vec3(0.15, 0.37, 0.34), vec3(0.9, 0.45, 0.18), fi / 15.0);
+    col += ink * retry * vec3(0.95, 0.76, 0.38);
+  }
+  col += pulse * smoothstep(0.52, 0.0, length(p - b)) * vec3(0.5, 0.25, 0.08);
+  return col;
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / r;
+  vec2 brush = clamp(m, 0.0, 1.0);
+  vec3 a = reducer(uv, brush);
+  vec3 b = velocityMemory(uv, brush);
+  vec3 c = cursorInk(uv, brush);
+  vec3 col = a;
+  if (mode == 2) col = b;
+  if (mode == 3) col = c;
+  if (mode == 4) {
+    vec2 q = fract(uv * 2.0);
+    if (uv.x < 0.5 && uv.y > 0.5) col = reducer(q, brush);
+    else if (uv.x >= 0.5 && uv.y > 0.5) col = velocityMemory(q, brush);
+    else if (uv.x < 0.5) col = cursorInk(q, brush);
+    else col = a * 0.48 + b * 0.45 + c * 0.5;
+    col += (line(uv.x, 0.5, 0.002) + line(uv.y, 0.5, 0.002)) * vec3(0.9, 0.72, 0.48);
+  }
+  gl_FragColor = vec4(pow(col, vec3(0.9)), 1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uniforms = {
+    r: gl.getUniformLocation(program, "r"),
+    m: gl.getUniformLocation(program, "m"),
+    t: gl.getUniformLocation(program, "t"),
+    pulse: gl.getUniformLocation(program, "pulse"),
+    mode: gl.getUniformLocation(program, "mode")
+  };
+
+  let mode = 4;
+  let mouse = [0.47, 0.55];
+  let pulseAt = -10;
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.floor(innerWidth * dpr);
+    const h = Math.floor(innerHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+  function setMouse(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouse = [(e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height];
+  }
+  addEventListener("pointermove", setMouse);
+  addEventListener("pointerdown", (e) => { setMouse(e); pulseAt = performance.now() / 1000; });
+  addEventListener("keydown", (e) => {
+    if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+    if (e.code === "Space") pulseAt = performance.now() / 1000;
+    modeEl.textContent = mode;
+  });
+  function frame(now) {
+    resize();
+    const time = now / 1000;
+    gl.uniform2f(uniforms.r, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.m, mouse[0], mouse[1]);
+    gl.uniform1f(uniforms.t, time);
+    gl.uniform1f(uniforms.pulse, Math.exp(-4.0 * Math.max(0, time - pulseAt)));
+    gl.uniform1i(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
