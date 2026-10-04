@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 105</span>
+        <span>days: 106</span>
         <span>page: 2 / 9</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -321,6 +321,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-22">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.22</p>
+              <h2>リソース破棄・readback pool・PMREM移行を、見える保守状態にする</h2>
+              <p class="card-subtitle">Making cleanup, readback pools, and PMREM migration visible maintenance state</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-22" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">PlayCanvas Engine v2.22.3、three.js r186 / 186→187 migration、Babylon.js 9.27.1、Codropsの9月WebGL/Three.js事例を確認した。9/21のdepth lifecycle / USD SOG stage queueから、今日は destroy 時のWebGPU resource cleanup、readback staging buffer pool、recovery cancellation、shadow reset を扱う本命試作と、three.js PMREM cube target / TSL-WGSL interop / pixelationPass移行を扱う派生試作を追加した。</p>
+          <p class="description en-copy">Today checks PlayCanvas Engine v2.22.3, three.js r186 and the 186 to 187 migration guide, Babylon.js 9.27.1, and September Codrops WebGL / Three.js examples. Extending September 21's depth lifecycle and USD/SOG stage queue, the main prototype visualizes WebGPU resource cleanup on destroy, readback staging buffer pooling, recovery cancellation, and shadow reset, while the derived prototype visualizes three.js PMREM cube targets, TSL-WGSL interop, and the pixelationPass migration.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-09-22.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-09-22_tsl_pmrem_pixel_migration_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-21">
           <div class="card-top">
             <div>
@@ -570,29 +593,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-09-11.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-09-11_ribbon_sog_lod_unweave.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-10">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.10</p>
-              <h2>平面を厚み・流体・検査面に変える</h2>
-              <p class="card-subtitle">Turning flat surfaces into thickness, fluid motion, and diagnostic planes</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-10" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">Codrops の Infinite Liquid Glass Grid と Drawing With Light、three.js の LightProbeGrid incremental baking / UnrealBloomPass bilinear fetch / r187 migration note / TSL Inspector issue、PlayCanvas の WebGPU readback staging buffer pool issue と Editor GLSL transpilation setting、Babylon.js JsRuntimeHost の async WebAssembly settling を調査した。前回の「処理中の美学」を、今日は「平面を厚み・流体・検査面として使う」方向へ接続し、2本の依存なしWebGL試作を実装した。</p>
-          <p class="description en-copy">Today covers Codrops' Infinite Liquid Glass Grid and Drawing With Light, three.js LightProbeGrid incremental baking, UnrealBloomPass bilinear fetches, the r187 migration note, a TSL Inspector issue, PlayCanvas' WebGPU readback staging buffer pool issue and Editor GLSL transpilation setting, plus Babylon.js JsRuntimeHost async WebAssembly settling. Building on the previous aesthetics-of-processing theme, the focus shifts to flat surfaces as thickness, fluid motion, and diagnostic planes. Two dependency-free WebGL prototypes were implemented.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-09-10.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-09-10_liquid_glass_probe_cloth.html">代表サンプル / Sample</a>
           </div>
         </article>
       

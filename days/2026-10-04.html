@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>depth、reducer、readback delayを、触れるrender-state atlasにする | 2026-10-04</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.04</p>
+      <h1>depth、reducer、readback delayを、触れるrender-state atlasにする</h1>
+      <p class="hero-subtitle">Turn depth, reducers, and readback delay into a tactile render-state atlas</p>
+      <p>PlayCanvas Engine v2.23.0、Babylon.js 9.29.0、three.js r187 migration / milestone、Codropsの直近WebGL / TSL事例を確認した。10/3のInspector / AppStats / nearest-first splat mapから、今日はdepth tile、frame graph min/max reducer、delayed readback、XR eye budget、residency echoを2本の依存なしraw WebGL試作にした。</p>
+      <p class="en-copy">Reviewed PlayCanvas Engine v2.23.0, Babylon.js 9.29.0, the three.js r187 migration/milestone, and recent Codrops WebGL/TSL examples. Extending 10/3's Inspector/AppStats/nearest-first splat map, today's two dependency-free raw WebGL prototypes explore depth tiles, frame-graph min/max reducers, delayed readback, XR eye budgets, and residency echoes.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-04_xr_probe_residency_echo.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-03.html">← 2026.10.03</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-04 XR Probe Residency Echo</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-04_xr_probe_residency_echo.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-04 Depth Reducer Readback Atlas</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-04_depth_reducer_readback_atlas.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas Engine v2.23.0は引き続き最新releaseで、persistent storage buffer、partial upload、view / material bind group、pipeline reuse、TextureRenderer、Inspector、AppStats、nearest-first streamed GSplat LODが今日の実装観点の中心。2. Babylon.js 9.29.0ではframe graph min/max reducer、velocity outputのprevious world matrix追跡、CPU particlesのallocation削減、cached texture retry、WebGPU 3D texture mipmap修正が、値域・履歴・回復を可視化する材料になる。3. three.js r187 milestoneは10月21日予定で、Migration Guideの186→187にはPMREM cube render target、WeakRef / FinalizationRegistry、XR camera matrix、bound render target時のviewport/scissor変更、pixelationPassのNumber化などが並ぶ。4. CodropsはCreative Hub / PlaygroundでWebGL、Three.js、TSL、WebGPUの事例が続いており、lit GPU tubes、liquid glass grid、datamosh、custom cursor trail、face maskがこのプロジェクトの表現参照としてまだ強い。</p>
+          <p class="en-copy">1. PlayCanvas Engine v2.23.0 remains the latest release, and persistent storage buffers, partial uploads, view/material bind groups, pipeline reuse, TextureRenderer, Inspector, AppStats, and nearest-first streamed GSplat LOD are today's core implementation references. 2. Babylon.js 9.29.0's frame-graph min/max reducer, previous world-matrix tracking for velocity outputs, CPU-particle allocation reductions, cached texture retries, and WebGPU 3D texture mipmap fix become material for visualizing range, history, and recovery. 3. The three.js r187 milestone is due on Oct 21, and the 186-to-187 migration list includes PMREM cube render targets, WeakRef/FinalizationRegistry, XR camera matrix changes, viewport/scissor behavior with bound render targets, and pixelationPass Number inputs. 4. Codrops' Creative Hub and Playground continue to provide WebGL, Three.js, TSL, and WebGPU references, with lit GPU tubes, liquid glass grids, datamosh, custom cursor trails, and face masks still useful here.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release notes</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.29.0" target="_blank" rel="noreferrer">Babylon.js 9.29.0 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の注目は、PlayCanvasのInspector / AppStats / TextureRendererとBabylonのframe graph reducerを同じ地図に置く発想。Inspectorは状態を列挙する道具だが、TextureRendererやdepth previewと合わせると、状態の位置や読み戻しの遅れそのものが空間演出になる。Babylonのmin/max reducerは、画面の値域をただ圧縮するだけでなく、どの領域が表現上の主語になっているかを示す針にできる。three.js r187のviewport/scissorやXR cameraの変更は、左右eyeやrender target単位の差分を見せる良い接続点。</p>
+          <p class="en-copy">The interesting move today is placing PlayCanvas Inspector/AppStats/TextureRenderer ideas and Babylon's frame-graph reducer on one map. Inspector is normally an enumeration tool, but combined with TextureRenderer and depth previews, state location and readback delay become spatial staging. Babylon's min/max reducer is not just compression of value ranges; it can become a needle showing which region is the expressive subject. three.js r187 viewport/scissor and XR-camera changes are good connection points for showing per-eye and per-render-target differences.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期: depth tile、min/max reducer、readback queueを4象限のatlasにし、dragでprobe rectangle、clickでreadback pulseを走らせる。派生: XRの左右eye budget、residency priority、probe echoを重ね、controllerや視線の動きがGPU resourceの滞在時間を決めるように見せる。中長期: 9/29のresidency、10/1のviewport/scissor、10/2のbind group、10/3のInspector / AppStats、10/4のreadback delayを、1つのrender-state atlasとして統合する。</p>
+          <p class="en-copy">Short term: make depth tiles, min/max reducers, and readback queues into a four-quadrant atlas where dragging moves the probe rectangle and clicking emits a readback pulse. Derived idea: layer XR left/right eye budgets, residency priority, and probe echoes so controller or gaze motion appears to decide GPU-resource lifetime. Longer term: merge 9/29 residency, 10/1 viewport/scissor, 10/2 bind groups, 10/3 Inspector/AppStats, and 10/4 readback delay into one render-state atlas.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>ログ化するならPlayCanvas側は `frameId/viewId/passId/renderTargetId/depthTileId/readRectX/readRectY/readLatencyMs/resourceBuffers/resourceTextures/splatNodeDistance/splatResident`、Babylon側は `frameGraphBlock/minValue/maxValue/previousWorldMatrixValid/velocityMagnitude/textureRetryCount/mipmapLevel/effectError`、three.js側は `eyeIndex/xrCameraMatrixSource/scissorRect/viewportRect/renderTargetBound/pixelSize/pmremFace/finalizedAtFrame` を候補にする。shaderには最初から全部を入れず、まずは低解像度のstate textureへ量子化して、色、線幅、遅延軌跡に変換すると軽い。</p>
+          <p class="en-copy">For logging, candidate PlayCanvas fields are `frameId/viewId/passId/renderTargetId/depthTileId/readRectX/readRectY/readLatencyMs/resourceBuffers/resourceTextures/splatNodeDistance/splatResident`; Babylon fields are `frameGraphBlock/minValue/maxValue/previousWorldMatrixValid/velocityMagnitude/textureRetryCount/mipmapLevel/effectError`; three.js fields are `eyeIndex/xrCameraMatrixSource/scissorRect/viewportRect/renderTargetBound/pixelSize/pmremFace/finalizedAtFrame`. Do not put everything into the shader immediately; quantize first into a low-resolution state texture, then convert to color, line width, and delayed traces.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvas v2.23.xのpatch、特にInspector、AppStats、TextureRenderer、WebGPU renderer、streamed GSplat LODを継続監視する。Babylon 9.29.xではframe graph reducer、velocity output、WebGPU texture mipmap、cached retry、XR recovery documentを追う。three.jsはr187正式release、Migration Guide更新、WebGPURenderer fallback、TSL compute / postprocessing / pixelation系を確認する。CodropsはTSL/WebGPUチュートリアルとPlaygroundの音・粒子・ポストプロセス事例を表現参照として見る。</p>
+          <p class="en-copy">Watch PlayCanvas v2.23.x patches, especially Inspector, AppStats, TextureRenderer, the WebGPU renderer, and streamed GSplat LOD. For Babylon 9.29.x, track frame-graph reducers, velocity outputs, WebGPU texture mipmaps, cached retries, and XR recovery docs. For three.js, watch the formal r187 release, Migration Guide updates, WebGPURenderer fallback work, and TSL compute/postprocessing/pixelation work. Keep using Codrops TSL/WebGPU tutorials and Playground audio/particle/postprocess examples as expression references.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-10-04_depth_reducer_readback_atlas.html` を開く。1でdepth tiles、2でmin/max reducer lanes、3でdelayed readback、4でatlas合成。dragでprobe rect、click/Spaceでread pulseが出る。次に `outputs/2026-10-04_xr_probe_residency_echo.html` を開き、eye budget、residency ring、probe echoを切り替える。次に足すなら、実フレームログJSONからreadLatencyMsとmin/max値を読み、遅延軌跡とreducer lanesを本物の値で動かす。</p>
+          <p class="en-copy">Open `outputs/2026-10-04_depth_reducer_readback_atlas.html` first. Mode 1 shows depth tiles, mode 2 min/max reducer lanes, mode 3 delayed readback, and mode 4 the atlas composite; drag moves the probe rect and click/Space emits a read pulse. Then open `outputs/2026-10-04_xr_probe_residency_echo.html` to switch between eye budget, residency rings, and probe echoes. Next, load real frame-log JSON and drive readback traces and reducer lanes with actual `readLatencyMs` and min/max values.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas v2.23.0、Babylon 9.29.0、three.js r187 migration / milestone、Codrops Creative Hub / Playgroundを確認。アイデア検討: 10/3のInspector / AppStats / nearest-first mapを、depth preview、min/max reducer、readback delay、XR eye budgetへ拡張。サンプル実装: 本命 `outputs/2026-10-04_depth_reducer_readback_atlas.html` と派生 `outputs/2026-10-04_xr_probe_residency_echo.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はrender-state atlas、新規案件はdelayed readback choreography、寝かせる案件はカードUI系と重いWebGPU依存の移植。</p>
+          <p class="en-copy">Collection: reviewed PlayCanvas v2.23.0, Babylon 9.29.0, the three.js r187 migration/milestone, and Codrops Creative Hub/Playground. Ideation: extended 10/3's Inspector/AppStats/nearest-first map into depth previews, min/max reducers, readback delay, and XR eye budgets. Implementation: created the main sample `outputs/2026-10-04_depth_reducer_readback_atlas.html` and derived sample `outputs/2026-10-04_xr_probe_residency_echo.html`. Verification: JSON parsing, HTML parsing, script syntax, gallery build, and publish flow. Continuing item: render-state atlas. New item: delayed readback choreography. Parked item: card UI and heavy WebGPU dependency ports.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、GPUの最終絵よりも、値がどの単位で渡され、どの順に読み戻され、どこで遅れ、どこで回復するかを作品化する方向に固まっている。9/29のresidency、10/1のviewport/scissor、10/2のbind group、10/3のInspector / AppStats、今日のdepth / reducer / readbackは、全部「見える内部状態」を観客が触れる地図にする試み。育てる価値が高いテーマは、debug HUDではなく、入力・音・XR視線で内部状態の読み取り方が変わるrenderer-state theater。</p>
+          <p class="en-copy">The recent direction is solidifying around making art from how values are submitted, read back, delayed, and recovered, rather than only from the final GPU image. 9/29 residency, 10/1 viewport/scissor, 10/2 bind groups, 10/3 Inspector/AppStats, and today's depth/reducer/readback work all aim to make visible internal state into a tactile map. The theme worth growing is renderer-state theater, not a debug HUD: input, audio, and XR gaze change how the internal state is read.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-04_depth_reducer_readback_atlas.html`。depth tiles、min/max reducer、delayed readback queueを4象限atlasとして見るraw WebGL試作。派生は `outputs/2026-10-04_xr_probe_residency_echo.html`。XR eye budget、resource residency、probe echoを重ね、視線やcontrollerでGPU状態の滞在時間が変わるように見せる。どちらも依存なしで、1-4キー、drag、click/Spaceで確認できる。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-04_depth_reducer_readback_atlas.html`, a raw WebGL four-quadrant atlas for depth tiles, min/max reducers, and delayed readback queues. The derived prototype is `outputs/2026-10-04_xr_probe_residency_echo.html`, layering XR eye budgets, resource residency, and probe echoes so gaze or controller motion appears to change GPU-state lifetime. Both are dependency-free and support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は、入力を `probeX/probeY/gazeX/gazeY/pulse/mode`、描画状態を `readLatencyMs/depthTileId/minValue/maxValue/velocityMagnitude/eyeIndex/viewportRect/splatResident/resourceAge/recoveryPulse` として保存できる。音反応ではkickでread pulse、snareでrecovery pulse、低域でresidency ringを太らせる。WebXRでは左右eyeごとにreducer lanesを分け、controller velocityをprobe echoへ書く。MediaPipeでは手や顔の近いlandmarkからdepth tileが解像され、遠いlandmarkは遅延軌跡として残る構成が合う。</p>
+          <p class="en-copy">These two samples can store inputs as `probeX/probeY/gazeX/gazeY/pulse/mode` and render state as `readLatencyMs/depthTileId/minValue/maxValue/velocityMagnitude/eyeIndex/viewportRect/splatResident/resourceAge/recoveryPulse`. For audio, kick can trigger read pulses, snare can trigger recovery pulses, and bass can widen residency rings. For WebXR, split reducer lanes per eye and write controller velocity into the probe echo. With MediaPipe, nearby hand or face landmarks can resolve depth tiles first while farther landmarks remain as delayed traces.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.29.0" target="_blank" rel="noreferrer">Babylon.js 9.29.0 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/playground/" target="_blank" rel="noreferrer">Codrops Playground</a></li>
+          
+            <li><a href="outputs/2026-10-04_depth_reducer_readback_atlas.html" target="_blank" rel="noreferrer">Main sample: Depth Reducer Readback Atlas</a></li>
+          
+            <li><a href="outputs/2026-10-04_xr_probe_residency_echo.html" target="_blank" rel="noreferrer">Derived sample: XR Probe Residency Echo</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-04_xr_probe_residency_echo.html" loading="lazy" title="2026-10-04 XR Probe Residency Echo"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
