@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>program variant、occlusion dither、splat streamingを状態譜面にする | 2026-10-05</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.05</p>
+      <h1>program variant、occlusion dither、splat streamingを状態譜面にする</h1>
+      <p class="hero-subtitle">Turn program variants, occlusion dither, and splat streaming into a state score</p>
+      <p>three.jsのOct 1-2更新、r187 milestone / Migration Guide、PlayCanvas Engine v2.23.0とopen PR、Babylon.js 9.29.0とopen PR、Codropsの直近WebGL/TSL/WebGPU事例を確認した。10/4のdepth / reducer / readback atlasから、今日はshader program variant、occlusion dither、reversed depth、圧縮テクスチャ端ブロック、GSplat tree-cut LOD、WebGPU Gaussian point splattingを2本のraw WebGL試作に落とした。</p>
+      <p class="en-copy">Reviewed three.js Oct 1-2 changes, the r187 milestone and Migration Guide, PlayCanvas Engine v2.23.0 and open PRs, Babylon.js 9.29.0 and open PRs, plus recent Codrops WebGL/TSL/WebGPU examples. Extending 10/4's depth/reducer/readback atlas, today's two raw WebGL prototypes explore shader program variants, occlusion dither, reversed depth, compressed texture edge blocks, GSplat tree-cut LOD, and WebGPU Gaussian point splatting.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-05_splat_block_treecut_stream.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-04.html">← 2026.10.04</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-05 Splat Block Tree-Cut Stream</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-05_splat_block_treecut_stream.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-05 Program Variant Dither Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-05_program_variant_dither_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js commitsではOct 1-2にWebGPURenderer render cache key、WebGLRenderer `getProgramVariant()`、WebGPUBackendのuint16 index widening修正、`webgpu_tsl_occlusion_dither` example、TSL reversed depthの`getViewPosition()`修正が並び、最終絵だけでなくprogram variantやcache keyを可視化入力にできる。2. r187 milestoneはOct 21予定、Oct 4更新で80% complete。Migration Guideの186→187にはPMREM cube render target、WeakRef / FinalizationRegistry、XR camera matrix、render target bound時のviewport/scissor、pixelationPass Number化、custom light登録変更がある。3. PlayCanvas Engine v2.23.0はWebGPU persistent storage buffer、view bind group、partial upload、pipeline reuseの流れを継続し、open PRでは圧縮テクスチャの端ブロック、GSplat LOD tree cut、WebGPU XR view-instanced rendering、reverse-z depthがウォッチ対象。4. Babylon.js 9.29.0は最新releaseで、open PRではWebGPU Gaussian Point Splatting、Inspector Lite parity、ShaderCodeCursor、Smart Filters Lite、material scatter/retroreflectionが続く。5. Codrops Playground / Creative HubではWideのopen source grid shader、lit GPU tubes、Infinite Loom、Volatile Nexusなど、内部状態を見た目の構造へ変換する参考例がまだ強い。</p>
+          <p class="en-copy">1. three.js Oct 1-2 commits include WebGPURenderer render cache key work, WebGLRenderer `getProgramVariant()`, a WebGPUBackend fix for widening uint16 indices, the `webgpu_tsl_occlusion_dither` example, and a TSL reversed-depth `getViewPosition()` fix, making program variants and cache keys useful visual inputs rather than invisible internals. 2. The r187 milestone is due Oct 21 and was updated Oct 4 at 80% complete. The 186-to-187 Migration Guide lists PMREM cube render targets, WeakRef/FinalizationRegistry, XR camera matrix changes, viewport/scissor behavior with bound render targets, pixelationPass Number inputs, and custom-light registration changes. 3. PlayCanvas Engine v2.23.0 continues the WebGPU persistent-storage-buffer, view-bind-group, partial-upload, and pipeline-reuse direction, while open PRs around compressed texture edge blocks, GSplat LOD tree cuts, WebGPU XR view-instanced rendering, and reverse-z depth are worth watching. 4. Babylon.js 9.29.0 is the latest release, with open PRs around WebGPU Gaussian Point Splatting, Inspector Lite parity, ShaderCodeCursor, Smart Filters Lite, and material scatter/retroreflection. 5. Codrops Playground and Creative Hub still provide strong references such as Wide's open-source grid shader, lit GPU tubes, Infinite Loom, and Volatile Nexus.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas Engine pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日いちばん面白いのは、three.jsの`getProgramVariant()`とrender cache keyの方向。これは通常、描画最適化の内部メモだが、variantが増える瞬間、cache hitする瞬間、rebuildされる瞬間を可視化すると、shader作品のテンションや場面転換に使える。`webgpu_tsl_occlusion_dither`は、隠れている/見えているをbinaryにせず、粒状の存在感として出せるのが良い。PlayCanvasのGSplat tree cutとBabylonのWebGPU Gaussian Point Splatting PRは、splatを単なる点群ではなく、距離、滞在、merge、uploadの状態譜面として扱う接続点になる。</p>
+          <p class="en-copy">The most interesting item today is the three.js direction around `getProgramVariant()` and render cache keys. These are usually internal optimization details, but if moments of variant growth, cache hits, and rebuilds become visible, they can drive tension and scene transitions in shader work. `webgpu_tsl_occlusion_dither` is useful because visibility becomes granular presence instead of a binary hidden/visible switch. PlayCanvas GSplat tree cuts and Babylon's WebGPU Gaussian Point Splatting PR connect splats to distance, residency, merge, and upload state rather than treating them as just point clouds.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期: program variant / cache key / occlusion dither / reversed depthを4象限scopeにし、dragでmaterial pressure、clickでshader rebuild pulseを走らせる。派生: 圧縮テクスチャの端ブロック、GSplat tree cut、Gaussian splatの楕円をstream atlasにし、viewer位置でmerge範囲とupload pulseを変える。中長期: 10/4のreadback atlasに今日のvariant cacheとsplat streamを合流させ、`state texture`として毎フレームの内部状態を小さな画像に焼き、音やXR視線で読み出し方を変える。</p>
+          <p class="en-copy">Short term: place program variants, cache keys, occlusion dither, and reversed depth in a four-quadrant scope where dragging changes material pressure and clicking emits a shader-rebuild pulse. Derived idea: make compressed texture edge blocks, GSplat tree cuts, and Gaussian splat ellipses into a stream atlas where the viewer position changes merge ranges and upload pulses. Longer term: merge today's variant cache and splat stream into 10/4's readback atlas, bake per-frame internal state into a small state texture, and let audio or XR gaze change how it is read.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>ログ化候補はthree.js側が `programVariantId/cacheKey/cacheHit/rebuildReason/occlusionSample/depthMode/uintIndexBytes/renderObjectGroup`、PlayCanvas側が `compressedBlockX/compressedBlockY/blockTailBytes/gsplatNodeId/treeCutDepth/settledLeaf/mergedDrawRange/reverseZEnabled`、Babylon側が `splatId/gaussianRadius/pointBudget/inspectorLitePanel/shaderCursorToken/smartFilterNode/materialExtension`。実装では、全部をUIテキストにせず、4から16px程度の低解像度state textureにして、各pixelをlaneとしてshaderで読むと作品化しやすい。</p>
+          <p class="en-copy">Candidate log fields are `programVariantId/cacheKey/cacheHit/rebuildReason/occlusionSample/depthMode/uintIndexBytes/renderObjectGroup` for three.js, `compressedBlockX/compressedBlockY/blockTailBytes/gsplatNodeId/treeCutDepth/settledLeaf/mergedDrawRange/reverseZEnabled` for PlayCanvas, and `splatId/gaussianRadius/pointBudget/inspectorLitePanel/shaderCursorToken/smartFilterNode/materialExtension` for Babylon. Instead of showing everything as UI text, encode the data into a 4-16 px low-resolution state texture and let the shader read each pixel as a lane.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsはr187 milestoneの進捗、`getProgramVariant()`周辺、WebGPUBackend index fix、occlusion dither example、reversed depth、TSL postprocessingを継続。PlayCanvasはv2.23.x patch、圧縮テクスチャ端ブロック、GSplat tree cut、WebGPU XR view-instanced rendering、reverse-zを追う。BabylonはWebGPU Gaussian Point Splatting、Inspector Lite parity、Smart Filters Lite、ShaderCodeCursor、KHR_materials_scatter/retroreflectionを追う。CodropsはWide、lit GPU tubes、Infinite Loom、Volatile Nexusを表現参照として再接続する。</p>
+          <p class="en-copy">For three.js, keep watching r187 milestone progress, `getProgramVariant()`, the WebGPUBackend index fix, the occlusion dither example, reversed depth, and TSL postprocessing. For PlayCanvas, watch v2.23.x patches, compressed texture edge blocks, GSplat tree cuts, WebGPU XR view-instanced rendering, and reverse-z. For Babylon, watch WebGPU Gaussian Point Splatting, Inspector Lite parity, Smart Filters Lite, ShaderCodeCursor, and KHR_materials_scatter/retroreflection. For Codrops, reconnect Wide, lit GPU tubes, Infinite Loom, and Volatile Nexus as expression references.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命 `outputs/2026-10-05_program_variant_dither_scope.html` を開く。1でvariant cache、2でocclusion dither、3でreversed depth / uint16 widening、4で合成。dragでmaterial pressure、click/Spaceでrebuild pulseが出る。次に派生 `outputs/2026-10-05_splat_block_treecut_stream.html` を開く。1で圧縮テクスチャ端ブロック、2でGSplat tree cut、3でGaussian point splat、4でstream atlas。次に足すなら実ログJSONからcache hit率とtreeCutDepthを読み、scopeの線幅とsplat merge半径を実値で動かす。</p>
+          <p class="en-copy">Open the main sample `outputs/2026-10-05_program_variant_dither_scope.html` first. Mode 1 shows variant cache, mode 2 occlusion dither, mode 3 reversed depth/uint16 widening, and mode 4 the composite. Drag changes material pressure and click/Space emits a rebuild pulse. Then open the derived sample `outputs/2026-10-05_splat_block_treecut_stream.html`: mode 1 compressed texture edge blocks, mode 2 GSplat tree cuts, mode 3 Gaussian point splats, mode 4 stream atlas. Next, load real log JSON and drive line width and splat merge radius with cache-hit rate and `treeCutDepth`.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js commits / r187 / Migration Guide / WebGPURenderer manual、PlayCanvas v2.23.0 / PR一覧、Babylon 9.29.0 / PR一覧、Codrops Playground / Creative Hubを確認。アイデア検討: 10/4のdepth / reducer / readbackを、program variant、dither、splat streamへ接続。サンプル実装: 本命 `outputs/2026-10-05_program_variant_dither_scope.html` と派生 `outputs/2026-10-05_splat_block_treecut_stream.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はrender-state atlas、新規案件はvariant cache choreographyとsplat stream atlas、寝かせる案件はカードUI系と重いWebGPU依存の直接移植。</p>
+          <p class="en-copy">Collection: checked three.js commits/r187/Migration Guide/WebGPURenderer manual, PlayCanvas v2.23.0 and PRs, Babylon 9.29.0 and PRs, and Codrops Playground/Creative Hub. Ideation: connected 10/4's depth/reducer/readback work to program variants, dither, and splat streaming. Implementation: created the main sample `outputs/2026-10-05_program_variant_dither_scope.html` and derived sample `outputs/2026-10-05_splat_block_treecut_stream.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing item: render-state atlas. New items: variant-cache choreography and splat stream atlas. Parked items: card UI and direct ports of heavy WebGPU dependencies.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数日の流れは、renderer内部の状態を隠すのではなく、作品の時間軸にする方向。9/29のresidency、10/1のviewport/scissor、10/2のbind group、10/3のInspector / AppStats、10/4のreadback / reducer、今日のprogram variant / splat streamは同じテーマに乗る。組み合わせ候補として強いのは、variant cache hitを音のmute/unmuteに、occlusion ditherを粒子密度に、GSplat tree cutをカメラ導線に、compressed tailをglitchの発火点にする構成。</p>
+          <p class="en-copy">The recent direction is to make renderer internals part of the artwork's timeline instead of hiding them. 9/29 residency, 10/1 viewport/scissor, 10/2 bind groups, 10/3 Inspector/AppStats, 10/4 readback/reducers, and today's program variants/splat streams all sit on the same theme. Strong combinations: use variant cache hits for audio mute/unmute, occlusion dither for particle density, GSplat tree cuts for camera paths, and compressed texture tails as glitch trigger points.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-05_program_variant_dither_scope.html`。three.jsのprogram variant、render cache key、occlusion dither、reversed depth / uint16 wideningを、dragとpulseで触れる4象限scopeにした。派生は `outputs/2026-10-05_splat_block_treecut_stream.html`。PlayCanvasのcompressed texture tailとGSplat tree cut、BabylonのWebGPU Gaussian Point Splatting PRを、stream atlasとして見せる。どちらも依存なしのraw WebGLで、1-4キー、drag、click/Spaceで確認できる。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-05_program_variant_dither_scope.html`, a four-quadrant scope for three.js program variants, render cache keys, occlusion dither, and reversed depth/uint16 widening. The derived prototype is `outputs/2026-10-05_splat_block_treecut_stream.html`, a stream atlas for PlayCanvas compressed texture tails and GSplat tree cuts plus Babylon's WebGPU Gaussian Point Splatting PR. Both are dependency-free raw WebGL and support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は、入力を `probeX/probeY/mode/pulse/materialPressure/viewerPosition`、状態を `programVariantId/cacheHit/rebuildPulse/occlusionDither/depthMode/uintIndexBand/blockTailBytes/treeCutDepth/settledLeaf/gaussianRadius/uploadPulse` として保存できる。音反応ではkickでrebuild pulse、hi-hatでdither threshold、bassでtree cut半径を動かす。WebXRでは左右eyeのvariant cacheを分け、controller velocityをGSplat merge範囲に流す。展示では、観客が近づくほどcache hit率が上がって滑らかになり、離れるほどcompressed tail glitchが増えるようにすると、最適化が見える演出になる。</p>
+          <p class="en-copy">The two samples can store inputs as `probeX/probeY/mode/pulse/materialPressure/viewerPosition` and state as `programVariantId/cacheHit/rebuildPulse/occlusionDither/depthMode/uintIndexBand/blockTailBytes/treeCutDepth/settledLeaf/gaussianRadius/uploadPulse`. For audio, kick can trigger rebuild pulses, hi-hats can drive the dither threshold, and bass can change the tree-cut radius. For WebXR, split variant cache state per eye and feed controller velocity into GSplat merge range. In installation use, visitors getting closer could increase cache hits and smoothness while distance increases compressed-tail glitches, making optimization visible.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/blob/dev/manual/pages/webgpurenderer.html" target="_blank" rel="noreferrer">three.js WebGPURenderer manual</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas Engine pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.29.0" target="_blank" rel="noreferrer">Babylon.js 9.29.0 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/category/playground/" target="_blank" rel="noreferrer">Codrops Playground</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="outputs/2026-10-05_program_variant_dither_scope.html" target="_blank" rel="noreferrer">Main sample: Program Variant Dither Scope</a></li>
+          
+            <li><a href="outputs/2026-10-05_splat_block_treecut_stream.html" target="_blank" rel="noreferrer">Derived sample: Splat Block Tree-Cut Stream</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-05_splat_block_treecut_stream.html" loading="lazy" title="2026-10-05 Splat Block Tree-Cut Stream"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
