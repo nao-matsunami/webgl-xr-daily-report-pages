@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>depth-only、temporal history、splat sortを触れる状態譜面にする | 2026-10-06</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.06</p>
+      <h1>depth-only、temporal history、splat sortを触れる状態譜面にする</h1>
+      <p class="hero-subtitle">Make depth-only targets, temporal history, and splat sorting into interactive state scores</p>
+      <p>three.jsの10/4-10/5 PR、r187 Migration Guide、PlayCanvas Engine v2.23.0とGSplat GPU-sort issue、Babylon.jsのWebGPU Gaussian Point Splatting PR、Codrops Creative Hubの直近WebGL/TSL/WebGPU事例を確認した。10/5のprogram variant / dither / splat streamから、今日はdepth-only render target、temporal reprojection history、struct storage buffer lanes、equal-depth splat sort、shadow cascade arrays、Gaussian point budgetを2本のraw WebGL試作に落とした。</p>
+      <p class="en-copy">Reviewed three.js Oct 4-5 PRs, the r187 Migration Guide, PlayCanvas Engine v2.23.0 and the GSplat GPU-sort issue, Babylon.js WebGPU Gaussian Point Splatting PR, and recent Codrops WebGL/TSL/WebGPU examples. Extending 10/5's program variant, dither, and splat stream work, today's two raw WebGL prototypes explore depth-only render targets, temporal reprojection history, struct storage buffer lanes, equal-depth splat sorting, shadow cascade arrays, and Gaussian point budgets.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-06_splat_sort_shadow_budget.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-05.html">← 2026.10.05</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-06 Splat Sort Shadow Budget</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-06_splat_sort_shadow_budget.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-06 Depth History Struct Lanes</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-06_depth_history_struct_lanes.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR一覧では10/5にPCDLoaderのCOUNT対応、WebGPURendererのstruct storage buffer array bind、LightProbeGridのfragment内サンプル制限が並び、10/4にはTemporalReprojectNode history depth type、TileShadowNode、depth-only render target、instanced mesh node build共有が並んだ。2. depth-only render target PRは、depth textureだけを使うshadow map / depth prepass向けにcolor attachmentなしのRenderTargetを作る方向で、WebGL backendのMSAA resolve課題もコメントされている。3. struct storage buffer PRは、単一要素でもbufferをarrayとして扱うことでshader rebuildやアクセス方法の揺れを減らす狙い。4. PlayCanvasはv2.23.0が10/1時点の最新releaseで、issue側ではGSplat WebGPU GPU-sortが同一depth keyでちらつく件、directional shadow cascadeを2x2 atlasではなくtexture arrayで扱う検討が続く。5. Babylon.jsではopen PRにWebGPU Gaussian Point Splatting、Inspector Lite parity、Fluid renderer修正、Smart Filters Lite、KHR_materials_scatter/retroreflectionが残り、Codrops Creative HubはWide、Custom-Shaped Cursor Trail、Paper Crumple、Elemental Sandboxなどが直近の表現参照になる。</p>
+          <p class="en-copy">1. The three.js PR list shows Oct 5 work around PCDLoader COUNT handling, binding WebGPURenderer struct storage buffers as arrays, and LightProbeGrid sampling only the relevant grid; Oct 4 includes TemporalReprojectNode history depth typing, TileShadowNode work, depth-only render targets, and sharing node builds between instanced meshes. 2. The depth-only render target PR targets shadow maps and depth prepasses by allowing render targets without color attachments, with an MSAA resolve caveat noted for the WebGL backend. 3. The struct storage buffer PR aims to avoid shader rebuilds and inconsistent access methods by resolving buffers as arrays even when they hold one element. 4. PlayCanvas v2.23.0 remains the latest release as of Oct 1, while issues track GSplat WebGPU GPU-sort flicker for equal depth keys and consideration of texture arrays for directional shadow cascades. 5. Babylon.js open PRs include WebGPU Gaussian Point Splatting, Inspector Lite parity, Fluid renderer fixes, Smart Filters Lite, and KHR_materials_scatter/retroreflection; Codrops Creative Hub provides recent expression references including Wide, Custom-Shaped Cursor Trail, Paper Crumple, and Elemental Sandbox.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34782" target="_blank" rel="noreferrer">three.js PR #34782</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34807" target="_blank" rel="noreferrer">three.js PR #34807</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/issues" target="_blank" rel="noreferrer">PlayCanvas issues</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の中心は、見えないdepth / history / buffer layoutを表現の主役にすること。depth-only targetは最終色を持たないが、shadowやprepassのための『見えない舞台』として非常に強い。TemporalReprojectNodeのhistory depth typeは、過去フレームが現在フレームへ戻ってくる条件そのものを演出にできる。struct storage buffer array bindは地味だが、GPU上の構造体列を安定したlaneとして読めるので、10/5のprogram variant cacheと同じく『内部状態の譜面化』に向いている。PlayCanvasのGSplat sort flickerはbugとしては直したいが、同一depth keyが揺れる現象は、意図的な粒子のざわめきや不安定な記憶表現にも転用できる。</p>
+          <p class="en-copy">Today's center of gravity is making invisible depth, history, and buffer layout the main expressive material. A depth-only target has no final color, but as an invisible stage for shadows and prepasses it is powerful. TemporalReprojectNode history depth typing lets the acceptance conditions for past frames become part of the performance. Struct storage buffer array binding is subtle, but it turns GPU struct rows into stable lanes, fitting the same internal-state-score direction as 10/5's program variant cache. PlayCanvas GSplat sort flicker should be fixed as a bug, yet the equal-depth-key instability can also be repurposed as particle shimmer or unstable memory.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期: depth-only target / temporal history / struct storage lanesを4象限scopeにし、dragでprobe位置、clickでresolve pulseを走らせる。これは今日の本命試作 `outputs/2026-10-06_depth_history_struct_lanes.html` にした。派生: GSplat equal-depth sort、shadow cascade texture array、Gaussian point budgetを同じ画面に置き、viewer位置でsort安定性と点予算を変える。これは `outputs/2026-10-06_splat_sort_shadow_budget.html` にした。中長期: 10/4 readback atlas、10/5 variant cache、10/6 depth/history/buffer lanesを1枚のstate texture pipelineに統合し、音のkickでhistory reject、視線でdepth-only pass、controller速度でsplat budgetを動かす。</p>
+          <p class="en-copy">Short term: build a four-quadrant scope for depth-only targets, temporal history, and struct storage lanes, with dragging as probe position and clicking as resolve pulse. This became today's main prototype, `outputs/2026-10-06_depth_history_struct_lanes.html`. Derived: place GSplat equal-depth sorting, shadow cascade texture arrays, and Gaussian point budgets in one view, with viewer position changing sort stability and point budget. This became `outputs/2026-10-06_splat_sort_shadow_budget.html`. Longer term: unify the 10/4 readback atlas, 10/5 variant cache, and 10/6 depth/history/buffer lanes into one state-texture pipeline where audio kick rejects history, gaze selects depth-only passes, and controller velocity drives splat budget.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>ログ化候補はthree.js側が `depthOnlyTargetId/colorAttachmentCount/msaaSamples/historyDepthType/reprojectAccepted/storageStructLength/storageArrayMode/nodeBuildShared`、PlayCanvas側が `gsplatDepthKey/equalDepthGroup/sortFrameHash/flickerCount/cascadeIndex/cascadeStorageMode/atlasCell/textureArrayLayer`、Babylon側が `gaussianPointId/pointBudget/radius/nearestSampling/inspectorLitePanel/fluidDiffuseReady/materialExtension`。実装では、depth-only passやhistory rejectをそのままdebug UIに出すより、8x8から16x16のstate textureにして、shader側でlaneや粒子密度へ変換するほうが作品化しやすい。</p>
+          <p class="en-copy">Candidate log fields are `depthOnlyTargetId/colorAttachmentCount/msaaSamples/historyDepthType/reprojectAccepted/storageStructLength/storageArrayMode/nodeBuildShared` for three.js, `gsplatDepthKey/equalDepthGroup/sortFrameHash/flickerCount/cascadeIndex/cascadeStorageMode/atlasCell/textureArrayLayer` for PlayCanvas, and `gaussianPointId/pointBudget/radius/nearestSampling/inspectorLitePanel/fluidDiffuseReady/materialExtension` for Babylon. For implementation, instead of exposing depth-only passes or history rejection as debug UI, encode them into an 8x8 to 16x16 state texture and let shaders convert that into lanes and particle density.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsはPR #34793 TemporalReprojectNode、#34782 depth-only render target、#34807 struct storage buffers、#34798 LightProbeGrid、#34787 / #34783 TileShadowNode、r187 milestoneとMigration Guideを継続。PlayCanvasはv2.23.x、GSplat GPU-sort flicker #9613、shadow cascade texture arrays #9502、V3系のApp/API整理、WebGPU resource / reverse-z関連を追う。BabylonはWebGPU Gaussian Point Splatting #18962、Inspector Lite parity、Smart Filters Lite、Fluid renderer、scatter / retroreflectionを追う。CodropsはWide、Custom-Shaped Cursor Trail、Paper Crumple、Elemental Sandboxを、カード以外の空間演出・shader grid・cursor trail・VAT表現として見る。</p>
+          <p class="en-copy">Keep watching three.js PR #34793 TemporalReprojectNode, #34782 depth-only render targets, #34807 struct storage buffers, #34798 LightProbeGrid, #34787/#34783 TileShadowNode, plus the r187 milestone and Migration Guide. For PlayCanvas, watch v2.23.x, GSplat GPU-sort flicker #9613, shadow cascade texture arrays #9502, V3 App/API cleanup, and WebGPU resource/reverse-z work. For Babylon, watch WebGPU Gaussian Point Splatting #18962, Inspector Lite parity, Smart Filters Lite, Fluid renderer, and scatter/retroreflection. For Codrops, treat Wide, Custom-Shaped Cursor Trail, Paper Crumple, and Elemental Sandbox as references for non-card spatial direction, shader grids, cursor trails, and VAT-like expression.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命 `outputs/2026-10-06_depth_history_struct_lanes.html` を開く。1でdepth-only target、2でtemporal history、3でstruct storage lanes、4で合成。dragでprobeを動かし、click/Spaceでresolve pulseを見る。次に派生 `outputs/2026-10-06_splat_sort_shadow_budget.html` を開く。1でequal-depth sort flicker、2でshadow cascade array、3でGaussian point budget、4で合成。次に足すなら、実renderer logから `historyAccepted`, `colorAttachmentCount`, `storageStructLength`, `equalDepthGroup`, `pointBudget` を読み、線の明滅とsplat半径を実値で動かす。</p>
+          <p class="en-copy">Open the main sample `outputs/2026-10-06_depth_history_struct_lanes.html` first. Mode 1 shows depth-only targets, mode 2 temporal history, mode 3 struct storage lanes, and mode 4 the composite. Drag the probe and click/Space to emit a resolve pulse. Then open the derived sample `outputs/2026-10-06_splat_sort_shadow_budget.html`: mode 1 equal-depth sort flicker, mode 2 shadow cascade arrays, mode 3 Gaussian point budget, mode 4 composite. Next, read real renderer logs for `historyAccepted`, `colorAttachmentCount`, `storageStructLength`, `equalDepthGroup`, and `pointBudget` and drive line flicker and splat radius with real values.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js pull requests / r187 / Migration Guide、PlayCanvas release / issue一覧、Babylon pull requests、Codrops Creative Hubを確認。アイデア検討: 10/5のvariant cache / dither / splat streamを、depth-only / history / buffer layout / sort stabilityへ接続。サンプル実装: 本命 `outputs/2026-10-06_depth_history_struct_lanes.html` と派生 `outputs/2026-10-06_splat_sort_shadow_budget.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はrender-state atlasとstate texture、新規案件はhistory acceptance choreographyとsort-stability表現、寝かせる案件はカードUI系と重いWebGPU直接移植。</p>
+          <p class="en-copy">Collection: checked three.js pull requests/r187/Migration Guide, PlayCanvas releases/issues, Babylon pull requests, and Codrops Creative Hub. Ideation: connected 10/5's variant cache, dither, and splat stream to depth-only passes, history, buffer layout, and sort stability. Implementation: created the main sample `outputs/2026-10-06_depth_history_struct_lanes.html` and derived sample `outputs/2026-10-06_splat_sort_shadow_budget.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items: render-state atlas and state texture. New items: history-acceptance choreography and sort-stability expression. Parked items: card UI and direct ports of heavy WebGPU implementations.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、GPU pipelineの『本来なら見せない中間状態』がそのまま作品素材になっていること。9月末のresidency / viewport / bind group、10/3のInspector / AppStats、10/4のreadback / reducer、10/5のprogram variant、今日のdepth-only / history / storage lanesは同じ線上にある。組み合わせ候補としては、depth-only passを光の影譜面、temporal historyを記憶の尾、storage buffer laneを楽譜、GSplat sort flickerを粒子の呼吸、shadow cascade arrayを空間の段階照明として重ねるとよい。</p>
+          <p class="en-copy">The recent trend is that GPU pipeline intermediate states, normally hidden, are becoming direct creative material. Late-September residency, viewport, and bind-group work, 10/3 Inspector/AppStats, 10/4 readback/reducers, 10/5 program variants, and today's depth-only/history/storage lanes sit on one line. Strong combinations: depth-only passes as shadow scores, temporal history as memory trails, storage buffer lanes as notation, GSplat sort flicker as particle breathing, and shadow cascade arrays as staged spatial lighting.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-06_depth_history_struct_lanes.html`。depth-only target、temporal history、struct storage buffer lanesを4象限で見せ、drag / click / Spaceで触れる。派生は `outputs/2026-10-06_splat_sort_shadow_budget.html`。equal-depth sort flicker、shadow cascade texture array、Gaussian point budgetを同じ画面で比較する。どちらも依存なしのraw WebGLで、1-4キー、drag、click/Spaceで確認できる。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-06_depth_history_struct_lanes.html`, a four-quadrant view of depth-only targets, temporal history, and struct storage buffer lanes with drag/click/Space interaction. The derived prototype is `outputs/2026-10-06_splat_sort_shadow_budget.html`, comparing equal-depth sort flicker, shadow cascade texture arrays, and Gaussian point budgets in one view. Both are dependency-free raw WebGL and support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は、入力を `probeX/probeY/mode/pulse/viewerPressure/cascadeProbe`、状態を `depthOnlyTargetId/colorAttachmentCount/historyAccepted/historyAge/storageStructLength/arrayLane/equalDepthGroup/sortHash/cascadeLayer/gaussianRadius/pointBudget` として保存できる。音反応ではkickでhistory reject、snareでdepth resolve、hi-hatでstorage lane scan、bassでGaussian budgetを動かす。WebXRでは左右eyeごとにhistory acceptanceを分け、controller速度をsortHashの安定/不安定へ流す。展示では、観客の距離でdepth-only passだけが濃くなり、近づくほどsplat sortが安定し、離れるほど記憶がちらつく構成が強い。</p>
+          <p class="en-copy">The two samples can store inputs as `probeX/probeY/mode/pulse/viewerPressure/cascadeProbe` and state as `depthOnlyTargetId/colorAttachmentCount/historyAccepted/historyAge/storageStructLength/arrayLane/equalDepthGroup/sortHash/cascadeLayer/gaussianRadius/pointBudget`. For audio, kick can reject history, snare can trigger depth resolve, hi-hats can scan storage lanes, and bass can drive Gaussian budget. For WebXR, split history acceptance per eye and feed controller velocity into sortHash stability. In an installation, visitor distance could thicken only the depth-only pass, stabilize splat sorting up close, and make memory flicker at distance.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34782" target="_blank" rel="noreferrer">three.js PR #34782 depth-only render targets</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34807" target="_blank" rel="noreferrer">three.js PR #34807 struct storage buffers as arrays</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/issues/9613" target="_blank" rel="noreferrer">PlayCanvas issue #9613 GSplat GPU-sort flicker</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/issues/9502" target="_blank" rel="noreferrer">PlayCanvas issue #9502 shadow cascade texture arrays</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/18962" target="_blank" rel="noreferrer">Babylon.js PR #18962 WebGPU Gaussian Point Splatting</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="outputs/2026-10-06_depth_history_struct_lanes.html" target="_blank" rel="noreferrer">Main sample: Depth History Struct Lanes</a></li>
+          
+            <li><a href="outputs/2026-10-06_splat_sort_shadow_budget.html" target="_blank" rel="noreferrer">Derived sample: Splat Sort Shadow Budget</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-06_splat_sort_shadow_budget.html" loading="lazy" title="2026-10-06 Splat Sort Shadow Budget"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
