@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML-in-canvas、particle fog、cursor trailをGPU状態の触れる表面にする | 2026-10-07</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.07</p>
+      <h1>HTML-in-canvas、particle fog、cursor trailをGPU状態の触れる表面にする</h1>
+      <p class="hero-subtitle">Turn HTML-in-canvas, particle fog, and cursor trails into tactile GPU-state surfaces</p>
+      <p>three.jsの直近PR群、r187 Migration Guide、PlayCanvas Engine v2.23.0、PlayCanvas GSplat/particle関連issue、Babylon.js / Babylon LiteのWebGPU・Inspector・Gaussian Splatting資料、Codrops Creative HubのCustom-Shaped Cursor TrailやPaper Crumpleを確認した。10/6のdepth/history/storage lanesから、今日はHTMLTextureのdirty surface、shared node build、particle fog/tonemap、cursor trail、Inspector Lite layer、splat readback probeを2本のraw WebGL試作に落とした。</p>
+      <p class="en-copy">Reviewed recent three.js pull requests, the r187 Migration Guide, PlayCanvas Engine v2.23.0, PlayCanvas GSplat/particle issues, Babylon.js and Babylon Lite WebGPU/Inspector/Gaussian Splatting material, and Codrops Creative Hub examples such as Custom-Shaped Cursor Trail and Paper Crumple. Extending 10/6's depth/history/storage lanes, today's two raw WebGL prototypes explore HTMLTexture dirty surfaces, shared node builds, particle fog/tonemap, cursor trails, Inspector Lite layers, and splat readback probes.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-07_html_canvas_particle_state_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-06.html">← 2026.10.06</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-07 HTML Canvas Particle State Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-07_html_canvas_particle_state_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-07 Cursor Trail Lite Splat Probe</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-07_cursor_trail_lite_splat_probe.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR一覧では10/5のObject3D pivot decomposition、struct storage buffer array bind、LightProbeGrid、10/4のTemporalReprojectNode、TileShadowNode、depth-only render target、instanced mesh node build共有が続き、10/1にはHTMLTextureのChromium 155+ HTML-in-Canvas API変更対応が入っている。2. r187 Migration Guideではrender target bind中のviewport/scissor pixel ratio扱い、TSL pixelationPass引数、TSL normal pack/unpack renameなど、画面空間処理の境界が明確化されている。3. PlayCanvas v2.23.0はParticleSystemComponentのuseFog/useTonemap、音声URL拡張子非依存load、GSplat LOD / depth / tonemap / Firefox WebGPU修正を含み、open PR/issueではJolt physics、diffuse transmission、GSplat equal-depth sort、pixel ratio pointer mappingが続く。4. Babylon側はWebGPUがWebGLと併走する方針で、Babylon LiteはWebGPU中心の軽量構成としてGaussian Splatting、GPU text、Inspector Lite、device lost recovery、OffscreenCanvasを明示している。5. CodropsはCustom-Shaped Cursor Trail with Three.js and TSL、Paper Crumple、Elemental Sandbox、Reel Fluxなど、cursor / VAT / shader grid / TSLを作品表現へ戻す事例が強い。</p>
+          <p class="en-copy">1. The three.js PR list continues with Oct 5 Object3D pivot decomposition, struct storage buffer array binding, and LightProbeGrid work, plus Oct 4 TemporalReprojectNode, TileShadowNode, depth-only render targets, and shared node builds for instanced meshes; Oct 1 includes HTMLTexture support for Chromium 155+ HTML-in-Canvas API changes. 2. The r187 Migration Guide clarifies boundaries for screen-space work, including viewport/scissor pixel-ratio behavior with render targets, the TSL pixelationPass argument, and TSL normal pack/unpack renames. 3. PlayCanvas v2.23.0 includes ParticleSystemComponent useFog/useTonemap, extension-independent audio loading, and GSplat LOD/depth/tonemap/Firefox WebGPU fixes; open work includes Jolt physics, diffuse transmission, GSplat equal-depth sorting, and pixel-ratio pointer mapping. 4. Babylon keeps WebGPU and WebGL side by side, while Babylon Lite describes a WebGPU-first lightweight stack with Gaussian Splatting, GPU text, Inspector Lite, device-lost recovery, and OffscreenCanvas. 5. Codrops examples such as Custom-Shaped Cursor Trail with Three.js and TSL, Paper Crumple, Elemental Sandbox, and Reel Flux point back to cursor, VAT, shader-grid, and TSL expression.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon-Lite/blob/master/docs/lite/02-feature-comparison.md" target="_blank" rel="noreferrer">Babylon Lite feature comparison</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日面白いのは、HTMLやInspectorのような『UI寄りの面』が、単なるデバッグ画面ではなくshader素材として扱えること。three.js HTMLTextureはHTML-in-Canvas API変化への追従が続いており、DOM的なdirty rectやテキスト面をGPU上の質感として扱いやすい。PlayCanvas particle fog/tonemapは、粒子をシーンのfogやexposureから切り離す/接続するスイッチとして演出に使える。Babylon LiteのInspector LiteやGPU textは、軽量WebGPUアプリの観測面そのものを作品内レイヤーにしやすい。Codropsのcursor trailは、ポインタの遅れや形状の履歴をTSL/WebGPU表現に戻す好例で、10/6のtemporal historyと接続しやすい。</p>
+          <p class="en-copy">The interesting thread today is that UI-like surfaces such as HTML and inspectors can become shader material rather than just debug screens. three.js HTMLTexture work follows HTML-in-Canvas API changes, making DOM-like dirty rects and text surfaces easier to treat as GPU texture material. PlayCanvas particle fog/tonemap controls can become an expressive switch that connects or disconnects particles from scene fog and exposure. Babylon Lite's Inspector Lite and GPU text make the observation surface of a lightweight WebGPU app feel like an in-scene layer. Codrops cursor-trail work is a strong reference for turning pointer lag and shape history back into TSL/WebGPU expression, connecting naturally with 10/6's temporal history.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/34732" target="_blank" rel="noreferrer">three.js PR #34732 HTMLTexture</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/blob/master/packages/public/%40babylonjs/inspector-v2/readme.md" target="_blank" rel="noreferrer">Babylon Inspector v2 README</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>短期: HTMLTextureのdirty rect、shared node buildのcache lanes、particle fog/tonemapを4象限scopeにする。dragでdirty probe、click/Spaceでcommit pulseを走らせる。これは本命試作 `outputs/2026-10-07_html_canvas_particle_state_scope.html` にした。派生: Codrops系cursor trail、Babylon Lite Inspector layer、Gaussian Splatting readback probeを組み合わせ、ポインタの遅れがreadback rowやInspector layerを走査する表現にする。これは `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` にした。中長期: 10/4のreadback、10/5のvariant、10/6のdepth/history/storage、10/7のHTML/particle/cursorを統合し、UI面・内部状態・点群・音反応を同じstate textureで駆動する。</p>
+          <p class="en-copy">Short term: create a four-quadrant scope for HTMLTexture dirty rects, shared node build cache lanes, and particle fog/tonemap. Drag moves the dirty probe; click/Space emits a commit pulse. This became the main prototype, `outputs/2026-10-07_html_canvas_particle_state_scope.html`. Derived: combine a Codrops-like cursor trail, Babylon Lite Inspector layers, and Gaussian Splatting readback probes so pointer lag scans readback rows and inspector layers. This became `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`. Longer term: unify 10/4 readback, 10/5 variants, 10/6 depth/history/storage, and 10/7 HTML/particle/cursor into one state texture driving UI surfaces, internal state, point clouds, and audio response.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>ログ化候補は `htmlCanvasDirtyRect/htmlTextureCommitMs/domSurfaceId/chromiumHtmlCanvasApiVersion/nodeBuildCacheKey/materialStructureHash/bufferDisposed/particleUseFog/particleUseTonemap/audioAssetLoaded/gsplatLodMode/pointerPixelRatio/inspectorLayerId/gpuTextGlyphCount/splatReadbackRows/deviceLostRecovered/offscreenWorkerFrame`。UIやInspectorをそのまま重ねるより、dirty rect、glyph count、readback row、particle fog係数を低解像度のstate textureに詰め、fragment shader側で線・粒・残像へ変換すると、debug感を保ちつつ作品化できる。</p>
+          <p class="en-copy">Candidate log fields include `htmlCanvasDirtyRect/htmlTextureCommitMs/domSurfaceId/chromiumHtmlCanvasApiVersion/nodeBuildCacheKey/materialStructureHash/bufferDisposed/particleUseFog/particleUseTonemap/audioAssetLoaded/gsplatLodMode/pointerPixelRatio/inspectorLayerId/gpuTextGlyphCount/splatReadbackRows/deviceLostRecovered/offscreenWorkerFrame`. Instead of overlaying raw UI or inspector panels, pack dirty rects, glyph counts, readback rows, and particle fog factors into a low-resolution state texture, then let a fragment shader convert them into lines, particles, and trails. This keeps the diagnostic feeling while making it presentable.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsはHTMLTexture #34732、shared node builds #34693、buffer attribute dispose #34685、depth-only / TemporalReproject / struct storage buffer #34782 / #34793 / #34807、r187 Migration Guideを継続。PlayCanvasはv2.23.x、ParticleSystemComponent useFog/useTonemap、GSplat LOD streaming、equal-depth GPU sort、pointer pixel ratio mappingを追う。BabylonはWebGPU support、Babylon Lite feature gap、Inspector Lite、Gaussian Splatting stream/readback、GPU textを追う。CodropsはCustom-Shaped Cursor Trail、Paper Crumple、Elemental Sandboxを、カードではなくcursor・VAT・shader surfaceとして見る。</p>
+          <p class="en-copy">Continue watching three.js HTMLTexture #34732, shared node builds #34693, buffer attribute disposal #34685, depth-only/TemporalReproject/struct storage buffer work #34782/#34793/#34807, and the r187 Migration Guide. For PlayCanvas, watch v2.23.x, ParticleSystemComponent useFog/useTonemap, GSplat LOD streaming, equal-depth GPU sorting, and pointer pixel-ratio mapping. For Babylon, watch WebGPU support, the Babylon Lite feature gap, Inspector Lite, Gaussian Splatting stream/readback, and GPU text. For Codrops, read Custom-Shaped Cursor Trail, Paper Crumple, and Elemental Sandbox as cursor, VAT, and shader-surface references rather than card UI references.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命 `outputs/2026-10-07_html_canvas_particle_state_scope.html` を開く。1でHTMLTexture dirty surface、2でshared node build lanes、3でparticle fog/tonemap、4で合成。dragでdirty probe、click/Spaceでcommit pulse。次に派生 `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` を開く。1でcursor trail、2でLite Inspector layers、3でsplat readback probe、4で合成。次に足すなら、実アプリからdirty rect配列とparticle fog係数をJSONで吐き、サンプルのgrid/particle密度を実値で動かす。</p>
+          <p class="en-copy">Open the main sample `outputs/2026-10-07_html_canvas_particle_state_scope.html` first. Mode 1 shows HTMLTexture dirty surfaces, mode 2 shared node build lanes, mode 3 particle fog/tonemap, and mode 4 the composite. Drag the dirty probe and click/Space to emit a commit pulse. Then open the derived sample `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`: mode 1 cursor trail, mode 2 Lite Inspector layers, mode 3 splat readback probe, mode 4 composite. Next, emit dirty-rect arrays and particle fog factors from a real app as JSON and drive the sample grid and particle density with real values.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js pull requests / Migration Guide、PlayCanvas release / pulls / examples、Babylon WebGPU / Lite / Inspector資料、Codrops Creative Hubを確認。アイデア検討: 10/6のdepth/history/storage lanesを、UI surface、particle fog、cursor trail、splat readbackへ接続。サンプル実装: 本命 `outputs/2026-10-07_html_canvas_particle_state_scope.html` と派生 `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はstate texture pipeline、新規案件はHTML/Inspector面の作品化、寝かせる案件はカードUIと重いWebGPU直接移植。</p>
+          <p class="en-copy">Collection: checked three.js pull requests/Migration Guide, PlayCanvas releases/pulls/examples, Babylon WebGPU/Lite/Inspector material, and Codrops Creative Hub. Ideation: connected 10/6's depth/history/storage lanes to UI surfaces, particle fog, cursor trails, and splat readback. Implementation: created the main sample `outputs/2026-10-07_html_canvas_particle_state_scope.html` and derived sample `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing item: state texture pipeline. New item: turning HTML/Inspector surfaces into artwork. Parked items: card UI and direct ports of heavy WebGPU code.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、GPU pipeline内部だけでなく、HTML、Inspector、debug panel、cursor trailのような周辺面も表現素材に入ってきたこと。9月のGPU状態譜面、10/4のreadback、10/5のvariant、10/6のdepth/history、10/7のHTML/particle/cursorは、すべて『観測できる状態を隠さず演出にする』流れにある。組み合わせ候補は、HTML dirty rectを字幕/掲示板のざわめき、particle fogを空気の露出、cursor trailを鑑賞者の手癖、splat readbackを空間記憶として重ねる方向。</p>
+          <p class="en-copy">The recent trend is that not only GPU pipeline internals but also surrounding surfaces such as HTML, inspectors, debug panels, and cursor trails are becoming expressive material. September's GPU-state scores, 10/4 readback, 10/5 variants, 10/6 depth/history, and 10/7 HTML/particle/cursor all follow the same movement: do not hide observable state; stage it. Strong combinations: use HTML dirty rects as subtitle/signage noise, particle fog as air exposure, cursor trails as viewer hand habit, and splat readback as spatial memory.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-07_html_canvas_particle_state_scope.html`。HTMLTexture dirty surface、shared node build lanes、particle fog/tonemapを4象限で見せる。派生は `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`。cursor trail、Lite Inspector layers、splat readback probeを同じ入力で比較する。どちらも依存なしのraw WebGLで、1-4キー、drag、click/Spaceで確認できる。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-07_html_canvas_particle_state_scope.html`, a four-quadrant view of HTMLTexture dirty surfaces, shared node build lanes, and particle fog/tonemap. The derived prototype is `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`, comparing cursor trails, Lite Inspector layers, and splat readback probes with the same input. Both are dependency-free raw WebGL and support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は、入力を `probeX/probeY/mode/pulse/dirtyProbe/trailAttractor`、状態を `dirtyRectCount/commitMs/nodeBuildShared/cacheKey/materialHash/particleFog/particleTonemap/inspectorLayer/glyphCount/splatRow/readbackLatency` として保存できる。音反応ではkickでcommit pulse、snareでInspector layer切替、hi-hatでdirty grid scan、bassでparticle fogを動かす。カメラやMediaPipeを足すなら、手の速度をcursor trailの遅れへ、顔の距離をsplat readback範囲へ流す。WebXRではUI面を空間看板化し、controller rayが当たった場所だけHTML dirty surfaceが発光する構成がよい。</p>
+          <p class="en-copy">The two samples can store inputs as `probeX/probeY/mode/pulse/dirtyProbe/trailAttractor` and state as `dirtyRectCount/commitMs/nodeBuildShared/cacheKey/materialHash/particleFog/particleTonemap/inspectorLayer/glyphCount/splatRow/readbackLatency`. For audio, kick can trigger commit pulses, snare can switch inspector layers, hi-hats can scan the dirty grid, and bass can drive particle fog. With camera or MediaPipe, hand velocity can feed cursor-trail lag and face distance can control splat readback range. In WebXR, UI surfaces can become spatial signage, with only controller-ray hits lighting up the HTML dirty surface.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34732" target="_blank" rel="noreferrer">three.js PR #34732 HTMLTexture Chromium 155+ HTML-in-Canvas</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34693" target="_blank" rel="noreferrer">three.js PR #34693 share node builds between structurally identical materials</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/34685" target="_blank" rel="noreferrer">three.js PR #34685 dispose buffer attributes</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas pull requests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/blob/main/examples/src/examples/gaussian-splatting/lod-streaming.example.mjs" target="_blank" rel="noreferrer">PlayCanvas LOD streaming example</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU support</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon-Lite/blob/master/docs/lite/02-feature-comparison.md" target="_blank" rel="noreferrer">Babylon Lite feature comparison</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/blob/master/packages/public/%40babylonjs/inspector-v2/readme.md" target="_blank" rel="noreferrer">Babylon Inspector v2 README</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="outputs/2026-10-07_html_canvas_particle_state_scope.html" target="_blank" rel="noreferrer">Main sample: HTML Canvas Particle State Scope</a></li>
+          
+            <li><a href="outputs/2026-10-07_cursor_trail_lite_splat_probe.html" target="_blank" rel="noreferrer">Derived sample: Cursor Trail Lite Splat Probe</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-07_html_canvas_particle_state_scope.html" loading="lazy" title="2026-10-07 HTML Canvas Particle State Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

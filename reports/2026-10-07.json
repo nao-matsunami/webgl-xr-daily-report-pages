@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-07",
+  "headline": "HTML-in-canvas、particle fog、cursor trailをGPU状態の触れる表面にする",
+  "headlineEn": "Turn HTML-in-canvas, particle fog, and cursor trails into tactile GPU-state surfaces",
+  "summary": "three.jsの直近PR群、r187 Migration Guide、PlayCanvas Engine v2.23.0、PlayCanvas GSplat/particle関連issue、Babylon.js / Babylon LiteのWebGPU・Inspector・Gaussian Splatting資料、Codrops Creative HubのCustom-Shaped Cursor TrailやPaper Crumpleを確認した。10/6のdepth/history/storage lanesから、今日はHTMLTextureのdirty surface、shared node build、particle fog/tonemap、cursor trail、Inspector Lite layer、splat readback probeを2本のraw WebGL試作に落とした。",
+  "summaryEn": "Reviewed recent three.js pull requests, the r187 Migration Guide, PlayCanvas Engine v2.23.0, PlayCanvas GSplat/particle issues, Babylon.js and Babylon Lite WebGPU/Inspector/Gaussian Splatting material, and Codrops Creative Hub examples such as Custom-Shaped Cursor Trail and Paper Crumple. Extending 10/6's depth/history/storage lanes, today's two raw WebGL prototypes explore HTMLTexture dirty surfaces, shared node builds, particle fog/tonemap, cursor trails, Inspector Lite layers, and splat readback probes.",
+  "links": [
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js PR #34732 HTMLTexture Chromium 155+ HTML-in-Canvas",
+      "url": "https://github.com/mrdoob/three.js/pull/34732"
+    },
+    {
+      "label": "three.js PR #34693 share node builds between structurally identical materials",
+      "url": "https://github.com/mrdoob/three.js/pull/34693"
+    },
+    {
+      "label": "three.js PR #34685 dispose buffer attributes",
+      "url": "https://github.com/mrdoob/three.js/pull/34685"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0 release notes",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "PlayCanvas pull requests",
+      "url": "https://github.com/playcanvas/engine/pulls"
+    },
+    {
+      "label": "PlayCanvas LOD streaming example",
+      "url": "https://github.com/playcanvas/engine/blob/main/examples/src/examples/gaussian-splatting/lod-streaming.example.mjs"
+    },
+    {
+      "label": "Babylon.js WebGPU support",
+      "url": "https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md"
+    },
+    {
+      "label": "Babylon Lite feature comparison",
+      "url": "https://github.com/BabylonJS/Babylon-Lite/blob/master/docs/lite/02-feature-comparison.md"
+    },
+    {
+      "label": "Babylon Inspector v2 README",
+      "url": "https://github.com/BabylonJS/Babylon.js/blob/master/packages/public/%40babylonjs/inspector-v2/readme.md"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: HTML Canvas Particle State Scope",
+      "url": "outputs/2026-10-07_html_canvas_particle_state_scope.html"
+    },
+    {
+      "label": "Derived sample: Cursor Trail Lite Splat Probe",
+      "url": "outputs/2026-10-07_cursor_trail_lite_splat_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR一覧では10/5のObject3D pivot decomposition、struct storage buffer array bind、LightProbeGrid、10/4のTemporalReprojectNode、TileShadowNode、depth-only render target、instanced mesh node build共有が続き、10/1にはHTMLTextureのChromium 155+ HTML-in-Canvas API変更対応が入っている。2. r187 Migration Guideではrender target bind中のviewport/scissor pixel ratio扱い、TSL pixelationPass引数、TSL normal pack/unpack renameなど、画面空間処理の境界が明確化されている。3. PlayCanvas v2.23.0はParticleSystemComponentのuseFog/useTonemap、音声URL拡張子非依存load、GSplat LOD / depth / tonemap / Firefox WebGPU修正を含み、open PR/issueではJolt physics、diffuse transmission、GSplat equal-depth sort、pixel ratio pointer mappingが続く。4. Babylon側はWebGPUがWebGLと併走する方針で、Babylon LiteはWebGPU中心の軽量構成としてGaussian Splatting、GPU text、Inspector Lite、device lost recovery、OffscreenCanvasを明示している。5. CodropsはCustom-Shaped Cursor Trail with Three.js and TSL、Paper Crumple、Elemental Sandbox、Reel Fluxなど、cursor / VAT / shader grid / TSLを作品表現へ戻す事例が強い。",
+      "bodyEn": "1. The three.js PR list continues with Oct 5 Object3D pivot decomposition, struct storage buffer array binding, and LightProbeGrid work, plus Oct 4 TemporalReprojectNode, TileShadowNode, depth-only render targets, and shared node builds for instanced meshes; Oct 1 includes HTMLTexture support for Chromium 155+ HTML-in-Canvas API changes. 2. The r187 Migration Guide clarifies boundaries for screen-space work, including viewport/scissor pixel-ratio behavior with render targets, the TSL pixelationPass argument, and TSL normal pack/unpack renames. 3. PlayCanvas v2.23.0 includes ParticleSystemComponent useFog/useTonemap, extension-independent audio loading, and GSplat LOD/depth/tonemap/Firefox WebGPU fixes; open work includes Jolt physics, diffuse transmission, GSplat equal-depth sorting, and pixel-ratio pointer mapping. 4. Babylon keeps WebGPU and WebGL side by side, while Babylon Lite describes a WebGPU-first lightweight stack with Gaussian Splatting, GPU text, Inspector Lite, device-lost recovery, and OffscreenCanvas. 5. Codrops examples such as Custom-Shaped Cursor Trail with Three.js and TSL, Paper Crumple, Elemental Sandbox, and Reel Flux point back to cursor, VAT, shader-grid, and TSL expression.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon Lite feature comparison",
+          "url": "https://github.com/BabylonJS/Babylon-Lite/blob/master/docs/lite/02-feature-comparison.md"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日面白いのは、HTMLやInspectorのような『UI寄りの面』が、単なるデバッグ画面ではなくshader素材として扱えること。three.js HTMLTextureはHTML-in-Canvas API変化への追従が続いており、DOM的なdirty rectやテキスト面をGPU上の質感として扱いやすい。PlayCanvas particle fog/tonemapは、粒子をシーンのfogやexposureから切り離す/接続するスイッチとして演出に使える。Babylon LiteのInspector LiteやGPU textは、軽量WebGPUアプリの観測面そのものを作品内レイヤーにしやすい。Codropsのcursor trailは、ポインタの遅れや形状の履歴をTSL/WebGPU表現に戻す好例で、10/6のtemporal historyと接続しやすい。",
+      "bodyEn": "The interesting thread today is that UI-like surfaces such as HTML and inspectors can become shader material rather than just debug screens. three.js HTMLTexture work follows HTML-in-Canvas API changes, making DOM-like dirty rects and text surfaces easier to treat as GPU texture material. PlayCanvas particle fog/tonemap controls can become an expressive switch that connects or disconnects particles from scene fog and exposure. Babylon Lite's Inspector Lite and GPU text make the observation surface of a lightweight WebGPU app feel like an in-scene layer. Codrops cursor-trail work is a strong reference for turning pointer lag and shape history back into TSL/WebGPU expression, connecting naturally with 10/6's temporal history.",
+      "links": [
+        {
+          "label": "three.js PR #34732 HTMLTexture",
+          "url": "https://github.com/mrdoob/three.js/pull/34732"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon Inspector v2 README",
+          "url": "https://github.com/BabylonJS/Babylon.js/blob/master/packages/public/%40babylonjs/inspector-v2/readme.md"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期: HTMLTextureのdirty rect、shared node buildのcache lanes、particle fog/tonemapを4象限scopeにする。dragでdirty probe、click/Spaceでcommit pulseを走らせる。これは本命試作 `outputs/2026-10-07_html_canvas_particle_state_scope.html` にした。派生: Codrops系cursor trail、Babylon Lite Inspector layer、Gaussian Splatting readback probeを組み合わせ、ポインタの遅れがreadback rowやInspector layerを走査する表現にする。これは `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` にした。中長期: 10/4のreadback、10/5のvariant、10/6のdepth/history/storage、10/7のHTML/particle/cursorを統合し、UI面・内部状態・点群・音反応を同じstate textureで駆動する。",
+      "bodyEn": "Short term: create a four-quadrant scope for HTMLTexture dirty rects, shared node build cache lanes, and particle fog/tonemap. Drag moves the dirty probe; click/Space emits a commit pulse. This became the main prototype, `outputs/2026-10-07_html_canvas_particle_state_scope.html`. Derived: combine a Codrops-like cursor trail, Babylon Lite Inspector layers, and Gaussian Splatting readback probes so pointer lag scans readback rows and inspector layers. This became `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`. Longer term: unify 10/4 readback, 10/5 variants, 10/6 depth/history/storage, and 10/7 HTML/particle/cursor into one state texture driving UI surfaces, internal state, point clouds, and audio response."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `htmlCanvasDirtyRect/htmlTextureCommitMs/domSurfaceId/chromiumHtmlCanvasApiVersion/nodeBuildCacheKey/materialStructureHash/bufferDisposed/particleUseFog/particleUseTonemap/audioAssetLoaded/gsplatLodMode/pointerPixelRatio/inspectorLayerId/gpuTextGlyphCount/splatReadbackRows/deviceLostRecovered/offscreenWorkerFrame`。UIやInspectorをそのまま重ねるより、dirty rect、glyph count、readback row、particle fog係数を低解像度のstate textureに詰め、fragment shader側で線・粒・残像へ変換すると、debug感を保ちつつ作品化できる。",
+      "bodyEn": "Candidate log fields include `htmlCanvasDirtyRect/htmlTextureCommitMs/domSurfaceId/chromiumHtmlCanvasApiVersion/nodeBuildCacheKey/materialStructureHash/bufferDisposed/particleUseFog/particleUseTonemap/audioAssetLoaded/gsplatLodMode/pointerPixelRatio/inspectorLayerId/gpuTextGlyphCount/splatReadbackRows/deviceLostRecovered/offscreenWorkerFrame`. Instead of overlaying raw UI or inspector panels, pack dirty rects, glyph counts, readback rows, and particle fog factors into a low-resolution state texture, then let a fragment shader convert them into lines, particles, and trails. This keeps the diagnostic feeling while making it presentable."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsはHTMLTexture #34732、shared node builds #34693、buffer attribute dispose #34685、depth-only / TemporalReproject / struct storage buffer #34782 / #34793 / #34807、r187 Migration Guideを継続。PlayCanvasはv2.23.x、ParticleSystemComponent useFog/useTonemap、GSplat LOD streaming、equal-depth GPU sort、pointer pixel ratio mappingを追う。BabylonはWebGPU support、Babylon Lite feature gap、Inspector Lite、Gaussian Splatting stream/readback、GPU textを追う。CodropsはCustom-Shaped Cursor Trail、Paper Crumple、Elemental Sandboxを、カードではなくcursor・VAT・shader surfaceとして見る。",
+      "bodyEn": "Continue watching three.js HTMLTexture #34732, shared node builds #34693, buffer attribute disposal #34685, depth-only/TemporalReproject/struct storage buffer work #34782/#34793/#34807, and the r187 Migration Guide. For PlayCanvas, watch v2.23.x, ParticleSystemComponent useFog/useTonemap, GSplat LOD streaming, equal-depth GPU sorting, and pointer pixel-ratio mapping. For Babylon, watch WebGPU support, the Babylon Lite feature gap, Inspector Lite, Gaussian Splatting stream/readback, and GPU text. For Codrops, read Custom-Shaped Cursor Trail, Paper Crumple, and Elemental Sandbox as cursor, VAT, and shader-surface references rather than card UI references."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命 `outputs/2026-10-07_html_canvas_particle_state_scope.html` を開く。1でHTMLTexture dirty surface、2でshared node build lanes、3でparticle fog/tonemap、4で合成。dragでdirty probe、click/Spaceでcommit pulse。次に派生 `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` を開く。1でcursor trail、2でLite Inspector layers、3でsplat readback probe、4で合成。次に足すなら、実アプリからdirty rect配列とparticle fog係数をJSONで吐き、サンプルのgrid/particle密度を実値で動かす。",
+      "bodyEn": "Open the main sample `outputs/2026-10-07_html_canvas_particle_state_scope.html` first. Mode 1 shows HTMLTexture dirty surfaces, mode 2 shared node build lanes, mode 3 particle fog/tonemap, and mode 4 the composite. Drag the dirty probe and click/Space to emit a commit pulse. Then open the derived sample `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`: mode 1 cursor trail, mode 2 Lite Inspector layers, mode 3 splat readback probe, mode 4 composite. Next, emit dirty-rect arrays and particle fog factors from a real app as JSON and drive the sample grid and particle density with real values."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js pull requests / Migration Guide、PlayCanvas release / pulls / examples、Babylon WebGPU / Lite / Inspector資料、Codrops Creative Hubを確認。アイデア検討: 10/6のdepth/history/storage lanesを、UI surface、particle fog、cursor trail、splat readbackへ接続。サンプル実装: 本命 `outputs/2026-10-07_html_canvas_particle_state_scope.html` と派生 `outputs/2026-10-07_cursor_trail_lite_splat_probe.html` を作成。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はstate texture pipeline、新規案件はHTML/Inspector面の作品化、寝かせる案件はカードUIと重いWebGPU直接移植。",
+      "bodyEn": "Collection: checked three.js pull requests/Migration Guide, PlayCanvas releases/pulls/examples, Babylon WebGPU/Lite/Inspector material, and Codrops Creative Hub. Ideation: connected 10/6's depth/history/storage lanes to UI surfaces, particle fog, cursor trails, and splat readback. Implementation: created the main sample `outputs/2026-10-07_html_canvas_particle_state_scope.html` and derived sample `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing item: state texture pipeline. New item: turning HTML/Inspector surfaces into artwork. Parked items: card UI and direct ports of heavy WebGPU code."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、GPU pipeline内部だけでなく、HTML、Inspector、debug panel、cursor trailのような周辺面も表現素材に入ってきたこと。9月のGPU状態譜面、10/4のreadback、10/5のvariant、10/6のdepth/history、10/7のHTML/particle/cursorは、すべて『観測できる状態を隠さず演出にする』流れにある。組み合わせ候補は、HTML dirty rectを字幕/掲示板のざわめき、particle fogを空気の露出、cursor trailを鑑賞者の手癖、splat readbackを空間記憶として重ねる方向。",
+      "bodyEn": "The recent trend is that not only GPU pipeline internals but also surrounding surfaces such as HTML, inspectors, debug panels, and cursor trails are becoming expressive material. September's GPU-state scores, 10/4 readback, 10/5 variants, 10/6 depth/history, and 10/7 HTML/particle/cursor all follow the same movement: do not hide observable state; stage it. Strong combinations: use HTML dirty rects as subtitle/signage noise, particle fog as air exposure, cursor trails as viewer hand habit, and splat readback as spatial memory."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-07_html_canvas_particle_state_scope.html`。HTMLTexture dirty surface、shared node build lanes、particle fog/tonemapを4象限で見せる。派生は `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`。cursor trail、Lite Inspector layers、splat readback probeを同じ入力で比較する。どちらも依存なしのraw WebGLで、1-4キー、drag、click/Spaceで確認できる。",
+      "bodyEn": "The main prototype is `outputs/2026-10-07_html_canvas_particle_state_scope.html`, a four-quadrant view of HTMLTexture dirty surfaces, shared node build lanes, and particle fog/tonemap. The derived prototype is `outputs/2026-10-07_cursor_trail_lite_splat_probe.html`, comparing cursor trails, Lite Inspector layers, and splat readback probes with the same input. Both are dependency-free raw WebGL and support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は、入力を `probeX/probeY/mode/pulse/dirtyProbe/trailAttractor`、状態を `dirtyRectCount/commitMs/nodeBuildShared/cacheKey/materialHash/particleFog/particleTonemap/inspectorLayer/glyphCount/splatRow/readbackLatency` として保存できる。音反応ではkickでcommit pulse、snareでInspector layer切替、hi-hatでdirty grid scan、bassでparticle fogを動かす。カメラやMediaPipeを足すなら、手の速度をcursor trailの遅れへ、顔の距離をsplat readback範囲へ流す。WebXRではUI面を空間看板化し、controller rayが当たった場所だけHTML dirty surfaceが発光する構成がよい。",
+      "bodyEn": "The two samples can store inputs as `probeX/probeY/mode/pulse/dirtyProbe/trailAttractor` and state as `dirtyRectCount/commitMs/nodeBuildShared/cacheKey/materialHash/particleFog/particleTonemap/inspectorLayer/glyphCount/splatRow/readbackLatency`. For audio, kick can trigger commit pulses, snare can switch inspector layers, hi-hats can scan the dirty grid, and bass can drive particle fog. With camera or MediaPipe, hand velocity can feed cursor-trail lag and face distance can control splat readback range. In WebXR, UI surfaces can become spatial signage, with only controller-ray hits lighting up the HTML dirty surface."
+    }
+  ]
+}
