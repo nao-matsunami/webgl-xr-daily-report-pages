@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-08",
+  "headline": "pre-pass、parallel compile、splat residencyを見える品質制御にする",
+  "headlineEn": "Turn pre-passes, parallel compile, and splat residency into visible quality controls",
+  "summary": "three.jsの直近PRではGBufferPassのpre-pass一貫化、WebGPURendererのcompileAsync並列pipeline compile、TSL node intent / build performance、struct storage buffer array bind、instanced mesh node build共有が続いている。PlayCanvas v2.23.0ではWebGPU rendering、GSplat LOD / stochastic alpha / nearest-first streaming、particle fog/tonemapがまとまっており、Babylon.js側はGaussian Point Splatting WebGPU、Babylon Lite material/texture parity、Inspector Lite、fluid GPU particle修正が進行中。今日は10/7のHTML/particle/cursor状態面から一段進め、pre-pass / compile heat / node intentを本命サンプルに、GSplat budget / Gaussian scan / Inspector Lite residencyを派生サンプルにした。",
+  "summaryEn": "Recent three.js pull requests continue around consistent GBuffer pre-passes, parallel WebGPURenderer pipeline compilation in compileAsync, TSL node intent/build performance, struct storage buffer array binding, and shared node builds for instanced meshes. PlayCanvas v2.23.0 gathers WebGPU rendering, GSplat LOD/stochastic alpha/nearest-first streaming, and particle fog/tonemap work, while Babylon.js is moving on WebGPU Gaussian Point Splatting, Babylon Lite material/texture parity, Inspector Lite, and GPU particle fixes. Extending 10/7's HTML/particle/cursor state surfaces, today's main sample stages pre-pass/compile heat/node intent, while the derived sample explores GSplat budget/Gaussian scan/Inspector Lite residency.",
+  "links": [
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0 release notes",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "PlayCanvas issues",
+      "url": "https://github.com/playcanvas/engine/issues"
+    },
+    {
+      "label": "Babylon.js pull requests",
+      "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+    },
+    {
+      "label": "Babylon.js WebGPU support",
+      "url": "https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Codrops tutorials",
+      "url": "https://tympanus.net/codrops/category/tutorials/"
+    },
+    {
+      "label": "Main sample: Prepass Compile Heat Scope",
+      "url": "outputs/2026-10-08_prepass_compile_heat_scope.html"
+    },
+    {
+      "label": "Derived sample: Splat Inspector Residency Probe",
+      "url": "outputs/2026-10-08_splat_inspector_residency_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR一覧では10/6にGBufferPassのSAO/SSR/GTAO/SSAO向けpre-pass一貫化、Instance velocity向けnode build共有、WebGPURenderer compileAsyncでのpipeline並列compile、TSL node intent / build performance改善、countとdispatchSize併用エラー化が並んでいる。2. three.js r187 milestoneは10/21 dueで、WebGPU/TSL/renderer境界の整理が続いており、10/7まで扱ってきたdepth/history/storage/HTML面を実運用に近づける流れに見える。3. PlayCanvas v2.23.0はWebGPUでのpersistent storage buffer、per-attachment clear color、partial buffer uploads、ParticleSystemComponent useFog/useTonemap、GSplat LOD / nearest-first streaming / stochastic alpha / per-axis focal lengthを含む。4. Babylon.js pull requestsではGaussian Point Splatting (WebGPU)、Babylon Lite material/texture parity、GPU particle diffuse texture修正、Inspector/Smart Filters Liteが近い位置にいる。5. CodropsはCreative HubとTutorialsでThree.js/TSL/WebGPU/WebGLの作品・解説が厚く、ASCII、datamosh、face mask、liquid glass、xylophoneなど、実装状態を表現へ変える参照が多い。",
+      "bodyEn": "1. The three.js PR list for Oct 6 includes consistent GBuffer pre-passes for SAO/SSR/GTAO/SSAO, shared node builds with velocity for instances, parallel pipeline compilation in WebGPURenderer compileAsync, TSL node intent/build performance improvements, and an error when count and dispatchSize are used together. 2. The three.js r187 milestone is due Oct 21 and continues to clarify WebGPU/TSL/renderer boundaries, extending the depth/history/storage/HTML-surface thread from the last few reports toward practical operation. 3. PlayCanvas v2.23.0 includes WebGPU persistent storage buffers, per-attachment clear colors, partial buffer uploads, ParticleSystemComponent useFog/useTonemap, and GSplat LOD/nearest-first streaming/stochastic alpha/per-axis focal length work. 4. Babylon.js pull requests place WebGPU Gaussian Point Splatting, Babylon Lite material/texture parity, GPU particle diffuse texture fixes, and Inspector/Smart Filters Lite in the same orbit. 5. Codrops Creative Hub and Tutorials remain dense with Three.js/TSL/WebGPU/WebGL examples, from ASCII and datamosh to face masks, liquid glass, and audio xylophone, all useful references for turning implementation state into expression.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js pull requests",
+          "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の面白さは、見えない最適化が作品内の操作面になり始めていること。three.jsのGBuffer/pre-passやparallel compileは本来フレーム安定化の裏方だが、compile heatやpre-pass tileを見せると『描画が準備されていく』感触になる。PlayCanvasのGSplat LODは距離・budget・stream順序がそのまま点群演出のリズムになる。BabylonのGaussian Point Splatting WebGPUとLite/Inspectorの流れは、軽量な観測面と高密度な空間表現を同じ画面へ置きやすい。Codropsのdatamosh/ASCII/liquid glass系は、品質の粗さや履歴のズレを美学へ戻すうえで良い参照になる。",
+      "bodyEn": "Today's interesting point is that invisible optimization is becoming an in-scene control surface. three.js GBuffer/pre-pass and parallel compile work normally supports frame stability, but visualizing compile heat and pre-pass tiles gives the feeling that rendering is being prepared. PlayCanvas GSplat LOD turns distance, budget, and stream order directly into point-cloud rhythm. Babylon's WebGPU Gaussian Point Splatting plus Lite/Inspector work makes it easier to place a lightweight observation surface beside dense spatial expression. Codrops datamosh/ASCII/liquid-glass examples are useful references for turning rough quality and history mismatch into aesthetics.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js pull requests",
+          "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+        },
+        {
+          "label": "Codrops tutorials",
+          "url": "https://tympanus.net/codrops/category/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期で試す本命は `outputs/2026-10-08_prepass_compile_heat_scope.html`。GBuffer pre-passをタイル状の深度/法線/遮蔽面として見せ、parallel compileを横レーンの熱、TSL node intentを環状cache graphとして出す。dragでprobe、click/Spaceでrebuild pulse。派生は `outputs/2026-10-08_splat_inspector_residency_probe.html`。GSplat budget rings、Gaussian WebGPU scan、Inspector Lite residencyを同じfocus入力で動かし、点群の密度と観測パネルを同じ状態として扱う。中長期では、10/4 readback、10/5 variant、10/6 depth/history/storage、10/7 HTML/cursor、10/8 pre-pass/compile/splatをまとめ、rendererの状態遷移をライブ演出の譜面にする。",
+      "bodyEn": "The short-term main prototype is `outputs/2026-10-08_prepass_compile_heat_scope.html`. It stages GBuffer pre-passes as tiled depth/normal/occlusion surfaces, parallel compile as horizontal heat lanes, and TSL node intent as a circular cache graph. Drag moves the probe; click/Space emits a rebuild pulse. The derived prototype is `outputs/2026-10-08_splat_inspector_residency_probe.html`, where GSplat budget rings, Gaussian WebGPU scan, and Inspector Lite residency share the same focus input, treating point density and observation panels as one state. Longer term, connect 10/4 readback, 10/5 variants, 10/6 depth/history/storage, 10/7 HTML/cursor, and 10/8 pre-pass/compile/splat into a live score of renderer state transitions."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `gbufferTileId/prepassEnabled/passKind/compileAsyncBatch/pipelineCompileMs/nodeIntentId/nodeBuildShared/cacheHit/storageBufferArrayBind/dispatchSizeValid/gsplatBudget/gsplatLodLevel/nearestStreamRank/stochasticAlphaSeed/gaussianPointCount/inspectorLayerId/residencyAge/gpuParticleTextureReady`。実装ではまずJSONログを1フレームごとの低解像度state textureに変換し、fragment shader側でtile、lane、ring、splatへ変える。WebGPU本体を直接書かなくても、WebGL shaderだけで『WebGPU/rendererの状態が舞台化される』見た目を短時間で検証できる。",
+      "bodyEn": "Candidate log fields include `gbufferTileId/prepassEnabled/passKind/compileAsyncBatch/pipelineCompileMs/nodeIntentId/nodeBuildShared/cacheHit/storageBufferArrayBind/dispatchSizeValid/gsplatBudget/gsplatLodLevel/nearestStreamRank/stochasticAlphaSeed/gaussianPointCount/inspectorLayerId/residencyAge/gpuParticleTextureReady`. For implementation, first convert JSON logs into a low-resolution state texture per frame, then have the fragment shader turn that into tiles, lanes, rings, and splats. Even without writing full WebGPU, a WebGL shader can quickly test the look of WebGPU/renderer state being staged."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsはGBufferPass #34838、compileAsync pipeline compile #34816、TSL node intent #34815、struct storage buffer array bind #34807、shared node builds #34819/#34820、r187 milestoneを継続。PlayCanvasはv2.23.x以降のGSplat LOD、equal-depth sort、WebGPU readback staging、particle fog/tonemap、partial uploadsを追う。BabylonはGaussian Point Splatting WebGPU #18962、Babylon Lite material/texture parity #18957、Inspector Lite、Smart Filters Lite、GPU particleまわりを追う。CodropsはカードUIではなく、datamosh、ASCII、liquid glass、face mask、xylophoneをshader・音反応・空間演出の材料として見る。",
+      "bodyEn": "Continue watching three.js GBufferPass #34838, compileAsync pipeline compilation #34816, TSL node intent #34815, struct storage buffer array binding #34807, shared node builds #34819/#34820, and the r187 milestone. For PlayCanvas, track v2.23.x GSplat LOD, equal-depth sorting, WebGPU readback staging, particle fog/tonemap, and partial uploads. For Babylon, track WebGPU Gaussian Point Splatting #18962, Babylon Lite material/texture parity #18957, Inspector Lite, Smart Filters Lite, and GPU particle work. For Codrops, treat datamosh, ASCII, liquid glass, face masks, and xylophone as shader/audio/spatial material rather than card UI inspiration."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-08_prepass_compile_heat_scope.html` を開く。1でpre-pass tile、2でcompile heat、3でnode intent cache、4で合成。dragでprobe位置を変え、click/Spaceでrebuild pulseを見る。次に `outputs/2026-10-08_splat_inspector_residency_probe.html` を開く。1でGSplat budget rings、2でGaussian scan、3でInspector Lite residency、4で合成。次に足すなら、実rendererから `pipelineCompileMs` と `gsplatBudget` をJSONで吐き、heat laneとsplat半径を実測値で駆動する。",
+      "bodyEn": "Open `outputs/2026-10-08_prepass_compile_heat_scope.html` first. Mode 1 shows pre-pass tiles, mode 2 compile heat, mode 3 node intent cache, and mode 4 the composite. Drag the probe and click/Space to trigger the rebuild pulse. Then open `outputs/2026-10-08_splat_inspector_residency_probe.html`: mode 1 GSplat budget rings, mode 2 Gaussian scan, mode 3 Inspector Lite residency, mode 4 composite. Next, emit `pipelineCompileMs` and `gsplatBudget` from a real renderer as JSON and drive heat lanes and splat radius with measured values."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js PR/r187 milestone、PlayCanvas v2.23.0 release/issues、Babylon.js PR/WebGPU docs、Codrops Creative Hub/Tutorialsを確認。アイデア検討: 10/7のHTML/particle/cursor状態面を、pre-pass、compile、node intent、GSplat budget、Inspector residencyへ接続。サンプル実装: 本命 `outputs/2026-10-08_prepass_compile_heat_scope.html` と派生 `outputs/2026-10-08_splat_inspector_residency_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はstate texture pipelineとrenderer state score、新規案件はpre-pass/compile heatの舞台化、寝かせる案件はカードUI、重い依存ありの本格WebGPU移植、複雑なセットアップが必要な実GSplat loader。",
+      "bodyEn": "Collection: checked three.js PRs/r187 milestone, PlayCanvas v2.23.0 releases/issues, Babylon.js PRs/WebGPU docs, and Codrops Creative Hub/Tutorials. Ideation: connected 10/7's HTML/particle/cursor state surfaces to pre-pass, compile, node intent, GSplat budget, and Inspector residency. Implementation: added the main sample `outputs/2026-10-08_prepass_compile_heat_scope.html` and derived sample `outputs/2026-10-08_splat_inspector_residency_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are the state texture pipeline and renderer state score. New item is staging pre-pass/compile heat. Parked items are card UI, heavy direct WebGPU ports, and real GSplat loaders that need complex setup."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は『状態を隠さない』から『状態を触れる』へ進んでいる。9月はreadback、object ID、submit、TAA、FFTなどを状態譜面化し、10月はvariant、depth/history/storage、HTMLTexture、cursor、pre-pass、compileへ広がった。組み合わせると強いのは、compile heatを照明の脈、pre-pass tileを床面の反応、GSplat budgetを空間密度、Inspector residencyを字幕/観測UIとして重ねる方向。育てる価値が高いテーマは、renderer内部の品質制御を鑑賞者の操作に対する『空間の呼吸』として出すこと。",
+      "bodyEn": "The recent trend has moved from 'do not hide state' to 'make state touchable.' September turned readback, object IDs, submits, TAA, and FFT into state scores; October has expanded that to variants, depth/history/storage, HTMLTexture, cursor, pre-pass, and compile. A strong combination is compile heat as lighting pulse, pre-pass tiles as a reactive floor, GSplat budget as spatial density, and Inspector residency as subtitle/observation UI. The high-value theme is to express internal renderer quality control as the space breathing in response to viewer input."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-08_prepass_compile_heat_scope.html`。GBuffer pre-pass、parallel compile、TSL node intent cacheをraw WebGLで視覚化する。派生は `outputs/2026-10-08_splat_inspector_residency_probe.html`。GSplat budget rings、Gaussian WebGPU scan、Inspector Lite residencyをfocus入力で動かす。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。",
+      "bodyEn": "The main prototype is `outputs/2026-10-08_prepass_compile_heat_scope.html`, a raw WebGL visualization of GBuffer pre-pass, parallel compile, and TSL node intent cache. The derived prototype is `outputs/2026-10-08_splat_inspector_residency_probe.html`, moving GSplat budget rings, Gaussian WebGPU scan, and Inspector Lite residency with the focus input. Both are dependency-free and support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回のサンプルは `probeX/probeY/mode/pulse` に加え、`prepassEnabled/passKind/pipelineCompileMs/cacheHit/gsplatBudget/lodLevel/residencyAge` を時系列で持てる。音反応ではkickをrebuild pulse、snareをpre-pass切替、hi-hatをcompile lane scan、bassをGSplat半径へ割り当てるとよい。MediaPipeなら手の速度をcompile heatへ、顔の近さをLOD budgetへ流せる。WebXRではcontroller rayが当たる床タイルだけpre-pass tileとして浮かび、遠景のsplatはbudgetに応じて呼吸する展示にできる。",
+      "bodyEn": "The samples can track `probeX/probeY/mode/pulse` plus time-series values such as `prepassEnabled/passKind/pipelineCompileMs/cacheHit/gsplatBudget/lodLevel/residencyAge`. For audio, map kick to rebuild pulses, snare to pre-pass switching, hi-hat to compile-lane scan, and bass to GSplat radius. With MediaPipe, hand velocity can drive compile heat and face distance can drive LOD budget. In WebXR, only floor tiles hit by a controller ray could surface as pre-pass tiles, while distant splats breathe according to budget."
+    }
+  ]
+}
