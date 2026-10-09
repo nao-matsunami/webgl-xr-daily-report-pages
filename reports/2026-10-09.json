@@ -1,0 +1,191 @@
+{
+  "date": "2026-10-09",
+  "headline": "splatの光・影・観測面をrenderer state scoreへ接続する",
+  "headlineEn": "Connect splat light, shadow, and inspection surfaces into a renderer state score",
+  "summary": "今日は、three.js r187に向けたWebGPU/TSL/renderer境界の整理、PlayCanvas v2.23.0のGSplat LOD/nearest-first streaming、Babylon.js 9.29.0のGaussian splats対応frame graphとocclusion/texture周辺、そしてVLAM!のthree.js WebGPU Gaussian Splat viewerを軸に見た。10/8のpre-pass / compile heat / splat residencyから一段進め、splat空間の光・影・LOD・観測UIを同じ状態譜面として扱う方向に整理した。本命サンプルはvolumetric light / streamed splat / proxy shadow、派生サンプルはframe graph / occlusion visibility / texture contractの観測面。",
+  "summaryEn": "Today's report focuses on three.js r187 WebGPU/TSL/renderer boundary work, PlayCanvas v2.23.0 GSplat LOD and nearest-first streaming, Babylon.js 9.29.0 frame graph support for Gaussian splats plus occlusion/texture work, and VLAM!, a three.js WebGPU Gaussian Splat viewer. Extending 10/8's pre-pass, compile heat, and splat residency thread, the report treats splat-space light, shadow, LOD, and inspection UI as one renderer state score. The main sample explores volumetric light, streamed splats, and proxy shadows; the derived sample stages frame graph lanes, occlusion visibility, and texture contracts.",
+  "links": [
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "VLAM! GitHub repository",
+      "url": "https://github.com/Voluma-ai/vlam"
+    },
+    {
+      "label": "VLAM! demo and docs",
+      "url": "https://vlam.voluma.ai/"
+    },
+    {
+      "label": "Codrops Creative Hub tutorials",
+      "url": "https://tympanus.net/codrops/hub/tutorials/"
+    },
+    {
+      "label": "Main sample: Volumetric Splat Shadow Scope",
+      "url": "outputs/2026-10-09_volumetric_splat_shadow_scope.html"
+    },
+    {
+      "label": "Derived sample: Framegraph Occlusion Texture Probe",
+      "url": "outputs/2026-10-09_framegraph_occlusion_texture_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187 milestoneは10月21日dueで、Migration Guideの186→187にはPMREM cube render targets、WeakRef/FinalizationRegistry、XR camera matrix、render target bound時のviewport/scissor pixel ratio、TSL pixelationPassのpixelSize Number化が並ぶ。10/8のpre-pass/compile heatから見ると、rendererの寿命・viewport・XR・postprocess入力が作品側の状態として拾いやすくなっている。2. three.js PR一覧では10月上旬もWebGPURenderer depth-only render targets、TileShadowNode、TemporalReprojectNode、struct storage buffer arrays、node build共有が続き、shadow/depth/history/storageが同じ譜面に寄ってきた。3. PlayCanvas v2.23.0はGSplat LODを距離・target/limit splat budget・nearest-first streamingで扱う変更が目立つ。10/8のsplat residencyを、今日はstream rankと視点からの距離に変換する。4. Babylon.js 9.29.0はFrame graphでGaussian splats/sprites/particlesをgeometry renderingに含め、normalized occlusion query visibility API、nearest sampling for Gaussian Splatting data textures、WebGPU occlusion query sequencing修正が入っている。5. VLAM!はthree.js WebGPU Gaussian Splat viewerで、WebGL2 fallback、.sog/.ply/.spz/.splat/.ksplat/.lcc/.rad対応、proxy-mesh relightingへの導線がある。PlayCanvas的なstreamed splat文脈をthree.js側へ持ち込む参照として重要。",
+      "bodyEn": "1. The three.js r187 milestone is due Oct 21, and the 186 to 187 Migration Guide lists PMREM cube render targets, WeakRef/FinalizationRegistry usage, XR camera matrix changes, viewport/scissor pixel-ratio changes when render targets are bound, and TSL pixelationPass pixelSize becoming a Number. From the 10/8 pre-pass/compile heat thread, renderer lifetime, viewport, XR, and postprocess inputs are becoming easier to capture as artwork state. 2. The early-October three.js PR list continues around WebGPURenderer depth-only render targets, TileShadowNode, TemporalReprojectNode, struct storage buffer arrays, and shared node builds, pulling shadow/depth/history/storage into one score. 3. PlayCanvas v2.23.0 highlights GSplat LOD changes around distance, target/limit splat budgets, and nearest-first streaming. Today extends 10/8's splat residency into stream rank and view distance. 4. Babylon.js 9.29.0 adds frame graph geometry rendering support for Gaussian splats, sprites, and particles, normalized occlusion query visibility, nearest sampling for Gaussian Splatting data textures, and WebGPU occlusion query sequencing fixes. 5. VLAM! is a three.js WebGPU Gaussian Splat viewer with WebGL2 fallback, support for formats including .sog, .ply, .spz, .splat, .ksplat, .lcc, and .rad, and a path to proxy-mesh relighting, making it a useful reference for bringing PlayCanvas-like streamed splat thinking into three.js.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "VLAM! GitHub repository",
+          "url": "https://github.com/Voluma-ai/vlam"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日いちばん面白いのはVLAM!の位置づけ。three.jsのWebGPU rendererに乗り、WebGL2 fallbackも持つsplat viewerが、streamed splat、proxy relighting、depth of field、warpingのような演出側の語彙へつながっている。PlayCanvasはすでにGSplat LODとstreamingをengine releaseの中心に置き、Babylonはframe graphへsplatsを入れている。つまり『splatを描く』段階から、『splatがどのLODで、どのpassに入り、どのocclusion/texture契約で見えるか』を演出に使う段階へ進んでいる。CodropsのWide grid、cursor trail、datamosh、face maskのような事例は、この観測面をWeb表現として見せる際のテンポやUI密度の参照になる。",
+      "bodyEn": "The most interesting item today is VLAM!'s position. A splat viewer built on the three.js WebGPU renderer with WebGL2 fallback connects streamed splats, proxy relighting, depth of field, and warping to expressive vocabulary. PlayCanvas already places GSplat LOD and streaming at the center of engine releases, while Babylon brings splats into the frame graph. This means the field is moving from simply drawing splats to using which LOD, pass, occlusion state, and texture contract makes a splat visible as an expressive layer. Codrops examples such as wide grids, cursor trails, datamosh, and face masks are useful references for the tempo and UI density of exposing those inspection surfaces as web expression.",
+      "links": [
+        {
+          "label": "VLAM! demo and docs",
+          "url": "https://vlam.voluma.ai/"
+        },
+        {
+          "label": "Codrops Creative Hub tutorials",
+          "url": "https://tympanus.net/codrops/hub/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "短期で試す本命は `outputs/2026-10-09_volumetric_splat_shadow_scope.html`。streamed splat LODを点群の密度と輪郭で見せ、volumetric lightを視線方向のビーム、proxy shadowを格子状の受光面として重ねた。dragでlight probeを動かし、click/Spaceでstream pulseを出す。派生は `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`。Babylon 9.29.0のframe graph / normalized occlusion / texture contractを抽象化し、pass lane、visibility disk、texture retry tileとして見る。中長期では10/8のcompile heatと今日のsplat shadowを組み合わせ、viewerが近づくほどsplat budgetが増え、compile/pipeline heatが照明の脈になる空間演出へ育てたい。",
+      "bodyEn": "The short-term main prototype is `outputs/2026-10-09_volumetric_splat_shadow_scope.html`. It shows streamed splat LOD through point density and outlines, volumetric light as view-direction beams, and proxy shadows as a gridded receiving surface. Drag moves the light probe; click/Space emits a stream pulse. The derived prototype is `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`, abstracting Babylon 9.29.0 frame graph, normalized occlusion, and texture contract work into pass lanes, visibility disks, and texture retry tiles. Longer term, combine 10/8 compile heat with today's splat shadow so splat budget increases as the viewer approaches and compile/pipeline heat becomes a lighting pulse.",
+      "links": [
+        {
+          "label": "Main sample: Volumetric Splat Shadow Scope",
+          "url": "outputs/2026-10-09_volumetric_splat_shadow_scope.html"
+        },
+        {
+          "label": "Derived sample: Framegraph Occlusion Texture Probe",
+          "url": "outputs/2026-10-09_framegraph_occlusion_texture_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `splatId/lodLevel/streamRank/splatBudget/distanceSq/proxyMeshId/relightEnabled/beamEnergy/shadowReceiverTile/frameGraphPassId/occlusionVisible/occlusionQueryAge/textureContractId/textureReady/retryCount/pipelineCompileMs/cacheHit/viewportScale/xrEye`。実装は、実viewerのログを低解像度state textureへ入れ、fragment shaderで点、光条、影タイル、pass laneへ変換するのが軽い。PlayCanvas側ならGSplat LODとAppStats、three.js/VLAM側ならSplatMesh updateとrenderer compile timings、Babylon側ならframe graph passとocclusion visibilityが入り口になる。",
+      "bodyEn": "Candidate log fields include `splatId/lodLevel/streamRank/splatBudget/distanceSq/proxyMeshId/relightEnabled/beamEnergy/shadowReceiverTile/frameGraphPassId/occlusionVisible/occlusionQueryAge/textureContractId/textureReady/retryCount/pipelineCompileMs/cacheHit/viewportScale/xrEye`. A lightweight implementation path is to pack real viewer logs into a low-resolution state texture, then convert them in a fragment shader into points, light beams, shadow tiles, and pass lanes. For PlayCanvas, GSplat LOD and AppStats are entry points. For three.js/VLAM, SplatMesh updates and renderer compile timings are useful. For Babylon, frame graph passes and occlusion visibility are the right hooks.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "VLAM! GitHub repository",
+          "url": "https://github.com/Voluma-ai/vlam"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsはr187 milestone、Migration Guideの186→187、WebGPURenderer depth-only/TileShadow/TemporalReproject/struct storage buffer/node build共有を継続して見る。PlayCanvasはv2.23.x以降のGSplat LOD、nearest-first streaming、stochastic alpha、equal-depth sorting、WebGPU readback stagingを追う。Babylonは9.29.0以降のGaussian splats in frame graph、normalized occlusion visibility、WebGPU occlusion query、Gaussian data texture sampling、Inspector Liteを追う。VLAM!はpre-releaseなので、supported format、proxy relighting、WebGL2 fallback、API破壊変更の扱いを確認し続ける。CodropsはカードUIではなく、Wide grid、cursor trail、datamosh、face mask、audio xylophoneのようなshader/interaction例を優先する。",
+      "bodyEn": "Keep watching the three.js r187 milestone, the 186 to 187 Migration Guide, and WebGPURenderer depth-only, TileShadow, TemporalReproject, struct storage buffer, and shared node build work. For PlayCanvas, track v2.23.x GSplat LOD, nearest-first streaming, stochastic alpha, equal-depth sorting, and WebGPU readback staging. For Babylon, track post-9.29.0 Gaussian splats in frame graph, normalized occlusion visibility, WebGPU occlusion queries, Gaussian data texture sampling, and Inspector Lite. VLAM! is pre-release, so keep checking supported formats, proxy relighting, WebGL2 fallback, and breaking API changes. For Codrops, prioritize shader/interaction examples such as Wide grid, cursor trail, datamosh, face mask, and audio xylophone rather than card UI."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-09_volumetric_splat_shadow_scope.html` を開く。1でstreamed splat LOD、2でvolumetric light beams、3でproxy shadow warp、4で合成。dragで光源/視点probeを動かし、click/Spaceでstream pulseを見る。次に `outputs/2026-10-09_framegraph_occlusion_texture_probe.html` を開く。1でframe graph lanes、2でocclusion visibility、3でtexture contract、4で合成。次に足すなら、本命サンプルへ `splatBudget` と `streamRank` のJSON配列を渡して、点群密度とビーム強度を実測値で変える。",
+      "bodyEn": "Open `outputs/2026-10-09_volumetric_splat_shadow_scope.html` first. Mode 1 shows streamed splat LOD, mode 2 volumetric light beams, mode 3 proxy shadow warp, and mode 4 the composite. Drag the light/view probe and click/Space to trigger a stream pulse. Then open `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`: mode 1 frame graph lanes, mode 2 occlusion visibility, mode 3 texture contract, mode 4 composite. Next, pass `splatBudget` and `streamRank` JSON arrays into the main sample and use measured values to drive point density and beam strength.",
+      "links": [
+        {
+          "label": "Main sample: Volumetric Splat Shadow Scope",
+          "url": "outputs/2026-10-09_volumetric_splat_shadow_scope.html"
+        },
+        {
+          "label": "Derived sample: Framegraph Occlusion Texture Probe",
+          "url": "outputs/2026-10-09_framegraph_occlusion_texture_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r187/Migration Guide/PR、PlayCanvas Engine releases、Babylon.js releases、VLAM! GitHub/demo、Codrops Creative Hubを確認。アイデア検討: 10/8のpre-pass / compile heat / splat residencyを、今日はvolumetric light、proxy shadow、frame graph、occlusion、texture contractへ接続。サンプル実装: 本命 `outputs/2026-10-09_volumetric_splat_shadow_scope.html` と派生 `outputs/2026-10-09_framegraph_occlusion_texture_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件はrenderer state scoreとstate texture pipeline、新規案件はsplat lighting/shadow score、寝かせる案件はカードUI、重い依存を必要とする実splat loader移植、認証や外部アセット前提の大きなデモ。",
+      "bodyEn": "Collection: checked three.js r187/Migration Guide/PRs, PlayCanvas Engine releases, Babylon.js releases, VLAM! GitHub/demo, and Codrops Creative Hub. Ideation: extended 10/8's pre-pass, compile heat, and splat residency into volumetric light, proxy shadow, frame graph, occlusion, and texture contracts. Implementation: added the main sample `outputs/2026-10-09_volumetric_splat_shadow_scope.html` and derived sample `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are renderer state score and the state texture pipeline. The new item is the splat lighting/shadow score. Parked items are card UI, heavy real splat loader ports, and large demos requiring authentication or external assets.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-09_volumetric_splat_shadow_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-09_framegraph_occlusion_texture_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、描画品質の制御が『裏側の最適化』から『演出の入力』へ変わっていること。9月後半はresource cleanup、readback、sort precision、mipmap/residency、layer/depthを扱い、10月はviewport/scissor、view bind group、Inspector/AppStats、variant、HTML/particle/cursor、pre-pass/compileへ広がった。今日のsplat light/shadowは、その流れを空間演出へ戻す橋になる。組み合わせ候補は、compile heatを光の脈、streamRankを点群の呼吸、occlusion visibilityを見える/見えないの拍、texture retryをちらつく字幕にする構成。育てる価値が高いテーマは、renderer内部の安全策や性能策を、鑑賞者が感じる空間の気配として扱うこと。",
+      "bodyEn": "The recent trend is that rendering quality control is shifting from hidden optimization to expressive input. Late September covered resource cleanup, readback, sort precision, mipmap/residency, and layer/depth; October expanded into viewport/scissor, view bind groups, Inspector/AppStats, variants, HTML/particle/cursor, and pre-pass/compile. Today's splat light/shadow thread is a bridge back into spatial staging. Strong combinations include compile heat as light pulse, streamRank as point-cloud breathing, occlusion visibility as visible/invisible beats, and texture retry as flickering subtitles. The high-value theme is treating renderer safety and performance mechanisms as spatial atmosphere felt by the viewer."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-09_volumetric_splat_shadow_scope.html`。streamed splat LOD、volumetric light beams、proxy shadow warpをraw WebGLで合成し、dragとpulseでsplat空間の読み込み・照明・影を触れるようにした。派生は `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`。frame graph lanes、occlusion visibility、texture contractを、観測UIというよりshader表現の素材として動かす。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。",
+      "bodyEn": "The main prototype is `outputs/2026-10-09_volumetric_splat_shadow_scope.html`, a dependency-free raw WebGL composite of streamed splat LOD, volumetric light beams, and proxy shadow warp, making splat loading, lighting, and shadows touchable through drag and pulse. The derived prototype is `outputs/2026-10-09_framegraph_occlusion_texture_probe.html`, which treats frame graph lanes, occlusion visibility, and texture contracts as shader-expression material rather than merely inspection UI. Both support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は `probeX/probeY/mode/pulse` に加え、`splatBudget/streamRank/lodLevel/beamEnergy/proxyShadow/occlusionVisible/textureReady/retryCount/passId` を時系列データとして扱える。音反応ならkickをstream pulse、snareをproxy shadowの反転、hi-hatをtexture retry tile、bassをvolumetric beamの太さへ割り当てる。MediaPipeなら手の距離でsplatBudget、手首速度でbeamEnergy、顔の向きでocclusion focusを変える。WebXRではcontroller rayで受光タイルを選び、視線の滞在時間でLODが上がる展示にできる。ブランド演出なら、商品や空間のsplatが近づくほど解像し、読み込み中の状態そのものが光の呼吸として見える。",
+      "bodyEn": "The two samples can treat `probeX/probeY/mode/pulse` plus `splatBudget/streamRank/lodLevel/beamEnergy/proxyShadow/occlusionVisible/textureReady/retryCount/passId` as time-series data. For audio, map kick to stream pulse, snare to proxy-shadow inversion, hi-hat to texture retry tiles, and bass to volumetric beam width. With MediaPipe, hand distance can drive splatBudget, wrist velocity beamEnergy, and face direction occlusion focus. In WebXR, controller rays could select receiver tiles while gaze dwell increases LOD. For branded experiences, a product or place captured as splats could resolve as the viewer approaches, with the loading state itself visible as breathing light."
+    }
+  ]
+}

@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 110</span>
+        <span>days: 111</span>
         <span>page: 1 / 10</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -325,6 +325,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-09">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.09</p>
+              <h2>splatの光・影・観測面をrenderer state scoreへ接続する</h2>
+              <p class="card-subtitle">Connect splat light, shadow, and inspection surfaces into a renderer state score</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-09" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">今日は、three.js r187に向けたWebGPU/TSL/renderer境界の整理、PlayCanvas v2.23.0のGSplat LOD/nearest-first streaming、Babylon.js 9.29.0のGaussian splats対応frame graphとocclusion/texture周辺、そしてVLAM!のthree.js WebGPU Gaussian Splat viewerを軸に見た。10/8のpre-pass / compile heat / splat residencyから一段進め、splat空間の光・影・LOD・観測UIを同じ状態譜面として扱う方向に整理した。本命サンプルはvolumetric light / streamed splat / proxy shadow、派生サンプルはframe graph / occlusion visibility / texture contractの観測面。</p>
+          <p class="description en-copy">Today's report focuses on three.js r187 WebGPU/TSL/renderer boundary work, PlayCanvas v2.23.0 GSplat LOD and nearest-first streaming, Babylon.js 9.29.0 frame graph support for Gaussian splats plus occlusion/texture work, and VLAM!, a three.js WebGPU Gaussian Splat viewer. Extending 10/8's pre-pass, compile heat, and splat residency thread, the report treats splat-space light, shadow, LOD, and inspection UI as one renderer state score. The main sample explores volumetric light, streamed splats, and proxy shadows; the derived sample stages frame graph lanes, occlusion visibility, and texture contracts.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-09.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-09_volumetric_splat_shadow_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-08">
           <div class="card-top">
             <div>
@@ -574,29 +597,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-09-28.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-09-28_mobile_pass_pressure_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-27">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.27</p>
-              <h2>fallbackの破棄漏れとlit tubeを、リソース寿命の光跡として読む</h2>
-              <p class="card-subtitle">Reading fallback deletion gaps and lit tubes as resource-lifetime light trails</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-27" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js r187向けのWebGPURenderer WebGL2 fallback破棄漏れissue、TSL compute / FFT2D / GaussianBlurNode tap統合PR、PlayCanvas Engine v2.22.4のGSplat sort precision修正、Babylon.js 9.28.0、Codropsのlit GPU tubes / custom cursor trailを確認した。9/26のFFT/cursor brushから一段進め、今日はcreate/delete差分、program/shader/VAO lifetime、tube lighting、resource age weaveを、2本の依存なしraw WebGL試作にした。</p>
-          <p class="description en-copy">Today checks the three.js r187 WebGPURenderer WebGL2 fallback deletion-gap issue, TSL compute / FFT2D / GaussianBlurNode tap-merging PRs, PlayCanvas Engine v2.22.4's GSplat sort precision fix, Babylon.js 9.28.0, and Codrops' lit GPU tubes / custom cursor trail work. Extending September 26's FFT / cursor brush direction, the two dependency-free raw WebGL prototypes turn create/delete deltas, program/shader/VAO lifetimes, tube lighting, and resource-age weaving into inspectable visual surfaces.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span><span class="tag">field</span><span class="tag">shader</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-09-27.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-09-27_lit_tube_lifetime_loom.html">代表サンプル / Sample</a>
           </div>
         </article>
       
