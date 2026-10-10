@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 111</span>
+        <span>days: 112</span>
         <span>page: 1 / 10</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -325,6 +325,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-10">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.10</p>
+              <h2>粗い順splatストリームと色空間の状態を触れる譜面にする</h2>
+              <p class="card-subtitle">Turn coarse-first splat streaming and color-space state into a touchable score</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-10" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">今日は、PlayCanvas Engine v2.23.2 の GSplat LOD coarse-first streaming、three.js の 10/8-10/9 commit に見える storage buffer / texture update / RangeNode / uniform array 修正、Babylon.js 9.30.0 の WebGPU render target sRGB・canvas tone mapping・GPUParticleSystem state 修正、Codrops の Three.js / TSL / WebGL 事例を接続した。10/9 の splat light / shadow / frame graph から、今日は「遠い粗LODが先に届き、色空間・トーンマップ・キャッシュ状態が光のレイヤーになる」方向へ寄せた。本命サンプルは coarse-first splat stream と tone-map bands、派生サンプルは stale storage refs / texture update ranges / canvas color contract の状態面。</p>
+          <p class="description en-copy">Today's report connects PlayCanvas Engine v2.23.2 GSplat LOD coarse-first streaming, three.js Oct 8-9 commits around storage buffers, texture update ranges, RangeNode, and uniform arrays, Babylon.js 9.30.0 WebGPU render-target sRGB, canvas tone mapping, and GPUParticleSystem state fixes, plus Codrops Three.js / TSL / WebGL examples. Extending 10/9's splat light, shadow, and frame graph thread, today focuses on distant coarse LOD arriving first while color space, tone mapping, and cache state become visible lighting layers. The main sample explores coarse-first splat stream and tone-map bands; the derived sample stages stale storage refs, texture update ranges, and canvas color contracts.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-10.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-10_coarse_splat_tonemap_field.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-09">
           <div class="card-top">
             <div>
@@ -574,29 +597,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-09-29.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-09-29_parallax_splat_depth_stage.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-28">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.28</p>
-              <h2>モバイルのpass負荷と水のcausticsを、renderer健康状態の光として読む</h2>
-              <p class="card-subtitle">Reading mobile pass pressure and water caustics as renderer-health light</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-28" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js Migration Guideのr186→r187更新、Chrome AndroidのMSAA / EffectComposer stutter issue、WebGPURenderer UBO performance issue、PlayCanvas Engine v2.22.4、Babylon.js 9.28.0、Codropsのlit GPU tubes / Infinite Loom / Volatile Nexus、PlayCanvas weeklyのWater demoを確認した。9/27のfallback delete / lifetime loomを引き継ぎ、今日はモバイルpass負荷・UBO圧・MSAA cadenceと、水面caustics・root motion・alpha depth pre-passを、2本の依存なしraw WebGL試作にした。</p>
-          <p class="description en-copy">Today checks the three.js r186-to-r187 Migration Guide update, the Chrome Android MSAA / EffectComposer stutter issue, the WebGPURenderer UBO performance issue, PlayCanvas Engine v2.22.4, Babylon.js 9.28.0, Codrops' lit GPU tubes / Infinite Loom / Volatile Nexus, and the PlayCanvas weekly Water demo. Continuing September 27's fallback-delete / lifetime-loom direction, the two dependency-free raw WebGL prototypes turn mobile pass pressure, UBO pressure, MSAA cadence, water caustics, root motion, and alpha depth pre-pass into visual inspection surfaces.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-09-28.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-09-28_mobile_pass_pressure_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

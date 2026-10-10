@@ -1,0 +1,183 @@
+{
+  "date": "2026-10-10",
+  "headline": "粗い順splatストリームと色空間の状態を触れる譜面にする",
+  "headlineEn": "Turn coarse-first splat streaming and color-space state into a touchable score",
+  "summary": "今日は、PlayCanvas Engine v2.23.2 の GSplat LOD coarse-first streaming、three.js の 10/8-10/9 commit に見える storage buffer / texture update / RangeNode / uniform array 修正、Babylon.js 9.30.0 の WebGPU render target sRGB・canvas tone mapping・GPUParticleSystem state 修正、Codrops の Three.js / TSL / WebGL 事例を接続した。10/9 の splat light / shadow / frame graph から、今日は「遠い粗LODが先に届き、色空間・トーンマップ・キャッシュ状態が光のレイヤーになる」方向へ寄せた。本命サンプルは coarse-first splat stream と tone-map bands、派生サンプルは stale storage refs / texture update ranges / canvas color contract の状態面。",
+  "summaryEn": "Today's report connects PlayCanvas Engine v2.23.2 GSplat LOD coarse-first streaming, three.js Oct 8-9 commits around storage buffers, texture update ranges, RangeNode, and uniform arrays, Babylon.js 9.30.0 WebGPU render-target sRGB, canvas tone mapping, and GPUParticleSystem state fixes, plus Codrops Three.js / TSL / WebGL examples. Extending 10/9's splat light, shadow, and frame graph thread, today focuses on distant coarse LOD arriving first while color space, tone mapping, and cache state become visible lighting layers. The main sample explores coarse-first splat stream and tone-map bands; the derived sample stages stale storage refs, texture update ranges, and canvas color contracts.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.23.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "three.js commits",
+      "url": "https://github.com/mrdoob/three.js/commits"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "Babylon.js 9.30.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Creative Hub demos",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Codrops shape-aware ASCII renderer",
+      "url": "https://tympanus.net/codrops/2026/09/04/beyond-the-luminance-ramp-a-shape-aware-ascii-renderer-in-three-js/"
+    },
+    {
+      "label": "Main sample: Coarse Splat Tonemap Field",
+      "url": "outputs/2026-10-10_coarse_splat_tonemap_field.html"
+    },
+    {
+      "label": "Derived sample: Cache Storage Color Audit",
+      "url": "outputs/2026-10-10_cache_storage_color_audit.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas Engine v2.23.2 は 2026-10-09 release で、GSplat LOD levels をビュー全体で coarsest first に stream する修正が入った。10/9 の volumetric splat shadow を、今日は「まず粗く場が立ち上がり、近い場所だけ解像する」時間演出へ接続する。2. three.js commits は 2026-10-09 に NodeStorageBuffer stale attribute references と VXGIVolume disposal、RangeNode random values、WebGLUniformsGroups arrays、2026-10-08 に texture update ranges clearing などが並ぶ。キャッシュ・乱数・更新範囲・破棄が、shader表現の状態入力として扱いやすい。3. three.js r187 milestone は due が 2026-10-21 で、FP16 via TSL、WebGL fallback on demand、MeshVolume、GaussianBlur bilinear taps、depth-guarded refraction などが残っている。10月後半へ向けた観測対象として継続。4. Babylon.js 9.30.0 は 2026-10-08 release で、WebGPU render target sRGB option forwarding、WebGPU canvas tone mapping / color space options、GPUParticleSystem instance attribute divisor の状態漏れ修正が入った。色空間と粒子の残留状態を演出入力にできる。5. Codrops は Custom-Shaped Cursor Trail、Paper Crumple、Elemental Sandbox、Reel Flux、ASCII Logo など、カードではなく cursor / VAT / GLSL / TSL / ASCII の触感が豊富。特に shape-aware ASCII renderer は、単純な輝度ではなく形状一致でセルを選ぶ発想が今日の coarse LOD と相性が良い。",
+      "bodyEn": "1. PlayCanvas Engine v2.23.2 was released on 2026-10-09 and includes a fix to stream GSplat LOD levels coarsest first across the whole view. Today's thread connects 10/9's volumetric splat shadow to a time-based staging where the scene first appears in coarse form and only nearby areas resolve. 2. three.js commits on 2026-10-09 include NodeStorageBuffer stale attribute references, VXGIVolume disposal, RangeNode random values, WebGLUniformsGroups arrays, and on 2026-10-08 clearing texture update ranges. Cache, randomness, update ranges, and disposal are useful state inputs for shader expression. 3. The three.js r187 milestone is due 2026-10-21 and still tracks FP16 via TSL, WebGL fallback on demand, MeshVolume, GaussianBlur bilinear taps, depth-guarded refraction, and more. It remains a watch target for late October. 4. Babylon.js 9.30.0 was released on 2026-10-08 with WebGPU render target sRGB option forwarding, WebGPU canvas tone mapping and color-space options, and a GPUParticleSystem instance attribute divisor state fix. Color-space and particle residual state can become expressive inputs. 5. Codrops continues to provide non-card references such as Custom-Shaped Cursor Trail, Paper Crumple, Elemental Sandbox, Reel Flux, and ASCII Logo. The shape-aware ASCII renderer is especially relevant because it chooses cells by shape matching rather than simple luminance, which pairs well with today's coarse LOD topic.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine v2.23.2 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "three.js commits",
+          "url": "https://github.com/mrdoob/three.js/commits"
+        },
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "Babylon.js 9.30.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        },
+        {
+          "label": "Codrops Creative Hub demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の軸は PlayCanvas の coarsest-first GSplat streaming。これは品質の妥協ではなく、空間が「先に粗く読めて、あとから密になる」表現として使える。Babylon 9.30.0 の canvas tone mapping / color space options は、この粗い到着順に色の段階を与えられる。three.js 側の RangeNode random order や texture update ranges clearing は、GPU状態の揺れを制御する方向に見える。Codrops の shape-aware ASCII は、LODが粗い時に輝度だけで潰すのではなく、セルの形として読ませる発想をくれる。",
+      "bodyEn": "Today's main reference is PlayCanvas coarsest-first GSplat streaming. This is not just a quality compromise; it can become a spatial expression where the scene becomes readable in coarse form first and later gains density. Babylon 9.30.0's canvas tone mapping and color-space options can add color stages to that arrival order. three.js RangeNode random ordering and texture update range clearing point toward controlling GPU-state instability. Codrops' shape-aware ASCII suggests that coarse LOD does not have to collapse into luminance alone; it can remain readable as cell shape.",
+      "links": [
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Codrops shape-aware ASCII renderer",
+          "url": "https://tympanus.net/codrops/2026/09/04/beyond-the-luminance-ramp-a-shape-aware-ascii-renderer-in-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は `outputs/2026-10-10_coarse_splat_tonemap_field.html`。GSplat の coarse-first stream を、まず大きい粒が全体に現れ、focus付近だけ細かい粒へほどける場として描いた。tone-map bands と zero-size canvas guard を合わせ、描画状態そのものが背景光になる。派生は `outputs/2026-10-10_cache_storage_color_audit.html`。NodeStorageBuffer stale refs、texture update ranges、canvas color contract を抽象化し、GPU内部の「残り・更新・色空間」を触れる状態面にした。短期では、click/Space の pulse を stream chunk / rebuild / clear update ranges に割り当てる。中長期では、10/9 の proxy shadow と組み合わせ、粗LODが落とす影だけ先に届く演出へ育てる。",
+      "bodyEn": "The main prototype is `outputs/2026-10-10_coarse_splat_tonemap_field.html`. It treats GSplat coarse-first streaming as a field where large points appear across the whole view first, while only the focus area resolves into finer grains. Tone-map bands and a zero-size canvas guard are layered so rendering state becomes background light. The derived prototype is `outputs/2026-10-10_cache_storage_color_audit.html`, abstracting NodeStorageBuffer stale refs, texture update ranges, and canvas color contracts into touchable state surfaces. Short term, map click/Space pulse to stream chunks, rebuilds, and cleared update ranges. Longer term, combine this with 10/9's proxy shadows so shadows from coarse LOD arrive before full detail.",
+      "links": [
+        {
+          "label": "Main sample: Coarse Splat Tonemap Field",
+          "url": "outputs/2026-10-10_coarse_splat_tonemap_field.html"
+        },
+        {
+          "label": "Derived sample: Cache Storage Color Audit",
+          "url": "outputs/2026-10-10_cache_storage_color_audit.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `lodLevel/streamChunk/coarseFirstRank/splatBudget/distanceSq/focusDistance/toneMappingMode/canvasColorSpace/renderTargetSRGB/particleDivisorBound/nodeStorageBufferId/staleAttributeRef/textureUpdateRangeCount/updateRangeCleared/randomSeedOrder/zeroClientSize/miniStatsVisible`。実装は低解像度 state texture に入れて、fragment shader 側で点群サイズ、到着リング、色帯、dirty tile、stale laneへ変換するのが軽い。PlayCanvas 側は streamed GSplat LOD と MiniStats、three.js 側は commit で修正対象になっている storage/texture/cache の状態、Babylon 側は WebGPU canvas tone mapping と render target sRGB を入口にする。",
+      "bodyEn": "Candidate log fields include `lodLevel/streamChunk/coarseFirstRank/splatBudget/distanceSq/focusDistance/toneMappingMode/canvasColorSpace/renderTargetSRGB/particleDivisorBound/nodeStorageBufferId/staleAttributeRef/textureUpdateRangeCount/updateRangeCleared/randomSeedOrder/zeroClientSize/miniStatsVisible`. A lightweight path is to pack these into a low-resolution state texture and let the fragment shader convert them into point size, arrival rings, color bands, dirty tiles, and stale lanes. For PlayCanvas, use streamed GSplat LOD and MiniStats. For three.js, use storage, texture, and cache state touched by recent commits. For Babylon, start from WebGPU canvas tone mapping and render-target sRGB.",
+      "links": [
+        {
+          "label": "three.js commits",
+          "url": "https://github.com/mrdoob/three.js/commits"
+        },
+        {
+          "label": "Babylon.js 9.30.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js は r187 milestone、NodeStorageBuffer、VXGIVolume disposal、texture update ranges、RangeNode random order、uniform array layout、WebGL fallback on demand、MeshVolume、depth-guarded refraction を継続。PlayCanvas は v2.23.x の streamed GSplat LOD、canvas zero-size guard、MiniStats、devtools hook、worker bundling を見る。Babylon は 9.30.x の WebGPU canvas tone mapping / color space、render target sRGB、GPUParticleSystem state、frame graph min/max reducer、cached texture retryを追う。Codrops は cursor trail、VAT、Elemental Sandbox、Reel Flux、ASCII、datamosh、audio xylophone のような shader / interaction 題材に絞る。",
+      "bodyEn": "Watch three.js r187, NodeStorageBuffer, VXGIVolume disposal, texture update ranges, RangeNode random order, uniform array layout, WebGL fallback on demand, MeshVolume, and depth-guarded refraction. For PlayCanvas, follow v2.23.x streamed GSplat LOD, canvas zero-size guard, MiniStats, devtools hook, and worker bundling. For Babylon, track 9.30.x WebGPU canvas tone mapping and color space, render-target sRGB, GPUParticleSystem state, frame graph min/max reducer, and cached texture retry. For Codrops, stay focused on shader and interaction topics such as cursor trails, VAT, Elemental Sandbox, Reel Flux, ASCII, datamosh, and audio xylophone."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-10_coarse_splat_tonemap_field.html` を開く。1で coarse-first stream、2で tone-map bands、3で zero-size canvas guard、4で合成。dragでfocusを動かし、click/Spaceでstream burstを見る。次に `outputs/2026-10-10_cache_storage_color_audit.html` を開く。1で stale storage refs、2で texture update ranges、3で canvas color contract、4で合成。次に足すなら、本命サンプルへ実際の `lodLevel` と `coarseFirstRank` 配列を渡し、点のサイズと到着順を本物のログで動かす。",
+      "bodyEn": "Open `outputs/2026-10-10_coarse_splat_tonemap_field.html` first. Mode 1 shows coarse-first stream, mode 2 tone-map bands, mode 3 zero-size canvas guard, and mode 4 the composite. Drag to move focus and click/Space to trigger a stream burst. Then open `outputs/2026-10-10_cache_storage_color_audit.html`: mode 1 stale storage refs, mode 2 texture update ranges, mode 3 canvas color contract, mode 4 composite. Next, feed real `lodLevel` and `coarseFirstRank` arrays into the main sample and drive point size and arrival order from logs.",
+      "links": [
+        {
+          "label": "Main sample: Coarse Splat Tonemap Field",
+          "url": "outputs/2026-10-10_coarse_splat_tonemap_field.html"
+        },
+        {
+          "label": "Derived sample: Cache Storage Color Audit",
+          "url": "outputs/2026-10-10_cache_storage_color_audit.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas v2.23.2、three.js commits / r187 milestone、Babylon.js 9.30.0、Codrops Creative Hub / shape-aware ASCII を確認。アイデア検討: 10/9 の splat light / shadow / frame graph を、coarse-first stream、tone mapping、color space、stale cache、texture update rangeへ接続。サンプル実装: 本命 `outputs/2026-10-10_coarse_splat_tonemap_field.html` と派生 `outputs/2026-10-10_cache_storage_color_audit.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件は renderer state score / state texture pipeline / splat stream shadow。新規案件は coarse-first arrival と color-space choreography。寝かせる案件はカードUI、重いsplat loader移植、外部アセットや認証前提の大きなデモ。",
+      "bodyEn": "Collection: checked PlayCanvas v2.23.2, three.js commits and r187 milestone, Babylon.js 9.30.0, and Codrops Creative Hub / shape-aware ASCII. Ideation: connected 10/9's splat light, shadow, and frame graph to coarse-first stream, tone mapping, color space, stale cache, and texture update ranges. Implementation: added the main sample `outputs/2026-10-10_coarse_splat_tonemap_field.html` and derived sample `outputs/2026-10-10_cache_storage_color_audit.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are renderer state score, state texture pipeline, and splat stream shadow. The new item is coarse-first arrival and color-space choreography. Parked items are card UI, heavy splat loader ports, and large demos requiring external assets or authentication.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-10_coarse_splat_tonemap_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-10_cache_storage_color_audit.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、GPUの安全策や修正項目がそのまま表現語彙になっていること。9月は readback、resource lifetime、sort precision、mipmap/residency、layer/depth、10月前半は viewport/scissor、bind group、Inspector/AppStats、variant、HTML/cursor、depth/history、splat shadowへ進んだ。今日はさらに、coarse-first LOD と color-space contract が加わった。組み合わせ候補は、coarse LOD arrival を低域音、tone mapping を中域、texture update ranges を高域ノイズに割り当てる音反応。育てる価値が高いテーマは、ロード中・再構築中・色変換中の「未完成さ」を隠さず、作品の呼吸として見せること。",
+      "bodyEn": "The recent trend is that GPU safety fixes and engine maintenance items are becoming expressive vocabulary. September moved through readback, resource lifetime, sort precision, mipmap/residency, layer/depth; early October added viewport/scissor, bind groups, Inspector/AppStats, variants, HTML/cursor, depth/history, and splat shadows. Today adds coarse-first LOD and color-space contracts. A strong combination is mapping coarse LOD arrival to bass, tone mapping to mids, and texture update ranges to high-frequency noise. The high-value theme is exposing the unfinished states of loading, rebuilding, and color conversion as the artwork's breathing instead of hiding them."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-10_coarse_splat_tonemap_field.html`。coarse-first GSplat stream、tone-map bands、zero-size canvas guard を raw WebGL で合成し、drag と pulse で粗LODの到着・色空間・解像focusを触れるようにした。派生は `outputs/2026-10-10_cache_storage_color_audit.html`。stale storage refs、texture update ranges、canvas color contract を、内部状態の検査ではなく視覚素材として動かす。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。",
+      "bodyEn": "The main prototype is `outputs/2026-10-10_coarse_splat_tonemap_field.html`, a dependency-free raw WebGL composite of coarse-first GSplat stream, tone-map bands, and zero-size canvas guard, making coarse LOD arrival, color space, and resolution focus touchable through drag and pulse. The derived prototype is `outputs/2026-10-10_cache_storage_color_audit.html`, which treats stale storage refs, texture update ranges, and canvas color contracts as visual material rather than internal inspection. Both support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は `focusX/focusY/mode/pulse` に加え、`lodLevel/coarseFirstRank/streamChunk/toneMappingMode/canvasColorSpace/renderTargetSRGB/staleAttributeRef/updateRangeCleared/zeroClientSize` を時系列データとして扱える。音反応では kick を stream burst、bass を coarse dot size、mid を tone-map exposure、hi-hat を dirty update tile に割り当てる。MediaPipe なら手の距離で LOD、手首速度で rebuild pulse、顔の向きで color contract focus を変える。WebXR なら視線が届く範囲だけ細かくなり、コントローラで色空間レイヤーを切り替える展示にできる。ブランド演出では、商品や場所のsplatが最初は粗い点で立ち上がり、近づくほど色と形が整う導線に向く。",
+      "bodyEn": "The two samples can treat `focusX/focusY/mode/pulse` plus `lodLevel/coarseFirstRank/streamChunk/toneMappingMode/canvasColorSpace/renderTargetSRGB/staleAttributeRef/updateRangeCleared/zeroClientSize` as time-series data. For audio, map kick to stream burst, bass to coarse dot size, mids to tone-map exposure, and hi-hat to dirty update tiles. With MediaPipe, hand distance can drive LOD, wrist velocity rebuild pulse, and face direction color-contract focus. In WebXR, only the gaze area resolves into finer detail while the controller switches color-space layers. For branded experiences, a product or place captured as splats can first appear as coarse points, then gain color and shape as the viewer approaches."
+    }
+  ]
+}
