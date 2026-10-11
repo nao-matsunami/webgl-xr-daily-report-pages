@@ -1,0 +1,179 @@
+{
+  "date": "2026-10-11",
+  "headline": "光のバッチ、影のbias、ロード優先度を空間演出の譜面にする",
+  "headlineEn": "Turn light batching, shadow bias, and load priority into a spatial score",
+  "summary": "今日は、three.js の 2026-10-10 から 10-09 にかけての PR 群、特に light version / double-sided shadow bias / static point and spot light batching / FileLoader requestInit、PlayCanvas Engine v2.23.0 の WebGPU render path と GSplat LOD・material bind group 系のまとまった変更、Babylon.js 9.30.0 の WebGPU color-space / GPUParticleSystem / SubMesh draw wrapper caching、Codrops Creative Hub の cursor / WebGL shader / grid 事例を接続した。10/10 の coarse-first splat stream と color contract から、今日は「どの光・影・リクエストが先に有効になるか」を見えるタイル譜面として扱う。本命サンプルは light/probe/shadow tile field、派生サンプルは loader/interactivity/retry score。",
+  "summaryEn": "Today's report connects three.js PRs from 2026-10-10 and 10-09 around light versions, double-sided shadow bias, static point/spot light batching, and FileLoader requestInit; PlayCanvas Engine v2.23.0's WebGPU render path, GSplat LOD, and material bind group changes; Babylon.js 9.30.0's WebGPU color-space, GPUParticleSystem, and SubMesh draw wrapper caching work; and Codrops Creative Hub references around cursor, WebGL shaders, and grids. Extending 10/10's coarse-first splat stream and color contract, today treats the activation order of lights, shadows, and requests as a visible tile score. The main sample is a light/probe/shadow tile field; the derived sample is a loader/interactivity/retry score.",
+  "links": [
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.30.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Light Probe Shadow Tile Field",
+      "url": "outputs/2026-10-11_light_probe_shadow_tile_field.html"
+    },
+    {
+      "label": "Derived sample: Loader Interactivity Retry Score",
+      "url": "outputs/2026-10-11_loader_interactivity_retry_score.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の pull requests では、2026-10-10 に KeyframeTrack tangent、MOZ_lightmap、LightsNode shadow-casting light version、double-sided shadow bias、UV atlas generator が並び、2026-10-09 には FileLoader requestInit / priority と static point / spot light batching が見える。10/10 の color contract から一歩進めて、光とロードの優先順位を描画素材にする。2. three.js r187 milestone は 2026-10-21 due のまま、WebGPU / TSL / fallback / refraction / LightProbeGrid 系が詰まっている。今日の本命サンプルは、LightProbeGrid と light batching を抽象化した tile score として試す。3. PlayCanvas Engine v2.23.0 は WebGPU render path の storage buffer、view bind group、material bind group、partial buffer uploads、streamed GSplat LOD などが一度に固まった大きいリリース。10/10 の coarse-first LOD を、今日は view / material / light の状態タイルへ広げる。4. Babylon.js 9.30.0 は WebGPU render target sRGB option forwarding、canvas tone mapping / color space options、GPUParticleSystem の instance attribute divisor state、SubMesh Draw Wrapper Caching Per Pass がポイント。色空間だけでなく、passごとの draw wrapper cache を演出状態として扱える。5. Codrops Creative Hub は Interactive Glass Xylophone、Custom-Shaped Cursor Trail、ASCII Logo、Wide: Grid Layout With a WebGL Shader、Interlude などを掲載。カードUIではなく、音・カーソル・グリッド・遷移・shader面の手触りを拾う。",
+      "bodyEn": "1. Recent three.js pull requests include KeyframeTrack tangent handling, MOZ_lightmap, LightsNode shadow-casting light versions, double-sided shadow bias, and a UV atlas generator on 2026-10-10, plus FileLoader requestInit / priority and static point/spot light batching on 2026-10-09. Building on 10/10's color contract, today's angle is to make light and load priority into visual material. 2. The three.js r187 milestone remains due on 2026-10-21, with WebGPU, TSL, fallback, refraction, and LightProbeGrid work clustered there. The main sample abstracts LightProbeGrid and light batching as a tile score. 3. PlayCanvas Engine v2.23.0 is a large release clustering WebGPU render-path storage buffers, view bind groups, material bind groups, partial buffer uploads, and streamed GSplat LOD. Today's thread expands 10/10's coarse-first LOD into view/material/light state tiles. 4. Babylon.js 9.30.0 highlights WebGPU render target sRGB option forwarding, canvas tone mapping / color-space options, GPUParticleSystem instance attribute divisor state, and SubMesh draw wrapper caching per pass. Beyond color space, per-pass draw wrapper cache can become an expressive state. 5. Codrops Creative Hub lists Interactive Glass Xylophone, Custom-Shaped Cursor Trail, ASCII Logo, Wide: Grid Layout With a WebGL Shader, and Interlude. The useful references here are audio, cursor, grid, transition, and shader tactility rather than card UI.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.0 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        },
+        {
+          "label": "Babylon.js 9.30.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日一番面白いのは、three.js の static point / spot light batching と double-sided shadow bias を、単なる最適化・品質修正ではなく「光がどのセルで先にまとまるか」「両面影のズレをどの方向へ逃がすか」という舞台制御に読み替えられる点。PlayCanvas v2.23.0 の view bind group / material bind group / storage buffer は、描画の状態が view, material, instance に分かれていることを見える構造にできる。Babylon.js 9.30.0 の draw wrapper caching per pass は、passごとの記憶を可視化する入口。Codrops の WebGL grid / cursor / audio 事例は、その状態譜面をユーザーの移動や音へ結びつける参考になる。",
+      "bodyEn": "The most interesting thread today is that three.js static point/spot light batching and double-sided shadow bias can be read not just as optimization and quality fixes, but as stage controls: which cells receive grouped light first, and where double-sided shadow offset is allowed to escape. PlayCanvas v2.23.0's view bind groups, material bind groups, and storage buffers make render state visibly separable into view, material, and instance. Babylon.js 9.30.0's draw wrapper caching per pass offers an entry point for visualizing per-pass memory. Codrops WebGL grid, cursor, and audio examples suggest how to tie that state score to user motion or sound.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.0 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は `outputs/2026-10-11_light_probe_shadow_tile_field.html`。1で static light grid、2で probe bake、3で double-sided shadow bias、4で合成を見る。dragで view focus を動かし、click/Space で tile rebuild pulse を入れる。10/10 の coarse-first 到着を、今日は light/probe/shadow の3層へ分けた。派生は `outputs/2026-10-11_loader_interactivity_retry_score.html`。FileLoader request priority、KHR_interactivity 的なイベントグラフ、cached texture retry を、ロード中の裏側ではなく前景のリズムとして描く。短期では request priority を音の拍に、retry tile をノイズに、interactivity graph をポインタ履歴に接続する。中長期では、この2本を 10/9 の proxy shadow と 10/10 の tone-map bands へ重ね、ロード・光・色が同じ state texture で動く展示面へ育てる。",
+      "bodyEn": "The main sample is `outputs/2026-10-11_light_probe_shadow_tile_field.html`. Mode 1 shows a static light grid, mode 2 probe bake, mode 3 double-sided shadow bias, and mode 4 the composite. Drag moves view focus, and click/Space triggers a tile rebuild pulse. It splits 10/10's coarse-first arrival into light, probe, and shadow layers. The derived sample is `outputs/2026-10-11_loader_interactivity_retry_score.html`, turning FileLoader request priority, a KHR_interactivity-style event graph, and cached texture retry into foreground rhythm rather than hidden loading work. Short term, request priority can map to musical beats, retry tiles to noise, and interactivity graph to pointer history. Longer term, combine both samples with 10/9 proxy shadow and 10/10 tone-map bands so loading, light, and color are driven by one state texture.",
+      "links": [
+        {
+          "label": "Main sample: Light Probe Shadow Tile Field",
+          "url": "outputs/2026-10-11_light_probe_shadow_tile_field.html"
+        },
+        {
+          "label": "Derived sample: Loader Interactivity Retry Score",
+          "url": "outputs/2026-10-11_loader_interactivity_retry_score.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `lightVersion/lightBatchCell/pointLightCount/spotLightCount/shadowBias/doubleSidedShadow/passId/probeIndex/probeBakePass/arrayCameraIndex/requestPriority/requestInitMode/assetRank/textureRetryCount/cacheHit/drawWrapperPass/materialBindGroupId/viewBindGroupId/storageBufferAge/gpuParticleDivisorBound/canvasColorSpace`。最小構成では JSON 配列を 16x16 程度の state texture へ詰め、fragment shader 側で tile color、ring radius、line jitter、retry pulse に変換する。three.js は light batching / FileLoader / r187 を入口にし、PlayCanvas は view/material bind group と streamed GSplat LOD、Babylon は pass cache と color-space option を合わせると、エンジン横断の renderer-state score になる。",
+      "bodyEn": "Candidate log fields are `lightVersion/lightBatchCell/pointLightCount/spotLightCount/shadowBias/doubleSidedShadow/passId/probeIndex/probeBakePass/arrayCameraIndex/requestPriority/requestInitMode/assetRank/textureRetryCount/cacheHit/drawWrapperPass/materialBindGroupId/viewBindGroupId/storageBufferAge/gpuParticleDivisorBound/canvasColorSpace`. In a minimal setup, pack JSON arrays into a small 16x16 state texture, then convert them in the fragment shader into tile color, ring radius, line jitter, and retry pulse. three.js light batching / FileLoader / r187, PlayCanvas view/material bind groups and streamed GSplat LOD, and Babylon pass cache plus color-space options together form a cross-engine renderer-state score.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon.js 9.30.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js は r187 milestone、LightsNode / LightProbeGrid / ArrayCamera uniforms / WebGPU storage texture / ColorManagement / FileLoader priority / compileAsync parallel pipelines を継続。PlayCanvas は v2.23.x 以降の WebGPU material bind group、view bind group、storage buffer、GSplat LOD、shadow / lightmap まわりを見る。Babylon は 9.30.x 以降の WebGPU color-space、SubMesh draw wrapper cache、GPUParticleSystem state、cached texture retry、KHR_interactivity / Flow Graph 連携を追う。Codrops は Wide grid shader、Custom-Shaped Cursor Trail、Interactive Glass Xylophone、ASCII Logo、Interlude のように、入力・遷移・shaderが絡むものだけ拾う。",
+      "bodyEn": "Watch three.js r187, LightsNode, LightProbeGrid, ArrayCamera uniforms, WebGPU storage textures, ColorManagement, FileLoader priority, and parallel compileAsync pipelines. For PlayCanvas, track v2.23.x and later WebGPU material bind groups, view bind groups, storage buffers, GSplat LOD, and shadow/lightmap work. For Babylon, follow 9.30.x and later WebGPU color-space, SubMesh draw wrapper cache, GPUParticleSystem state, cached texture retry, and KHR_interactivity / Flow Graph links. For Codrops, keep only input, transition, and shader-heavy references such as Wide grid shader, Custom-Shaped Cursor Trail, Interactive Glass Xylophone, ASCII Logo, and Interlude."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-11_light_probe_shadow_tile_field.html` を開く。4の合成で眺め、dragで focus を動かして tile の明るさと probe ring の追従を見る。1-3へ切り替えると、light grid / probe bake / shadow bias のどこが効いているか分かる。次に `outputs/2026-10-11_loader_interactivity_retry_score.html` を開き、1で request priority、2で event graph、3で texture retry、4で合成を見る。次に足すなら、本命サンプルへ本物の `pointLightCount` と `probeBakePass`、派生サンプルへ fetch の `priority` と loader retry log を入れて、表示を実測駆動にする。",
+      "bodyEn": "Open `outputs/2026-10-11_light_probe_shadow_tile_field.html` first. View mode 4, drag the focus, and watch tile brightness and probe rings follow. Switching to modes 1-3 shows which layer is light grid, probe bake, or shadow bias. Then open `outputs/2026-10-11_loader_interactivity_retry_score.html`: mode 1 is request priority, mode 2 event graph, mode 3 texture retry, and mode 4 composite. Next, feed real `pointLightCount` and `probeBakePass` into the main sample, and fetch `priority` plus loader retry logs into the derived sample.",
+      "links": [
+        {
+          "label": "Main sample: Light Probe Shadow Tile Field",
+          "url": "outputs/2026-10-11_light_probe_shadow_tile_field.html"
+        },
+        {
+          "label": "Derived sample: Loader Interactivity Retry Score",
+          "url": "outputs/2026-10-11_loader_interactivity_retry_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js PR list / r187 milestone、PlayCanvas v2.23.0 release、Babylon.js 9.30.0 release、Codrops Creative Hub を確認。アイデア検討: 10/10 の coarse-first LOD / color contract を、光のバッチ、probe bake、shadow bias、loader priority、texture retry へ接続。サンプル実装: 本命 `outputs/2026-10-11_light_probe_shadow_tile_field.html` と派生 `outputs/2026-10-11_loader_interactivity_retry_score.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件は renderer state score / state texture pipeline / splat stream shadow。新規案件は light/probe/shadow tile score と loader priority score。寝かせる案件はカードUI、重い3Dモデル読み込み、実アセット依存の大規模デモ。",
+      "bodyEn": "Collection: checked the three.js PR list / r187 milestone, PlayCanvas v2.23.0 release, Babylon.js 9.30.0 release, and Codrops Creative Hub. Ideation: connected 10/10's coarse-first LOD and color contract to light batching, probe bake, shadow bias, loader priority, and texture retry. Implementation: added the main sample `outputs/2026-10-11_light_probe_shadow_tile_field.html` and derived sample `outputs/2026-10-11_loader_interactivity_retry_score.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are renderer state score, state texture pipeline, and splat stream shadow. New items are light/probe/shadow tile score and loader priority score. Parked items are card UI, heavy 3D model loading, and large demos dependent on real assets.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-11_light_probe_shadow_tile_field.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-11_loader_interactivity_retry_score.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "ここ数日の流れは、splat stream / tone-map / cache audit から、light batching / shadow bias / loader priority へ移った。つまり、見えている絵だけでなく「絵が成立する順番」そのものが素材になっている。組み合わせ候補は、10/9 の proxy shadow、10/10 の coarse-first splat、今日の light tile を同じ 2D atlas に並べ、音の低域で splat arrival、中域で light version、高域で loader retry を動かす構成。育てる価値が高いテーマは、renderer の内部状態を説明UIではなく、作品の気配や天候のように見せること。",
+      "bodyEn": "The recent flow has moved from splat stream, tone-map, and cache audit to light batching, shadow bias, and loader priority. In other words, not only the final picture but the order in which the picture becomes valid is becoming material. A strong combination is to place 10/9 proxy shadow, 10/10 coarse-first splat, and today's light tiles into one 2D atlas, then drive splat arrival with bass, light version with mids, and loader retry with highs. The high-value theme is to present renderer internal state not as explanatory UI, but as atmosphere or weather in the work."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-11_light_probe_shadow_tile_field.html`。static light grid、probe bake rings、double-sided shadow bias を raw WebGL で合成し、drag と pulse で view focus と tile rebuild を触れるようにした。派生は `outputs/2026-10-11_loader_interactivity_retry_score.html`。fetch priority、KHR_interactivity 的なイベントグラフ、cached texture retry を小さな譜面にした。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。",
+      "bodyEn": "The main prototype is `outputs/2026-10-11_light_probe_shadow_tile_field.html`, a dependency-free raw WebGL composite of static light grid, probe bake rings, and double-sided shadow bias, with drag and pulse controls for view focus and tile rebuild. The derived prototype is `outputs/2026-10-11_loader_interactivity_retry_score.html`, a small score for fetch priority, a KHR_interactivity-style event graph, and cached texture retry. Both support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は `focusX/focusY/mode/pulse` に加え、`lightVersion/lightBatchCell/shadowBias/probeBakePass/requestPriority/assetRank/textureRetryCount/cacheHit/drawWrapperPass/canvasColorSpace` を時系列データとして扱える。音反応では kick を tile rebuild、bass を light cluster size、mid を probe ring、hi-hat を retry tile に割り当てる。MediaPipe なら手の開閉で light batch radius、手首速度で shadow bias、顔の向きで request focus を変える。WebXR なら視線の先だけ probe が焼け、手元のコントローラで loader priority を変える展示にできる。データ可視化では、ネットワークやGPUログをそのまま地図の天候レイヤーのように重ね、混雑・遅延・再試行を美術的に見せられる。",
+      "bodyEn": "The two samples can treat `focusX/focusY/mode/pulse` plus `lightVersion/lightBatchCell/shadowBias/probeBakePass/requestPriority/assetRank/textureRetryCount/cacheHit/drawWrapperPass/canvasColorSpace` as time-series data. For audio, map kick to tile rebuild, bass to light cluster size, mids to probe rings, and hi-hat to retry tiles. With MediaPipe, hand openness can drive light batch radius, wrist speed shadow bias, and face direction request focus. In WebXR, only the gaze area bakes probes while the controller changes loader priority. For data visualization, network and GPU logs can become weather layers over a map, turning congestion, latency, and retries into an aesthetic signal."
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-10-11 Loader Interactivity Retry Score</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #060708; color: #eef8f3; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: fixed; left: 18px; top: 16px; right: 18px; pointer-events: none; text-shadow: 0 1px 18px #020403; }
+    .title { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #9fe8ff; }
+    .meta { margin-top: 8px; max-width: 940px; font-size: 12px; line-height: 1.55; color: #f8dfae; }
+    .mode { color: #ffd86b; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <div class="title">Loader Interactivity Retry Score</div>
+  <div class="meta">1 fetch priority / 2 KHR interactivity / 3 texture retry / 4 composite - drag = request focus - click or Space = event pulse - mode <span class="mode" id="mode">4</span></div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById("gl");
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+  const modeEl = document.getElementById("mode");
+  if (!gl) {
+    document.body.insertAdjacentHTML("beforeend", "<p style='padding:20px'>WebGL unavailable.</p>");
+    return;
+  }
+  const vertex = "attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0); }";
+  const fragment = `
+precision highp float;
+uniform vec2 r;
+uniform vec2 m;
+uniform float t;
+uniform float pulse;
+uniform int mode;
+
+float hash(vec2 p){ p=fract(p*vec2(211.1,97.7)); p+=dot(p,p+29.31); return fract(p.x*p.y); }
+float line(float v,float p,float w){ return smoothstep(w,0.0,abs(v-p)); }
+float ring(float d,float p,float w){ return smoothstep(w,0.0,abs(d-p)); }
+
+vec3 fetchPriority(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec3 col=vec3(0.012,0.015,0.020);
+  for(int i=0;i<18;i++){
+    float fi=float(i);
+    float y=-0.82+fi*0.096;
+    float pr=hash(vec2(fi,3.0));
+    float speed=mix(0.10,0.34,pr);
+    float x=fract(t*speed+pr+focus.x*0.35)*2.6-1.3;
+    float d=length((p-vec2(x,y))*vec2(1.0,7.2));
+    float req=smoothstep(0.050,0.0,d);
+    vec3 lane=mix(vec3(0.15,0.35,0.80),vec3(1.0,0.66,0.20),step(0.58,pr));
+    col+=line(p.y,y,0.010)*vec3(0.05,0.11,0.16);
+    col+=req*lane*(0.5+0.5*pulse);
+    col+=line(p.x,x+0.13*sin(t+fi),0.004)*req*vec3(0.80,0.95,1.0);
+  }
+  return col;
+}
+
+vec3 interactivityGraph(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec2 f=(focus*2.0-1.0)*vec2(r.x/r.y,1.0);
+  vec3 col=vec3(0.015,0.013,0.018);
+  for(int i=0;i<26;i++){
+    float fi=float(i);
+    vec2 node=vec2(cos(fi*2.399),sin(fi*1.711))*vec2(1.25,0.72);
+    node+=0.10*vec2(sin(t*0.23+fi),cos(t*0.19+fi*0.7));
+    float active=1.0-smoothstep(0.18,1.35,length(node-f));
+    float d=length(p-node);
+    col+=smoothstep(0.045,0.0,d)*mix(vec3(0.12,0.28,0.40),vec3(0.40,0.96,0.72),active);
+    for(int j=0;j<2;j++){
+      float fj=float(j);
+      vec2 target=vec2(cos((fi+fj*7.0)*2.399),sin((fi+fj*5.0)*1.711))*vec2(1.25,0.72);
+      vec2 a=p-node;
+      vec2 b=target-node;
+      float h=clamp(dot(a,b)/dot(b,b),0.0,1.0);
+      float edge=1.0-smoothstep(0.010,0.030,length(a-b*h));
+      col+=edge*vec3(0.20,0.58,0.58)*(0.08+0.35*active);
+    }
+  }
+  col+=ring(length(p-f),0.18+0.18*pulse,0.009)*vec3(1.0,0.72,0.28);
+  return col;
+}
+
+vec3 retryTiles(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec3 col=vec3(0.018,0.014,0.012);
+  vec2 grid=(p+vec2(1.75,1.0))*vec2(9.0,5.0);
+  vec2 id=floor(grid);
+  vec2 local=fract(grid)-0.5;
+  float tile=smoothstep(0.48,0.42,max(abs(local.x),abs(local.y)));
+  float h=hash(id);
+  float retry=smoothstep(0.68,0.94,fract(t*0.16+h+pulse*0.30));
+  float cached=smoothstep(0.20,0.85,hash(id+floor(t*0.25)));
+  vec3 cold=vec3(0.07,0.10,0.13);
+  vec3 hot=vec3(1.0,0.52,0.22);
+  vec3 ok=vec3(0.28,0.82,0.58);
+  col+=tile*mix(mix(cold,ok,cached),hot,retry);
+  col+=tile*line(local.x,0.0,0.018)*vec3(0.80,0.94,1.0)*(0.15+retry);
+  col+=tile*line(local.y,0.0,0.018)*vec3(0.80,0.94,1.0)*(0.10+cached*0.3);
+  return col;
+}
+
+void main(){
+  vec2 uv=gl_FragCoord.xy/r;
+  vec2 focus=clamp(m,0.0,1.0);
+  vec3 a=fetchPriority(uv,focus);
+  vec3 b=interactivityGraph(uv,focus);
+  vec3 c=retryTiles(uv,focus);
+  vec3 col=a;
+  if(mode==2) col=b;
+  if(mode==3) col=c;
+  if(mode==4){
+    col=a*0.68+b*0.55+c*0.58;
+    col+=line(uv.x,focus.x,0.003)*vec3(0.55,0.90,1.0)*(0.22+0.58*pulse);
+    col+=line(uv.y,focus.y,0.003)*vec3(1.0,0.76,0.34)*(0.16+0.45*pulse);
+  }
+  gl_FragColor=vec4(pow(max(col,0.0),vec3(0.88)),1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    r: gl.getUniformLocation(program, "r"),
+    m: gl.getUniformLocation(program, "m"),
+    t: gl.getUniformLocation(program, "t"),
+    pulse: gl.getUniformLocation(program, "pulse"),
+    mode: gl.getUniformLocation(program, "mode")
+  };
+  let mode = 4;
+  let mouse = [0.45, 0.52];
+  let pulseAt = -10;
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.floor(innerWidth * dpr));
+    const h = Math.max(1, Math.floor(innerHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+  function setMouse(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouse = [(e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height];
+  }
+  addEventListener("pointermove", setMouse);
+  addEventListener("pointerdown", (e) => { setMouse(e); pulseAt = performance.now() / 1000; });
+  addEventListener("keydown", (e) => {
+    if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+    if (e.code === "Space") pulseAt = performance.now() / 1000;
+    modeEl.textContent = mode;
+  });
+  function frame(now) {
+    resize();
+    const time = now / 1000;
+    gl.uniform2f(uniforms.r, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.m, mouse[0], mouse[1]);
+    gl.uniform1f(uniforms.t, time);
+    gl.uniform1f(uniforms.pulse, Math.exp(-4.0 * Math.max(0, time - pulseAt)));
+    gl.uniform1i(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>
