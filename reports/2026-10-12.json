@@ -1,0 +1,175 @@
+{
+  "date": "2026-10-12",
+  "headline": "部分ロード、屈折ガード、canvas回復を空間スコアにする",
+  "headlineEn": "Turn partial loading, refraction guards, and canvas recovery into a spatial score",
+  "summary": "今日は、three.js r187 milestone / migration guide に残る HTTP Range request、transmission pass、depth-guard screen-space refraction、viewport/scissor 変更、PlayCanvas Engine v2.23.2 の coarse-first GSplat LOD / zero-size canvas / MiniStats skip、Babylon.js 9.30.0 の WebGPU color-space / render target sRGB / texture retry 系、Codrops の WebGL / GLSL / Three.js 事例を接続した。10/11 の light / shadow / loader priority から、今日は「部分的に届くデータ」と「壊れないように守られる描画状態」を前景の演出にする。本命サンプルは HTTP range chunk、depth-guard refraction、coarse splat arrival の合成。派生サンプルは canvas resolution contract、MiniStats silence、texture retry cache の検証面。",
+  "summaryEn": "Today's report connects the three.js r187 milestone / migration guide items around HTTP Range requests, transmission pass, depth-guarded screen-space refraction, and viewport/scissor changes; PlayCanvas Engine v2.23.2 coarse-first GSplat LOD, zero-size canvas, and MiniStats skip fixes; Babylon.js 9.30.0 WebGPU color-space, render-target sRGB, and texture retry themes; and Codrops WebGL / GLSL / Three.js examples. Extending 10/11's light, shadow, and loader priority score, today brings partially arriving data and protected render states into the foreground. The main sample composites HTTP range chunks, depth-guard refraction, and coarse splat arrival. The derived sample stages canvas resolution contracts, MiniStats silence, and texture retry cache as a diagnostic surface.",
+  "links": [
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "three.js Migration Guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "Babylon.js 9.30.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Codrops All Demos",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main sample: Range Refraction Stream Scope",
+      "url": "outputs/2026-10-12_range_refraction_stream_scope.html"
+    },
+    {
+      "label": "Derived sample: Canvas MiniStats Retry Probe",
+      "url": "outputs/2026-10-12_canvas_mini_stats_retry_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187 milestone は 2026-10-21 due で、Depth-guard screen-space refraction、transmission pass copy、FileLoader HTTP Range requests、renderShadowMap、BatchedMesh points、WebGPU RenderObject grouping などが残る。10/11 の loader priority から、今日は Range request を「必要な範囲だけ先に届く視覚リズム」として扱う。2. three.js Migration Guide の 186→187 では PMREM の cube render target 化、WeakRef / FinalizationRegistry、XR camera matrix、render target bound 時の viewport/scissor pixel ratio 挙動、TSL pixelationPass の pixelSize 型変更が明記されている。これは 10/1 以降の viewport/scissor と lifetime の線へ戻せる。3. PlayCanvas Engine v2.23.2 は 2026-10-09 release で、GSplat LOD coarsest-first streaming、bundled worker code、zero-size canvas resolution、MiniStats no-render skip が入った。粗LOD、canvas回復、統計表示の沈黙を同じ状態面に載せる。4. Babylon.js 9.30.0 は WebGPU render target sRGB option forwarding、canvas tone mapping / color space options、GPUParticleSystem instance divisor state、SubMesh draw wrapper caching per pass、Flow Graph Editor の source-backed interactivity export 修正が軸。5. Codrops は Creative Hub / All Demos で GLSL 78件、WebGL 333件、Three.js 282件、WebGPU 38件の分類を持ち、Elemental Sandbox、Reel Flux、3D Face Mask、ASCII Logo、Datamosh、Glass Xylophone など、カード以外の shader / interaction / audio 題材が豊富。",
+      "bodyEn": "1. The three.js r187 milestone is due 2026-10-21 and still includes depth-guarded screen-space refraction, transmission pass copy, FileLoader HTTP Range requests, renderShadowMap, BatchedMesh points, and WebGPU RenderObject grouping. Extending 10/11's loader priority, today's angle treats Range requests as a visual rhythm where only the needed byte windows arrive first. 2. The three.js 186 to 187 migration guide notes cube-render-target PMREM, WeakRef / FinalizationRegistry, XR camera matrix changes, viewport/scissor pixel-ratio behavior when render targets are bound, and a TSL pixelationPass pixelSize type change. This connects back to the viewport/scissor and lifetime thread from 10/1 onward. 3. PlayCanvas Engine v2.23.2 was released on 2026-10-09 with coarsest-first GSplat LOD streaming, bundled worker code cleanup, zero-size canvas resolution preservation, and MiniStats no-render skips. Coarse LOD, canvas recovery, and stats silence can share one state surface. 4. Babylon.js 9.30.0 centers on WebGPU render-target sRGB forwarding, canvas tone mapping / color-space options, GPUParticleSystem instance divisor state, SubMesh draw wrapper caching per pass, and source-backed interactivity export in the Flow Graph Editor. 5. Codrops Creative Hub / All Demos exposes rich non-card shader material, with categories like GLSL, WebGL, Three.js, and WebGPU, plus references such as Elemental Sandbox, Reel Flux, 3D Face Mask, ASCII Logo, Datamosh, and Glass Xylophone.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.2 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon.js 9.30.0 release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        },
+        {
+          "label": "Codrops All Demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今日の面白さは、安定化・互換性・ローダー修正が全部「待っている状態の見せ方」に変換できる点。three.js の HTTP Range requests と transmission / refraction 系は、透明な空間の一部だけが先に届き、深度で守られながら解像する演出にできる。PlayCanvas の coarsest-first GSplat は、粗い点群が全体像を先に置き、視線近くのみ細かくなる。Babylon の color-space / draw wrapper cache / interactivity export は、passごとの記憶や入力イベントを色帯として見せる入口になる。Codrops の Datamosh や Glass Xylophone は、破綻・音・遷移を隠さず素材化する良い参照。",
+      "bodyEn": "The interesting thread today is that stabilization, compatibility, and loader fixes all translate into ways of showing a waiting state. three.js HTTP Range requests plus transmission / refraction work suggest transparent spaces where only selected byte windows arrive first and resolve under a depth guard. PlayCanvas coarsest-first GSplat places a rough point-cloud overview first, then refines near gaze. Babylon color-space, draw-wrapper cache, and interactivity export provide entry points for showing per-pass memory and input events as color bands. Codrops Datamosh and Glass Xylophone are useful references because they turn breakage, sound, and transitions into material rather than hiding them.",
+      "links": [
+        {
+          "label": "Codrops All Demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        },
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は `outputs/2026-10-12_range_refraction_stream_scope.html`。1で HTTP Range 風の chunk lane、2で depth-guard refraction、3で coarse splat arrival、4で合成を見る。dragで gaze window、click/Spaceで request burst を入れる。10/11 の request priority を、今日は透明層・屈折・粗LODの3層へ展開した。派生は `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`。canvas resolution contract、MiniStats の no-render silence、texture retry cache を診断面として見せる。短期では Range chunk を音の拍、refraction guard をマウス/視線、retry cache をノイズへ接続する。中長期では、10/9 proxy shadow、10/10 tone-map bands、10/11 light tile と同じ state texture atlas に入れ、ロード・光・色・屈折が同時に呼吸する作品面へ育てる。",
+      "bodyEn": "The main sample is `outputs/2026-10-12_range_refraction_stream_scope.html`. Mode 1 shows HTTP Range-like chunk lanes, mode 2 depth-guard refraction, mode 3 coarse splat arrival, and mode 4 the composite. Drag moves the gaze window; click/Space triggers a request burst. It expands 10/11 request priority into transparent layer, refraction, and coarse LOD. The derived sample is `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`, staging canvas resolution contract, MiniStats no-render silence, and texture retry cache as a diagnostic surface. Short term, map Range chunks to musical beats, refraction guard to pointer or gaze, and retry cache to noise. Longer term, place it into the same state texture atlas as 10/9 proxy shadow, 10/10 tone-map bands, and 10/11 light tiles so loading, light, color, and refraction breathe together.",
+      "links": [
+        {
+          "label": "Main sample: Range Refraction Stream Scope",
+          "url": "outputs/2026-10-12_range_refraction_stream_scope.html"
+        },
+        {
+          "label": "Derived sample: Canvas MiniStats Retry Probe",
+          "url": "outputs/2026-10-12_canvas_mini_stats_retry_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ化候補は `rangeStart/rangeEnd/rangePriority/requestBurst/transmissionPassId/refractionGuardDepth/depthRejectCount/coarseFirstRank/lodLevel/splatBudget/canvasClientZero/canvasResolutionKept/miniStatsVisible/miniStatsSkipped/textureRetryCount/cacheHit/drawWrapperPass/canvasColorSpace/renderTargetSRGB/viewportScale/scissorRect`。実装は 16x16 か 32x8 の state texture に、chunk到着、LOD、guard、retryを詰め、fragment shader 側で lane / ring / caustic / tile に変換するのが軽い。three.js 側は FileLoader Range と transmission/refraction、PlayCanvas 側は GSplat LOD と canvas/MiniStats、Babylon 側は color-space と pass cache を入口にする。",
+      "bodyEn": "Candidate log fields include `rangeStart/rangeEnd/rangePriority/requestBurst/transmissionPassId/refractionGuardDepth/depthRejectCount/coarseFirstRank/lodLevel/splatBudget/canvasClientZero/canvasResolutionKept/miniStatsVisible/miniStatsSkipped/textureRetryCount/cacheHit/drawWrapperPass/canvasColorSpace/renderTargetSRGB/viewportScale/scissorRect`. A lightweight implementation packs chunk arrival, LOD, guard, and retry values into a 16x16 or 32x8 state texture, then converts them in the fragment shader into lanes, rings, caustics, and tiles. Use three.js FileLoader Range plus transmission/refraction, PlayCanvas GSplat LOD plus canvas/MiniStats, and Babylon color-space plus pass cache as the entry points.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.2 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js は r187 の FileLoader HTTP Range requests、depth-guard refraction、transmission pass copy、renderShadowMap、BatchedMesh points、WebGPU RenderObject grouping、Migration Guide の viewport/scissor / PMREM / lifetime を継続。PlayCanvas は v2.23.x の GSplat LOD、zero-size canvas、MiniStats、worker bundle、devtools hook を見る。Babylon は 9.30.x 以降の WebGPU color-space、draw wrapper cache、texture retry、Flow Graph / KHR_interactivity 系を追う。Codrops は Datamosh、Elemental Sandbox、Reel Flux、Face Mask、Glass Xylophone、ASCII / OGL / GLSL のように、入力や破綻が描画に直結する事例を拾う。",
+      "bodyEn": "Watch three.js r187 FileLoader HTTP Range requests, depth-guard refraction, transmission pass copy, renderShadowMap, BatchedMesh points, WebGPU RenderObject grouping, and migration topics around viewport/scissor, PMREM, and lifetime. For PlayCanvas, follow v2.23.x GSplat LOD, zero-size canvas, MiniStats, worker bundling, and devtools hook. For Babylon, track 9.30.x and later WebGPU color-space, draw-wrapper cache, texture retry, and Flow Graph / KHR_interactivity work. For Codrops, prioritize cases where input or glitch directly drives rendering, such as Datamosh, Elemental Sandbox, Reel Flux, Face Mask, Glass Xylophone, ASCII, OGL, and GLSL."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず `outputs/2026-10-12_range_refraction_stream_scope.html` を開く。4の合成で眺め、dragで gaze window を動かし、click/Spaceで chunk arrival と refraction ring の反応を見る。1-3へ切り替えると、Range chunk、depth guard、coarse splat のどこが効いているか分かる。次に `outputs/2026-10-12_canvas_mini_stats_retry_probe.html` を開き、1で canvas resolution contract、2で MiniStats silence、3で texture retry、4で合成を見る。次に足すなら、本命サンプルへ実際の `rangeStart/rangeEnd` と `lodLevel`、派生サンプルへ `canvasClientZero` と `textureRetryCount` を入れて実測駆動にする。",
+      "bodyEn": "Open `outputs/2026-10-12_range_refraction_stream_scope.html` first. View mode 4, drag the gaze window, and click/Space to watch chunk arrival and refraction rings react. Switching to modes 1-3 shows which layer is Range chunks, depth guard, or coarse splat. Then open `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`: mode 1 is canvas resolution contract, mode 2 MiniStats silence, mode 3 texture retry, and mode 4 composite. Next, feed real `rangeStart/rangeEnd` and `lodLevel` into the main sample, and `canvasClientZero` plus `textureRetryCount` into the derived sample.",
+      "links": [
+        {
+          "label": "Main sample: Range Refraction Stream Scope",
+          "url": "outputs/2026-10-12_range_refraction_stream_scope.html"
+        },
+        {
+          "label": "Derived sample: Canvas MiniStats Retry Probe",
+          "url": "outputs/2026-10-12_canvas_mini_stats_retry_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r187 milestone / Migration Guide、PlayCanvas v2.23.2 release、Babylon.js 9.30.0 release、Codrops Creative Hub / All Demos を確認。アイデア検討: 10/11 の light / shadow / loader priority を、Range request、depth-guard refraction、coarse-first LOD、canvas recovery、MiniStats silence へ接続。サンプル実装: 本命 `outputs/2026-10-12_range_refraction_stream_scope.html` と派生 `outputs/2026-10-12_canvas_mini_stats_retry_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件は renderer state score / state texture atlas / splat stream shadow。新規案件は partial-byte refraction と canvas recovery score。寝かせる案件はカードUI、重い外部モデル、認証・外部アセット前提の大規模デモ。",
+      "bodyEn": "Collection: checked the three.js r187 milestone / Migration Guide, PlayCanvas v2.23.2 release, Babylon.js 9.30.0 release, and Codrops Creative Hub / All Demos. Ideation: connected 10/11 light / shadow / loader priority to Range requests, depth-guard refraction, coarse-first LOD, canvas recovery, and MiniStats silence. Implementation: added the main sample `outputs/2026-10-12_range_refraction_stream_scope.html` and derived sample `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are renderer state score, state texture atlas, and splat stream shadow. New items are partial-byte refraction and canvas recovery score. Parked items are card UI, heavy external models, and large demos requiring authentication or external assets.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-12_range_refraction_stream_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-12_canvas_mini_stats_retry_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "ここ数日の流れは、10/9 の splat shadow、10/10 の coarse-first color contract、10/11 の light / loader priority、そして今日の Range refraction / canvas recovery へ進んだ。共通しているのは、完成した絵ではなく「絵が成立する途中の順序」を素材化していること。組み合わせ候補は、Range chunk arrival を低域の拍、coarse LOD を中低域、refraction guard を中域の揺れ、retry cache を高域ノイズへ割り当てる音反応。育てる価値が高いテーマは、ロード中・回復中・屈折で守られている最中の状態を、説明UIではなく空間の天候として見せること。",
+      "bodyEn": "The recent flow moves from 10/9 splat shadow to 10/10 coarse-first color contracts, 10/11 light / loader priority, and today's Range refraction / canvas recovery. The common thread is not the finished picture but the order in which the picture becomes valid. A strong combination is mapping Range chunk arrival to low beats, coarse LOD to low-mids, refraction guard to midrange wobble, and retry cache to high-frequency noise. The high-value theme is presenting loading, recovery, and guarded refraction states as spatial weather rather than explanatory UI."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命は `outputs/2026-10-12_range_refraction_stream_scope.html`。HTTP Range chunk、depth-guard refraction、coarse splat arrival を raw WebGL で合成し、drag と pulse で部分ロードと透明層の反応を触れるようにした。派生は `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`。canvas resolution contract、MiniStats silence、texture retry cache を小さな診断スコアとして動かす。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。",
+      "bodyEn": "The main prototype is `outputs/2026-10-12_range_refraction_stream_scope.html`, a dependency-free raw WebGL composite of HTTP Range chunks, depth-guard refraction, and coarse splat arrival, with drag and pulse controls for partial loading and transparent layers. The derived prototype is `outputs/2026-10-12_canvas_mini_stats_retry_probe.html`, a small diagnostic score for canvas resolution contract, MiniStats silence, and texture retry cache. Both support 1-4 keys, drag, and click/Space."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今回の2本は `focusX/focusY/mode/pulse` に加え、`rangeStart/rangeEnd/rangePriority/refractionGuardDepth/depthRejectCount/coarseFirstRank/lodLevel/canvasClientZero/canvasResolutionKept/miniStatsSkipped/textureRetryCount/cacheHit/canvasColorSpace` を時系列データとして扱える。音反応では kick を request burst、bass を coarse point size、mid を refraction guard、hi-hat を retry tile に割り当てる。MediaPipe なら手の距離で Range window、指の開閉で refraction guard、顔の向きで coarse LOD focus を変える。WebXR なら視線の先だけ Range chunk が先読みされ、手元の controller で canvas/color contract レイヤーを切り替える展示にできる。データ可視化では、ネットワークの部分取得、GPUのretry、canvasの回復を、地図や空間の天候レイヤーとして重ねられる。",
+      "bodyEn": "The two samples can treat `focusX/focusY/mode/pulse` plus `rangeStart/rangeEnd/rangePriority/refractionGuardDepth/depthRejectCount/coarseFirstRank/lodLevel/canvasClientZero/canvasResolutionKept/miniStatsSkipped/textureRetryCount/cacheHit/canvasColorSpace` as time-series data. For audio, map kick to request burst, bass to coarse point size, mids to refraction guard, and hi-hat to retry tiles. With MediaPipe, hand distance can drive Range windows, finger openness refraction guards, and face direction coarse LOD focus. In WebXR, only the gaze area prefetches Range chunks while the controller switches canvas/color contract layers. For data visualization, partial network retrieval, GPU retry, and canvas recovery can become weather layers over a map or space."
+    }
+  ]
+}
