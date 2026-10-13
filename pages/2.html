@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 114</span>
+        <span>days: 115</span>
         <span>page: 2 / 10</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -325,6 +325,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-01">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.01</p>
+              <h2>viewport/scissor、PMREM、alpha depthを、GPU状態の読み替え面にする</h2>
+              <p class="card-subtitle">Turn viewport/scissor, PMREM, and alpha depth into readable GPU-state surfaces</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-01" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js 186→187移行、PlayCanvas Engine v2.22.6、Babylon.js 9.28.0、Codropsの9月後半のWebGL/TSL事例を確認した。9/30のlayer acceptance / depth picking / wide gridから、今日はviewport/scissorのピクセル比、cube PMREM、WeakRef/FinalizationRegistry的な寿命、material gate、alpha depth pre-pass、root motionを2本の依存なしraw WebGL試作にした。</p>
+          <p class="description en-copy">Reviewed the three.js 186-to-187 migration notes, PlayCanvas Engine v2.22.6, Babylon.js 9.28.0, and late-September Codrops WebGL/TSL examples. Extending 9/30's layer acceptance, depth picking, and wide grid thread, today's two dependency-free raw WebGL prototypes visualize viewport/scissor pixel-ratio behavior, cube PMREM, renderer lifetime lanes, material gates, alpha depth pre-pass, and root-motion traces.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-10-01.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-10-01_viewport_scissor_pmrem_probe.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-30">
           <div class="card-top">
             <div>
@@ -574,29 +597,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-09-20.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-09-20_vat_crumple_memory_sheet.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-19">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.19</p>
-              <h2>uniform更新、occlusion query、frame graphを可視状態として扱う</h2>
-              <p class="card-subtitle">Treating uniform updates, occlusion queries, and frame graphs as visible state</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-19" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の9月17日PR群、Babylon.js 9.27.1 / 9.27.0、PlayCanvas Engine v2.22.2と関連リポジトリ、Codropsの9月中旬WebGL/Three.js事例を調査した。9/18のsplat depth / stream worker LODから、今日はuniform struct array、NodeManager更新、normalized occlusion query、CSM shadow branch、frame graph内のsplat・sprite・particle geometry passへ進め、依存なしraw WebGL試作を2本追加した。</p>
-          <p class="description en-copy">Today reviews September 17 three.js PRs, Babylon.js 9.27.1 / 9.27.0, PlayCanvas Engine v2.22.2 and related repositories, plus mid-September Codrops WebGL / Three.js examples. Extending September 18's splat depth / stream-worker LOD thread, the focus moves into uniform struct arrays, NodeManager updates, normalized occlusion queries, CSM shadow branches, and frame-graph geometry passes for splats, sprites, and particles. Two dependency-free raw WebGL prototypes were added.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-09-19.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-09-19_uniform_query_visibility_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

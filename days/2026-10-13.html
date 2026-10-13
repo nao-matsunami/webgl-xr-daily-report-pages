@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>描画の背圧、LOD、破綻表現を状態スコアに束ねる | 2026-10-13</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.13</p>
+      <h1>描画の背圧、LOD、破綻表現を状態スコアに束ねる</h1>
+      <p class="hero-subtitle">Bundle render backpressure, LOD, and glitch expression into a state score</p>
+      <p>今日は、three.js r187 milestone の TSL / WebGPU fallback / HTTP Range / refraction 系、PlayCanvas Engine v2.23.2 と v2.23.0 announcement の Inspector / AppStats / GSplat LOD / canvas recovery、Babylon.js 9.30.0 npm release、Codrops の ASCII / Datamosh / Loom / Glass Xylophone 系の表現を接続した。10/12 の partial loading と canvas recovery を踏まえ、描画が詰まる・粗LODへ逃がす・fallbackする・破綻を演出化する、という中間状態そのものを今日のテーマにした。本命サンプルは TSL intent lanes、coarse LOD backpressure、fallback haze の合成。派生サンプルは ASCII glyph cell、velocity datamosh、retry noise を renderer state の診断表示として動かす。</p>
+      <p class="en-copy">Today's report connects the three.js r187 milestone items around TSL, WebGPU fallback, HTTP Range, and refraction; PlayCanvas Engine v2.23.2 plus the v2.23.0 announcement around Inspector, AppStats, GSplat LOD, and canvas recovery; Babylon.js 9.30.0 on npm; and Codrops examples around ASCII, datamosh, loom, and glass xylophone expression. Extending 10/12 partial loading and canvas recovery, today's theme is the intermediate state itself: render backpressure, coarse LOD escape hatches, fallback behavior, and expressive glitches. The main sample composites TSL intent lanes, coarse LOD backpressure, and fallback haze. The derived sample turns ASCII glyph cells, velocity datamosh, and retry noise into a renderer-state diagnostic surface.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-13_intent_lod_backpressure_scope.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-12.html">← 2026.10.12</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-13 Intent LOD Backpressure Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-13_intent_lod_backpressure_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-13 ASCII Datamosh State Probe</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-13_ascii_datamosh_state_probe.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js は r186 が最新releaseで、r187 milestone は 2026-10-21 due、2026-10-12 updated の進行中ステータス。FP16 Precision via TSL、WebGPURenderer fallback on demand、Depth-guard screen-space refraction、FileLoader HTTP Range requests、GaussianBlurNode tap merge などが同じ山にある。2. three.js Migration Guide の 185→186 では GTAONode distance model、BufferGeometryUtils.toTrianglesDrawMode の in-place化、LightProbeGrid の WebGL名変更が確認できる。r187準備の観点では、render target bound 時の viewport/scissor と lifetime 系を引き続き実測ログ化したい。3. PlayCanvas v2.23.2 は coarsest-first GSplat LOD、zero-size canvas resolution preservation、MiniStats skip を含む。v2.23.0 announcement は Inspector、Texture Renderer、Device Loss and Recovery、Built-in Shader Uniforms、AppStats profiling をまとめており、描画状態を外へ出す設計が強い。4. Babylon.js 9.30.0 は npm 側で 2026-10-09 近辺の最新版として確認でき、10/12 まで追ってきた WebGPU color-space、render target、retry/cache、Flow Graph interactivity の流れへ接続する。5. Codrops All Demos では 2026-09 の Elemental Sandbox、Reel Flux、3D Face Mask、Unwoven、ASCII Logo、Datamosh などが並び、カードUIではなく shader / postprocess / webcam / particle / audio へ広げる素材として使える。</p>
+          <p class="en-copy">1. three.js r186 is the latest release while the r187 milestone is active, due 2026-10-21 and updated 2026-10-12. FP16 Precision via TSL, WebGPURenderer fallback on demand, depth-guarded screen-space refraction, FileLoader HTTP Range requests, and GaussianBlurNode tap merging all sit in the same upcoming cluster. 2. The three.js 185 to 186 migration notes include GTAONode distance model changes, in-place BufferGeometryUtils.toTrianglesDrawMode behavior, and LightProbeGrid WebGL renames. For r187 preparation, viewport/scissor behavior with render targets and renderer lifetime are still worth logging. 3. PlayCanvas v2.23.2 includes coarsest-first GSplat LOD, zero-size canvas resolution preservation, and MiniStats skipping. The v2.23.0 announcement also groups Inspector, Texture Renderer, Device Loss and Recovery, Built-in Shader Uniforms, and AppStats profiling, which is a strong signal toward externalizing render state. 4. Babylon.js 9.30.0 is visible on npm around 2026-10-09 and connects to the WebGPU color-space, render target, retry/cache, and Flow Graph interactivity themes tracked through 10/12. 5. Codrops All Demos includes September 2026 examples such as Elemental Sandbox, Reel Flux, 3D Face Mask, Unwoven, ASCII Logo, and Datamosh, all useful non-card material for shader, postprocess, webcam, particle, and audio directions.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/engine-v2-23-0/42641" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 announcement</a></li>
+          
+            <li><a href="https://www.npmjs.com/package/@babylonjs/core/v/9.30.0" target="_blank" rel="noreferrer">Babylon.js core 9.30.0 npm</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops All Demos</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今日の面白さは、エンジン側の安定化情報が、単なる保守ではなく「描画が詰まったときの表情」を作る材料に見えること。three.js r187 の fallback on demand や HTTP Range は、必要になるまで読まない・足りない間は別経路で見せる演出へ向く。PlayCanvas の Inspector / AppStats / Texture Renderer は、その中間状態を数値だけでなく可視化面として扱う入口になる。Codrops の shape-aware ASCII renderer は、明度だけでなく形の一致で glyph を選ぶ発想が面白く、render state atlas の値を glyph search の条件にすると、診断ログがそのまま表現になる。</p>
+          <p class="en-copy">The interesting point today is that engine stabilization data can become material for the look of a frame under pressure, not just maintenance notes. three.js r187 fallback on demand and HTTP Range requests suggest experiences that avoid loading until necessary and show an alternate path while data is incomplete. PlayCanvas Inspector, AppStats, and Texture Renderer make intermediate render states visible as a surface rather than only numbers. Codrops' shape-aware ASCII renderer is especially useful because it chooses glyphs by shape fit rather than luminance alone; if renderer-state atlas values become glyph-search conditions, diagnostic logs become the visual language.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/09/04/beyond-the-luminance-ramp-a-shape-aware-ascii-renderer-in-three-js/" target="_blank" rel="noreferrer">Codrops Shape-Aware ASCII Renderer</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/engine-v2-23-0/42641" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 announcement</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は `outputs/2026-10-13_intent_lod_backpressure_scope.html`。1で TSL / pipeline intent lane、2で coarse-first LOD の背圧、3で fallback haze、4で合成を見る。dragで priority focus、click/Spaceで compile burst を入れる。10/12 の Range chunk / refraction guard から一段進めて、今日は「詰まりそうな描画をどこへ逃がすか」を空間スコア化した。派生は `outputs/2026-10-13_ascii_datamosh_state_probe.html`。ASCII glyph cell、velocity datamosh、retry noise を合成し、Codrops 系の破綻表現を renderer log の読み方へ寄せた。短期では、1本目に `pipelineCompileMs/lodBackpressure/fallbackActive` を入れる。2本目は `velocityMagnitude/retryCount/cacheHit` を入れればすぐ実測駆動になる。</p>
+          <p class="en-copy">The main sample is `outputs/2026-10-13_intent_lod_backpressure_scope.html`. Mode 1 shows TSL / pipeline intent lanes, mode 2 coarse-first LOD backpressure, mode 3 fallback haze, and mode 4 the composite. Drag moves the priority focus; click/Space injects a compile burst. Building on 10/12 Range chunks and refraction guards, today's sample turns the question of where a stressed renderer escapes into a spatial score. The derived sample is `outputs/2026-10-13_ascii_datamosh_state_probe.html`, combining ASCII glyph cells, velocity datamosh, and retry noise so Codrops-style glitch expression becomes a way to read renderer logs. Short term, feed `pipelineCompileMs/lodBackpressure/fallbackActive` into the first sample and `velocityMagnitude/retryCount/cacheHit` into the second.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-13_intent_lod_backpressure_scope.html" target="_blank" rel="noreferrer">Main sample: Intent LOD Backpressure Scope</a></li>
+          
+            <li><a href="outputs/2026-10-13_ascii_datamosh_state_probe.html" target="_blank" rel="noreferrer">Derived sample: ASCII Datamosh State Probe</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>ログ化候補は `pipelineCompileMs/compileBurst/nodeIntentId/fp16Path/webglFallbackLoaded/rangePriority/lodBackpressure/coarseFirstRank/splatBudget/appStatsGpuMs/appStatsDrawCalls/canvasResolutionKept/miniStatsSkipped/velocityMagnitude/datamoshCarry/retryCount/cacheHit/glyphSearchCost/glyphId/colorSpace/renderTargetSRGB`。実装は 32x8 の state texture で、横方向を時間、縦方向を subsystem にするのが扱いやすい。shader では lane、splat ring、haze、glyph cell、mosh smear に変換する。WebGL だけでも試せるが、three.js / PlayCanvas / Babylon の実ログへ繋ぐ場合は、最初は JSONL か Float32Array の1フレーム履歴で十分。</p>
+          <p class="en-copy">Candidate log fields are `pipelineCompileMs/compileBurst/nodeIntentId/fp16Path/webglFallbackLoaded/rangePriority/lodBackpressure/coarseFirstRank/splatBudget/appStatsGpuMs/appStatsDrawCalls/canvasResolutionKept/miniStatsSkipped/velocityMagnitude/datamoshCarry/retryCount/cacheHit/glyphSearchCost/glyphId/colorSpace/renderTargetSRGB`. A 32x8 state texture works well, with time on the horizontal axis and subsystem on the vertical axis. The shader can map it into lanes, splat rings, haze, glyph cells, and mosh smears. The prototypes run in plain WebGL, and the first practical bridge to three.js / PlayCanvas / Babylon logs can be a JSONL or Float32Array one-frame history.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://forum.playcanvas.com/t/engine-v2-23-0/42641" target="_blank" rel="noreferrer">PlayCanvas AppStats announcement context</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は r187 milestone の FP16 Precision via TSL、WebGPU fallback on demand、HTTP Range、depth-guard refraction、GaussianBlurNode tap merge、renderShadowMap を継続。PlayCanvas は v2.23.x の Inspector / Texture Renderer / AppStats / Device Loss Recovery / GSplat LOD / MiniStats を追う。Babylon は 9.30.x 以降の color-space、render target sRGB、draw wrapper cache、texture retry、Flow Graph / KHR_interactivity を見る。Codrops は ASCII、Datamosh、Reel Flux、Elemental Sandbox、Glass Xylophone、Infinite Loom を、破綻・音・糸・glyph・postprocess の表現部品として継続収集する。</p>
+          <p class="en-copy">Continue watching three.js r187 FP16 Precision via TSL, WebGPU fallback on demand, HTTP Range, depth-guard refraction, GaussianBlurNode tap merging, and renderShadowMap. For PlayCanvas, track v2.23.x Inspector, Texture Renderer, AppStats, Device Loss Recovery, GSplat LOD, and MiniStats. For Babylon, watch 9.30.x and later color-space, render-target sRGB, draw-wrapper cache, texture retry, and Flow Graph / KHR_interactivity. For Codrops, keep collecting ASCII, Datamosh, Reel Flux, Elemental Sandbox, Glass Xylophone, and Infinite Loom as reusable pieces for glitch, audio, thread, glyph, and postprocess expression.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-10-13_intent_lod_backpressure_scope.html` を開く。4の合成で眺め、dragで priority focus を動かし、click/Spaceで compile burst を入れる。1-3へ切り替えると、intent lane、LOD backpressure、fallback haze のどこが効いているか分かる。次に `outputs/2026-10-13_ascii_datamosh_state_probe.html` を開き、4の合成から 1 glyph、2 datamosh、3 retry noise を分解して見る。次に足すなら、本命に `pipelineCompileMs` を線の明滅へ、派生に `retryCount` を glyph の崩れへ入れる。</p>
+          <p class="en-copy">Open `outputs/2026-10-13_intent_lod_backpressure_scope.html` first. View the mode 4 composite, drag the priority focus, and click/Space to inject a compile burst. Modes 1-3 separate intent lanes, LOD backpressure, and fallback haze. Then open `outputs/2026-10-13_ascii_datamosh_state_probe.html` and decompose the mode 4 composite into mode 1 glyphs, mode 2 datamosh, and mode 3 retry noise. Next, map `pipelineCompileMs` to lane flicker in the main sample and `retryCount` to glyph collapse in the derived sample.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-13_intent_lod_backpressure_scope.html" target="_blank" rel="noreferrer">Main sample: Intent LOD Backpressure Scope</a></li>
+          
+            <li><a href="outputs/2026-10-13_ascii_datamosh_state_probe.html" target="_blank" rel="noreferrer">Derived sample: ASCII Datamosh State Probe</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r187 milestone / r186 release / Migration Guide、PlayCanvas releases / v2.23.0 announcement、Babylon.js npm 9.30.0、Codrops All Demos / ASCII renderer を確認。アイデア検討: 10/12 の Range / refraction / canvas recovery を、compile intent、LOD backpressure、fallback、ASCII/datamosh へ接続。サンプル実装: 本命 `outputs/2026-10-13_intent_lod_backpressure_scope.html` と派生 `outputs/2026-10-13_ascii_datamosh_state_probe.html` を追加。結果の検証: JSON parse、HTML parse、script構文、gallery build、publish処理で確認する。継続案件は renderer state atlas / GSplat LOD / retry cache。新規案件は glyph search diagnostic と fallback haze。寝かせる案件はカードUI、重い外部モデル、GPU compute 専用でWebGL fallbackがないもの。</p>
+          <p class="en-copy">Collection: checked the three.js r187 milestone / r186 release / Migration Guide, PlayCanvas releases / v2.23.0 announcement, Babylon.js npm 9.30.0, and Codrops All Demos / ASCII renderer. Ideation: connected 10/12 Range / refraction / canvas recovery to compile intent, LOD backpressure, fallback, and ASCII/datamosh. Implementation: added the main sample `outputs/2026-10-13_intent_lod_backpressure_scope.html` and derived sample `outputs/2026-10-13_ascii_datamosh_state_probe.html`. Verification: JSON parse, HTML parse, script syntax, gallery build, and publish flow. Continuing items are renderer state atlas, GSplat LOD, and retry cache. New items are glyph-search diagnostics and fallback haze. Parked items are card UI, heavy external models, and GPU-compute-only ideas without a WebGL fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-13_intent_lod_backpressure_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-13_ascii_datamosh_state_probe.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、完成画そのものよりも「完成画へ至るための資源配分」が表現対象になっていること。10/9 の shadow / occlusion、10/10 の tone-map / cache、10/11 の light / loader、10/12 の Range / recovery、今日の backpressure / glitch は、すべて同じ render-state score に載せられる。組み合わせ候補は、Range chunk を低域の拍、LOD backpressure を粒子密度、compile intent を光の走査線、fallback haze を霧、ASCII glyph を診断文字にする構成。育てる価値が高いテーマは「壊れないための仕組みを、壊れかけの美しさとして見せる」方向。</p>
+          <p class="en-copy">The recent trend is that resource allocation on the way to a valid frame is becoming the expression, more than the finished image itself. 10/9 shadow / occlusion, 10/10 tone-map / cache, 10/11 light / loader, 10/12 Range / recovery, and today's backpressure / glitch can all sit on one render-state score. A strong combination maps Range chunks to low beats, LOD backpressure to particle density, compile intent to scanning light, fallback haze to fog, and ASCII glyphs to diagnostic text. The high-value theme is showing the mechanisms that prevent breakage as the beauty of something almost breaking.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-13_intent_lod_backpressure_scope.html`。raw WebGL fragment shader で TSL intent lane、coarse LOD backpressure、fallback haze を合成し、drag と pulse で優先度とcompile burstを触れるようにした。派生は `outputs/2026-10-13_ascii_datamosh_state_probe.html`。ASCII glyph cell、velocity datamosh、retry noise を小さな診断スコアとして動かす。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-13_intent_lod_backpressure_scope.html`, a dependency-free raw WebGL fragment shader that composites TSL intent lanes, coarse LOD backpressure, and fallback haze, with drag and pulse controls for priority and compile bursts. The derived prototype is `outputs/2026-10-13_ascii_datamosh_state_probe.html`, a small diagnostic score for ASCII glyph cells, velocity datamosh, and retry noise. Both support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は `focusX/focusY/mode/pulse` に加え、`pipelineCompileMs/compileBurst/nodeIntentId/fp16Path/webglFallbackLoaded/rangePriority/lodBackpressure/coarseFirstRank/splatBudget/appStatsGpuMs/appStatsDrawCalls/velocityMagnitude/datamoshCarry/retryCount/cacheHit/glyphSearchCost/glyphId/colorSpace` を時系列データとして扱える。音反応では kick を compile burst、bass を LOD backpressure、mid を fallback haze、hi-hat を retry glyph noise へ割り当てる。MediaPipe なら手の速度で datamosh、手の開閉で fallback、顔の向きで glyph search center を変える。WebXR なら視線先のLODだけ細かくなり、controllerの押し込みでcompile burstが走る展示にできる。ブランド演出では、障害や待ち時間を隠す代わりに、状態スコアとして美しく見せる loading / recovery surface にできる。</p>
+          <p class="en-copy">The two samples can treat `focusX/focusY/mode/pulse` plus `pipelineCompileMs/compileBurst/nodeIntentId/fp16Path/webglFallbackLoaded/rangePriority/lodBackpressure/coarseFirstRank/splatBudget/appStatsGpuMs/appStatsDrawCalls/velocityMagnitude/datamoshCarry/retryCount/cacheHit/glyphSearchCost/glyphId/colorSpace` as time-series data. For audio, map kick to compile bursts, bass to LOD backpressure, mids to fallback haze, and hi-hats to retry glyph noise. With MediaPipe, hand velocity can drive datamosh, hand openness fallback, and face direction glyph-search center. In WebXR, gaze-local LOD refines while controller pressure triggers compile bursts. For brand experiences, waiting and recovery states can be shown as an elegant loading / recovery surface instead of being hidden.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases/tag/r186" target="_blank" rel="noreferrer">three.js r186 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js Migration Guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.2 release</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/engine-v2-23-0/42641" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 announcement</a></li>
+          
+            <li><a href="https://www.npmjs.com/package/@babylonjs/core/v/9.30.0" target="_blank" rel="noreferrer">Babylon.js core 9.30.0 npm</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops All Demos</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/09/04/beyond-the-luminance-ramp-a-shape-aware-ascii-renderer-in-three-js/" target="_blank" rel="noreferrer">Codrops Shape-Aware ASCII Renderer</a></li>
+          
+            <li><a href="outputs/2026-10-13_intent_lod_backpressure_scope.html" target="_blank" rel="noreferrer">Main sample: Intent LOD Backpressure Scope</a></li>
+          
+            <li><a href="outputs/2026-10-13_ascii_datamosh_state_probe.html" target="_blank" rel="noreferrer">Derived sample: ASCII Datamosh State Probe</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-13_intent_lod_backpressure_scope.html" loading="lazy" title="2026-10-13 Intent LOD Backpressure Scope"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
