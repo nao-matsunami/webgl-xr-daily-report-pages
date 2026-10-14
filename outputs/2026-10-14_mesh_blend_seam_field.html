@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2026-10-14 Mesh Blend Seam Field</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #060807; color: #eef9f2; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: fixed; left: 18px; top: 16px; right: 18px; pointer-events: none; text-shadow: 0 1px 18px #010302; }
+    .title { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #a8f7d7; }
+    .meta { margin-top: 8px; max-width: 980px; font-size: 12px; line-height: 1.55; color: #f5d58a; }
+    .mode { color: #9cffd2; }
+  </style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="hud">
+  <div class="title">Mesh Blend Seam Field</div>
+  <div class="meta">1 packed tag groups / 2 contact search fade / 3 shadow attenuation / 4 composite - drag = contact focus - click or Space = radius pulse - mode <span class="mode" id="mode">4</span></div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById("gl");
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+  const modeEl = document.getElementById("mode");
+  if (!gl) {
+    document.body.insertAdjacentHTML("beforeend", "<p style='padding:20px'>WebGL unavailable.</p>");
+    return;
+  }
+
+  const vertex = "attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0); }";
+  const fragment = `
+precision highp float;
+uniform vec2 r;
+uniform vec2 m;
+uniform float t;
+uniform float pulse;
+uniform int mode;
+
+float hash(vec2 p){ p=fract(p*vec2(127.1,311.7)); p+=dot(p,p+19.19); return fract(p.x*p.y); }
+float line(float v,float p,float w){ return smoothstep(w,0.0,abs(v-p)); }
+float ring(float d,float p,float w){ return smoothstep(w,0.0,abs(d-p)); }
+mat2 rot(float a){ float s=sin(a), c=cos(a); return mat2(c,-s,s,c); }
+
+float blob(vec2 p, vec2 c, float rad, float wobble){
+  vec2 q=p-c;
+  float a=atan(q.y,q.x);
+  float k=1.0+0.10*sin(a*5.0+t*0.8+wobble)+0.05*sin(a*9.0-t*0.5);
+  return length(q)/(rad*k);
+}
+
+vec4 sceneTags(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec2 f=(focus*2.0-1.0)*vec2(r.x/r.y,1.0);
+  float d0=blob(p, vec2(-0.58, -0.08)+0.08*sin(vec2(t*.19,t*.15)), 0.48, 0.0);
+  float d1=blob(p, vec2(0.10, 0.10)+0.12*vec2(sin(t*.12),cos(t*.17)), 0.38+0.06*pulse, 2.0);
+  float d2=blob(p, vec2(0.62, -0.16)+0.05*vec2(cos(t*.23),sin(t*.11)), 0.30, 5.0);
+  float terrain=p.y+0.58+0.08*sin(p.x*5.0+t*.25)+0.04*sin(p.x*13.0);
+  float g=0.0;
+  if (d0 < 1.0) g=1.0;
+  if (d1 < 1.0) g=2.0;
+  if (d2 < 1.0) g=3.0;
+  if (terrain < 0.0) g=4.0;
+  float radiusClass=mod(g+floor(4.0*hash(floor((p+2.0)*3.0))),4.0);
+  return vec4(g, radiusClass, min(min(d0,d1),min(d2,abs(terrain)*2.0)), length(p-f));
+}
+
+vec3 tagView(vec2 uv, vec2 focus){
+  vec4 tag=sceneTags(uv, focus);
+  vec3 col=vec3(0.016,0.018,0.016);
+  if(tag.x==1.0) col=vec3(0.15,0.58,0.92);
+  if(tag.x==2.0) col=vec3(0.80,0.45,0.16);
+  if(tag.x==3.0) col=vec3(0.72,0.24,0.78);
+  if(tag.x==4.0) col=vec3(0.18,0.72,0.45);
+  float grid=line(fract(uv.x*28.0),0.0,0.015)+line(fract(uv.y*16.0),0.0,0.015);
+  col*=0.34+0.22*tag.y;
+  col+=grid*vec3(0.08,0.14,0.13);
+  return col;
+}
+
+vec3 seamSearch(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec4 tag=sceneTags(uv, focus);
+  vec3 col=vec3(0.010,0.012,0.012);
+  vec2 dirs[8];
+  dirs[0]=vec2(1,0); dirs[1]=vec2(-1,0); dirs[2]=vec2(0,1); dirs[3]=vec2(0,-1);
+  dirs[4]=normalize(vec2(1,1)); dirs[5]=normalize(vec2(-1,1)); dirs[6]=normalize(vec2(1,-1)); dirs[7]=normalize(vec2(-1,-1));
+  float boundary=0.0;
+  float directionScore=0.0;
+  for(int i=0;i<8;i++){
+    vec2 duv=dirs[i]*(0.006+0.040*(0.35+0.65*pulse));
+    vec4 other=sceneTags(uv+duv, focus);
+    float different=step(0.5, tag.x)*step(0.5, other.x)*step(0.5, abs(tag.x-other.x));
+    float plausible=smoothstep(0.92,0.05,abs(tag.z-other.z))*smoothstep(1.25,0.15,tag.w);
+    boundary=max(boundary, different*plausible);
+    directionScore+=different*(float(i)+1.0)/8.0;
+  }
+  float fade=smoothstep(0.0,1.0,boundary);
+  col+=fade*mix(vec3(0.1,0.42,0.74),vec3(1.0,0.83,0.32),directionScore/8.0);
+  col+=ring(length(p-(focus*2.0-1.0)*vec2(r.x/r.y,1.0)),0.22+0.15*pulse,0.010)*vec3(0.9,1.0,0.65);
+  col+=tagView(uv, focus)*0.22;
+  return col;
+}
+
+vec3 shadowAttenuation(vec2 uv, vec2 focus){
+  vec2 p=uv*2.0-1.0; p.x*=r.x/r.y;
+  vec4 tag=sceneTags(uv, focus);
+  float fakeShadow=0.5+0.5*sin((p.x*3.0-p.y*4.0)+t*0.4);
+  fakeShadow*=smoothstep(1.1,0.1,length(p-vec2(-0.15,0.2)));
+  float albedoMismatch=abs(sin(tag.x*1.9+p.x*2.1)-sin(tag.y+p.y*2.8));
+  float attenuation=smoothstep(0.15,0.9,albedoMismatch)*(1.0-fakeShadow*0.55);
+  vec3 col=mix(vec3(0.06,0.18,0.28),vec3(0.16,0.86,0.48),attenuation);
+  col=mix(col,vec3(0.95,0.22,0.12),fakeShadow*(1.0-attenuation));
+  col+=tagView(uv, focus)*0.16;
+  col+=line(fract((p.x+p.y)*12.0+t*.35),0.5,0.035)*vec3(0.08,0.12,0.10);
+  return col;
+}
+
+void main(){
+  vec2 uv=gl_FragCoord.xy/r;
+  vec2 focus=clamp(m,0.0,1.0);
+  vec3 a=tagView(uv,focus);
+  vec3 b=seamSearch(uv,focus);
+  vec3 c=shadowAttenuation(uv,focus);
+  vec3 col=a;
+  if(mode==2) col=b;
+  if(mode==3) col=c;
+  if(mode==4) {
+    col=a*0.42+b*0.82+c*0.48;
+    col+=line(uv.x,focus.x,0.003)*vec3(0.74,1.0,0.78)*(0.22+0.6*pulse);
+    col+=line(uv.y,focus.y,0.003)*vec3(1.0,0.72,0.28)*(0.18+0.52*pulse);
+  }
+  gl_FragColor=vec4(pow(max(col,0.0),vec3(0.88)),1.0);
+}`;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  }
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uniforms = {
+    r: gl.getUniformLocation(program, "r"),
+    m: gl.getUniformLocation(program, "m"),
+    t: gl.getUniformLocation(program, "t"),
+    pulse: gl.getUniformLocation(program, "pulse"),
+    mode: gl.getUniformLocation(program, "mode")
+  };
+  let mode = 4;
+  let mouse = [0.55, 0.53];
+  let pulseAt = -10;
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.floor(innerWidth * dpr));
+    const h = Math.max(1, Math.floor(innerHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+  function setMouse(e) {
+    const rect = canvas.getBoundingClientRect();
+    mouse = [(e.clientX - rect.left) / rect.width, 1 - (e.clientY - rect.top) / rect.height];
+  }
+  addEventListener("pointermove", setMouse);
+  addEventListener("pointerdown", (e) => { setMouse(e); pulseAt = performance.now() / 1000; });
+  addEventListener("keydown", (e) => {
+    if (e.key >= "1" && e.key <= "4") mode = Number(e.key);
+    if (e.code === "Space") pulseAt = performance.now() / 1000;
+    modeEl.textContent = mode;
+  });
+  function frame(now) {
+    resize();
+    const time = now / 1000;
+    gl.uniform2f(uniforms.r, canvas.width, canvas.height);
+    gl.uniform2f(uniforms.m, mouse[0], mouse[1]);
+    gl.uniform1f(uniforms.t, time);
+    gl.uniform1f(uniforms.pulse, Math.exp(-4.0 * Math.max(0, time - pulseAt)));
+    gl.uniform1i(uniforms.mode, mode);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body>
+</html>

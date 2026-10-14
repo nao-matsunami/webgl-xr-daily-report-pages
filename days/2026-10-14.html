@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>接触面、予算、診断ビューを表現の中間層にする | 2026-10-14</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.14</p>
+      <h1>接触面、予算、診断ビューを表現の中間層にする</h1>
+      <p class="hero-subtitle">Turn contacts, budgets, and diagnostic views into an expressive middle layer</p>
+      <p>今日は、three.js r187 milestone の TSL / WebGPU fallback / HTTP Range / refraction 系、PlayCanvas Editor 2.34 の Inspector と Splat Budget Mode、PlayCanvas Engine v2.23.2 の coarsest-first GSplat LOD と canvas/MiniStats 修正、Babylon.js Mesh Blending、Codrops の pointer square lens / glass / audio / distortion 系を接続した。10/13 の backpressure / ASCII diagnostic から一段進め、描画の境界、接触面、予算、検査パネルを、単なるデバッグUIではなく空間演出そのものとして扱う。本命サンプルは Babylon Mesh Blending の発想を raw WebGL の seam field として試す。派生サンプルは PlayCanvas Inspector / AppStats / Splat Budget を budget heat として可視化する。</p>
+      <p class="en-copy">Today's report connects the three.js r187 milestone around TSL, WebGPU fallback, HTTP Range, and refraction; PlayCanvas Editor 2.34 Inspector and Splat Budget Mode; PlayCanvas Engine v2.23.2 coarsest-first GSplat LOD plus canvas and MiniStats fixes; Babylon.js Mesh Blending; and Codrops pointer lens, glass, audio, and distortion examples. Extending 10/13 backpressure / ASCII diagnostics, the focus is to treat render boundaries, contacts, budgets, and inspection panels as expressive spatial material rather than just debug UI. The main sample turns the Babylon Mesh Blending idea into a raw WebGL seam field. The derived sample visualizes PlayCanvas Inspector / AppStats / Splat Budget as budget heat.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-14_mesh_blend_seam_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-13.html">← 2026.10.13</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-14 Mesh Blend Seam Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-14_mesh_blend_seam_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>2026-10-14 Inspector Splat Budget Heat</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-14_inspector_splat_budget_heat.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js r187 milestone は 2026-10-21 due、2026-10-12 updated の進行中ステータスで、FP16 Precision via TSL、WebGPURenderer fallback on demand、Depth-guard screen-space refraction、FileLoader HTTP Range requests、GaussianBlurNode tap merge などが同じ山にある。10/13 の compile intent / LOD backpressure と相性がよく、今日は境界やfallbackを「見える中間層」として扱う。2. PlayCanvas Editor 2.34 は 2026-10-13 公開で、Engine 2.23.1 ベース、Inspector launch option、Splat Budget Mode、Gravity Scale などを含む。デバッグパネルを制作中の補助ではなく、作品の観測レイヤーとして流用できる。3. PlayCanvas Engine v2.23.2 は 2026-10-09 release で、GSplat LOD を view 全体で coarsest-first にstreamする修正、zero-size canvas の解像度保持、MiniStats skip を含む。4. Babylon.js Mesh Blending は 2026-10-01 announcement / docsで、別メッシュの接触を screen-space post-process として柔らかくし、FrameGraph / Node Render Graph / classic post-process に統合できる。5. Codrops Demos Hub では pointer square lens、glass / caustics / sound、depth relighting などが近い参照点で、接触面・レンズ・音反応・予算ヒートを組み合わせる方向が見える。</p>
+          <p class="en-copy">1. The three.js r187 milestone is due 2026-10-21 and was updated 2026-10-12, grouping FP16 Precision via TSL, WebGPURenderer fallback on demand, depth-guarded screen-space refraction, FileLoader HTTP Range requests, and GaussianBlurNode tap merging. This connects well to 10/13 compile intent / LOD backpressure, so today's angle is to make boundaries and fallback visible as a middle layer. 2. PlayCanvas Editor 2.34 was published on 2026-10-13, is built on Engine 2.23.1, and includes the Inspector launch option, Splat Budget Mode, and Gravity Scale. The debug panel can be reused as an observation layer for a piece, not only a development helper. 3. PlayCanvas Engine v2.23.2 was released on 2026-10-09 and includes coarsest-first GSplat LOD streaming across the view, preserving canvas resolution at zero client size, and skipping MiniStats when empty. 4. Babylon.js Mesh Blending, announced and documented on 2026-10-01, softens contacts between separate meshes as a screen-space post-process and integrates with FrameGraph, Node Render Graph, and classic post-process paths. 5. Codrops Demos Hub points to nearby references such as pointer square lens, glass / caustics / sound, and depth relighting, suggesting combinations of contacts, lenses, audio response, and budget heat.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-playcanvas-editor-gravity-scale-inspector-and-splat-budget/" target="_blank" rel="noreferrer">PlayCanvas Editor 2.34 blog</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-mesh-blending-in-babylon-js-and-babylon-lite/64192" target="_blank" rel="noreferrer">Babylon.js Mesh Blending announcement</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/demos/" target="_blank" rel="noreferrer">Codrops Demos Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Babylon Mesh Blending が面白いのは、接触面の破綻をアセット編集ではなく screen-space の後処理で扱い、tag、depth、SceneColor、必要ならalbedoから安定した seam fade を作る点。これは 10/9 の shadow / occlusion、10/12 の refraction guard、10/13 の fallback haze と同じく、完成画の手前にある補正層を表現へ転用できる。PlayCanvas Editor 2.34 の Inspector / Splat Budget Mode は、アプリ内部の resource / frame graph / GPU state を見える面に出す方向で、これを作品側の HUD ではなく空間の粒子密度や熱として扱うと、診断と演出が重なる。Codrops の pointer lens と Volatile Nexus は、ポインタ、ガラス、音の反応で局所的に空間の物性が変わる例として参考になる。</p>
+          <p class="en-copy">Babylon Mesh Blending is interesting because it treats contact artifacts as a screen-space post-process rather than asset editing, producing stable seam fade from tags, depth, SceneColor, and optionally albedo. Like 10/9 shadow / occlusion, 10/12 refraction guard, and 10/13 fallback haze, it turns the correction layer before the final image into expressive material. PlayCanvas Editor 2.34's Inspector / Splat Budget Mode surfaces resource, frame graph, and GPU state; if those values drive spatial particle density or heat instead of a separate HUD, diagnostics and performance become part of the scene. Codrops pointer lens and Volatile Nexus are useful references for pointer-local changes in materiality through glass, sound, and distortion.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/postProcesses/meshBlending/" target="_blank" rel="noreferrer">Babylon.js Mesh Blending documentation</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/25/building-a-mouse-following-square-lens-effect-with-three-js-and-glsl/" target="_blank" rel="noreferrer">Codrops Pointer Square Lens Distortion</a></li>
+          
+            <li><a href="https://dasprinzip.com/tinker/day42/" target="_blank" rel="noreferrer">Volatile Nexus</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は `outputs/2026-10-14_mesh_blend_seam_field.html`。1で packed tag group、2で contact search fade、3で shadow attenuation、4で合成を見る。dragで接触探索の焦点を移動し、click/Spaceで radius pulse を入れる。Babylon Mesh Blending の実装そのものではなく、tag / depth / color / attenuation という考え方を軽量WebGLの視覚スケッチにした。派生は `outputs/2026-10-14_inspector_splat_budget_heat.html`。1で AppStats lane、2で splat budget ring、3で Inspector step heat、4で合成を見る。PlayCanvas Inspector と Splat Budget Mode を「画面の横に出るデバッグ」ではなく、点群密度と熱の場に変換する。</p>
+          <p class="en-copy">The main sample is `outputs/2026-10-14_mesh_blend_seam_field.html`. Mode 1 shows packed tag groups, mode 2 contact search fade, mode 3 shadow attenuation, and mode 4 the composite. Drag moves the contact-search focus; click/Space injects a radius pulse. It is not a direct Babylon Mesh Blending implementation, but a lightweight WebGL sketch of the tag / depth / color / attenuation idea. The derived sample is `outputs/2026-10-14_inspector_splat_budget_heat.html`. Mode 1 shows AppStats lanes, mode 2 splat budget rings, mode 3 Inspector step heat, and mode 4 the composite, translating PlayCanvas Inspector and Splat Budget Mode into a field of density and heat instead of a side-panel debug view.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-14_mesh_blend_seam_field.html" target="_blank" rel="noreferrer">Main sample: Mesh Blend Seam Field</a></li>
+          
+            <li><a href="outputs/2026-10-14_inspector_splat_budget_heat.html" target="_blank" rel="noreferrer">Derived sample: Inspector Splat Budget Heat</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>Mesh Blending 系の実装で取るべきログは `meshBlendTag/groupId/radiusClass/depthType/searchRadius/slopeFactor/quality/debugMode/attenuation/baseColorAvailable/rejectedContactCount`。PlayCanvas / splat budget 系は `splatBudget/lodLevel/coarseFirstRank/appStatsGpuMs/appStatsDrawCalls/resourceTextures/resourceBuffers/resourcePipelines/inspectorStep/passId/canvasResolutionKept/miniStatsSkipped`。three.js r187 系は `pipelineCompileMs/nodeIntentId/fp16Path/webglFallbackLoaded/rangeStart/rangeEnd/refractionGuardDepth/blurTapCount`。これらを 32x8 か 64x8 の state texture に詰め、横を時間、縦を subsystem にする。描画では seam fade、budget ring、heat lane、glass lens の4表現に分けると、後から実エンジンのログに差し替えやすい。</p>
+          <p class="en-copy">For Mesh Blending-style work, useful log fields are `meshBlendTag/groupId/radiusClass/depthType/searchRadius/slopeFactor/quality/debugMode/attenuation/baseColorAvailable/rejectedContactCount`. For PlayCanvas / splat budget, track `splatBudget/lodLevel/coarseFirstRank/appStatsGpuMs/appStatsDrawCalls/resourceTextures/resourceBuffers/resourcePipelines/inspectorStep/passId/canvasResolutionKept/miniStatsSkipped`. For three.js r187, track `pipelineCompileMs/nodeIntentId/fp16Path/webglFallbackLoaded/rangeStart/rangeEnd/refractionGuardDepth/blurTapCount`. Pack these into a 32x8 or 64x8 state texture with time on the horizontal axis and subsystem on the vertical axis. Separating the rendering into seam fade, budget rings, heat lanes, and glass lens makes it easy to replace the synthetic values with real engine logs later.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/postProcesses/meshBlending/" target="_blank" rel="noreferrer">Babylon.js Mesh Blending documentation</a></li>
+          
+            <li><a href="https://forum.playcanvas.com/t/engine-v2-23-0/42641" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 announcement</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js は r187 milestone の FP16 / TSL / WebGPU fallback / HTTP Range / depth-guard refraction / blur tap merge / renderShadowMap を継続。PlayCanvas は Editor 2.34 の Inspector launch、Splat Budget Mode、Engine v2.23.x の GSplat LOD、AppStats、Texture Renderer、Device Loss Recovery を追う。Babylon は Mesh Blending の debug modes / quality / radius class / FrameGraph integration と、9.30.x 以降の Frame Graph、texture retry、color-space、Flow Graph interactivity を見る。Codrops は pointer lens、glass caustics、audio response、depth relighting、ASCII / datamosh を継続収集する。</p>
+          <p class="en-copy">Continue watching three.js r187 FP16 / TSL / WebGPU fallback / HTTP Range / depth-guard refraction / blur tap merging / renderShadowMap. For PlayCanvas, track Editor 2.34 Inspector launch, Splat Budget Mode, and Engine v2.23.x GSplat LOD, AppStats, Texture Renderer, and Device Loss Recovery. For Babylon, follow Mesh Blending debug modes, quality, radius classes, FrameGraph integration, and the 9.30.x line around Frame Graph, texture retry, color-space, and Flow Graph interactivity. For Codrops, keep collecting pointer lens, glass caustics, audio response, depth relighting, ASCII, and datamosh examples.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず `outputs/2026-10-14_mesh_blend_seam_field.html` を開く。4の合成で眺め、dragで接触焦点を動かし、click/Spaceで半径pulseを入れる。1-3に切り替えると、tag group、contact search、shadow attenuation の寄与が分かる。次に `outputs/2026-10-14_inspector_splat_budget_heat.html` を開き、4の合成から 1 AppStats、2 splat budget、3 inspector step を分解して見る。次に足すなら、本命に `rejectedContactCount/slopeFactor`、派生に `splatBudget/appStatsGpuMs/resourceTextures` を実ログとして注入する。</p>
+          <p class="en-copy">Open `outputs/2026-10-14_mesh_blend_seam_field.html` first. View mode 4, drag the contact focus, and click/Space to add a radius pulse. Modes 1-3 separate tag groups, contact search, and shadow attenuation. Then open `outputs/2026-10-14_inspector_splat_budget_heat.html` and decompose mode 4 into mode 1 AppStats, mode 2 splat budget, and mode 3 inspector steps. Next, feed `rejectedContactCount/slopeFactor` into the main sample and `splatBudget/appStatsGpuMs/resourceTextures` into the derived sample as real logs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-14_mesh_blend_seam_field.html" target="_blank" rel="noreferrer">Main sample: Mesh Blend Seam Field</a></li>
+          
+            <li><a href="outputs/2026-10-14_inspector_splat_budget_heat.html" target="_blank" rel="noreferrer">Derived sample: Inspector Splat Budget Heat</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r187 milestone、PlayCanvas Editor 2.34 blog / Engine releases、Babylon Mesh Blending announcement / docs、Codrops Demos Hub / pointer lens / Volatile Nexus を確認。アイデア検討: 10/13 の renderer state / fallback haze / ASCII diagnostic を、接触面の seam fade、Inspectorの観測UI、Splat Budget の密度場へ接続。サンプル実装: 本命 `outputs/2026-10-14_mesh_blend_seam_field.html` と派生 `outputs/2026-10-14_inspector_splat_budget_heat.html` を追加。結果の検証: JSON parse、HTML script構文、gallery build、publish処理で確認する。継続案件は renderer state atlas / GSplat LOD / fallback haze。新規案件は mesh tag seam field / inspector heat surface。寝かせる案件はカードUI、重い外部3Dモデル、GPU compute専用でWebGL fallbackがないもの。</p>
+          <p class="en-copy">Collection: checked the three.js r187 milestone, PlayCanvas Editor 2.34 blog / Engine releases, Babylon Mesh Blending announcement / docs, and Codrops Demos Hub / pointer lens / Volatile Nexus. Ideation: connected 10/13 renderer state / fallback haze / ASCII diagnostics to contact seam fade, Inspector observation UI, and Splat Budget density fields. Implementation: added the main sample `outputs/2026-10-14_mesh_blend_seam_field.html` and the derived sample `outputs/2026-10-14_inspector_splat_budget_heat.html`. Verification: JSON parse, HTML script syntax, gallery build, and publish flow. Continuing items are renderer state atlas, GSplat LOD, and fallback haze. New items are mesh tag seam fields and inspector heat surfaces. Parked items are card UI, heavy external 3D models, and GPU-compute-only ideas without a WebGL fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-14_mesh_blend_seam_field.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-14_inspector_splat_budget_heat.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の流れは、renderer の弱点や補正層がそのまま表現素材になっていること。10/9 の shadow / occlusion、10/12 の Range / recovery、10/13 の backpressure / glitch、今日の seam / inspector / budget は一本の render-state score に載せられる。組み合わせると面白いのは、Mesh Blending の tag と radius class を点群や音の粒度へつなぎ、PlayCanvas の AppStats を密度や熱に、three.js の fallback / Range を読み込みの拍に、Codrops の lens / glass を局所的な物性変化にする構成。育てる価値が高いテーマは、隠されがちな「接触、待ち、負荷、回復」を、作品の触れる質感として表に出す方向。</p>
+          <p class="en-copy">The recent pattern is that renderer weaknesses and correction layers are becoming visual material. 10/9 shadow / occlusion, 10/12 Range / recovery, 10/13 backpressure / glitch, and today's seam / inspector / budget can live on one render-state score. A strong combination maps Mesh Blending tags and radius classes to splat or audio granularity, PlayCanvas AppStats to density and heat, three.js fallback / Range to loading beats, and Codrops lens / glass ideas to local material changes. The high-value direction is to expose contact, waiting, load, and recovery as tactile qualities of the work.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命は `outputs/2026-10-14_mesh_blend_seam_field.html`。raw WebGL fragment shader で packed tag group、contact search fade、shadow attenuation を合成し、drag と pulse で接触探索の焦点と半径を触れる。派生は `outputs/2026-10-14_inspector_splat_budget_heat.html`。AppStats lane、splat budget ring、Inspector step heat を合成し、budget spike を入れられる。どちらも依存なしで、1-4キー、drag、click/Spaceに対応する。</p>
+          <p class="en-copy">The main prototype is `outputs/2026-10-14_mesh_blend_seam_field.html`, a dependency-free raw WebGL fragment shader that composites packed tag groups, contact search fade, and shadow attenuation, with drag and pulse controls for contact focus and radius. The derived prototype is `outputs/2026-10-14_inspector_splat_budget_heat.html`, compositing AppStats lanes, splat budget rings, and Inspector step heat with an injectable budget spike. Both support 1-4 keys, drag, and click/Space.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>今回の2本は `focusX/focusY/mode/pulse` に加え、`meshBlendTag/groupId/radiusClass/searchRadius/slopeFactor/rejectedContactCount/attenuation/baseColorAvailable/splatBudget/lodLevel/coarseFirstRank/appStatsGpuMs/appStatsDrawCalls/resourceTextures/resourceBuffers/passId/pipelineCompileMs/webglFallbackLoaded/rangePriority/refractionGuardDepth` を時系列データとして扱える。音反応では kick を radius pulse、bass を seam fade、mid を shadow attenuation、hi-hat を inspector step heat に割り当てる。MediaPipe なら指先の近接で mesh tag contact、手の開閉で radius class、顔の向きで lens focus を変える。WebXR なら視線先だけ seam / splat budget が高精度になり、controller pressure で診断heatが走る展示にできる。Web演出では loading / recovery / fallback を隠すのではなく、接触面が柔らかくなる、予算が熱として流れる、という待ち時間の触感に変換できる。</p>
+          <p class="en-copy">The two samples can treat `focusX/focusY/mode/pulse` plus `meshBlendTag/groupId/radiusClass/searchRadius/slopeFactor/rejectedContactCount/attenuation/baseColorAvailable/splatBudget/lodLevel/coarseFirstRank/appStatsGpuMs/appStatsDrawCalls/resourceTextures/resourceBuffers/passId/pipelineCompileMs/webglFallbackLoaded/rangePriority/refractionGuardDepth` as time-series data. For audio, map kick to radius pulse, bass to seam fade, mids to shadow attenuation, and hi-hats to inspector step heat. With MediaPipe, fingertip proximity can drive mesh-tag contacts, hand openness radius classes, and face direction lens focus. In WebXR, gaze-local seams / splat budgets refine while controller pressure sends diagnostic heat through the scene. For web expression, loading / recovery / fallback can become tactile waiting states: contacts soften and budgets flow as heat.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://blog.playcanvas.com/new-in-playcanvas-editor-gravity-scale-inspector-and-splat-budget/" target="_blank" rel="noreferrer">PlayCanvas Editor 2.34 blog</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://forum.babylonjs.com/t/introducing-mesh-blending-in-babylon-js-and-babylon-lite/64192" target="_blank" rel="noreferrer">Babylon.js Mesh Blending announcement</a></li>
+          
+            <li><a href="https://doc.babylonjs.com/features/featuresDeepDive/postProcesses/meshBlending/" target="_blank" rel="noreferrer">Babylon.js Mesh Blending documentation</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/demos/" target="_blank" rel="noreferrer">Codrops Demos Hub</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/08/25/building-a-mouse-following-square-lens-effect-with-three-js-and-glsl/" target="_blank" rel="noreferrer">Codrops Pointer Square Lens Distortion</a></li>
+          
+            <li><a href="https://dasprinzip.com/tinker/day42/" target="_blank" rel="noreferrer">Creator demo: Volatile Nexus</a></li>
+          
+            <li><a href="outputs/2026-10-14_mesh_blend_seam_field.html" target="_blank" rel="noreferrer">Main sample: Mesh Blend Seam Field</a></li>
+          
+            <li><a href="outputs/2026-10-14_inspector_splat_budget_heat.html" target="_blank" rel="noreferrer">Derived sample: Inspector Splat Budget Heat</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-14_mesh_blend_seam_field.html" loading="lazy" title="2026-10-14 Mesh Blend Seam Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
