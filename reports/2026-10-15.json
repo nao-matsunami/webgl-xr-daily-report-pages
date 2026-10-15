@@ -1,0 +1,143 @@
+{
+  "date": "2026-10-15",
+  "headline": "負荷とXRバインディングを、場面転換の譜面にする",
+  "headlineEn": "Make render load and XR bindings a score for scene transitions",
+  "summary": "three.js r187の進行中項目、PlayCanvas Engine v2.23.2、Babylon.js 9.30.0とWebXR/WebGPU Bindingの議論、そしてThree.js + GLSLのブラウザ内ショートフィルムを接続した。描画負荷、draw call、XRの視線・入力を隠れた実装詳細ではなく、物語の切替と粒子のキューとして使う。依存なしの本命WebGL試作と派生Canvas試作を追加した。",
+  "summaryEn": "This report connects the active three.js r187 work, PlayCanvas Engine v2.23.2, Babylon.js 9.30.0 and WebXR/WebGPU Binding discussion, plus a Three.js + GLSL browser short film. Render load, draw calls, and XR gaze/input become cues for story cuts and particles rather than hidden implementation details. A dependency-free WebGL main prototype and Canvas derivative are included.",
+  "links": [
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "Babylon.js 9.30.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+    },
+    {
+      "label": "Babylon WebXR/WebGPU Binding discussion",
+      "url": "https://forum.babylonjs.com/t/webxr-webgpu-binding/64322"
+    },
+    {
+      "label": "Codrops: Chasing the Moment",
+      "url": "https://tympanus.net/codrops/author/canberkpolat/"
+    },
+    {
+      "label": "Main sample: Transition Load Score",
+      "url": "outputs/2026-10-15_transition_load_score.html"
+    },
+    {
+      "label": "Derived sample: XR Binding Particle Cue",
+      "url": "outputs/2026-10-15_xr_binding_particle_cue.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187 milestone は10月14日に更新され、FP16 TSL、オンデマンドWebGL fallback、HTTP Range、depth-guard refraction、blur tap merge などが同じリリースの論点として並ぶ。これらは単なる最適化ではなく、画面のどこが先に解像し、どこで見え方が切り替わるかを設計する入力になる。2. PlayCanvas Engine v2.23.2 はGSplat LODを画面全体でcoarsest-firstにstreamし、zero-size canvasの解像度と空のMiniStats drawを修正した。粗い像から詳細へ移る順序を演出のカットとして扱える。3. Babylon.js 9.30.0 はWebGPU canvas tone mapping / color space、render target sRGB、passごとのSubMesh draw-wrapper cache、GPUParticleSystemのdivisor stateを更新。色・pass・粒子の状態を一つのtime scoreへ寄せやすい。4. BabylonフォーラムのWebXR/WebGPU Binding議論は、XR入力やレイヤーをWebGPU側へ接続する実装課題を可視化している。5. CodropsのChasing the Momentは、Three.js / GLSLでライブ描画した複数シーンのWebfilmをスクロールで演出する制作者事例である。",
+      "bodyEn": "1. The three.js r187 milestone was updated on October 14 and groups FP16 TSL, on-demand WebGL fallback, HTTP Range, depth-guarded refraction, and blur-tap merging. These are inputs for deciding where an image resolves first and where its look changes. 2. PlayCanvas Engine v2.23.2 streams GSplat LOD coarsest-first across the full view and fixes zero-size-canvas resolution and empty MiniStats draws. The order from coarse image to detail can become a cut. 3. Babylon.js 9.30.0 updates WebGPU canvas tone mapping / color space, sRGB render targets, per-pass SubMesh draw-wrapper caching, and GPUParticleSystem divisor state. 4. The Babylon WebXR/WebGPU Binding discussion makes connection points between XR inputs/layers and WebGPU visible. 5. Codrops' Chasing the Moment is a creator example of a multi-scene, live-rendered Three.js/GLSL webfilm directed by scrolling.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon.js 9.30.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Chasing the Momentの面白さは、WebGLの一枚絵ではなく、スクロールがシーン演出の指揮になる点。10/14までのseam / budget / inspectorの流れに加えると、GPUのロードやdraw-call圧を「壊れた表示」ではなく、次のカットを予告するノイズ、粒子、シャッターとして使える。Babylon 9.30.0のper-pass cacheと色空間設定は、その切替が物語上の意図なのか偶発的な事故なのかを制御する下地になる。",
+      "bodyEn": "Chasing the Moment is interesting because scrolling conducts scenes rather than merely revealing a WebGL still. Combined with the seam / budget / inspector thread through October 14, GPU load and draw-call pressure can become particles, shutters, and pre-cut noise instead of broken imagery. Babylon 9.30.0's per-pass cache and color-space controls provide a base for making the change intentional.",
+      "links": [
+        {
+          "label": "Codrops author page",
+          "url": "https://tympanus.net/codrops/author/canberkpolat/"
+        },
+        {
+          "label": "Babylon release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命 `outputs/2026-10-15_transition_load_score.html` は、scene timing、draw-call pressure、shatter transitionを同じraw WebGLフラグメントシェーダーで重ねる。dragは物語上の注視点、click/Spaceはcut pulse、1-4は分析と合成を切り替える。派生 `outputs/2026-10-15_xr_binding_particle_cue.html` は左右のeye binding、gaze beam、粒子衝突キューを軽いCanvasで試す。次に足すなら、実WebXRのhit-test / controller squeeze と、実rendererのpass時間をこの2本の入力へ差し替える。",
+      "bodyEn": "The main `outputs/2026-10-15_transition_load_score.html` layers scene timing, draw-call pressure, and shatter transitions in one raw WebGL fragment shader. Drag sets story focus, click/Space creates a cut pulse, and 1-4 switches analysis/composite. The derived `outputs/2026-10-15_xr_binding_particle_cue.html` tests left/right eye bindings, gaze beams, and particle collision cues in lightweight Canvas. Next, replace synthetic inputs with WebXR hit-test / controller squeeze and real renderer pass times.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-15_transition_load_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-15_xr_binding_particle_cue.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ候補は `frameMs/passId/passMs/drawCalls/triangleCount/pipelineCacheHit/workingColorSpace/toneMappingMode/splatLod/coarseFirstRank/rangeStart/rangeEnd/webglFallbackLoaded/xrEyeIndex/xrViewport/xrHitDistance/controllerSqueeze`。64x8のstate textureでは横を直近フレーム、縦をscene/asset/pass/XR inputに割り当てる。短期は毎フレームの数値をshard密度とbeam幅へ直接マップする。中長期では、fallbackやrange到着も含め、編集可能なcut scoreとして記録・再生する。",
+      "bodyEn": "Useful fields are `frameMs/passId/passMs/drawCalls/triangleCount/pipelineCacheHit/workingColorSpace/toneMappingMode/splatLod/coarseFirstRank/rangeStart/rangeEnd/webglFallbackLoaded/xrEyeIndex/xrViewport/xrHitDistance/controllerSqueeze`. In a 64x8 state texture, assign recent frames horizontally and scene/asset/pass/XR input vertically. Short-term, map each frame directly to shard density and beam width; long-term, record and replay fallback and range arrivals as an editable cut score."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の締切前のPR統合とWebGPU fallback、PlayCanvasのGSplat GPU-sort flicker・Splat Budget / Inspector・AppStats、BabylonのWebXR/WebGPU Bindingと9.30.xのcolor-space / cache、CodropsのWebfilm・glass・datamosh・audio連携を継続監視する。",
+      "bodyEn": "Continue watching three.js r187 integrations and WebGPU fallback; PlayCanvas GSplat GPU-sort flicker, Splat Budget / Inspector / AppStats; Babylon WebXR/WebGPU Binding and 9.30.x color-space/cache; and Codrops webfilm, glass, datamosh, and audio work."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を4で開いてdragし、click/Spaceでcutを打つ。1はscene timing、2はdraw pressure、3はshatterだけを表示する。次に派生を4で開き、ポインタを視線として動かしてpulseを入れる。最短の発展は、実アプリの`frameMs`を本命のshard半径へ、controller squeezeを派生の粒子衝突へつなぐこと。",
+      "bodyEn": "Open the main sample in mode 4, drag, and trigger a cut with click/Space. Modes 1-3 isolate scene timing, draw pressure, and shatter. Then open the derivative in mode 4, move the pointer as gaze, and pulse. The shortest extension maps real `frameMs` to main-sample shard radius and controller squeeze to derivative particle collision.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-15_transition_load_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-15_xr_binding_particle_cue.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: r187 milestone、PlayCanvas v2.23.2、Babylon 9.30.0 / Binding議論、Codrops制作者記事。アイデア検討: 10/14のbudget heatをWebfilmのcut cueへ接続。サンプル実装: 本命WebGLと派生Canvasを追加。結果の検証: JSON / HTML / script構文、gallery build、publishを実行する。継続案件: renderer state atlas、GSplat LOD、fallback haze、diagnostic heat。新規案件: transition load score、XR gaze/controller cue。寝かせる案件: カードUI、重い外部アセット、WebGPU限定物理。",
+      "bodyEn": "Collection: r187 milestone, PlayCanvas v2.23.2, Babylon 9.30.0 / Binding discussion, and a Codrops creator article. Ideation: connected October 14 budget heat to webfilm cut cues. Implementation: added a WebGL main and Canvas derivative. Verification: JSON / HTML / script parsing, gallery build, and publish. Continuing: renderer-state atlas, GSplat LOD, fallback haze, diagnostic heat. New: transition load score and XR gaze/controller cues. Parked: card UI, heavy external assets, and WebGPU-only physics."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "直近の傾向は、レンダラの内部状態を可視化するだけでなく時間演出へ転用すること。10/9のshadow/occlusion、10/12のRange/recovery、10/14のseam/budget、今日はpass pressureとXR bindingを一本の譜面にした。組み合わせ候補は、coarse-first splatの到着順を街並みの出現順にし、tone mappingの切替を場面の温度に、gazeとcontrollerを画面遷移の切れ目に使うこと。育てる価値が高いのは「実行時メトリクスで編集されるWebfilm」。",
+      "bodyEn": "The current trend is not just visualizing renderer internals but converting them into temporal direction. October 9 shadow/occlusion, October 12 Range/recovery, October 14 seam/budget, and today's pass pressure/XR binding form one score. Promising combinations make coarse-first splat arrival the order of a city appearing, tone-mapping changes scene temperature, and gaze/controller input scene cuts. The high-value theme is a webfilm edited by runtime metrics."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-15_transition_load_score.html` は依存なしWebGLで、timing、pressure、shatterをmode分解できる。本命に選んだ理由は、直近のstate atlasをそのまま物語的な切替へつなげられ、実測ログへの置換も容易だから。2本目 `outputs/2026-10-15_xr_binding_particle_cue.html` はWebXR APIを要求せず、視線とcontroller impulseの役割を先に感覚的に検証する派生である。",
+      "bodyEn": "The main `outputs/2026-10-15_transition_load_score.html` is dependency-free WebGL with separable timing, pressure, and shatter modes. It was chosen because the recent state atlas maps directly to story cuts and can easily accept measured logs. The second `outputs/2026-10-15_xr_binding_particle_cue.html` is a derivative that validates the feel of gaze and controller impulse before requiring the WebXR API."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "この2本の入力 `focusX/focusY/mode/pulse/frameMs/passMs/drawCalls/splatLod/xrEyeIndex/xrHitDistance/controllerSqueeze` は、作品の編集ログでもある。音ならkickをcut pulse、bassをpressure密度、highをshatterに割り当てられる。カメラ/MediaPipeなら顔の向きでgaze、手の握りでcontroller impulseを作れる。WebXRでは視線に近いsplatだけ詳細化し、負荷が上がるほど遷移粒子が増える展示にできる。ブランド演出ならアクセス集中や閲覧導線を匿名のtime scoreにして、サイト自身の利用状況がWebfilmを少しずつ編集する形へ発展できる。",
+      "bodyEn": "Inputs such as `focusX/focusY/mode/pulse/frameMs/passMs/drawCalls/splatLod/xrEyeIndex/xrHitDistance/controllerSqueeze` are also an editing log. Audio can map kick to cut pulse, bass to pressure density, and highs to shatter. Camera/MediaPipe can turn face direction into gaze and grip into controller impulse. In WebXR, nearby splats refine while load increases transition particles. For brands, anonymous traffic and browsing flow can become a time score that gradually edits the webfilm itself."
+    }
+  ]
+}
