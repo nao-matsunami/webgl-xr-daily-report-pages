@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-16",
+  "headline": "選択的に解像する光を、Webの演出にする",
+  "headlineEn": "Turn selectively resolving light into web direction",
+  "summary": "three.jsの拡張sRGB・HDR/JXL・VDB・LightMapper提案、PlayCanvasのGSplat距離／予算制御、Babylon.jsのGaussian Splatting更新を接続した。全画面を常に最高品質にせず、注視点と照明パスに応じて像を現す短時間試作を2本追加した。",
+  "summaryEn": "This report connects three.js proposals for extended sRGB, HDR/JXL, VDB and LightMapper with PlayCanvas GSplat distance/budget control and Babylon.js Gaussian Splatting updates. Two short prototypes reveal an image selectively by attention and lighting pass.",
+  "links": [
+    {
+      "label": "three.js pull requests (Oct 15)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.28.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Selective Radiance Atlas",
+      "url": "outputs/2026-10-16_selective_radiance_atlas.html"
+    },
+    {
+      "label": "Derived sample: Lightmap Sketch Weave",
+      "url": "outputs/2026-10-16_lightmap_sketch_weave.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsの10月15日PRには、extended sRGB変換、ネイティブHDRを扱うJXLLoader、VDBLoaderと例、LightProbe/VXGIとglTF lightmap拡張へ保存するLightMapperが並ぶ。色域・体積・ベイク済みの光を別々の機能としてではなく、「何を今ここで見せるか」を決めるレイヤーとして扱える。2. r187は10月15日更新で88%完了、FP16 TSL、オンデマンドWebGL fallback、Range request、blur tap統合が残る。3. PlayCanvas v2.23系はGSplat LODの距離ベース／予算、nearest-firstとcoarsest-firstのstream順を整備しており、詳細の到着順を演出へ変換しやすい。4. Babylon.js 9.28.0はGaussian Splattingのnearest samplingとWebGPUのsplat material plugin整合を更新した。",
+      "bodyEn": "1. October 15 three.js PRs include extended sRGB, JXL HDR loading, VDB loading, and a LightMapper that saves lightmaps through a glTF extension. 2. r187 is 88% complete. 3. PlayCanvas gives GSplat LOD distance/budget and streaming order explicit controls. 4. Babylon.js 9.28.0 updates Gaussian Splatting sampling and WebGPU material-plugin compatibility.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon.js 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのR3F Sketch Materialは、スケッチ風の材質をGLSL / React Three Fiber / Three.js / WebGLとして提示する。写実的なGIやsplatの「高密度化」と対にして、あえて未解像の線や筆致を残すことで、ロード順・品質切替・注視の移動が物語になる。",
+      "bodyEn": "Codrops' R3F Sketch Material presents a sketch-like material through GLSL/R3F/Three.js/WebGL. Pairing deliberate unfinished lines with high-density GI or splats makes load order and attention shifts part of the story.",
+      "links": [
+        {
+          "label": "R3F Sketch Material via Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は「注視点だけが光を吸い上げる都市／展示」。視線・pointerの近傍だけをextended rangeの色、VDB fog、近距離splatで詳しくし、遠方はスケッチの線へ戻す。派生は「progressive lightmapを織物として見せる」案で、bake passの順番を線の揺れと粒子にする。どちらも品質低下を待ち時間ではなく、視覚の呼吸に変える。",
+      "bodyEn": "The main idea lets only the attention region collect HDR color, fog, and fine splats while distance returns to sketch lines. The derivative turns progressive lightmap passes into a woven line field.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-16_selective_radiance_atlas.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-16_lightmap_sketch_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ候補は `focusX/focusY`, `hdrHeadroom`, `workingColorSpace`, `lightmapPass`, `probeGridId`, `vdbBrickReady`, `splatBudget`, `lodLevel`, `streamRank`, `textureNearest`, `fallbackLoaded`。短期はこれをuniformまたは小さなstate textureへ入れ、焦点半径・発光・線密度へ直結する。中長期はLightMapperのprobe完了とGSplat stream完了を同じ時系列にして、映像編集可能な品質譜面へ育てる。",
+      "bodyEn": "Useful fields are focus position, HDR headroom, color space, lightmap pass, probe/VDB progress, splat budget/LOD/rank, sampling mode, and fallback state. Use a uniform/state texture now; turn completion events into an editable quality score later."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の締切前に、LightMapper・VDBLoader・JXLLoader・extended sRGBがどこまで統合されるかを追う。PlayCanvasはGSplatのbudget／距離とstochastic alpha、Babylonは次の9.28.xとGaussian SplattingのWebGPU差分、Codropsはスケッチ・材質・ページ遷移の実作品を継続観測する。",
+      "bodyEn": "Watch r187 integrations for LightMapper/VDB/JXL/extended sRGB, PlayCanvas GSplat budget and stochastic alpha, Babylon 9.28.x Gaussian Splatting, and creator work around sketch materials and page transitions."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerをゆっくり動かして1〜4を切り替える。4ではprobe、HDR bloom、splat風の粒子が重なり、click/Spaceで一時的に露出が上がる。次に派生でpointerをbake中心として動かし、Spaceで新しい光パスを作る。最短の実装接続は、実アプリのcamera raycastまたはWebXR gazeを`focusX/focusY`へ渡すこと。",
+      "bodyEn": "Open the main sample, move the pointer, and switch modes 1-4; click or Space adds an exposure flash. Then move the bake focus in the derivative. The shortest real integration maps a camera raycast or XR gaze to focus coordinates.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-16_selective_radiance_atlas.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-16_lightmap_sketch_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js当日PR、r187、PlayCanvas releases、Babylon 9.28.0、Codrops。アイデア検討: 解像度・光・LODの到着を注視と物語のルールにする。サンプル実装: WebGL本命とCanvas派生を追加。結果の検証: JSON、HTML、script構文、gallery build、publishを実施する。継続案件: renderer state atlas / GSplat LOD / fallback haze。新規案件: selective radiance / progressive lightmap weave。寝かせる案件: カードUI、重いVDB実データ、WebGPU専用実装。",
+      "bodyEn": "Collection: primary engine sources and Codrops. Ideation: make light/LOD arrival a rule of attention. Implementation: WebGL main plus Canvas derivative. Verification: JSON, HTML, scripts, gallery build and publish. Continue state atlas/GSplat/fallback; start selective radiance/lightmap weave; park cards/heavy VDB/WebGPU-only work."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10/8のcompile heat、10/9のsplat shadow、10/12のRange/recovery、10/14のseam/budget、10/15のtransition load scoreを通じ、レンダラ内部の状態を時間演出へ変える流れが太くなった。今日はそこへ色域と光の解像度を足した。組み合わせ候補は、coarse-first splatを街の輪郭、LightMapper passを室内の記憶、extended sRGBを感情のピーク、スケッチ材質を未到着領域に使う構成。育てる価値が高いのは「視線と実行時品質で編集されるWebfilm」。",
+      "bodyEn": "Compile heat, splat shadow, range/recovery, seam/budget, and transition load score have established renderer state as temporal direction. Today adds color gamut and light resolution. A valuable theme is a webfilm edited by gaze and runtime quality."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-16_selective_radiance_atlas.html` は依存なしのraw WebGL。probe、HDR風の色域、splat風の密度を1〜4で分解し、pointer／clickで注視と発光を検証する。2本目 `outputs/2026-10-16_lightmap_sketch_weave.html` は依存なしCanvasで、progressive bakeを線と粒子として先に触る派生。次に足すなら前者へ実depth、後者へ実probe/lightmap完了イベントを接続する。",
+      "bodyEn": "The main dependency-free raw WebGL sample isolates probe, HDR-like gamut, and splat-like density. The second Canvas sample tests progressive bakes as lines and particles. Next, feed real depth to the main and real probe/lightmap completion events to the derivative.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-16_selective_radiance_atlas.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-16_lightmap_sketch_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "`focus`, `pulse`, `mode`, `lightmapPass`, `splatBudget`, `streamRank`は、入力であると同時に作品の編集ログになる。音のkickをpulse、カメラ／MediaPipeの顔向きをfocus、WebXR gazeをprobe、来場者密度をbudgetへ割り当てれば、同じシェーダーが展示・ライブ・ブランドサイトで違うリズムを取れる。ユーザー行動は匿名集計のみを扱い、個人を追跡しない設計にする。",
+      "bodyEn": "Focus, pulse, mode, lightmap pass, budget and stream rank are both inputs and an edit log. Map audio, camera pose, XR gaze, or anonymized audience density to them for installations, live work, or brand sites without tracking people."
+    }
+  ]
+}
