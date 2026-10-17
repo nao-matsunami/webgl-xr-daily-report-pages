@@ -1,0 +1,16 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frame Memory Shatter Score</title><style>html,body{margin:0;height:100%;background:#06080e;overflow:hidden;color:#dce8ff;font:12px ui-monospace,monospace}canvas{width:100%;height:100%;display:block}#ui{position:fixed;inset:18px auto auto 18px;max-width:360px;line-height:1.55;text-shadow:0 2px 8px #000}b{color:#fff}kbd{border:1px solid #668;padding:1px 4px;border-radius:3px}</style><canvas></canvas><div id="ui"><b>FRAME MEMORY / SHATTER SCORE</b><br>pointer: cut origin　<kbd>1</kbd> history <kbd>2</kbd> load <kbd>3</kbd> shards <kbd>4</kbd> composite<br>click / space: cut pulse<br><span id="s"></span></div><script>
+const c=document.querySelector('canvas'),x=c.getContext('2d');let W,H,p={x:.5,y:.5},mode=4,pulse=0,last=0;
+function size(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',size);size();
+addEventListener('pointermove',e=>p={x:e.clientX/W,y:e.clientY/H});addEventListener('keydown',e=>{if(+e.key)mode=+e.key;if(e.code==='Space')pulse=1});addEventListener('pointerdown',()=>pulse=1);
+function rnd(a,b){return (Math.sin(a*127.1+b*311.7)*43758.5453)%1}
+function frame(t){let dt=Math.min(.05,t-last||0);last=t;pulse=Math.max(0,pulse-dt*.42);let q=performance.now()/1000, cx=p.x*W,cy=p.y*H;x.fillStyle='rgba(4,7,14,.20)';x.fillRect(0,0,W,H);let n=15;
+// history tiles: one shared jittered grid keeps the crack seams coherent
+for(let j=0;j<n;j++)for(let i=0;i<n*1.8;i++){let id=i+j*29,rx=(rnd(id,1)-.5)*13,ry=(rnd(id,2)-.5)*13,px=(i+.5)*W/(n*1.8)+rx,py=(j+.5)*H/n+ry,d=Math.hypot(px-cx,py-cy)/Math.hypot(W,H),kick=Math.max(0,.43-d)*2.3*(.3+pulse);let a=(mode===1? .5:mode===2? .16+kick*.25:mode===3? .1: .18)+kick*.55;let hue=190+70*Math.sin(q*.4+id);
+ x.save();x.translate(px,py);x.rotate((rnd(id,3)-.5)*.4+kick*(rnd(id,4)-.5)*4);let z=1+kick*4;x.scale(z,z);x.fillStyle=`hsla(${hue},85%,${48+kick*35}%,${a})`;x.fillRect(-W/n/3.6,-H/n/2.1,W/n/1.8,H/n*.78);x.restore();}
+// load lanes and pass cache strokes
+if(mode!==3){for(let i=0;i<9;i++){let y=H*(.16+i*.075), ph=(q*.8+i*.19)%1;x.strokeStyle=`hsla(${185+i*13},90%,70%,${.18+(mode===2?.45:0)})`;x.lineWidth=1;x.beginPath();x.moveTo(0,y);x.lineTo(W*ph,y);x.stroke();}}
+// cut wave
+let r=(.12+pulse*.72)*Math.min(W,H);x.strokeStyle=`rgba(255,210,152,${.2+pulse*.8})`;x.lineWidth=2;x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
+x.fillStyle='rgba(255,240,210,.8)';x.beginPath();x.arc(cx,cy,2+pulse*11,0,7);x.fill();document.querySelector('#s').textContent=`mode ${mode} · cache ${Math.round(71+pulse*27)}% · frame ${Math.round(15+pulse*12)}ms`;
+requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script></html>

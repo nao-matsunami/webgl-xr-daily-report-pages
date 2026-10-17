@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-17",
+  "headline": "レンダラの復旧とLOD到着を、Webfilmのカットにする",
+  "headlineEn": "Turn renderer recovery and LOD arrival into webfilm cuts",
+  "summary": "three.js r187のフォールバック／FP16／範囲取得、PlayCanvasのGSplatとWebGPU、Babylon.js 9.30.0の色空間・パスキャッシュを、負荷や復旧を演出へ変える素材として整理した。カットの残像とcoarse-to-fine到着を試す2本を追加。",
+  "summaryEn": "three.js r187 recovery features, PlayCanvas GSplat/WebGPU work, and Babylon.js 9.30.0 color-space/pass caching are treated as creative material. Two prototypes test cut memory and coarse-to-fine arrival.",
+  "links": [
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.30.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+    },
+    {
+      "label": "Chasing the Moment — Codrops",
+      "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+    },
+    {
+      "label": "Main sample: Frame Memory Shatter Score",
+      "url": "outputs/2026-10-17_frame_memory_shatter_score.html"
+    },
+    {
+      "label": "Derived sample: Coarse Arrival Webfilm Field",
+      "url": "outputs/2026-10-17_coarse_arrival_webfilm_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187は10月14日更新で87%完了。FP16 TSL、WebGL fallbackのオンデマンド化、Range request、blur tap統合が、品質と復旧を固定設定でなく時間変化として扱える入口になる。2. PlayCanvas Engine v2.23.0はWebGPUでのpersistent storage buffer、GSplat LODのcoarse data／距離評価を含む。粗い輪郭から到着する順を、そのまま場面の立ち上がりにできる。3. Babylon.js 9.30.0はWebGPU canvasのtone mapping/color space公開、render pass別draw wrapper cache、particle divisor状態の修正を含む。4. three.js/GLSL Webfilm『Chasing the Moment』は、RTT、CanvasTexture、スクロール、画面破砕を一本の物語の小道具にした。",
+      "bodyEn": "r187 keeps FP16, on-demand fallback, range requests and blur optimization in view. PlayCanvas exposes GSplat arrival and WebGPU storage choices. Babylon 9.30.0 exposes canvas color/tone controls and pass caching. Chasing the Moment demonstrates a webfilm where rendering techniques carry narrative.",
+      "links": [
+        {
+          "label": "r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        },
+        {
+          "label": "Babylon.js 9.30.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0"
+        },
+        {
+          "label": "Webfilm case study",
+          "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "『Chasing the Moment』の破砕は画面をtextureに捕獲して共有頂点の断片へ貼り、断片ごとのdelay・spin・pushで飛ばす。単に派手な遷移ではなく、前シーンを物理的な記憶として次へ持ち込む設計だ。r187のfallbackやBabylonのpass cacheも、隠すだけでなく「前の画質が少し残る」カットのルールに転用できる。",
+      "bodyEn": "The webfilm captures a frame, places it on shared-edge shards, and gives each shard delay/spin/push. It makes the prior scene physical memory; fallback and pass-cache states can become the same kind of cut rule.",
+      "links": [
+        {
+          "label": "Chasing the Moment",
+          "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は「Frame Memory Shatter Score」: pointerをカットの起点にし、履歴frame、pass cache、shader shardを同じ譜面にする。派生は「Coarse Arrival Webfilm」: 視線／pointer近傍から粗いsplatが街の骨格を出し、fine LODとtone mapが後から届く。品質制御が待ち時間でなく編集のテンポになる。",
+      "bodyEn": "The main idea makes pointer a cut origin for frame history, pass cache and shards. The derivative lets coarse splats establish a scene before fine LOD and tone arrive.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-17_frame_memory_shatter_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-17_coarse_arrival_webfilm_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "記録する値は`frameMs`, `passId`, `drawWrapperHit`, `toneMapping`, `workingColorSpace`, `fallbackLoaded`, `rangeBytes`, `lodLevel`, `coarseReady`, `splatBudget`, `historyAge`。短期はuniform/小さいstate textureで粒子密度・残像alpha・破片遅延へ接続する。実装上は、品質切替時に画面全体を一度RTへ描いてから低解像／破片へ渡すと、カットの連続性を保ちやすい。",
+      "bodyEn": "Log frame/pass/cache/color/fallback/range/LOD/budget/history values. Map them into density, afterimage alpha and shard delays through uniforms or a small state texture. Capture to an RT before a quality switch to retain continuity."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の締切前の統合、特にFP16・fallback・range requestの着地を追う。PlayCanvasはGSplatのcoarse data／予算とWebGPUのstorage lifecycle、Babylonは9.30.xのWebGPU色管理・particle/pass状態、CodropsはWebfilmや物語的なGLSL事例を継続観測する。",
+      "bodyEn": "Watch r187 integrations, PlayCanvas GSplat budget/storage lifecycle, Babylon 9.30.x WebGPU color/particle/pass work, and creator webfilm examples."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerでカット位置を動かし、1〜4で履歴・load lane・破片・合成を切り替える。click/Spaceは復旧／カットのpulse。次に派生でpointerを注視点として動かし、1→2→3→4でcoarse→fine→toneの到着順を読む。最短の実案件接続は、実render loopの`frameMs`と`lodLevel`をこの2つのuniformへ渡すこと。",
+      "bodyEn": "Move the cut origin and switch modes 1-4 in the main sample. Then read coarse-to-fine-to-tone arrival in the derivative. Feed real frame time and LOD to these two uniforms first.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-17_frame_memory_shatter_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-17_coarse_arrival_webfilm_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js/PlayCanvas/Babylon公式release・milestoneと制作者記事。アイデア検討: runtime stateをカットと到着順に変換。サンプル実装: 依存なしCanvasの2本を追加。結果の検証: JSON/HTML/script parse、gallery build、publishを実施。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: frame-memory cut、coarse-arrival webfilm。寝かせる案件: カードUI、重いasset配信、WebGPU限定実装。",
+      "bodyEn": "Collect official sources; turn runtime state into cuts and arrival; implement two dependency-free samples; verify JSON/HTML/scripts/build/publish. Continue state atlas/LOD/fallback; start frame-memory/coarse-arrival; park cards/heavy assets/WebGPU-only work."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月前半のcompile heat、splat shadow、transition load、selective radianceを通じ、実行時の「揺れ」を美学に変える線が明確になった。今日の接続は、splatの到着を空間の生成、fallback／historyを物語の残像、色空間をシーン温度として同じ編集系へ入れること。育てる価値が高いのは、端末・回線・視線によって自律的に編集されるWebfilmである。",
+      "bodyEn": "The month has clarified a theme: runtime instability as aesthetics. Combine splat arrival as spatial emergence, fallback/history as narrative afterimage, and color space as scene temperature in one edit system."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-17_frame_memory_shatter_score.html`は、共有感のあるtile/shardとload laneを描く最小Canvas。pointer、1〜4、click/Spaceが動作し、次は実RT captureとGPU timingへ接続する。2本目`outputs/2026-10-17_coarse_arrival_webfilm_field.html`は、coarse/fine/tone/compositeを個別に読める派生で、次は実GSplat LODとWebXR gazeを足す。",
+      "bodyEn": "The main Canvas prototype has pointer/mode/pulse interaction for shard memory and load lanes; next add real RT capture/timing. The derivative isolates coarse/fine/tone/composite arrival; next add actual GSplat LOD and XR gaze.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-17_frame_memory_shatter_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-17_coarse_arrival_webfilm_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "`cutOrigin`, `pulse`, `historyAge`, `lodLevel`, `streamRank`, `toneMapping`は、体験の入力であると同時に編集ログになる。音のtransientをpulse、カメラやMediaPipeの顔向きをcut origin、WebXR gazeをLOD target、展示会場の匿名混雑度をbudgetへ割り当てられる。個人追跡ではなく、その場の集計だけを使えば、ライブ・展示・ブランドサイトで同じ譜面を安全に再演できる。",
+      "bodyEn": "Cut origin, pulse, history age, LOD, stream rank and tone mapping are both experience inputs and edit logs. Map audio, pose, XR gaze or anonymous venue density to them without tracking individuals."
+    }
+  ]
+}

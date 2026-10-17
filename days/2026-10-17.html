@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>レンダラの復旧とLOD到着を、Webfilmのカットにする | 2026-10-17</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.17</p>
+      <h1>レンダラの復旧とLOD到着を、Webfilmのカットにする</h1>
+      <p class="hero-subtitle">Turn renderer recovery and LOD arrival into webfilm cuts</p>
+      <p>three.js r187のフォールバック／FP16／範囲取得、PlayCanvasのGSplatとWebGPU、Babylon.js 9.30.0の色空間・パスキャッシュを、負荷や復旧を演出へ変える素材として整理した。カットの残像とcoarse-to-fine到着を試す2本を追加。</p>
+      <p class="en-copy">three.js r187 recovery features, PlayCanvas GSplat/WebGPU work, and Babylon.js 9.30.0 color-space/pass caching are treated as creative material. Two prototypes test cut memory and coarse-to-fine arrival.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-17_frame_memory_shatter_score.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-16.html">← 2026.10.16</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Frame Memory Shatter Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-17_frame_memory_shatter_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Coarse Arrival Webfilm Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-17_coarse_arrival_webfilm_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js r187は10月14日更新で87%完了。FP16 TSL、WebGL fallbackのオンデマンド化、Range request、blur tap統合が、品質と復旧を固定設定でなく時間変化として扱える入口になる。2. PlayCanvas Engine v2.23.0はWebGPUでのpersistent storage buffer、GSplat LODのcoarse data／距離評価を含む。粗い輪郭から到着する順を、そのまま場面の立ち上がりにできる。3. Babylon.js 9.30.0はWebGPU canvasのtone mapping/color space公開、render pass別draw wrapper cache、particle divisor状態の修正を含む。4. three.js/GLSL Webfilm『Chasing the Moment』は、RTT、CanvasTexture、スクロール、画面破砕を一本の物語の小道具にした。</p>
+          <p class="en-copy">r187 keeps FP16, on-demand fallback, range requests and blur optimization in view. PlayCanvas exposes GSplat arrival and WebGPU storage choices. Babylon 9.30.0 exposes canvas color/tone controls and pass caching. Chasing the Moment demonstrates a webfilm where rendering techniques carry narrative.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">r187 milestone</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas v2.23.0</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0" target="_blank" rel="noreferrer">Babylon.js 9.30.0</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Webfilm case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>『Chasing the Moment』の破砕は画面をtextureに捕獲して共有頂点の断片へ貼り、断片ごとのdelay・spin・pushで飛ばす。単に派手な遷移ではなく、前シーンを物理的な記憶として次へ持ち込む設計だ。r187のfallbackやBabylonのpass cacheも、隠すだけでなく「前の画質が少し残る」カットのルールに転用できる。</p>
+          <p class="en-copy">The webfilm captures a frame, places it on shared-edge shards, and gives each shard delay/spin/push. It makes the prior scene physical memory; fallback and pass-cache states can become the same kind of cut rule.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Chasing the Moment</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は「Frame Memory Shatter Score」: pointerをカットの起点にし、履歴frame、pass cache、shader shardを同じ譜面にする。派生は「Coarse Arrival Webfilm」: 視線／pointer近傍から粗いsplatが街の骨格を出し、fine LODとtone mapが後から届く。品質制御が待ち時間でなく編集のテンポになる。</p>
+          <p class="en-copy">The main idea makes pointer a cut origin for frame history, pass cache and shards. The derivative lets coarse splats establish a scene before fine LOD and tone arrive.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-17_frame_memory_shatter_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-17_coarse_arrival_webfilm_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>記録する値は`frameMs`, `passId`, `drawWrapperHit`, `toneMapping`, `workingColorSpace`, `fallbackLoaded`, `rangeBytes`, `lodLevel`, `coarseReady`, `splatBudget`, `historyAge`。短期はuniform/小さいstate textureで粒子密度・残像alpha・破片遅延へ接続する。実装上は、品質切替時に画面全体を一度RTへ描いてから低解像／破片へ渡すと、カットの連続性を保ちやすい。</p>
+          <p class="en-copy">Log frame/pass/cache/color/fallback/range/LOD/budget/history values. Map them into density, afterimage alpha and shard delays through uniforms or a small state texture. Capture to an RT before a quality switch to retain continuity.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js r187の締切前の統合、特にFP16・fallback・range requestの着地を追う。PlayCanvasはGSplatのcoarse data／予算とWebGPUのstorage lifecycle、Babylonは9.30.xのWebGPU色管理・particle/pass状態、CodropsはWebfilmや物語的なGLSL事例を継続観測する。</p>
+          <p class="en-copy">Watch r187 integrations, PlayCanvas GSplat budget/storage lifecycle, Babylon 9.30.x WebGPU color/particle/pass work, and creator webfilm examples.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerでカット位置を動かし、1〜4で履歴・load lane・破片・合成を切り替える。click/Spaceは復旧／カットのpulse。次に派生でpointerを注視点として動かし、1→2→3→4でcoarse→fine→toneの到着順を読む。最短の実案件接続は、実render loopの`frameMs`と`lodLevel`をこの2つのuniformへ渡すこと。</p>
+          <p class="en-copy">Move the cut origin and switch modes 1-4 in the main sample. Then read coarse-to-fine-to-tone arrival in the derivative. Feed real frame time and LOD to these two uniforms first.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-17_frame_memory_shatter_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-17_coarse_arrival_webfilm_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js/PlayCanvas/Babylon公式release・milestoneと制作者記事。アイデア検討: runtime stateをカットと到着順に変換。サンプル実装: 依存なしCanvasの2本を追加。結果の検証: JSON/HTML/script parse、gallery build、publishを実施。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: frame-memory cut、coarse-arrival webfilm。寝かせる案件: カードUI、重いasset配信、WebGPU限定実装。</p>
+          <p class="en-copy">Collect official sources; turn runtime state into cuts and arrival; implement two dependency-free samples; verify JSON/HTML/scripts/build/publish. Continue state atlas/LOD/fallback; start frame-memory/coarse-arrival; park cards/heavy assets/WebGPU-only work.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月前半のcompile heat、splat shadow、transition load、selective radianceを通じ、実行時の「揺れ」を美学に変える線が明確になった。今日の接続は、splatの到着を空間の生成、fallback／historyを物語の残像、色空間をシーン温度として同じ編集系へ入れること。育てる価値が高いのは、端末・回線・視線によって自律的に編集されるWebfilmである。</p>
+          <p class="en-copy">The month has clarified a theme: runtime instability as aesthetics. Combine splat arrival as spatial emergence, fallback/history as narrative afterimage, and color space as scene temperature in one edit system.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命`outputs/2026-10-17_frame_memory_shatter_score.html`は、共有感のあるtile/shardとload laneを描く最小Canvas。pointer、1〜4、click/Spaceが動作し、次は実RT captureとGPU timingへ接続する。2本目`outputs/2026-10-17_coarse_arrival_webfilm_field.html`は、coarse/fine/tone/compositeを個別に読める派生で、次は実GSplat LODとWebXR gazeを足す。</p>
+          <p class="en-copy">The main Canvas prototype has pointer/mode/pulse interaction for shard memory and load lanes; next add real RT capture/timing. The derivative isolates coarse/fine/tone/composite arrival; next add actual GSplat LOD and XR gaze.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-17_frame_memory_shatter_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-17_coarse_arrival_webfilm_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>`cutOrigin`, `pulse`, `historyAge`, `lodLevel`, `streamRank`, `toneMapping`は、体験の入力であると同時に編集ログになる。音のtransientをpulse、カメラやMediaPipeの顔向きをcut origin、WebXR gazeをLOD target、展示会場の匿名混雑度をbudgetへ割り当てられる。個人追跡ではなく、その場の集計だけを使えば、ライブ・展示・ブランドサイトで同じ譜面を安全に再演できる。</p>
+          <p class="en-copy">Cut origin, pulse, history age, LOD, stream rank and tone mapping are both experience inputs and edit logs. Map audio, pose, XR gaze or anonymous venue density to them without tracking individuals.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/milestone/100" target="_blank" rel="noreferrer">three.js r187 milestone</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.30.0" target="_blank" rel="noreferrer">Babylon.js 9.30.0 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Chasing the Moment — Codrops</a></li>
+          
+            <li><a href="outputs/2026-10-17_frame_memory_shatter_score.html" target="_blank" rel="noreferrer">Main sample: Frame Memory Shatter Score</a></li>
+          
+            <li><a href="outputs/2026-10-17_coarse_arrival_webfilm_field.html" target="_blank" rel="noreferrer">Derived sample: Coarse Arrival Webfilm Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-17_frame_memory_shatter_score.html" loading="lazy" title="Frame Memory Shatter Score"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
