@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-18",
+  "headline": "反射の復帰と視線予算を、空間の呼吸として扱う",
+  "headlineEn": "Make reflection recovery and gaze budget breathe as space",
+  "summary": "three.js r187のPMREM移行・DynamicLighting回帰修正、PlayCanvasのGSplat距離予算／焦点フットプリント、CodropsのThree.js/TSL作品を接続。反射の再接続と注視点へ集まるsplatを、依存なしの2本で検証した。",
+  "summaryEn": "three.js PMREM and DynamicLighting changes, PlayCanvas GSplat distance budgets and focal footprints, plus current creative references become two dependency-free interaction studies.",
+  "links": [
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "three.js Migration Guide 186 → 187",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide#186--187"
+    },
+    {
+      "label": "DynamicLighting regression and fix",
+      "url": "https://github.com/mrdoob/three.js/issues/34763"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Reflection Relay Score",
+      "url": "outputs/2026-10-18_reflection_relay_score.html"
+    },
+    {
+      "label": "Derived sample: Focal Splat Budget Garden",
+      "url": "outputs/2026-10-18_focal_splat_budget_garden.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187のMigration GuideはPMREMをcube render target基盤へ移し、見た目が変わり得ることを明記した。反射を単なる材質の付属物でなく、シーンの温度変化として調整する契機になる。2. r187に入ったDynamicLightingの環境光・AO・light map欠落回帰は修正済みだが、同種の「照明が消える／戻る」を実案件では可視化しておく価値がある。3. PlayCanvasのGSplatは距離のみのLODとtarget/limit splat budget、軸別focal length、nearest-first streamを備える。4. CodropsのCinema Seat Preview（Three.js/TSL/WebGPU）やR3F Sketch Materialは、レンダリング構造を鑑賞体験へ寄せる参照になる。",
+      "bodyEn": "r187 changes PMREM construction and fixes material-lighting loss under DynamicLighting. PlayCanvas exposes distance budgets, per-axis focal footprint and streaming for GSplat. Current Three.js/TSL creative work shows how renderer structure can become experience.",
+      "links": [
+        {
+          "label": "Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide#186--187"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "PMREMの品質変化は、金属や水面だけでなく、画面全体の「場の反射率」を変える編集点になる。DynamicLightingの回帰報告は、環境が消える差分を数値と画面の両方で確認する重要性を示す。Codropsで拾えるCinema Seat PreviewやSketch Materialは、座席・線画といった意味のある物体に軽いシェーダー変化を結び、装飾だけにしない好例だ。",
+      "bodyEn": "PMREM changes can edit the reflectance of a whole scene, while the regression report demonstrates why visual and numeric lighting checks must coexist. Creator examples bind shader change to meaningful objects rather than decoration.",
+      "links": [
+        {
+          "label": "DynamicLighting issue",
+          "url": "https://github.com/mrdoob/three.js/issues/34763"
+        },
+        {
+          "label": "Codrops examples",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は「Reflection Relay Score」: pointerを環境光の再接続点にし、反射帯が材質球まで届く過程を見せる。派生は「Focal Splat Budget Garden」: pointerをgazeとして、近いsplatほど密になり、クリックで新しいclusterが到着する。前者はフォールバックや再接続の演出化、後者は視線・カメラ・音源へのGSplat予算配分の検証になる。",
+      "bodyEn": "The main piece turns pointer into an environment-light reconnection point. The derivative turns pointer into gaze so splat density follows focus and clicks stream a new cluster.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-18_reflection_relay_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-18_focal_splat_budget_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "記録候補は`pmremVersion`, `envIntensity`, `materialLightingCount`, `dynamicLightBatch`, `lodDistance`, `splatBudget`, `focalLengthX/Y`, `streamRank`, `sortFrameHash`。短期は小さなstate textureまたはuniformへ入れ、反射帯のalpha、splat半径、到着pulseへ接続する。r187移行ではPMREMの見た目比較を静止画だけで済ませず、カメラ移動・XR両眼・色管理込みでABする。",
+      "bodyEn": "Log PMREM, lighting, LOD, budget, focal and sorting values. Drive reflection alpha, splat radius and arrival pulse with uniforms or a small state texture; compare PMREM changes in motion and XR, not just stills."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の期限前統合とPMREM／WebGL fallbackの着地、PlayCanvasのv2.23.3以降でのGSplat LOD・sort・stream修正、Babylon.jsの次リリースのGaussian Splattingと色管理を追う。クリエイティブ側はTSL/WebGPU専用表現をWebGL fallbackへどう落とすかを見る。",
+      "bodyEn": "Watch r187 completion, PlayCanvas post-v2.23.3 GSplat work, Babylon Gaussian splatting/color work, and practical WebGL fallbacks for TSL/WebGPU-led pieces."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命でpointerを動かし、1→2→3→4でsource、relay、material、compositeを読む。click/Spaceで環境光の復帰pulseを作る。次に派生でpointerを注視点として動かし、1〜4で距離、焦点、予算、合成を切り替える。実案件へは`envIntensity`と`lodDistance`の二値から接続するのが最短。",
+      "bodyEn": "Read source, relay, material and composite in the main study; then read distance, focus, budget and composite in the derivative. Start a real integration with envIntensity and lodDistance.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-18_reflection_relay_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-18_focal_splat_budget_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式milestone／Migration Guide／issue、PlayCanvas release、制作者デモ。アイデア検討: 照明復帰と焦点予算を同じ編集パラメータへ置く。サンプル実装: 依存なしCanvasの2本を追加。結果の検証: JSONとHTML/script parse、gallery build、公開フローを実施。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: reflection relay、focal splat garden。寝かせる案件: カードUI、重いasset配信、WebGPU専用前提。",
+      "bodyEn": "Collect official and creator sources; make recovery and focus budget edit parameters; implement two Canvas studies; verify JSON/HTML/build/publish. Continue state atlas/GSplat/fallback, start reflection relay/focal garden, park cards/heavy assets/WebGPU-only requirements."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "直近のframe-memory、coarse-arrival、transition loadから、実行時の不安定さを隠すのでなく、到着・復帰・反射の譜面にする方向が強まった。次に組み合わせるべきは、環境光の復帰を音の和音、GSplat予算を観客の注視やXR gaze、PMREMの帯を物語の色温度にすること。育てる価値が高いのは、端末性能と観客の視線が毎回異なる編集を生成するWebfilmだ。",
+      "bodyEn": "The through-line is to score runtime instability as arrival, recovery and reflection. Combine relit environments with sound, GSplat budget with gaze, and PMREM bands with narrative color temperature."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-18_reflection_relay_score.html`は、pointer、1〜4、click/Spaceで反射のsource→relay→materialを最小Canvasで確認できる。次は実scene.environment、PMREM prefilter時間、material light countを入れる。2本目`outputs/2026-10-18_focal_splat_budget_garden.html`は、注視点に応じた粒子密度とcluster到着を検証する。次は実GSplat LOD、WebXR gaze、音源位置を足す。",
+      "bodyEn": "The main sample tests source-to-relay-to-material reflection. The derivative tests focused density and cluster arrival; next connect real GSplat LOD, XR gaze and sound position.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-18_reflection_relay_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-18_focal_splat_budget_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "`envRelay`, `pulse`, `pmremBand`, `gazeTarget`, `focalAxes`, `activeBudget`, `streamState`は、視覚パラメータであると同時に展示ログになる。音の和音でreflection relayを起動し、MediaPipeの顔向きやWebXR gazeでfocal targetを作り、会場の匿名人数集計でsplat budgetを変えられる。ブランドの素材なら製品表面の反射と観客の注視を結び、データ可視化なら密度そのものを理解度の指標に置き換えられる。",
+      "bodyEn": "Relay, pulse, PMREM band, gaze, focal axes, active budget and stream state can be experience data. Map audio, pose/XR gaze and anonymous venue aggregation to them for installations, brands or visualizations."
+    }
+  ]
+}
