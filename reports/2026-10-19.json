@@ -1,0 +1,159 @@
+{
+  "date": "2026-10-19",
+  "headline": "局所反射とGSplat到着を、フレームの合図にする",
+  "headlineEn": "Make local reflections and GSplat arrival into frame cues",
+  "summary": "three.js の圧縮キューブテクスチャ、低解像度PMREM、box-projected reflection probe、PlayCanvas の距離LODと近傍優先GSplat、Babylon.js 10.0 のFrame Graphを接続。局所反射の視差とフレームグラフの到着を、依存なしCanvasの2本で試した。",
+  "summaryEn": "Compressed cube textures, lower-resolution PMREM and local reflection probes meet PlayCanvas GSplat LOD and Babylon Frame Graph in two dependency-free Canvas studies.",
+  "links": [
+    {
+      "label": "three.js pull requests (Oct 18)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 10.0 milestone",
+      "url": "https://github.com/BabylonJS/Babylon.js/milestone/17"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Probe Parallax Arrival Score",
+      "url": "outputs/2026-10-19_probe_parallax_arrival_score.html"
+    },
+    {
+      "label": "Derived sample: Frame Graph Splat Cue Field",
+      "url": "outputs/2026-10-19_framegraph_splat_cue_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の10月18日付PRはCompressedTextureLoaderのcube texture返却、WebGPURendererのCompressedCubeTexture／圧縮テクスチャ入力を進めている。2. 同じr187のPRでは最小PMREMを256から64へ下げ、box-projected local reflection probeを提案している。小さな局所反射を、巨大なHDRIなしで演出に使える余地が広がる。3. PlayCanvas releaseはGSplatを距離だけのLOD、target/limit budget、near-first streaming、軸別focal lengthへ進める。4. Babylon.js 10.0 milestoneではFrame Graphが未解決項目として残る。画面をpassの連結として意識するのに良い観測点。",
+      "bodyEn": "three.js is advancing compressed cube textures, small PMREM and box-projected local probes; PlayCanvas continues distance-budgeted, near-first GSplat streaming; Babylon 10.0 retains Frame Graph as a key architectural thread.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon 10.0 milestone",
+          "url": "https://github.com/BabylonJS/Babylon.js/milestone/17"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "three.js のReflectionProbesと小型PMREMは、反射を「世界全体の空」から「観客の近くに置く光の小道具」へ引き寄せる。CodropsのR3F Sketch MaterialとCustom-Shaped Cursor Trailは、素材の線や軌跡に意味を持たせる参照になる。PlayCanvasのnearest-firstは、遠景から一斉に高精細化する代わりに、観客の注視付近だけを先に到着させる物語的な読み替えができる。",
+      "bodyEn": "Local probes turn reflection from a global sky into a nearby prop. Creator work gives material lines and trails semantic weight, while near-first streaming can narratively prioritize the viewer's vicinity.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        },
+        {
+          "label": "PlayCanvas GSplat release notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は「Probe Parallax Arrival Score」: pointerを観客の立ち位置にして、box-projected probeの視差、cube mip、圧縮環境パケットの到着を同じ譜面にする。派生は「Frame Graph Splat Cue Field」: pointerをfocal targetにし、depth→sort→light→splat→tone→outのpassを粒子到着の合図に翻訳する。短期ではクリックを曲のビートに、長期ではXR gazeと実際のloader telemetryに置換できる。",
+      "bodyEn": "The main study scores probe parallax, cube mips and packet arrival together. The derivative turns six rendering passes into splat cues around a focus target; replace clicks with beats now and XR gaze/telemetry later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-19_probe_parallax_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-19_framegraph_splat_cue_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "最初に取る値は`probeId`, `probeBounds`, `cameraLocalPos`, `pmremMip`, `compressedBytes`, `lodDistance`, `streamRank`, `focalLengthX/Y`, `splatBudget`, `passId`, `passMs`。WebGL fallbackでは小さなcube mapまたは事前ベイクした2D strip、uniform 16個程度で同じ読み方を保つ。圧縮cubeとPMREMの品質比較は、反射の静止画だけでなくカメラ移動時のmip切替、色管理、端末メモリも記録する。",
+      "bodyEn": "Begin with probe, camera, mip, byte, LOD, streaming, focal, budget and pass timing telemetry. Keep a WebGL fallback with a small cube/2D strip and a compact uniform contract; test in motion and record memory.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の締め切り前に、CompressedCubeTexture・ReflectionProbes・PMREMサイズ変更がどう統合されるかを見る。PlayCanvasではGSplatのsort flicker、影、streamの修正を追い、BabylonではFrame GraphとInspector v2の進行を確認する。制作側はTSL/WebGPUの見た目をWebGLでどこまで軽く再演できるかを観測する。",
+      "bodyEn": "Watch r187 integration of compressed cubes/probes/PMREM, PlayCanvas GSplat stability, Babylon Frame Graph and Inspector progress, and credible WebGL restagings of WebGPU-led work."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "最短なら本命でpointerを左右へ動かし、1→2→3→4でcube、probe、arrival、compositeを切り替える。クリックで届くパケットを観察し、視差とmipを演出の変数として読む。次に派生でpointerを注視点にして、passとbudgetを切り替える。実案件では`cameraLocalPos`と`streamRank`の2値から繋ぐ。",
+      "bodyEn": "Move the pointer horizontally in the main piece and read cube, probe, arrival and composite; then inspect pass and budget in the derivative. Connect cameraLocalPos and streamRank first.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-19_probe_parallax_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-19_framegraph_splat_cue_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR／milestone、PlayCanvas release、Babylon milestone、制作者事例。アイデア検討: 局所反射とGSplat到着を同じ時間軸で扱う。サンプル実装: 依存なしCanvasを2本追加。結果の検証: JSON、script構文、gallery build、公開を実行。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: probe parallax、frame-graph cue。寝かせる案件: カードUI、重いasset配信、WebGPU専用実装。",
+      "bodyEn": "Collect primary sources; connect local probes and splat arrival on one timeline; implement and verify two Canvas studies. Continue state atlas/LOD/fallback haze, start probe parallax/frame-graph cue, park cards/heavy delivery/WebGPU-only work."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月前半のframe-memory、coarse-arrival、reflection relayを振り返ると、レンダラの中断・復帰・低解像度を隠すのでなく、編集可能な時間の層にする流れが明確になった。次に効く組合せは、局所probeを音の発音点、GSplatのnear-firstを観客の視線、Frame Graphのpassを映画のカットにすること。育てる価値が高いのは、端末性能・空間位置・視線で毎回異なる反射と到着順を生むWebfilmである。",
+      "bodyEn": "Frame memory, coarse arrival and reflection relay point toward editable temporal layers. Combine probes with sound onset, near-first splats with gaze, and frame passes with film cuts for a variable webfilm."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-19_probe_parallax_arrival_score.html`は、pointer、1〜4、click/Spaceで局所reflection probeの視差・mip・到着を確認する。次は実cube texture、probe bounds、音量を足す。2本目`outputs/2026-10-19_framegraph_splat_cue_field.html`は、focal targetを中心にrender passとsplat budgetを表示する。次は実`passMs`、GSplat LOD、WebXR gazeを足す。",
+      "bodyEn": "The main prototype studies local-probe parallax/mips/arrival; the derivative studies render passes and splat budget around a focal target. Next connect real textures/bounds/audio and pass timing/LOD/XR gaze.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-19_probe_parallax_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-19_framegraph_splat_cue_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "`cameraLocalPos`, `probeId`, `pmremMip`, `compressedBytes`, `packetArrival`, `passId`, `passMs`, `focalTarget`, `splatBudget`は描画値であると同時に体験ログになる。音のonsetで環境パケットを送出し、MediaPipeの顔向きやWebXR gazeをfocal targetへ使い、会場内の匿名的な滞在密度でbudgetを変えられる。ブランドでは製品素材の反射、展示では位置ごとの光、データ可視化では到着順そのものを意味にできる。",
+      "bodyEn": "Camera/probe/mip/bytes/arrival/pass/focus/budget values are experience data. Connect audio onset, pose/XR gaze and anonymous occupancy to brand, installation and visualization treatments."
+    }
+  ]
+}
