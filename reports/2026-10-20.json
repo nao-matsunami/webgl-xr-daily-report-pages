@@ -1,0 +1,173 @@
+{
+  "date": "2026-10-20",
+  "headline": "影の予熱とbundle再構築を、待機ではなく演出の拍にする",
+  "headlineEn": "Turn shadow warmup and bundle rebuild into beats rather than waiting",
+  "summary": "three.js の影パイプライン予熱と共有geometry/bundle再記録、PlayCanvas v2.23.3、Babylon.js のFrame Graph継続、CodropsのWebGL事例を接続。影の準備とGPU bufferの復帰を、依存なしCanvasの2本で可視化した。",
+  "summaryEn": "three.js shadow precompilation and bundle recovery, PlayCanvas v2.23.3, Babylon Frame Graph and creator work connect in two dependency-free Canvas studies.",
+  "links": [
+    {
+      "label": "three.js: shadow pipelines in compileAsync",
+      "url": "https://github.com/mrdoob/three.js/pull/35092"
+    },
+    {
+      "label": "three.js: disposed geometry and bundles",
+      "url": "https://github.com/mrdoob/three.js/pull/35105"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.3",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Shadow Warmup Afterimage Score",
+      "url": "outputs/2026-10-20_shadow_warmup_afterimage_score.html"
+    },
+    {
+      "label": "Derived sample: Bundle Rebuild Ghost Garden",
+      "url": "outputs/2026-10-20_bundle_rebuild_ghost_garden.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsのPR #35092 は、`compileAsync()` が影passを予熱せず、最初の`render()`で同期的に作っていたpipelineを、事前コンパイルへ戻す提案。影mapを描かずにcasterのpipelineを準備する。2. PR #35105 は、共有geometryをdisposeしたときstatic objectやrender bundleが破棄済みGPU bufferを描こうとする問題を、attribute確認とbundle再記録で修正する。3. PlayCanvas v2.23.3は未登録render container警告をpreload時だけに絞った小さな修正で、前日のGSplat LOD配信を運用ノイズから守る。4. Babylon.jsは10/19も更新が続き、Frame Graphをpass設計の観測点として保留する。",
+      "bodyEn": "three.js proposes shadow-pipeline prewarming and robust rebuilding after disposed shared geometry; PlayCanvas v2.23.3 reduces preload warning noise, while Babylon Frame Graph remains a useful pass-design watchpoint.",
+      "links": [
+        {
+          "label": "PR #35092",
+          "url": "https://github.com/mrdoob/three.js/pull/35092"
+        },
+        {
+          "label": "PR #35105",
+          "url": "https://github.com/mrdoob/three.js/pull/35105"
+        },
+        {
+          "label": "PlayCanvas v2.23.3",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "影の予熱は単なるロード短縮ではない。暗い場から光が立ち上がる直前の「準備の気配」を、音、余像、視線に同期した演出として扱える。bundle再構築は、壊れたGPU状態を消すのではなく、幽霊のような旧状態から現状態へ戻る編集点にできる。CodropsのCinema Seat Preview、R3F Sketch Material、Custom-Shaped Cursor Trailは、空間の注視点・線・素材の振る舞いを主役にする参照として有効。",
+      "bodyEn": "Shadow preparation can become a pre-light cue; bundle rebuilding can turn stale GPU state into an edit point. Codrops references foreground spatial attention, line and material behavior.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        },
+        {
+          "label": "three.js PR #35092",
+          "url": "https://github.com/mrdoob/three.js/pull/35092"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は「Shadow Warmup Afterimage Score」。pointerを光源方向、clickを影pass予熱にし、compile→caster→afterimage→compositeを1〜4で分解する。派生「Bundle Rebuild Ghost Garden」は共有mesh、bundle、破棄bufferのghost、復帰を粒子の庭として読む。短期では音のonsetをclickに置換し、長期ではXR gaze、scene transition、実際のpipeline telemetryに接続する。",
+      "bodyEn": "The main study scores shadow compile, casters and afterimage from a light-direction pointer. The derivative turns shared meshes, bundles and stale buffers into a particle garden; audio onset is the short-term input and XR/telemetry the long-term one.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-20_shadow_warmup_afterimage_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-20_bundle_rebuild_ghost_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "記録する最小schemaは`compileStartedAt`, `shadowPassId`, `casterCount`, `pipelineReadyAt`, `firstRenderMs`, `geometryId`, `attributeVersion`, `bufferDestroyed`, `bundleRebuilt`, `rebuildMs`。本番では開始時に`compileAsync()`を呼び、画面では進捗を控えめな発光・余像に変換する。disposeは所有関係を明確にして遅延破棄し、shared geometryを使うstatic/bundle経路を別端末でも確認する。WebGL fallbackはCanvas/GLSLで同一の時間表現だけ維持すればよい。",
+      "bodyEn": "Log compile, shadow, geometry, buffer and rebuild timing. Precompile at scene start, map progress to restrained glow, and make ownership/late disposal explicit; preserve only the temporal language in a WebGL fallback.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PR #35105",
+          "url": "https://github.com/mrdoob/three.js/pull/35105"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187締め切り前後に、影の予熱、CubeArrayTexture、GTAO/bent normal、ReflectionProbesがどこまで統合されるかを追う。PlayCanvasはv2.23.2のcoarsest-first GSplat LODが次の修正でどう安定するか、BabylonはFrame GraphとWebGPU/WebXR接続を確認する。制作者側では、Cinema Seat Previewのような空間選択を軽量WebGLに翻訳できるかを見る。",
+      "bodyEn": "Watch r187 integration of shadow warmup, CubeArrayTexture, GTAO and probes; check stability around PlayCanvas coarse-first GSplat LOD and Babylon Frame Graph/WebXR work.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "最短なら本命を開き、pointerで光の方向を変え、1→2→3→4で影の準備から余像までを読む。click/Spaceで予熱を入れた直後の輪郭が最も重要な観察点。次に派生でclickして、bundleの重なりとghost数が戻る見え方を比べる。実装へ進むなら`compileStartedAt`と`pipelineReadyAt`の2値だけ先に採る。",
+      "bodyEn": "Move the light pointer through the main study, then prewarm and inspect the afterimage. Compare bundle overlap and ghost count in the derivative; begin implementation with just compileStartedAt and pipelineReadyAt.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-20_shadow_warmup_afterimage_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-20_bundle_rebuild_ghost_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、PlayCanvas公式release、Babylon公式release、Codrops制作者事例。アイデア検討: 初回描画・破棄・復帰をWebfilmの拍へ読み替える。サンプル実装: Canvasの2本を追加。結果の検証: JSON、HTML script、gallery生成、公開を実施。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: shadow warmup score、bundle recovery ghost。寝かせる案件: カードUI、重いasset配信、WebGPU専用の最終表現。",
+      "bodyEn": "Collect primary sources, interpret first-render/dispose/recovery as webfilm beats, implement two Canvas studies, and verify JSON/scripts/gallery/publishing. Continue state atlas/LOD/fallback haze; start shadow warmup and bundle ghosts; park cards, heavy delivery and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のcoarse arrival、reflection relay、probe parallaxを通して、品質の段差やrenderer内部の変化を「失敗」ではなく場面転換にする方向が濃くなった。今回の影予熱とbundle復帰は、その時間層を光と記憶へ広げる接続点。最も育てる価値が高いのは、視線・音・端末性能で影の到着順と過去フレームの残り方が変わるWebfilm。GSplatのnear-first、local probe、frame graphを同じstate textureに載せられる。",
+      "bodyEn": "October's arrival/probe work increasingly turns quality steps and renderer state into scene changes. Shadow warmup and bundle recovery extend that temporal layer into light and memory; a variable webfilm driven by gaze, audio and device state is the strongest long-term path."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-20_shadow_warmup_afterimage_score.html`は、pointer、1〜4、click/Spaceで影pass予熱と余像を確認できる。次は実`pipelineReadyAt`と音のonsetを足す。2本目`outputs/2026-10-20_bundle_rebuild_ghost_garden.html`は、共有attributeとbundle再記録を粒子・枠・ghostで読む。次はWebGLの実`createBuffer/deleteBuffer`ログを足す。",
+      "bodyEn": "The main prototype exposes shadow prewarming and afterimage; the derivative exposes shared attributes and bundle rebuilding. Next add real pipeline/audio events and WebGL buffer lifecycle logs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-20_shadow_warmup_afterimage_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-20_bundle_rebuild_ghost_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "予熱率、caster数、余像年齢、破棄buffer数、bundle再構築時間は、GPU診断値であると同時に体験の譜面になる。音のkickで影を予熱し、MediaPipeの身体方向やWebXR gazeをlight directionへ、撮影画像の明暗をcaster密度へ使える。展示では来場者の滞在時間をghostの残り方へ、ブランドでは製品素材の反射・影を再構築の色へ接続できる。",
+      "bodyEn": "Warmup, caster, afterimage, destroyed-buffer and rebuild values are both diagnostics and experiential scores. Combine them with audio, pose/gaze, camera imagery, dwell time and product material light."
+    }
+  ]
+}
