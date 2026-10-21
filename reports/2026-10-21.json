@@ -1,0 +1,173 @@
+{
+  "date": "2026-10-21",
+  "headline": "描画範囲と軌跡を、空間演出の到着順に変える",
+  "headlineEn": "Turn draw ranges and traces into an arrival order for spatial staging",
+  "summary": "three.js のshared scene geometryとdraw range、PlayCanvasのcoarsest-first GSplat LOD、Babylon 10.0のFrame Graph、Codropsの軌跡表現を接続した。描画される範囲と過去フレームを、ロード表示ではなく編集可能な到着リズムにする2本のCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js shared-scene draw ranges, PlayCanvas coarsest-first GSplat LOD, Babylon 10.0 Frame Graph and Codrops trace work in two Canvas studies that turn arrival and frame history into editable rhythm.",
+  "links": [
+    {
+      "label": "three.js PR #35112: shared scene geometry and setDrawRange",
+      "url": "https://github.com/mrdoob/three.js/pull/35112"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.2: coarsest-first GSplat LOD",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "Babylon.js 10.0 milestone: Frame Graph",
+      "url": "https://github.com/BabylonJS/Babylon.js/milestone/17"
+    },
+    {
+      "label": "Codrops: A Drift / scroll-driven ghost trails",
+      "url": "https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/"
+    },
+    {
+      "label": "Main sample: Draw Range Arrival Score",
+      "url": "outputs/2026-10-21_drawrange_arrival_score.html"
+    },
+    {
+      "label": "Derived sample: Trace Relay Framegraph",
+      "url": "outputs/2026-10-21_trace_relay_framegraph.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js PR #35112 は、Mesh単位の`setDrawRange`とshared scene geometryを提案し、同じgeometryを複数の文脈で別々の範囲として扱う足場になる。2. PlayCanvas v2.23.2はGSplat LODをview全体でcoarsest-firstに配信する。粗い形を先に見せ、詳細を後から到着させる順序を設計できる。3. Babylon.js 10.0 milestoneのFrame Graphは88%完了で、passごとの意味づけを続けて観測する価値がある。4. CodropsのA Driftは、Canvasの文字軌跡とThree.jsの画像revealを別rendererで分担している。",
+      "bodyEn": "three.js proposes mesh-level draw ranges with shared scene geometry; PlayCanvas streams coarse GSplat LOD first; Babylon 10.0 Frame Graph remains an active pass-design watchpoint; Codrops A Drift separates Canvas traces from Three.js image reveals.",
+      "links": [
+        {
+          "label": "PR #35112",
+          "url": "https://github.com/mrdoob/three.js/pull/35112"
+        },
+        {
+          "label": "PlayCanvas v2.23.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon 10.0 milestone",
+          "url": "https://github.com/BabylonJS/Babylon.js/milestone/17"
+        },
+        {
+          "label": "A Drift",
+          "url": "https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "`setDrawRange`を性能のためだけでなく、同じ空間が部分ごとに到着・消失するカット編集として読めるのが面白い。PlayCanvasのcoarsest-first LODは最初に大きな輪郭を渡すため、観客に「先に何を理解させるか」を制御できる。A Driftは残像をframebuffer依存にせず、描画済みの輪郭を重ねる軽さが重要で、WebGLの重い履歴処理のfallbackにもなる。",
+      "bodyEn": "Draw ranges can become edits rather than only optimization. Coarse-first LOD controls what the audience understands first. A Drift shows a lightweight, non-framebuffer way to make afterimages, useful as a fallback temporal language.",
+      "links": [
+        {
+          "label": "three.js draw-range example",
+          "url": "https://threejs.org/examples/webgl_buffergeometry_drawrange.html"
+        },
+        {
+          "label": "Codrops A Drift",
+          "url": "https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命「Draw Range Arrival Score」はpointerを編集frontier、clickを新しい範囲の到着にする。1〜4で全reservoir、range gate、shared lanes、合成を分解する。派生「Trace Relay Framegraph」はpointer軌跡を入力、ghost、4本のrelay pass、合成に分ける。短期では音のonsetやスクロール速度、長期ではWebXR gazeと実際のGSplat stream rankを接続する。",
+      "bodyEn": "The main study maps pointer to an editable frontier and clicks to range arrival. The derivative decomposes pointer traces into input, ghosts, four relay passes and composite. Add audio/scroll first, then XR gaze and real stream rank.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-21_drawrange_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-21_trace_relay_framegraph.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "最小telemetryは`geometryId`, `sharedInstanceId`, `drawRangeStart`, `drawRangeCount`, `lodLevel`, `streamRank`, `chunkBytes`, `passId`, `passMs`, `historyAge`。three.jsでは共有geometryの所有関係とdispose時刻を明示し、range更新を毎frameの属性更新と混同しない。PlayCanvasではcoarse LODを背景の輪郭に使い、fine到着だけを音や発光で強調する。BabylonのFrame Graphでは各passを演出上のverb（capture / relay / reveal / resolve）で命名しておく。",
+      "bodyEn": "Log geometry identity, draw ranges, LOD/stream rank, pass timing and history age. Make geometry ownership/disposal explicit, reserve fine arrivals for accents, and name frame passes as staging verbs.",
+      "links": [
+        {
+          "label": "three.js BufferGeometry drawRange documentation",
+          "url": "https://threejs.org/docs/#api/en/core/BufferGeometry.drawRange"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187で#35112、影pipeline予熱、CubeArrayTexture、ReflectionProbesがどこまで統合されるかを見る。PlayCanvasではGSplatのcoarsest-first配信とfocal footprint・budgetが同時にどう振る舞うか、BabylonではFrame GraphとWebGPU/XR harnessの接続を追う。制作者事例は、Canvas履歴とThree.js空間を分担する軽量構成を優先して集める。",
+      "bodyEn": "Watch r187 integration of shared ranges, shadow warmup, CubeArrayTexture and probes; track PlayCanvas LOD budget behavior and Babylon Frame Graph/WebGPU-XR connections; seek lightweight Canvas-history plus Three.js-space examples.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon WebGPU-XR issue",
+          "url": "https://github.com/BabylonJS/Babylon.js/issues/18765"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを左右に動かしてdraw rangeが420点中どこまで届くかを見る。click/Spaceで到着cutを打ち、2（range）から4（composite）へ戻った時に輪郭がどう読み替わるかを観察する。次に派生でpointerをゆっくり動かし、clickでtransition beatを重ねる。実装へ進むなら、まず`drawRangeCount`と`streamRank`だけをログ化する。",
+      "bodyEn": "Move the main pointer across the draw range, trigger an arrival cut, and compare range-only against composite. Then layer transition beats in the trace study. Begin production telemetry with drawRangeCount and streamRank.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-21_drawrange_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-21_trace_relay_framegraph.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、PlayCanvas公式release、Babylon公式milestone、Codrops制作者記事を確認。アイデア検討: draw rangeとcoarse LODを「品質低下」ではなく到着順の演出として再解釈。サンプル実装: 依存なしCanvasの主試作・派生試作を追加。結果の検証: JSON/HTML script、gallery生成、Pages公開まで行う。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: range arrival、trace relay。寝かせる案件: カードUI、重いasset配信、WebGPU専用の最終表現。",
+      "bodyEn": "Collect primary sources; reinterpret ranges and coarse LOD as arrival staging; implement two dependency-free studies; verify JSON, scripts, gallery and publishing. Continue state atlas/LOD/fallback haze; start range arrival/trace relay; park cards, heavy delivery and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半は、reflection、shadow warmup、bundle復帰、GSplat到着というrenderer内部の変化を、Webfilmの拍へ変える方向が一貫している。今日のdraw rangeはその最小単位で、同じgeometryのどの部分を、誰に、いつ見せるかを編集できる。coarse splatの大きな輪郭、probeの局所光、音のonset、A Drift型の軽い輪郭履歴を重ねると、端末性能差さえ映像の構成にできる。育てる価値が最も高いのは、実測telemetryを色・残像・粒子密度へ変換するstate texture/CPU fallbackの共通譜面である。",
+      "bodyEn": "Late October consistently turns renderer internals—reflection, warmup, recovery and splat arrival—into webfilm beats. Draw range is the smallest editable unit. Combining coarse contours, local light, audio and lightweight outlines can make device variance compositional; a shared telemetry score is the highest-value track."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-21_drawrange_arrival_score.html`は、420点のreservoirをrange gateで段階的に出し、pointer・1〜4・click/Spaceで操作する。次に足すなら実際の`BufferGeometry.setDrawRange()`と音onsetを接続する。2本目`outputs/2026-10-21_trace_relay_framegraph.html`は、pointerの履歴をghostと4passの枠へ分解する。次に足すならCanvasで採った軌跡をThree.js planeのmaskへ渡す。",
+      "bodyEn": "The main prototype reveals a 420-dot reservoir through a range gate; next connect real BufferGeometry.setDrawRange and audio. The derivative breaks trace history into ghosts and four passes; next feed Canvas traces into a Three.js plane mask.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-21_drawrange_arrival_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-21_trace_relay_framegraph.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "rangeの開始・終了、LOD到着順、軌跡座標、pass時間、beat数は、そのまま展示・Web演出の譜面になる。音の周波数帯をrangeの速度、MediaPipeの手や顔の移動をfrontier、WebXR gazeをfine LODの優先順位、カメラ画像の明度を粒子の密度へ使える。ブランド演出なら製品の構成要素をshared geometryのrangeに対応させ、ユーザーが見た順に素材・反射・音が立ち上がる体験にできる。",
+      "bodyEn": "Range bounds, LOD arrival, trace coordinates, pass time and beat count are exhibition or web-experience scores. Map audio, MediaPipe, XR gaze and camera brightness to them; product components can become shared-geometry ranges whose material, light and sound arrive in viewing order."
+    }
+  ]
+}

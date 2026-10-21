@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>描画範囲と軌跡を、空間演出の到着順に変える | 2026-10-21</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.21</p>
+      <h1>描画範囲と軌跡を、空間演出の到着順に変える</h1>
+      <p class="hero-subtitle">Turn draw ranges and traces into an arrival order for spatial staging</p>
+      <p>three.js のshared scene geometryとdraw range、PlayCanvasのcoarsest-first GSplat LOD、Babylon 10.0のFrame Graph、Codropsの軌跡表現を接続した。描画される範囲と過去フレームを、ロード表示ではなく編集可能な到着リズムにする2本のCanvas試作を追加した。</p>
+      <p class="en-copy">This report connects three.js shared-scene draw ranges, PlayCanvas coarsest-first GSplat LOD, Babylon 10.0 Frame Graph and Codrops trace work in two Canvas studies that turn arrival and frame history into editable rhythm.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-21_trace_relay_framegraph.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-20.html">← 2026.10.20</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Trace Relay Framegraph</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-21_trace_relay_framegraph.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Draw Range Arrival Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-21_drawrange_arrival_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js PR #35112 は、Mesh単位の`setDrawRange`とshared scene geometryを提案し、同じgeometryを複数の文脈で別々の範囲として扱う足場になる。2. PlayCanvas v2.23.2はGSplat LODをview全体でcoarsest-firstに配信する。粗い形を先に見せ、詳細を後から到着させる順序を設計できる。3. Babylon.js 10.0 milestoneのFrame Graphは88%完了で、passごとの意味づけを続けて観測する価値がある。4. CodropsのA Driftは、Canvasの文字軌跡とThree.jsの画像revealを別rendererで分担している。</p>
+          <p class="en-copy">three.js proposes mesh-level draw ranges with shared scene geometry; PlayCanvas streams coarse GSplat LOD first; Babylon 10.0 Frame Graph remains an active pass-design watchpoint; Codrops A Drift separates Canvas traces from Three.js image reveals.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35112" target="_blank" rel="noreferrer">PR #35112</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.2" target="_blank" rel="noreferrer">PlayCanvas v2.23.2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/milestone/17" target="_blank" rel="noreferrer">Babylon 10.0 milestone</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/" target="_blank" rel="noreferrer">A Drift</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>`setDrawRange`を性能のためだけでなく、同じ空間が部分ごとに到着・消失するカット編集として読めるのが面白い。PlayCanvasのcoarsest-first LODは最初に大きな輪郭を渡すため、観客に「先に何を理解させるか」を制御できる。A Driftは残像をframebuffer依存にせず、描画済みの輪郭を重ねる軽さが重要で、WebGLの重い履歴処理のfallbackにもなる。</p>
+          <p class="en-copy">Draw ranges can become edits rather than only optimization. Coarse-first LOD controls what the audience understands first. A Drift shows a lightweight, non-framebuffer way to make afterimages, useful as a fallback temporal language.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/examples/webgl_buffergeometry_drawrange.html" target="_blank" rel="noreferrer">three.js draw-range example</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/" target="_blank" rel="noreferrer">Codrops A Drift</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命「Draw Range Arrival Score」はpointerを編集frontier、clickを新しい範囲の到着にする。1〜4で全reservoir、range gate、shared lanes、合成を分解する。派生「Trace Relay Framegraph」はpointer軌跡を入力、ghost、4本のrelay pass、合成に分ける。短期では音のonsetやスクロール速度、長期ではWebXR gazeと実際のGSplat stream rankを接続する。</p>
+          <p class="en-copy">The main study maps pointer to an editable frontier and clicks to range arrival. The derivative decomposes pointer traces into input, ghosts, four relay passes and composite. Add audio/scroll first, then XR gaze and real stream rank.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-21_drawrange_arrival_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-21_trace_relay_framegraph.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>最小telemetryは`geometryId`, `sharedInstanceId`, `drawRangeStart`, `drawRangeCount`, `lodLevel`, `streamRank`, `chunkBytes`, `passId`, `passMs`, `historyAge`。three.jsでは共有geometryの所有関係とdispose時刻を明示し、range更新を毎frameの属性更新と混同しない。PlayCanvasではcoarse LODを背景の輪郭に使い、fine到着だけを音や発光で強調する。BabylonのFrame Graphでは各passを演出上のverb（capture / relay / reveal / resolve）で命名しておく。</p>
+          <p class="en-copy">Log geometry identity, draw ranges, LOD/stream rank, pass timing and history age. Make geometry ownership/disposal explicit, reserve fine arrivals for accents, and name frame passes as staging verbs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/docs/#api/en/core/BufferGeometry.drawRange" target="_blank" rel="noreferrer">three.js BufferGeometry drawRange documentation</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js r187で#35112、影pipeline予熱、CubeArrayTexture、ReflectionProbesがどこまで統合されるかを見る。PlayCanvasではGSplatのcoarsest-first配信とfocal footprint・budgetが同時にどう振る舞うか、BabylonではFrame GraphとWebGPU/XR harnessの接続を追う。制作者事例は、Canvas履歴とThree.js空間を分担する軽量構成を優先して集める。</p>
+          <p class="en-copy">Watch r187 integration of shared ranges, shadow warmup, CubeArrayTexture and probes; track PlayCanvas LOD budget behavior and Babylon Frame Graph/WebGPU-XR connections; seek lightweight Canvas-history plus Three.js-space examples.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/issues/18765" target="_blank" rel="noreferrer">Babylon WebGPU-XR issue</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerを左右に動かしてdraw rangeが420点中どこまで届くかを見る。click/Spaceで到着cutを打ち、2（range）から4（composite）へ戻った時に輪郭がどう読み替わるかを観察する。次に派生でpointerをゆっくり動かし、clickでtransition beatを重ねる。実装へ進むなら、まず`drawRangeCount`と`streamRank`だけをログ化する。</p>
+          <p class="en-copy">Move the main pointer across the draw range, trigger an arrival cut, and compare range-only against composite. Then layer transition beats in the trace study. Begin production telemetry with drawRangeCount and streamRank.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-21_drawrange_arrival_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-21_trace_relay_framegraph.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js公式PR、PlayCanvas公式release、Babylon公式milestone、Codrops制作者記事を確認。アイデア検討: draw rangeとcoarse LODを「品質低下」ではなく到着順の演出として再解釈。サンプル実装: 依存なしCanvasの主試作・派生試作を追加。結果の検証: JSON/HTML script、gallery生成、Pages公開まで行う。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: range arrival、trace relay。寝かせる案件: カードUI、重いasset配信、WebGPU専用の最終表現。</p>
+          <p class="en-copy">Collect primary sources; reinterpret ranges and coarse LOD as arrival staging; implement two dependency-free studies; verify JSON, scripts, gallery and publishing. Continue state atlas/LOD/fallback haze; start range arrival/trace relay; park cards, heavy delivery and WebGPU-only finals.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月後半は、reflection、shadow warmup、bundle復帰、GSplat到着というrenderer内部の変化を、Webfilmの拍へ変える方向が一貫している。今日のdraw rangeはその最小単位で、同じgeometryのどの部分を、誰に、いつ見せるかを編集できる。coarse splatの大きな輪郭、probeの局所光、音のonset、A Drift型の軽い輪郭履歴を重ねると、端末性能差さえ映像の構成にできる。育てる価値が最も高いのは、実測telemetryを色・残像・粒子密度へ変換するstate texture/CPU fallbackの共通譜面である。</p>
+          <p class="en-copy">Late October consistently turns renderer internals—reflection, warmup, recovery and splat arrival—into webfilm beats. Draw range is the smallest editable unit. Combining coarse contours, local light, audio and lightweight outlines can make device variance compositional; a shared telemetry score is the highest-value track.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命`outputs/2026-10-21_drawrange_arrival_score.html`は、420点のreservoirをrange gateで段階的に出し、pointer・1〜4・click/Spaceで操作する。次に足すなら実際の`BufferGeometry.setDrawRange()`と音onsetを接続する。2本目`outputs/2026-10-21_trace_relay_framegraph.html`は、pointerの履歴をghostと4passの枠へ分解する。次に足すならCanvasで採った軌跡をThree.js planeのmaskへ渡す。</p>
+          <p class="en-copy">The main prototype reveals a 420-dot reservoir through a range gate; next connect real BufferGeometry.setDrawRange and audio. The derivative breaks trace history into ghosts and four passes; next feed Canvas traces into a Three.js plane mask.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-21_drawrange_arrival_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-21_trace_relay_framegraph.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>rangeの開始・終了、LOD到着順、軌跡座標、pass時間、beat数は、そのまま展示・Web演出の譜面になる。音の周波数帯をrangeの速度、MediaPipeの手や顔の移動をfrontier、WebXR gazeをfine LODの優先順位、カメラ画像の明度を粒子の密度へ使える。ブランド演出なら製品の構成要素をshared geometryのrangeに対応させ、ユーザーが見た順に素材・反射・音が立ち上がる体験にできる。</p>
+          <p class="en-copy">Range bounds, LOD arrival, trace coordinates, pass time and beat count are exhibition or web-experience scores. Map audio, MediaPipe, XR gaze and camera brightness to them; product components can become shared-geometry ranges whose material, light and sound arrive in viewing order.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35112" target="_blank" rel="noreferrer">three.js PR #35112: shared scene geometry and setDrawRange</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.2: coarsest-first GSplat LOD</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/milestone/17" target="_blank" rel="noreferrer">Babylon.js 10.0 milestone: Frame Graph</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/13/scroll-driven-ghost-trails/" target="_blank" rel="noreferrer">Codrops: A Drift / scroll-driven ghost trails</a></li>
+          
+            <li><a href="outputs/2026-10-21_drawrange_arrival_score.html" target="_blank" rel="noreferrer">Main sample: Draw Range Arrival Score</a></li>
+          
+            <li><a href="outputs/2026-10-21_trace_relay_framegraph.html" target="_blank" rel="noreferrer">Derived sample: Trace Relay Framegraph</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-21_trace_relay_framegraph.html" loading="lazy" title="Trace Relay Framegraph"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
