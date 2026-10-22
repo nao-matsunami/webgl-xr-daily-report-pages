@@ -1,0 +1,169 @@
+{
+  "date": "2026-10-22",
+  "headline": "光の事前処理と複数出力を、空間の拍にする",
+  "headlineEn": "Turn light prefiltering and multiple outputs into spatial beats",
+  "summary": "three.jsのTSL色モーフィングとWebGPU PMREM計算、PlayCanvasの永続バッファ・MRT別クリア・部分更新、Babylon.jsのmesh blending/KHR_interactivityを接続した。光のキャッシュ生成と出力面の切替を、ロード表示ではなく操作できる演出にする2本のCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js TSL color morphing and compute PMREM, PlayCanvas persistent buffers and MRT clears, and Babylon mesh blending/interactivity through two Canvas studies that make cache generation and output switching performable.",
+  "links": [
+    {
+      "label": "three.js PR #35141: TSL color morphing",
+      "url": "https://github.com/mrdoob/three.js/pull/35141"
+    },
+    {
+      "label": "three.js PR #35130: compute PMREM",
+      "url": "https://github.com/mrdoob/three.js/pull/35130"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.26.2 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: PMREM Morph Light Score",
+      "url": "outputs/2026-10-22_pmrem_morph_light_score.html"
+    },
+    {
+      "label": "Derived sample: MRT Clear Bloom Orchestra",
+      "url": "outputs/2026-10-22_mrt_clear_bloom_orchestra.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsのPR #35141はTSLに色モーフィングを提案し、材質遷移を単なるフェード以外の時間軸にできる。2. PR #35130はWebGPUでPMREMのprefilterをcompute化する提案で、反射用の光を『待つ工程』から可視の段階へ分ける発想を促す。3. PlayCanvasの公式release notesにはWebGPUのmesh instance matrix永続storage buffer、MRTのattachment別clear色、部分vertex/index upload、CameraFrame bloom thresholdが並ぶ。4. Babylon.js 9.26.2はmesh blending post-processとKHR_interactivity Phase 1を含み、出力の混合とイベントの関係をglTF側へ出せる。",
+      "bodyEn": "three.js proposes TSL color morphing and compute PMREM; PlayCanvas adds persistent WebGPU matrices, per-attachment MRT clears, partial uploads and bloom control; Babylon exposes mesh blending and KHR_interactivity.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon 9.26.2",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのCinema Seat PreviewはThree.js/TSL/WebGPUを、Paper × domglはPaper shader/WebGPUを掲げる。技術を隠すのでなく、材質・紙・座席という触覚的な比喩に落とす点が重要だ。PMREM mipの生成、MRTのclear、bloom thresholdも同じく『画面が次の状態へ準備される所作』として扱える。",
+      "bodyEn": "Codrops' Cinema Seat Preview and Paper × domgl make TSL/WebGPU tactile. Treat PMREM mips, attachment clears and bloom threshold as preparation gestures rather than hidden plumbing.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『PMREM Morph Light Score』。pointerで光の方向と色モーフ量、click/Spaceでcache beatを送り、1〜4でsource / prefilter / morph / compositeを分解する。派生『MRT Clear Bloom Orchestra』は4 attachmentを小さな楽器として、pointerで注目面、clickでclear→buffer→bloomの再採譜を行う。短期では音onset・スクロールを入力にし、中長期ではreflection probeと実render pass telemetryへ接続する。",
+      "bodyEn": "The main study performs source, prefilter, morph and composite; the derivative treats four attachments as instruments. Add audio/scroll now and real probes/pass telemetry later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-22_pmrem_morph_light_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-22_mrt_clear_bloom_orchestra.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "記録する最小状態は`pmremMip`, `prefilterMs`, `probeId`, `morphAmount`, `attachmentId`, `clearColor`, `partialUploadBytes`, `bloomThreshold`, `passId`, `passMs`。PMREMの再生成は毎frameにしない。probe移動・HDR変更・明示的なbeatに限定し、古いcubeを残してクロスフェードする。MRTはclear色をゼロ固定にせず、debug/演出用の色として別々に設計する。",
+      "bodyEn": "Log mips, prefilter time, probe, morph amount, attachment/clear state, upload bytes, bloom and pass time. Regenerate PMREM only on meaningful changes, retain the old cube for crossfade, and treat MRT clear colors as expressive diagnostics.",
+      "links": [
+        {
+          "label": "three.js PMREMGenerator docs",
+          "url": "https://threejs.org/docs/#api/en/extras/PMREMGenerator"
+        },
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsでは色モーフィング、compute PMREM、radiosity lightmapper、camera typeを含むrender context keyの統合先を見る。PlayCanvasでは部分uploadとpersistent storageがGSplatやCameraFrameにどう波及するか、BabylonではFrame Graphとmesh blend/KHR_interactivityの実例を追う。制作者事例は、WebGPU限定にせずCanvas/WebGL fallbackでも成立する光・履歴・紙質の表現を優先する。",
+      "bodyEn": "Watch integration of three.js morphing/PMREM/lightmapper/context keys; track PlayCanvas partial uploads and storage effects; seek Babylon Frame Graph examples and portable light/history/paper treatments.",
+      "links": [
+        {
+          "label": "three.js commits",
+          "url": "https://github.com/mrdoob/three.js/commits/dev"
+        },
+        {
+          "label": "Babylon.js milestones",
+          "url": "https://github.com/BabylonJS/Babylon.js/milestones"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを動かして光源とmorph量を変え、2（prefilter）と4（composite）の読み替わりを比べる。click/Spaceでcache beatを打ち、mip輪がどのように光の到着感を作るか見る。次に派生で4つのattachmentを横断し、bloom thresholdを上下させる。実装へ進むなら、最初は`prefilterMs`と`bloomThreshold`の2値だけを記録すればよい。",
+      "bodyEn": "Compare prefilter with composite, trigger cache beats, then explore the four attachments. Production can begin with just prefilterMs and bloomThreshold telemetry.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-22_pmrem_morph_light_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-22_mrt_clear_bloom_orchestra.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、PlayCanvas公式release、Babylon公式release、Codrops制作者Hubを確認。アイデア検討: cache/clearを待機画面ではなく空間の拍として再定義。サンプル実装: 依存なしCanvasの本命・派生を追加。結果の検証: JSON、script構文、gallery生成、Pages公開を行う。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: PMREM morph、MRT orchestra。寝かせる案件: カードUI、重い外部asset、WebGPUのみで完結する最終表現。",
+      "bodyEn": "Collect primary sources; reinterpret cache/clear as spatial beats; add two dependency-free studies; validate JSON/scripts/gallery/publishing. Continue state atlas, GSplat LOD and fallback haze; start PMREM morph and MRT orchestra; park cards, heavy assets and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "直近のreflection probe、shadow warmup、draw range、trace relayに、今日は『光の準備』と『出力面の役割分担』が加わった。傾向は、renderer内部の最適化を可視化するだけでなく、観客が操作できるカットの語彙にすること。coarse GSplatの到着、probeの局所光、音onset、Canvas履歴、MRT別clear色を同じstate scoreに重ねると、端末差や読み込み時間も演出の変数になる。最も育てる価値が高いのは、この共通scoreをThree.js/WebGL/Canvasで再生できる二重実装である。",
+      "bodyEn": "Reflection probes, shadow warmup, ranges and traces now meet light preparation and output-role separation. The high-value track is a portable state score that turns engine internals and device variance into editable cuts."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-22_pmrem_morph_light_score.html`は、光源・6段のmip輪・色モーフ粒子を操作可能な譜面にする。次に足すなら実PMREM render targetをcaptureし、古いcubeと新しいcubeをcrossfadeする。2本目`outputs/2026-10-22_mrt_clear_bloom_orchestra.html`は4 attachmentをclear/buffer/bloom/compositeの別役として可視化する。次に足すならOffscreenCanvasまたはWebGL MRTの実textureを小窓に表示する。",
+      "bodyEn": "The main prototype performs a light source, six mip rings and color-morph particles; next capture real PMREM targets. The derivative visualizes four attachment roles; next display actual OffscreenCanvas or MRT textures.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-22_pmrem_morph_light_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-22_mrt_clear_bloom_orchestra.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "mip段、cache beat、light direction、attachment選択、clear色、bloom値は、展示の照明譜・サイトの感情曲線・パフォーマンスの記録になる。Web Audioのlow bandをmorph、高域onsetをcache beat、MediaPipeの顔向きをprobe方向、WebXR gazeをattachment優先、カメラの明度をbloomへ接続できる。ブランド体験なら製品の素材ごとにattachmentを割り当て、見られた順に反射・粒子・音を育てる。",
+      "bodyEn": "Mips, cache beats, light direction, attachments, clears and bloom form an exhibition lighting score or interaction log. Map audio, MediaPipe, XR gaze and camera luminance to them; map product materials to attachments for staged arrival."
+    }
+  ]
+}

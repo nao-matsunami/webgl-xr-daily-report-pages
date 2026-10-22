@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>光の事前処理と複数出力を、空間の拍にする | 2026-10-22</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.10.22</p>
+      <h1>光の事前処理と複数出力を、空間の拍にする</h1>
+      <p class="hero-subtitle">Turn light prefiltering and multiple outputs into spatial beats</p>
+      <p>three.jsのTSL色モーフィングとWebGPU PMREM計算、PlayCanvasの永続バッファ・MRT別クリア・部分更新、Babylon.jsのmesh blending/KHR_interactivityを接続した。光のキャッシュ生成と出力面の切替を、ロード表示ではなく操作できる演出にする2本のCanvas試作を追加した。</p>
+      <p class="en-copy">This report connects three.js TSL color morphing and compute PMREM, PlayCanvas persistent buffers and MRT clears, and Babylon mesh blending/interactivity through two Canvas studies that make cache generation and output switching performable.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-10-22_pmrem_morph_light_score.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-10-21.html">← 2026.10.21</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>PMREM Morph Light Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-22_pmrem_morph_light_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>MRT Clear Bloom Orchestra</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-10-22_mrt_clear_bloom_orchestra.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.jsのPR #35141はTSLに色モーフィングを提案し、材質遷移を単なるフェード以外の時間軸にできる。2. PR #35130はWebGPUでPMREMのprefilterをcompute化する提案で、反射用の光を『待つ工程』から可視の段階へ分ける発想を促す。3. PlayCanvasの公式release notesにはWebGPUのmesh instance matrix永続storage buffer、MRTのattachment別clear色、部分vertex/index upload、CameraFrame bloom thresholdが並ぶ。4. Babylon.js 9.26.2はmesh blending post-processとKHR_interactivity Phase 1を含み、出力の混合とイベントの関係をglTF側へ出せる。</p>
+          <p class="en-copy">three.js proposes TSL color morphing and compute PMREM; PlayCanvas adds persistent WebGPU matrices, per-attachment MRT clears, partial uploads and bloom control; Babylon exposes mesh blending and KHR_interactivity.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas release notes</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon 9.26.2</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>Codrops Creative HubのCinema Seat PreviewはThree.js/TSL/WebGPUを、Paper × domglはPaper shader/WebGPUを掲げる。技術を隠すのでなく、材質・紙・座席という触覚的な比喩に落とす点が重要だ。PMREM mipの生成、MRTのclear、bloom thresholdも同じく『画面が次の状態へ準備される所作』として扱える。</p>
+          <p class="en-copy">Codrops' Cinema Seat Preview and Paper × domgl make TSL/WebGPU tactile. Treat PMREM mips, attachment clears and bloom threshold as preparation gestures rather than hidden plumbing.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は『PMREM Morph Light Score』。pointerで光の方向と色モーフ量、click/Spaceでcache beatを送り、1〜4でsource / prefilter / morph / compositeを分解する。派生『MRT Clear Bloom Orchestra』は4 attachmentを小さな楽器として、pointerで注目面、clickでclear→buffer→bloomの再採譜を行う。短期では音onset・スクロールを入力にし、中長期ではreflection probeと実render pass telemetryへ接続する。</p>
+          <p class="en-copy">The main study performs source, prefilter, morph and composite; the derivative treats four attachments as instruments. Add audio/scroll now and real probes/pass telemetry later.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-22_pmrem_morph_light_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-22_mrt_clear_bloom_orchestra.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>記録する最小状態は`pmremMip`, `prefilterMs`, `probeId`, `morphAmount`, `attachmentId`, `clearColor`, `partialUploadBytes`, `bloomThreshold`, `passId`, `passMs`。PMREMの再生成は毎frameにしない。probe移動・HDR変更・明示的なbeatに限定し、古いcubeを残してクロスフェードする。MRTはclear色をゼロ固定にせず、debug/演出用の色として別々に設計する。</p>
+          <p class="en-copy">Log mips, prefilter time, probe, morph amount, attachment/clear state, upload bytes, bloom and pass time. Regenerate PMREM only on meaningful changes, retain the old cube for crossfade, and treat MRT clear colors as expressive diagnostics.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/docs/#api/en/extras/PMREMGenerator" target="_blank" rel="noreferrer">three.js PMREMGenerator docs</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas release notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsでは色モーフィング、compute PMREM、radiosity lightmapper、camera typeを含むrender context keyの統合先を見る。PlayCanvasでは部分uploadとpersistent storageがGSplatやCameraFrameにどう波及するか、BabylonではFrame Graphとmesh blend/KHR_interactivityの実例を追う。制作者事例は、WebGPU限定にせずCanvas/WebGL fallbackでも成立する光・履歴・紙質の表現を優先する。</p>
+          <p class="en-copy">Watch integration of three.js morphing/PMREM/lightmapper/context keys; track PlayCanvas partial uploads and storage effects; seek Babylon Frame Graph examples and portable light/history/paper treatments.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits/dev" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/milestones" target="_blank" rel="noreferrer">Babylon.js milestones</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerを動かして光源とmorph量を変え、2（prefilter）と4（composite）の読み替わりを比べる。click/Spaceでcache beatを打ち、mip輪がどのように光の到着感を作るか見る。次に派生で4つのattachmentを横断し、bloom thresholdを上下させる。実装へ進むなら、最初は`prefilterMs`と`bloomThreshold`の2値だけを記録すればよい。</p>
+          <p class="en-copy">Compare prefilter with composite, trigger cache beats, then explore the four attachments. Production can begin with just prefilterMs and bloomThreshold telemetry.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-22_pmrem_morph_light_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-22_mrt_clear_bloom_orchestra.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js公式PR、PlayCanvas公式release、Babylon公式release、Codrops制作者Hubを確認。アイデア検討: cache/clearを待機画面ではなく空間の拍として再定義。サンプル実装: 依存なしCanvasの本命・派生を追加。結果の検証: JSON、script構文、gallery生成、Pages公開を行う。継続案件: renderer state atlas、GSplat LOD、fallback haze。新規案件: PMREM morph、MRT orchestra。寝かせる案件: カードUI、重い外部asset、WebGPUのみで完結する最終表現。</p>
+          <p class="en-copy">Collect primary sources; reinterpret cache/clear as spatial beats; add two dependency-free studies; validate JSON/scripts/gallery/publishing. Continue state atlas, GSplat LOD and fallback haze; start PMREM morph and MRT orchestra; park cards, heavy assets and WebGPU-only finals.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>直近のreflection probe、shadow warmup、draw range、trace relayに、今日は『光の準備』と『出力面の役割分担』が加わった。傾向は、renderer内部の最適化を可視化するだけでなく、観客が操作できるカットの語彙にすること。coarse GSplatの到着、probeの局所光、音onset、Canvas履歴、MRT別clear色を同じstate scoreに重ねると、端末差や読み込み時間も演出の変数になる。最も育てる価値が高いのは、この共通scoreをThree.js/WebGL/Canvasで再生できる二重実装である。</p>
+          <p class="en-copy">Reflection probes, shadow warmup, ranges and traces now meet light preparation and output-role separation. The high-value track is a portable state score that turns engine internals and device variance into editable cuts.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命`outputs/2026-10-22_pmrem_morph_light_score.html`は、光源・6段のmip輪・色モーフ粒子を操作可能な譜面にする。次に足すなら実PMREM render targetをcaptureし、古いcubeと新しいcubeをcrossfadeする。2本目`outputs/2026-10-22_mrt_clear_bloom_orchestra.html`は4 attachmentをclear/buffer/bloom/compositeの別役として可視化する。次に足すならOffscreenCanvasまたはWebGL MRTの実textureを小窓に表示する。</p>
+          <p class="en-copy">The main prototype performs a light source, six mip rings and color-morph particles; next capture real PMREM targets. The derivative visualizes four attachment roles; next display actual OffscreenCanvas or MRT textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-10-22_pmrem_morph_light_score.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-10-22_mrt_clear_bloom_orchestra.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>mip段、cache beat、light direction、attachment選択、clear色、bloom値は、展示の照明譜・サイトの感情曲線・パフォーマンスの記録になる。Web Audioのlow bandをmorph、高域onsetをcache beat、MediaPipeの顔向きをprobe方向、WebXR gazeをattachment優先、カメラの明度をbloomへ接続できる。ブランド体験なら製品の素材ごとにattachmentを割り当て、見られた順に反射・粒子・音を育てる。</p>
+          <p class="en-copy">Mips, cache beats, light direction, attachments, clears and bloom form an exhibition lighting score or interaction log. Map audio, MediaPipe, XR gaze and camera luminance to them; map product materials to attachments for staged arrival.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35141" target="_blank" rel="noreferrer">three.js PR #35141: TSL color morphing</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35130" target="_blank" rel="noreferrer">three.js PR #35130: compute PMREM</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.26.2" target="_blank" rel="noreferrer">Babylon.js 9.26.2 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+            <li><a href="outputs/2026-10-22_pmrem_morph_light_score.html" target="_blank" rel="noreferrer">Main sample: PMREM Morph Light Score</a></li>
+          
+            <li><a href="outputs/2026-10-22_mrt_clear_bloom_orchestra.html" target="_blank" rel="noreferrer">Derived sample: MRT Clear Bloom Orchestra</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-10-22_pmrem_morph_light_score.html" loading="lazy" title="PMREM Morph Light Score"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

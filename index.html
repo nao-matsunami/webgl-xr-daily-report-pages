@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 123</span>
+        <span>days: 124</span>
         <span>page: 1 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-22">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.22</p>
+              <h2>光の事前処理と複数出力を、空間の拍にする</h2>
+              <p class="card-subtitle">Turn light prefiltering and multiple outputs into spatial beats</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-22" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.jsのTSL色モーフィングとWebGPU PMREM計算、PlayCanvasの永続バッファ・MRT別クリア・部分更新、Babylon.jsのmesh blending/KHR_interactivityを接続した。光のキャッシュ生成と出力面の切替を、ロード表示ではなく操作できる演出にする2本のCanvas試作を追加した。</p>
+          <p class="description en-copy">This report connects three.js TSL color morphing and compute PMREM, PlayCanvas persistent buffers and MRT clears, and Babylon mesh blending/interactivity through two Canvas studies that make cache generation and output switching performable.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-22.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-22_pmrem_morph_light_score.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-21">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-10-11.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-10-11_loader_interactivity_retry_score.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-10">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.10</p>
-              <h2>粗い順splatストリームと色空間の状態を触れる譜面にする</h2>
-              <p class="card-subtitle">Turn coarse-first splat streaming and color-space state into a touchable score</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-10" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、PlayCanvas Engine v2.23.2 の GSplat LOD coarse-first streaming、three.js の 10/8-10/9 commit に見える storage buffer / texture update / RangeNode / uniform array 修正、Babylon.js 9.30.0 の WebGPU render target sRGB・canvas tone mapping・GPUParticleSystem state 修正、Codrops の Three.js / TSL / WebGL 事例を接続した。10/9 の splat light / shadow / frame graph から、今日は「遠い粗LODが先に届き、色空間・トーンマップ・キャッシュ状態が光のレイヤーになる」方向へ寄せた。本命サンプルは coarse-first splat stream と tone-map bands、派生サンプルは stale storage refs / texture update ranges / canvas color contract の状態面。</p>
-          <p class="description en-copy">Today's report connects PlayCanvas Engine v2.23.2 GSplat LOD coarse-first streaming, three.js Oct 8-9 commits around storage buffers, texture update ranges, RangeNode, and uniform arrays, Babylon.js 9.30.0 WebGPU render-target sRGB, canvas tone mapping, and GPUParticleSystem state fixes, plus Codrops Three.js / TSL / WebGL examples. Extending 10/9's splat light, shadow, and frame graph thread, today focuses on distant coarse LOD arriving first while color space, tone mapping, and cache state become visible lighting layers. The main sample explores coarse-first splat stream and tone-map bands; the derived sample stages stale storage refs, texture update ranges, and canvas color contracts.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-10-10.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-10-10_coarse_splat_tonemap_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       
