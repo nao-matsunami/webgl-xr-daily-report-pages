@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-23",
+  "headline": "描画範囲とパイプライン準備を、到着する影の演出にする",
+  "headlineEn": "Make draw ranges and pipeline warmup into arriving shadows",
+  "summary": "three.jsの共有geometry向けdraw range、静的bundleのgeometry破棄修正、shadow pipelineの非同期コンパイル提案を軸に、PlayCanvasのcoarsest-first GSplat LODとBabylon.jsのGaussian Splat texture samplingを接続した。到着量・キャッシュ再構築・影の準備を観客が操作できる時間表現にする、依存なしの2本のCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js draw ranges, static-bundle disposal and async shadow compilation with PlayCanvas coarse-first GSplat LOD and Babylon Gaussian Splat texture sampling, adding two dependency-free Canvas studies for performable arrival, rebuild and shadow states.",
+  "links": [
+    {
+      "label": "three.js #35112: setDrawRange / shared scene geometry",
+      "url": "https://github.com/mrdoob/three.js/pull/35112"
+    },
+    {
+      "label": "three.js #35105: static objects and bundles",
+      "url": "https://github.com/mrdoob/three.js/pull/35105"
+    },
+    {
+      "label": "three.js #35092: async shadow pipelines",
+      "url": "https://github.com/mrdoob/three.js/pull/35092"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.3",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+    },
+    {
+      "label": "Babylon.js 9.28.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Draw Range / Shadow Rehearsal",
+      "url": "outputs/2026-10-23_drawrange_shadow_rehearsal.html"
+    },
+    {
+      "label": "Derived sample: Static Bundle Echo Probe",
+      "url": "outputs/2026-10-23_static_bundle_echo_probe.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js #35112 はMeshごとにdraw rangeを設定し、同じscene geometryを共有できる提案。群衆・点群・曲線の『どこまで到着したか』をbuffer複製なしで構成する入口になる。2. #35105 はstatic object / bundleで破棄済みgeometryを扱うWebGPURendererの修正で、長時間展示の更新・再構築を設計対象に戻す。3. #35092 はshadow pipelineをcompileAsyncに含める提案で、初回影のカクつきを事前準備の演出へ変えられる。4. PlayCanvas v2.23.3はrender container preload時の警告を絞る小修正、直前v2.23.2はview全体でcoarsest-firstにGSplat LODをstreamする修正。5. Babylon 9.28.0はGaussian Splatting data textureをnearest samplingへ寄せ、点群の輪郭と状態表示を扱いやすくする。",
+      "bodyEn": "three.js proposes per-Mesh draw ranges, repairs disposed static bundles, and explores async shadow compilation; PlayCanvas refines preload and coarse-first GSplat streaming; Babylon uses nearest sampling for Gaussian Splat data textures.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのPaper × domglはPaper Shaders/WebGPU、Cinema Seat PreviewはThree.js/TSL/WebGPUを、素材の触覚に翻訳している。今日のrenderer側の話も同じで、draw rangeはプログレスバーでなく『紙にインクが届く範囲』、shadow compileはローディングでなく『照明が舞台を覚えるリハーサル』として見せると、最適化と物語が同じ操作になる。",
+      "bodyEn": "Codrops' Paper × domgl and Cinema Seat Preview make WebGPU tactile. Treat draw range as ink arrival and shadow compilation as a lighting rehearsal, not a loading bar.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Draw Range / Shadow Rehearsal』。pointerの横位置をvisible prefix、縦位置をshadow warmupにし、click/Spaceは一度だけ強い光のcueを送る。1〜4でsource / range / shadow / compositeを切替え、描画量と影の準備が別の拍であることを読む。派生『Static Bundle Echo Probe』はcapacityとbundleの安定・invalidated・rebuildを残響として可視化する。短期ではscroll / audio onsetをcueへ、中長期ではXR gazeによるdraw rangeと実bundle telemetryへ接続する。",
+      "bodyEn": "The main study makes pointer position a visible prefix and shadow warmup, while the derivative turns bundle rebuild into an echo. Add scroll/audio now and XR gaze plus real telemetry later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-23_drawrange_shadow_rehearsal.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-23_static_bundle_echo_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "最小ログは`geometryId`, `drawStart`, `drawCount`, `capacity`, `sharedGeometryId`, `bundleId`, `bundleRebuildCount`, `disposedGeometry`, `shadowPipelineState`, `compileAsyncMs`, `lodLevel`, `streamRank`。draw rangeを毎frameランダムに揺らすより、scroll・beat・camera距離の閾値で更新し、shadowは展示開始前・scene transition前にcompileAsyncする。PlayCanvasのcoarse-first LODと組み合わせれば、粗い点群→range到着→影の詳細化という順番を端末差に強く実装できる。",
+      "bodyEn": "Log geometry/range/capacity/bundle/shadow/Lod state. Update ranges on meaningful thresholds and warm shadows before transitions. Combine coarse-first LOD, range arrival and detailed shadows for resilient staging.",
+      "links": [
+        {
+          "label": "three.js #35112",
+          "url": "https://github.com/mrdoob/three.js/pull/35112"
+        },
+        {
+          "label": "three.js #35092",
+          "url": "https://github.com/mrdoob/three.js/pull/35092"
+        },
+        {
+          "label": "PlayCanvas v2.23.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsでは#35112/#35092がr187へどう収束するか、WebGPU bundleとshared geometryの実例、TSL lightmapper / compute PMREMとの接続を追う。PlayCanvasはGSplat streamの観測値とpartial upload、BabylonはFrame Graph・mesh blending・Gaussian SplatのWebGPU経路を追う。制作者事例は、重い固有assetに依存せず、range・影・残響を身体感覚にできる作品を優先する。",
+      "bodyEn": "Watch three.js r187 convergence, bundle/shared geometry examples and its lightmapper/PMREM links; track PlayCanvas streaming telemetry and Babylon Frame Graph, mesh blending and splats.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas Engine",
+          "url": "https://github.com/playcanvas/engine"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、横移動でrangeの到着量、縦移動でshadow pipelineのready量を変え、2と3を分けて比べる。click/Spaceでcueを打つと、両者をまとめる瞬間が見える。次に派生でcapacityを動かし、click後にbundleが無効化から再構築へ移る残響を読む。実装へ進む最初の一歩は、`drawCount`と`compileAsyncMs`の2値を収集して同じtimelineに置くこと。",
+      "bodyEn": "Compare range and shadow readiness separately, then trigger a cue. In the derived study, vary capacity and rebuild. Start production by placing drawCount and compileAsyncMs on one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-23_drawrange_shadow_rehearsal.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-23_static_bundle_echo_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsの公式PR、PlayCanvas/Babylonの公式release、Codrops制作者Hubを確認。アイデア検討: draw range・pipeline warmup・bundle rebuildを待機でなく到着/残響として再定義。サンプル実装: Canvas本命と派生を追加。結果の検証: JSON、HTML構文、gallery生成、公開を行う。継続案件: renderer state atlas、GSplat LOD、reflection/probe score。新規案件: range-shadow rehearsal、bundle echo。寝かせる案件: カードUI、重いVDB、WebGPUだけを必須にする最終形。",
+      "bodyEn": "Collected primary sources, reframed range/warmup/rebuild, implemented two Canvas studies and will validate/publish. Continue state atlas, GSplat LOD and probe score; start range-shadow and bundle echo; park cards, heavy VDB and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10/22のPMREM/MRTでは『光が準備される拍』を扱った。今日はそれをgeometryの到着範囲とshadow compileへ降ろし、10/20のbundle rebuild ghost、10/21のdrawrange arrivalにも接続した。最近の傾向は、stream・compile・cache・clearのような本来隠れる内部状態を、観客が読み替え・操作できる舞台記法にすること。最も育てる価値が高いのは、range / LOD / shadow / probe / audio cueを単一のstate scoreへまとめ、three.js・WebGL・Canvasのいずれでも再生できる形である。",
+      "bodyEn": "Yesterday's PMREM/MRT beat now connects geometry arrival and shadow compilation to recent rebuild and drawrange studies. The valuable long-term track is one portable score for range, LOD, shadows, probes and audio cues."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-23_drawrange_shadow_rehearsal.html`は、visible rangeとshadow warmupを二つの独立した操作軸にした実動Canvas。次に足すならThree.jsの`BufferGeometry.setDrawRange()`と`compileAsync()`を実際に呼び、実測msをlaneへ反映する。2本目`outputs/2026-10-23_static_bundle_echo_probe.html`は、buffer capacityとbundle無効化/再構築を残響として確認する派生試作。次はWebGPU rendererのbundle実体とGC/破棄イベントを収集し、静的展示の回復演出へ拡張する。",
+      "bodyEn": "The main Canvas study separates visible range and shadow warmup; next use real setDrawRange and compileAsync timings. The derivative studies capacity and rebuild echoes; next connect real WebGPU bundle lifecycle telemetry.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-23_drawrange_shadow_rehearsal.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-23_static_bundle_echo_probe.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "range量、cue時刻、shadow ready率、capacity、bundle再構築回数は、展示の進行譜、読み込み品質のログ、観客の操作履歴になる。Web Audioのonsetをcue、MediaPipeの手の開閉をdrawCount、WebXR gazeをstream priority、カメラ映像の明暗をshadow warmupへ割り当てられる。ライブ会場では曲ごとのrange曲線を照明/映像の共通スコアにし、ブランド演出では製品の構成要素が見られた順にgeometry・影・反射を到着させる。",
+      "bodyEn": "Range, cue, shadow readiness, capacity and rebuild count can become staging, quality and audience logs. Map audio, hand pose, XR gaze and camera luminance into them for performance, installation and brand staging."
+    }
+  ]
+}

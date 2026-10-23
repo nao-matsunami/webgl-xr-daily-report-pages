@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Static Bundle Echo Probe</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#090810;color:#f6ecff;font:13px/1.45 ui-monospace,monospace;overflow:hidden}canvas{width:100vw;height:100vh;display:block}.copy{position:fixed;left:18px;top:18px;pointer-events:none}.eyebrow{letter-spacing:.17em;font-size:11px;color:#e0a5ff}.head{font-size:clamp(20px,3.2vw,36px);line-height:1.04;margin:8px 0}.small{color:#b8aac7}.key{position:fixed;right:18px;bottom:18px;color:#cdb8df;text-align:right}</style>
+<canvas></canvas><div class="copy"><div class="eyebrow">STATIC OBJECTS / BUNDLE INVALIDATION STUDY</div><div class="head">A disposed bundle<br>leaves a useful echo.</div><div class="small" id="s"></div></div><div class="key">pointer: capacity &nbsp; click / space: rebuild &nbsp; 1–4: view</div>
+<script>
+const c=document.querySelector('canvas'),g=c.getContext('2d');let W,H,p=.5,m=4,pulse=0,dead=0,last=0;function r(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}r();addEventListener('resize',r);addEventListener('pointermove',e=>p=e.clientX/innerWidth);function rebuild(){pulse=1;dead=.15}addEventListener('pointerdown',rebuild);addEventListener('keydown',e=>{if(e.key===' ')rebuild();if(+e.key>0&&+e.key<5)m=+e.key});
+function loop(t){requestAnimationFrame(loop);let dt=Math.min(.05,(t-last)/1000||0);last=t;pulse*=Math.exp(-dt*1.6);dead=Math.max(0,dead-dt*.22);let w=innerWidth,h=innerHeight;g.fillStyle='#090810';g.fillRect(0,0,w,h);const cap=12+Math.floor(p*70),show=i=>m===4||m===i;
+ if(show(1)){for(let y=0;y<10;y++)for(let q=0;q<cap;q++){let xx=w*.14+q*8,yy=h*.23+y*18;g.fillStyle='hsla('+(275+y*6)+',90%,74%,'+(.18+.62*(q/cap))+')';g.fillRect(xx,yy,5,9)}}
+ if(show(2)){for(let i=0;i<5;i++){let bw=w*(.14+i*.065),bh=h*(.72-i*.07);g.strokeStyle='rgba(238,171,255,'+(.18+i*.12)+')';g.lineWidth=1;g.strokeRect(w*.13+i*18,bh,bw*.7,11);g.fillStyle='#cdb8df';g.fillText('bundle '+i+'  '+(dead>.02&&i===3?'disposed → rebuild':'static / cached'),w*.15,bh-5)}}
+ if(show(3)){for(let i=0;i<42;i++){let a=i/42*Math.PI*2+t*.0005,rr=(i%6)*14+28;g.fillStyle='rgba(255,211,118,'+(.14+pulse*.65)+')';g.beginPath();g.arc(w*.73+Math.cos(a)*rr,h*.45+Math.sin(a)*rr*.7,2+(i%3),0,7);g.fill()}g.strokeStyle='rgba(255,214,130,'+(.2+pulse*.7)+')';g.beginPath();g.arc(w*.73,h*.45,75+pulse*70,0,7);g.stroke()}
+ if(show(4)){g.fillStyle='rgba(124,69,166,.12)';g.fillRect(w*.12,h*.17,w*.67,h*.63);g.fillStyle='#fff0cb';g.fillText('rebuild echo  '+Math.round(pulse*100)+'ms   |   capacity '+cap+' vertices',w*.14,h*.88)}
+ document.querySelector('#s').textContent='buffer capacity '+cap+' units · bundle '+(dead>.02?'invalidated':'stable')+' · '+['GEOMETRY','BUNDLES','ECHO','COMPOSITE'][m-1]}
+requestAnimationFrame(loop);
+</script></html>

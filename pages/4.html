@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 124</span>
+        <span>days: 125</span>
         <span>page: 4 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-17">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.17</p>
+              <h2>GPU選択、stochastic alpha、mesh blendを触れる制作状態へ寄せる</h2>
+              <p class="card-subtitle">Turning GPU selection, stochastic alpha, and mesh blending into tactile production state</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-17" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js r186、PlayCanvas v2.22.2、SuperSplat Editor 3.0、Babylon.js 9.26.2、Codropsの直近WebGL/Three.js事例を調査した。9/16のHTMLTexture / TAA / splat cullingから、今日はGPU上の選択、stochastic alpha、mesh blending、KHR_interactivity、ProceduralTexture uniform更新を「重いシーンでも触れる制作状態」として整理し、依存なしraw WebGL試作を2本追加した。</p>
+          <p class="description en-copy">Today reviews three.js r186, PlayCanvas v2.22.2, SuperSplat Editor 3.0, Babylon.js 9.26.2, and recent Codrops WebGL / Three.js work. Extending September 16's HTMLTexture / TAA / splat-culling thread, the focus turns GPU selection, stochastic alpha, mesh blending, KHR_interactivity, and ProceduralTexture uniform updates into production states that remain tactile even in heavy scenes. Two dependency-free raw WebGL prototypes were added.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-09-17.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-09-17_stochastic_brush_memory_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-16">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-09-04.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-09-04_scheduled_submit_readback_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-03">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.03</p>
-              <h2>Velocity buffer、datamosh、fluid粒径を遅延するGPU状態の表現にする</h2>
-              <p class="card-subtitle">Turning velocity buffers, datamosh, and fluid particle size into delayed GPU-state expression</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-03" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js の MeshVelocityMaterial / TSL subgroup indexing / native linear indexing、PlayCanvas の ImmediateBatch typed array retention / volumetric fog resize fix / SceneDepthReader継続、Babylon.js の IBL shadow for ShadowOnlyMaterial / fluid per-particle size / white balance / MultiTexture を調査した。前回の depth readback と atomic diagnostics を受け、今日は「速度バッファやreadbackの遅延をdatamosh的な履歴表現にする」方向と、「粒子サイズ・IBL shadow・モバイルfallbackを品質モードとして見せる」方向へ進め、本命サンプルと派生サンプルを2本実装した。</p>
-          <p class="description en-copy">Today covers three.js MeshVelocityMaterial, TSL subgroup indexing and native linear indexing, PlayCanvas ImmediateBatch typed-array retention, volumetric fog resize handling and the continuing SceneDepthReader thread, plus Babylon.js IBL shadows for ShadowOnlyMaterial, fluid per-particle size, white balance, and MultiTexture. Building on depth readback and atomic diagnostics, the direction shifts toward using velocity-buffer/readback delay as datamosh-like history and showing particle size, IBL shadowing, and mobile fallback as visible quality modes. Two runnable WebGL samples were implemented.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-09-03.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-09-03_velocity_datamosh_readback_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       

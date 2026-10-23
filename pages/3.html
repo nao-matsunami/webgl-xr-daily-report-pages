@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 124</span>
+        <span>days: 125</span>
         <span>page: 3 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-09-29">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.09.29</p>
+              <h2>mipmap、LOD、parallax depthを、解像度が呼吸する検査面にする</h2>
+              <p class="card-subtitle">Turning mipmaps, LOD, and parallax depth into an inspection surface where resolution breathes</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-09-29" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js devのTexture mipmapsAutoUpdate、TSL cache、WebGPU light / gather / dispose周辺、PlayCanvas Engine v2.22.4とEditor 2.32のSplat LOD / Parallax Occlusion、Babylon.js 9.28.0のalpha depth pre-pass / RootMotion / Gaussian Splatting data texture、Gaussian Splat LiteのWebGPU / WebGL2 streaming LODを確認した。9/28のmobile pass pressureから、今日はtexture residency、mipmap更新、splat LOD、parallax height、alpha pre-passを2本の依存なしraw WebGL試作にした。</p>
+          <p class="description en-copy">Today checks three.js dev work around Texture mipmapsAutoUpdate, TSL caching, WebGPU light / gather / disposal, PlayCanvas Engine v2.22.4 and Editor 2.32 Splat LOD / Parallax Occlusion, Babylon.js 9.28.0 alpha depth pre-pass / RootMotion / Gaussian Splatting data textures, and Gaussian Splat Lite's WebGPU / WebGL2 streaming LOD. Continuing September 28's mobile pass pressure, the two dependency-free raw WebGL prototypes turn texture residency, mipmap updates, splat LOD, parallax height, and alpha pre-pass into visual inspection surfaces.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-09-29.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-09-29_parallax_splat_depth_stage.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-09-28">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-09-18.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-09-18_stream_worker_lod_score.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-09-17">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.09.17</p>
-              <h2>GPU選択、stochastic alpha、mesh blendを触れる制作状態へ寄せる</h2>
-              <p class="card-subtitle">Turning GPU selection, stochastic alpha, and mesh blending into tactile production state</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-09-17" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js r186、PlayCanvas v2.22.2、SuperSplat Editor 3.0、Babylon.js 9.26.2、Codropsの直近WebGL/Three.js事例を調査した。9/16のHTMLTexture / TAA / splat cullingから、今日はGPU上の選択、stochastic alpha、mesh blending、KHR_interactivity、ProceduralTexture uniform更新を「重いシーンでも触れる制作状態」として整理し、依存なしraw WebGL試作を2本追加した。</p>
-          <p class="description en-copy">Today reviews three.js r186, PlayCanvas v2.22.2, SuperSplat Editor 3.0, Babylon.js 9.26.2, and recent Codrops WebGL / Three.js work. Extending September 16's HTMLTexture / TAA / splat-culling thread, the focus turns GPU selection, stochastic alpha, mesh blending, KHR_interactivity, and ProceduralTexture uniform updates into production states that remain tactile even in heavy scenes. Two dependency-free raw WebGL prototypes were added.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-09-17.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-09-17_stochastic_brush_memory_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       

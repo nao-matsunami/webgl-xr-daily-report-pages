@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 124</span>
+        <span>days: 125</span>
         <span>page: 1 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-23">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.23</p>
+              <h2>描画範囲とパイプライン準備を、到着する影の演出にする</h2>
+              <p class="card-subtitle">Make draw ranges and pipeline warmup into arriving shadows</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-23" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.jsの共有geometry向けdraw range、静的bundleのgeometry破棄修正、shadow pipelineの非同期コンパイル提案を軸に、PlayCanvasのcoarsest-first GSplat LODとBabylon.jsのGaussian Splat texture samplingを接続した。到着量・キャッシュ再構築・影の準備を観客が操作できる時間表現にする、依存なしの2本のCanvas試作を追加した。</p>
+          <p class="description en-copy">This report connects three.js draw ranges, static-bundle disposal and async shadow compilation with PlayCanvas coarse-first GSplat LOD and Babylon Gaussian Splat texture sampling, adding two dependency-free Canvas studies for performable arrival, rebuild and shadow states.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-23.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-23_static_bundle_echo_probe.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-22">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-10-12.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-10-12_range_refraction_stream_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-11">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.11</p>
-              <h2>光のバッチ、影のbias、ロード優先度を空間演出の譜面にする</h2>
-              <p class="card-subtitle">Turn light batching, shadow bias, and load priority into a spatial score</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-11" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、three.js の 2026-10-10 から 10-09 にかけての PR 群、特に light version / double-sided shadow bias / static point and spot light batching / FileLoader requestInit、PlayCanvas Engine v2.23.0 の WebGPU render path と GSplat LOD・material bind group 系のまとまった変更、Babylon.js 9.30.0 の WebGPU color-space / GPUParticleSystem / SubMesh draw wrapper caching、Codrops Creative Hub の cursor / WebGL shader / grid 事例を接続した。10/10 の coarse-first splat stream と color contract から、今日は「どの光・影・リクエストが先に有効になるか」を見えるタイル譜面として扱う。本命サンプルは light/probe/shadow tile field、派生サンプルは loader/interactivity/retry score。</p>
-          <p class="description en-copy">Today's report connects three.js PRs from 2026-10-10 and 10-09 around light versions, double-sided shadow bias, static point/spot light batching, and FileLoader requestInit; PlayCanvas Engine v2.23.0's WebGPU render path, GSplat LOD, and material bind group changes; Babylon.js 9.30.0's WebGPU color-space, GPUParticleSystem, and SubMesh draw wrapper caching work; and Codrops Creative Hub references around cursor, WebGL shaders, and grids. Extending 10/10's coarse-first splat stream and color contract, today treats the activation order of lights, shadows, and requests as a visible tile score. The main sample is a light/probe/shadow tile field; the derived sample is a loader/interactivity/retry score.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span><span class="tag">field</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-10-11.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-10-11_loader_interactivity_retry_score.html">代表サンプル / Sample</a>
           </div>
         </article>
       
