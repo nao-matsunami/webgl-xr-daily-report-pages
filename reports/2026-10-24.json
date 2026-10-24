@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-24",
+  "headline": "視点ごとのカリングと環境光の準備を、空間の拍にする",
+  "headlineEn": "Turn per-view culling and radiance preparation into spatial rhythm",
+  "summary": "three.jsで進むArrayCameraのサブカメラ別カリング、WebGPU compute PMREM、LightMapperのradiosity提案を、PlayCanvasのview単位uniform/GSplat LODとBabylon.jsのnearest Gaussian Splat samplingへ接続した。視点ごとの残る描画と環境光の収束を操作できる本命Canvas試作、紙面の穴と光の残像を検証する派生試作を追加した。",
+  "summaryEn": "This report connects three.js per-subcamera culling, compute PMREM and LightMapper radiosity with PlayCanvas view-scoped rendering and GSplat LOD, plus Babylon nearest Gaussian Splat sampling, with two interactive Canvas studies.",
+  "links": [
+    {
+      "label": "three.js #35164: cull ArrayCamera draws per sub-camera",
+      "url": "https://github.com/mrdoob/three.js/pull/35164"
+    },
+    {
+      "label": "three.js #35130: compute PMREM",
+      "url": "https://github.com/mrdoob/three.js/pull/35130"
+    },
+    {
+      "label": "three.js #35124: LightMapper radiosity",
+      "url": "https://github.com/mrdoob/three.js/pull/35124"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.28.0",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Subcamera / Radiance Sweep",
+      "url": "outputs/2026-10-24_subcamera_radiance_sweep.html"
+    },
+    {
+      "label": "Derived sample: Paper Probe Afterimage",
+      "url": "outputs/2026-10-24_paper_probe_afterimage.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js #35164はArrayCameraのdrawをサブカメラごとにcullする提案で、ステレオ/XRだけでなく複数窓・複数投影に『各視点に残るもの』を与える。2. #35130はWebGPUでcompute shaderを使うPMREM prefilter。反射環境の到着をrender passとして扱える。3. #35124はLightMapperへradiosity algorithmを足す提案で、直接光ではない回り込みの時間差に踏み込む。4. PlayCanvas v2.23系はview uniform / bind group整理と距離優先GSplat LODを進め、視点別quality設計の足場になる。5. Babylon 9.28.0はGaussian Splat data textureをnearest samplingにし、点群の状態をにじませず表示しやすくした。",
+      "bodyEn": "three.js explores per-subcamera culling, compute PMREM and radiosity; PlayCanvas strengthens view-scoped rendering and GSplat LOD; Babylon uses nearest Gaussian Splat data textures.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのPaper × domglは紙的な手触りとDOM/WebGPUを重ね、Cinema Seat PreviewはThree.js/TSL/WebGPUで空間の選択を見せる。今日のrenderer側の更新も、最適化の数字としてでなく『左眼だけが先に見つける光』『反射が段階的に記憶する場所』として見せると、視点差が演出になる。",
+      "bodyEn": "Paper × domgl and Cinema Seat Preview point to tactile, spatial WebGPU work. Frame renderer differences as light discovered by an eye or reflections gradually remembered by a place.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Subcamera / Radiance Sweep』はpointer横位置をgaze offset、縦位置をprobe energyにし、左/右のsub-cameraが異なる粒子を残す。click/Spaceはenvironment lightのsweep。1〜4でeyes / cull / radiance / compositeを分ける。派生『Paper Probe Afterimage』は紙の切り抜きと露光残像で、DOM上の素材にprobeの蓄積を写す。短期ではスクロールや音のonsetをsweepに、中長期ではXR eye/gazeと実PMREM完了時間を接続する。",
+      "bodyEn": "The main study separates eyes, culling and radiance; the derivative maps probe accumulation to a paper cutout. Add scroll/audio now and real XR gaze/PMREM timing later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-24_subcamera_radiance_sweep.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-24_paper_probe_afterimage.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "ログ候補は`cameraId`, `subCameraId`, `frustumCullCount`, `drawsRetained`, `eyeIndex`, `probeId`, `pmremMip`, `prefilterMs`, `lightmapPass`, `radiosityEnergy`, `lodLevel`, `streamRank`。XRや分割viewportでは、全視点を同じ品質で描く前に、近接・注視・音源方向でpriorityを決める。PMREM/LightMapはscene transition前にwarmし、完了率を隠すのでなく色・粒子密度・残光に変換する。",
+      "bodyEn": "Log camera/cull/probe/PMREM/lightmap/LOD values. Prioritize views before equal quality, warm lighting before transitions, and turn readiness into color, density and afterglow.",
+      "links": [
+        {
+          "label": "three.js #35164",
+          "url": "https://github.com/mrdoob/three.js/pull/35164"
+        },
+        {
+          "label": "three.js #35130",
+          "url": "https://github.com/mrdoob/three.js/pull/35130"
+        },
+        {
+          "label": "PlayCanvas Engine v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsは#35164/#35130/#35124がr188へどう入るか、WebXR DirectRenderPipelineとlocal reflection probeの実装例を追う。PlayCanvasはGSplat streamがcamera/viewの変化へどう追随するか、BabylonはFrame Graph・mesh blending・Gaussian SplatのWebGPU経路を追う。制作者事例は紙・布・室内光のように、軽量な素材を視点差で空間化するものを優先する。",
+      "bodyEn": "Watch r188 convergence, XR direct rendering and reflection probes in three.js; view-driven GSplat streaming in PlayCanvas; and Babylon Frame Graph, mesh blending and splats.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas Engine",
+          "url": "https://github.com/playcanvas/engine"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開いて左右に動かし、点群の残り方が二眼でずれるのを見た後、上下でprobe energyを変え、2と3を切替えて比較する。click/Spaceでsweepを打つと、環境光の準備が時間軸として読める。次に派生で紙の穴を動かして露光を残す。実装に進む最初の一歩は、cameraごとの`drawsRetained`と`prefilterMs`を同一timelineへ記録すること。",
+      "bodyEn": "Move horizontally to shift retained draws, vertically to change probe energy, and trigger a sweep. Then try the paper study. Start production by recording drawsRetained and prefilterMs on one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-24_subcamera_radiance_sweep.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-24_paper_probe_afterimage.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsの公式PR、PlayCanvas/Babylonの公式release、Codrops制作者Hubを確認。アイデア検討: sub-camera cullingとPMREM/radiosityを視点差・残光の記法へ変換。サンプル実装: 本命Canvasと紙面派生を追加。結果の検証: JSON、HTML構文、gallery生成、公開を実施する。継続案件: renderer state atlas、GSplat LOD、range/shadow score。新規案件: per-view radiance score、paper probe afterimage。寝かせる案件: カードUI、重いVDBデータ、WebGPU専用の最終形。",
+      "bodyEn": "Collected primary sources, reframed culling and lighting as view-dependent afterglow, implemented two studies and will validate/publish. Continue state atlas/LOD/range-shadow; start per-view radiance and paper probes; park cards, heavy VDB and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10/20〜23はbundle再構築、draw range、shadow rehearsalを『到着と準備の拍』として扱った。今日はその拍を視点ごとに分け、10/22のPMREM/MRTにも戻した。最近の筋は、stream・compile・cache・cull・prefilterといった内部の選別を、空間の呼吸として観客に渡すこと。最も育てる価値が高いのは、XR gaze / LOD / range / shadow / PMREM / audio cueを一つのportable state scoreにまとめること。",
+      "bodyEn": "Recent work staged rebuild, ranges and shadows as arrival. Today makes that rhythm per-view and reconnects it to PMREM/MRT. The strongest long-term track is one portable score for gaze, LOD, range, shadow, PMREM and audio."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命`outputs/2026-10-24_subcamera_radiance_sweep.html`は、視点別cullingとradiance preparationを分けて触れる実動Canvas。次に足すならThree.js `ArrayCamera`、WebXR sub-camera、実`PMREMGenerator`の完了計測を同じlaneへ入れる。2本目`outputs/2026-10-24_paper_probe_afterimage.html`は、紙のcutと光のafterimageを検証する派生試作。次はHTMLTextureまたはvideo/camera inputを紙面に投影し、現実素材とprobeを接続する。",
+      "bodyEn": "The main study exposes per-view culling and radiance; next connect ArrayCamera/WebXR/real PMREM timing. The derivative tests paper cuts and afterimages; next feed it HTML texture or live camera input.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-24_subcamera_radiance_sweep.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-24_paper_probe_afterimage.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "sub-cameraごとの保持draw、gaze offset、probe energy、sweep時刻、afterimage強度は、観客がどの空間をどの順番で見たかのスコアになる。Web Audioの周波数帯をprobe energy、MediaPipeの顔向きをeye priority、WebXRのgazeをcull priority、カメラの明暗を紙面の露光へ割り当てられる。展示では複数スクリーンが各自の『残した光』を持ち、ブランド演出では製品の素材が注視順に反射・透過・輪郭を獲得する構成へ育てられる。",
+      "bodyEn": "Per-eye retained draws, gaze, probe energy, sweep time and afterimage intensity form an audience-viewing score. Map audio, face pose, XR gaze and camera luminance to it for installations and material-led brand staging."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subcamera / Radiance Sweep</title>
+<style>*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#060913;color:#e9f5ff;font:13px/1.45 ui-monospace,SFMono-Regular,monospace}canvas{display:block;width:100vw;height:100vh}.hud{position:fixed;top:18px;left:18px;max-width:470px;pointer-events:none}.eyebrow{letter-spacing:.17em;font-size:10px;color:#98dfff}.title{margin:7px 0;font-size:clamp(21px,3.2vw,40px);line-height:1.02}.meta{color:#a9b9cc}.keys{position:fixed;right:18px;bottom:16px;text-align:right;color:#bdcce0}.tag{display:inline-block;border:1px solid #395b7b;border-radius:999px;padding:4px 7px;margin:8px 4px 0 0;color:#bcecff}</style>
+<canvas></canvas><div class="hud"><div class="eyebrow">THREE.JS / WEBGPU STATE STUDY — 24 OCT 2026</div><div class="title">Each eye culls a different<br>radiance rehearsal.</div><div class="meta" id="meta"></div><div><span class="tag">pointer: gaze &amp; probe</span><span class="tag">click / space: light sweep</span><span class="tag">1–4: isolate pass</span></div></div><div class="keys">1 eyes &nbsp; 2 cull &nbsp; 3 PMREM &nbsp; 4 composite</div>
+<script>
+const c=document.querySelector('canvas'),g=c.getContext('2d');let W,H,px=.5,py=.5,mode=4,sweep=0,last=0;
+function fit(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}addEventListener('resize',fit);fit();
+addEventListener('pointermove',e=>{px=e.clientX/innerWidth;py=e.clientY/innerHeight});addEventListener('pointerdown',()=>sweep=1);addEventListener('keydown',e=>{if(e.key===' ')sweep=1;if(+e.key>0&&+e.key<5)mode=+e.key});
+function rect(x,y,w,h,col){g.fillStyle=col;g.fillRect(x,y,w,h)}
+function frame(t){requestAnimationFrame(frame);const dt=Math.min(.05,(t-last)/1000||0);last=t;sweep*=Math.exp(-dt*1.55);const w=innerWidth,h=innerHeight,T=t*.001,show=n=>mode===4||mode===n;rect(0,0,w,h,'#060913');const cx=w*.54,cy=h*.54,R=Math.min(w,h)*.255,sep=R*.45,gaze=(px-.5)*R*.7,probe=.2+.8*(1-py);
+ // two sub-camera frusta
+ if(show(1)){for(const [eye,off,col] of [['L',-sep,'#6fdfff'],['R',sep,'#ff9dd5']]){g.strokeStyle=col;g.lineWidth=1.2;g.globalAlpha=.78;g.beginPath();g.moveTo(cx+off,cy+R*.72);g.lineTo(cx+off-R*.65,cy-R*.65);g.lineTo(cx+off+R*.65,cy-R*.65);g.closePath();g.stroke();g.fillStyle=col;g.globalAlpha=.9;g.fillText(eye+' sub-camera',cx+off-R*.39,cy+R*.91)}g.globalAlpha=1;}
+ // differently culled light particles
+ if(show(2)){for(let i=0;i<150;i++){const a=i*2.399+T*.11,r=R*(.08+.93*((i*43)%149)/149),x=cx+Math.cos(a)*r+gaze,y=cy+Math.sin(a)*r*.64;const left=x<cx-sep*.05+gaze,right=x>cx+sep*.05+gaze,keep=(i%3===0)||left!==right;if(keep){g.fillStyle=i%2?'rgba(102,224,255,.72)':'rgba(255,137,204,.68)';g.beginPath();g.arc(x,y,1.2+(i%5)*.35,0,7);g.fill()}}g.strokeStyle='rgba(245,250,255,.4)';g.setLineDash([4,7]);g.beginPath();g.moveTo(cx+gaze,cy-R*.92);g.lineTo(cx+gaze,cy+R*.85);g.stroke();g.setLineDash([])}
+ // compute PMREM mip rings / radionity pass
+ if(show(3)){for(let i=0;i<8;i++){const p=i/7,a=.08+probe*(.2+.8*p),rr=R*(.15+p*.83);g.strokeStyle=`hsla(${30+p*160},95%,70%,${a})`;g.lineWidth=2+p*2;g.beginPath();g.arc(cx,cy,rr,0,Math.PI*2);g.stroke()}const sx=cx+(px-.5)*R*1.6;g.strokeStyle=`rgba(255,218,118,${.25+sweep*.7})`;g.lineWidth=3;g.beginPath();g.arc(sx,cy,R*(.55+sweep*.35),-1.2,1.2);g.stroke();g.fillStyle='#ffe4a0';g.fillText('compute PMREM / radiosity sweep',cx-R*.7,cy+R*1.2)}
+ if(show(4)){const q=g.createRadialGradient(cx,cy,4,cx,cy,R*1.45);q.addColorStop(0,'rgba(159,233,255,.16)');q.addColorStop(.46,'rgba(255,130,196,.06)');q.addColorStop(1,'rgba(6,9,19,0)');g.fillStyle=q;g.fillRect(0,0,w,h)}
+ document.querySelector('#meta').textContent=`gaze offset ${Math.round((px-.5)*200)} · retained draws ${Math.round(48+probe*61)} · probe energy ${Math.round(probe*100)}% · ${['EYES','CULL','RADIANCE','COMPOSITE'][mode-1]}`;
+}requestAnimationFrame(frame);
+</script></html>

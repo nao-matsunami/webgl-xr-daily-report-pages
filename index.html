@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 125</span>
+        <span>days: 126</span>
         <span>page: 1 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-24">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.24</p>
+              <h2>視点ごとのカリングと環境光の準備を、空間の拍にする</h2>
+              <p class="card-subtitle">Turn per-view culling and radiance preparation into spatial rhythm</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-24" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.jsで進むArrayCameraのサブカメラ別カリング、WebGPU compute PMREM、LightMapperのradiosity提案を、PlayCanvasのview単位uniform/GSplat LODとBabylon.jsのnearest Gaussian Splat samplingへ接続した。視点ごとの残る描画と環境光の収束を操作できる本命Canvas試作、紙面の穴と光の残像を検証する派生試作を追加した。</p>
+          <p class="description en-copy">This report connects three.js per-subcamera culling, compute PMREM and LightMapper radiosity with PlayCanvas view-scoped rendering and GSplat LOD, plus Babylon nearest Gaussian Splat sampling, with two interactive Canvas studies.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-24.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-24_subcamera_radiance_sweep.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-23">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-10-13.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-10-13_intent_lod_backpressure_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-12">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.12</p>
-              <h2>部分ロード、屈折ガード、canvas回復を空間スコアにする</h2>
-              <p class="card-subtitle">Turn partial loading, refraction guards, and canvas recovery into a spatial score</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-12" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、three.js r187 milestone / migration guide に残る HTTP Range request、transmission pass、depth-guard screen-space refraction、viewport/scissor 変更、PlayCanvas Engine v2.23.2 の coarse-first GSplat LOD / zero-size canvas / MiniStats skip、Babylon.js 9.30.0 の WebGPU color-space / render target sRGB / texture retry 系、Codrops の WebGL / GLSL / Three.js 事例を接続した。10/11 の light / shadow / loader priority から、今日は「部分的に届くデータ」と「壊れないように守られる描画状態」を前景の演出にする。本命サンプルは HTTP range chunk、depth-guard refraction、coarse splat arrival の合成。派生サンプルは canvas resolution contract、MiniStats silence、texture retry cache の検証面。</p>
-          <p class="description en-copy">Today's report connects the three.js r187 milestone / migration guide items around HTTP Range requests, transmission pass, depth-guarded screen-space refraction, and viewport/scissor changes; PlayCanvas Engine v2.23.2 coarse-first GSplat LOD, zero-size canvas, and MiniStats skip fixes; Babylon.js 9.30.0 WebGPU color-space, render-target sRGB, and texture retry themes; and Codrops WebGL / GLSL / Three.js examples. Extending 10/11's light, shadow, and loader priority score, today brings partially arriving data and protected render states into the foreground. The main sample composites HTTP range chunks, depth-guard refraction, and coarse splat arrival. The derived sample stages canvas resolution contracts, MiniStats silence, and texture retry cache as a diagnostic surface.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-10-12.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-10-12_range_refraction_stream_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       
