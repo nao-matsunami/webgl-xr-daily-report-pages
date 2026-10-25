@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 126</span>
+        <span>days: 127</span>
         <span>page: 2 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-13">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.13</p>
+              <h2>描画の背圧、LOD、破綻表現を状態スコアに束ねる</h2>
+              <p class="card-subtitle">Bundle render backpressure, LOD, and glitch expression into a state score</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-13" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">今日は、three.js r187 milestone の TSL / WebGPU fallback / HTTP Range / refraction 系、PlayCanvas Engine v2.23.2 と v2.23.0 announcement の Inspector / AppStats / GSplat LOD / canvas recovery、Babylon.js 9.30.0 npm release、Codrops の ASCII / Datamosh / Loom / Glass Xylophone 系の表現を接続した。10/12 の partial loading と canvas recovery を踏まえ、描画が詰まる・粗LODへ逃がす・fallbackする・破綻を演出化する、という中間状態そのものを今日のテーマにした。本命サンプルは TSL intent lanes、coarse LOD backpressure、fallback haze の合成。派生サンプルは ASCII glyph cell、velocity datamosh、retry noise を renderer state の診断表示として動かす。</p>
+          <p class="description en-copy">Today's report connects the three.js r187 milestone items around TSL, WebGPU fallback, HTTP Range, and refraction; PlayCanvas Engine v2.23.2 plus the v2.23.0 announcement around Inspector, AppStats, GSplat LOD, and canvas recovery; Babylon.js 9.30.0 on npm; and Codrops examples around ASCII, datamosh, loom, and glass xylophone expression. Extending 10/12 partial loading and canvas recovery, today's theme is the intermediate state itself: render backpressure, coarse LOD escape hatches, fallback behavior, and expressive glitches. The main sample composites TSL intent lanes, coarse LOD backpressure, and fallback haze. The derived sample turns ASCII glyph cells, velocity datamosh, and retry noise into a renderer-state diagnostic surface.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-10-13.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-10-13_intent_lod_backpressure_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-12">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-10-02.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-10-02_view_bindgroup_upload_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-01">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.01</p>
-              <h2>viewport/scissor、PMREM、alpha depthを、GPU状態の読み替え面にする</h2>
-              <p class="card-subtitle">Turn viewport/scissor, PMREM, and alpha depth into readable GPU-state surfaces</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-01" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js 186→187移行、PlayCanvas Engine v2.22.6、Babylon.js 9.28.0、Codropsの9月後半のWebGL/TSL事例を確認した。9/30のlayer acceptance / depth picking / wide gridから、今日はviewport/scissorのピクセル比、cube PMREM、WeakRef/FinalizationRegistry的な寿命、material gate、alpha depth pre-pass、root motionを2本の依存なしraw WebGL試作にした。</p>
-          <p class="description en-copy">Reviewed the three.js 186-to-187 migration notes, PlayCanvas Engine v2.22.6, Babylon.js 9.28.0, and late-September Codrops WebGL/TSL examples. Extending 9/30's layer acceptance, depth picking, and wide grid thread, today's two dependency-free raw WebGL prototypes visualize viewport/scissor pixel-ratio behavior, cube PMREM, renderer lifetime lanes, material gates, alpha depth pre-pass, and root-motion traces.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-10-01.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-10-01_viewport_scissor_pmrem_probe.html">代表サンプル / Sample</a>
           </div>
         </article>
       

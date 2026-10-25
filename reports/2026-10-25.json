@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-25",
+  "headline": "見えない描画と光漏れを、空間の余韻として編む",
+  "headlineEn": "Weave invisible draws and light-leak control into spatial afterglow",
+  "summary": "three.jsで提案されているLightProbeGridのDDGI可視性重み付け・SH atlas compute更新と、GPUDrivenDrawer/VisibilityBufferDrawerを、PlayCanvasのview uniform・距離優先GSplat LOD、Babylon.jsのGaussian Splat表示へ接続した。光漏れの抑制と描画候補の選別を、消去ではなく編み目・残光として見せる2本の依存なしCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js LightProbeGrid DDGI visibility weighting, SH-atlas compute updates and GPU-driven drawers with PlayCanvas view uniforms and distance-prioritized GSplat LOD, plus Babylon Gaussian Splat rendering, through two interactive Canvas studies.",
+  "links": [
+    {
+      "label": "three.js #35191: Drawer / GPUDrivenDrawer / VisibilityBufferDrawer",
+      "url": "https://github.com/mrdoob/three.js/pull/35191"
+    },
+    {
+      "label": "three.js #35175: compute SH atlas repacking",
+      "url": "https://github.com/mrdoob/three.js/pull/35175"
+    },
+    {
+      "label": "three.js #35174: DDGI visibility weighting",
+      "url": "https://github.com/mrdoob/three.js/pull/35174"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0 release notes",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Creative Hub: Slop New York",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Probe Visibility Weave",
+      "url": "outputs/2026-10-25_probe_visibility_weave.html"
+    },
+    {
+      "label": "Derived sample: GPU Drawer Afterglow",
+      "url": "outputs/2026-10-25_gpu_drawer_afterglow.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js #35174 はDDGI由来のvisibility weightingをLightProbeGridへ入れ、light leakingを減らす提案。光を増やすより、届くべきでない光を選別できる。2. #35175 はSH atlasの再パックをcomputeへ移す提案で、probe更新を独立した時間レイヤーとして扱いやすい。3. #35191 はDrawer / GPUDrivenDrawer / VisibilityBufferDrawerを導入し、CPUが列挙した全物体ではなくGPUが可視候補を描く方向を示す。4. PlayCanvas v2.23系はview uniformと距離優先・coarsest-firstなGSplat LODを整え、注視領域に品質を集める設計を後押しする。5. Babylon.jsのGaussian Splatデータテクスチャnearest samplingは、点群の状態を意図せずにじませず読ませる土台になる。",
+      "bodyEn": "three.js proposes DDGI visibility weighting, compute SH-atlas work and GPU-driven drawers; PlayCanvas supplies view-scoped GSplat prioritization; Babylon keeps splat states legible with nearest sampling.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのSlop New Yorkはsimulation / Three.js / TSL / WebGPUというタグで、計算がそのまま画面の物質感になる方向を示す。以前追ったThree.js Datamosh Effectも含め、正確な状態遷移を『欠落』で終わらせず、残像・崩れ・遅延として視覚語彙にする流れが強い。DDGIのleak rejectionとGPU-driven cullingも、観客には性能最適化として隠すより、部屋が呼吸して見える密度変化として渡すと表現になる。",
+      "bodyEn": "Slop New York and the earlier Three.js Datamosh Effect show computation becoming material. Treat DDGI rejection and GPU culling as visible breathing rather than hidden optimization.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Probe Visibility Weave』はpointer横を観察者、縦をocclusion量にし、光漏れを削ったprobe格子を曲線の織物として表示する。click/Spaceでradiance pulse、1〜4でprobes / visibility rays / SH weave / compositeを分ける。派生『GPU Drawer Afterglow』はpointerをattention lensにして、描画されなかった候補を冷色のafterglowへ変える。短期では音のonsetをpulseへ、中長期ではWebXR gazeをlens、実DDGIのprobe更新をweaveの密度へつなぐ。",
+      "bodyEn": "The main study turns rejected probe light into a weave; the derivative turns deferred GPU candidates into afterglow. Add audio now, real gaze and DDGI updates later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-25_probe_visibility_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-25_gpu_drawer_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "共通state scoreに `probeGridId`, `probeCell`, `visibilityWeight`, `leakRejected`, `shAtlasVersion`, `shRepackMs`, `drawCandidateCount`, `visibilityBufferCount`, `gpuDrivenDrawCount`, `deferredCount`, `viewId`, `lodLevel`, `streamRank` を記録する。DDGIはprobeの配置だけでなくinfluence boundsを設計し、明るい屋外情報が室内へ混ざる境界を露出させる。GPU-driven pathはCPU fallbackと同じアートディレクションを保てるよう、候補・可視・deferredをそれぞれ別の色/余韻として定義する。",
+      "bodyEn": "Log probe, visibility, SH, drawer, view and LOD metrics in one score. Design probe influence bounds and give candidate, visible and deferred states distinct artistic roles.",
+      "links": [
+        {
+          "label": "three.js #35174",
+          "url": "https://github.com/mrdoob/three.js/pull/35174"
+        },
+        {
+          "label": "three.js #35175",
+          "url": "https://github.com/mrdoob/three.js/pull/35175"
+        },
+        {
+          "label": "three.js #35191",
+          "url": "https://github.com/mrdoob/three.js/pull/35191"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsはLightProbeGridのinfluence bounds (#35187)、visibility weighting (#35174)、compute repack (#35175)、Drawer (#35191) がどのreleaseにまとまるかを追う。PlayCanvasではstreamed GSplatがview移動とbudget変化にどう追随するか、BabylonではFrame GraphとGaussian Splat/WebGPUの統合経路を追う。表現事例は、粒子やsimulationを単なる背景でなく、見えなかったものの記憶として扱う作品を優先する。",
+      "bodyEn": "Watch LightProbeGrid and Drawer convergence in three.js, view-driven GSplat streaming in PlayCanvas, and Frame Graph/splat integration in Babylon.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas Engine",
+          "url": "https://github.com/playcanvas/engine"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開いて横移動でobserverをずらし、上下でocclusionを増減して、2と3を切替える。光を強めずとも『残す/止める』だけで部屋の密度が変わることを確認する。次に派生でattention lensを粒子群へ重ね、visibleとafterglowを切替える。実制作の最初の一歩は、probeごとの `visibilityWeight` とdraw候補ごとの `visible` を同一タイムラインへ出すこと。",
+      "bodyEn": "Move through the main study, compare visibility and weave, then contrast visible candidates with afterglow. Start production by logging probe weight and candidate visibility on one timeline.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-25_probe_visibility_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-25_gpu_drawer_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、PlayCanvas/Babylon公式release、Codrops制作者Hubを確認。アイデア検討: 10/24のper-view radianceから、visibilityとdraw選別を『光の編み目/残光』へ翻訳。サンプル実装: 本命CanvasとGPU候補の派生Canvasを追加。結果の検証: JSON/HTML構文、gallery再生成、Pages公開を実施する。継続案件: portable renderer-state score、GSplat LOD、PMREM/probe。新規案件: DDGI visibility weave、GPU drawer afterglow。寝かせる案件: カードUI、重いVDB実データ、WebGPU専用の最終形。",
+      "bodyEn": "Collected primary sources, reframed visibility/draw selection, built two studies and will validate/publish. Continue portable state score, LOD and probes; start DDGI weave and drawer afterglow; park cards, heavy VDB and WebGPU-only finals."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10/20〜24はcompile、bundle、draw range、shadow、sub-camera、PMREMを『到着と準備の拍』として扱った。今日はその前段にある選別、すなわち何を照らし何を描くかへ戻った。最近の傾向は、render pathの内部判断を不可視の最適化で終わらせず、空間が選び直される手触りへ変換すること。育てる価値が高いのは、XR gaze / DDGI visibility / GSplat LOD / audio onset / PMREMを同じstate textureで記録し、展示ごとに違う演出へ再生できるportable scoreだ。",
+      "bodyEn": "Recent work staged preparation and arrival; today reaches the prior act of selection. The high-value long-term track is a portable state score joining gaze, DDGI visibility, LOD, audio and PMREM."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-25_probe_visibility_weave.html` は、DDGIのvisibilityとSH更新を、光を止めるほど編み目が現れる実動Canvasにした。次はThree.js LightProbeGridの実probe値、audio band、WebXR gazeを接続する。2本目 `outputs/2026-10-25_gpu_drawer_afterglow.html` は、GPU-drivenのcandidate / visible / deferredを小さな空間詩へ変える派生試作。次はWebGL2 occlusion queryまたはthree.jsのinstance frustum結果を入力し、deferredをhistory textureへ残す。",
+      "bodyEn": "The main sample turns DDGI visibility and SH updates into a woven light study; the derivative renders candidate/visible/deferred states as a small spatial poem.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-25_probe_visibility_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-25_gpu_drawer_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "probe cell、visibility weight、observer位置、pulse時刻、candidate/visible/deferred数は、観客の移動がどの光と物体を残したかの楽譜になる。Web Audioの低域をprobe半径、高域をSH weaveの細さ、MediaPipeの顔向きをattention lens、WebXR gazeをdraw priority、カメラ映像の輝度をleak rejectionへ接続できる。展示では壁ごとに異なる『不在の残光』を同期させ、ブランド表現では素材やロゴが注視された順に光を獲得する構成へ育てられる。",
+      "bodyEn": "Probe/drawer states form a score of what a visitor caused to remain. Map audio, face pose, XR gaze and camera luminance for installations or material-led brand staging."
+    }
+  ]
+}

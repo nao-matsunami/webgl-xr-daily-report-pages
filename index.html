@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 126</span>
+        <span>days: 127</span>
         <span>page: 1 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-25">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.25</p>
+              <h2>見えない描画と光漏れを、空間の余韻として編む</h2>
+              <p class="card-subtitle">Weave invisible draws and light-leak control into spatial afterglow</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-25" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.jsで提案されているLightProbeGridのDDGI可視性重み付け・SH atlas compute更新と、GPUDrivenDrawer/VisibilityBufferDrawerを、PlayCanvasのview uniform・距離優先GSplat LOD、Babylon.jsのGaussian Splat表示へ接続した。光漏れの抑制と描画候補の選別を、消去ではなく編み目・残光として見せる2本の依存なしCanvas試作を追加した。</p>
+          <p class="description en-copy">This report connects three.js LightProbeGrid DDGI visibility weighting, SH-atlas compute updates and GPU-driven drawers with PlayCanvas view uniforms and distance-prioritized GSplat LOD, plus Babylon Gaussian Splat rendering, through two interactive Canvas studies.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="days/2026-10-25.html">その日のページ / Day</a>
+            <a class="secondary-link" href="outputs/2026-10-25_probe_visibility_weave.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-24">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="days/2026-10-14.html">その日のページ / Day</a>
             <a class="secondary-link" href="outputs/2026-10-14_mesh_blend_seam_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-13">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.13</p>
-              <h2>描画の背圧、LOD、破綻表現を状態スコアに束ねる</h2>
-              <p class="card-subtitle">Bundle render backpressure, LOD, and glitch expression into a state score</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-13" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、three.js r187 milestone の TSL / WebGPU fallback / HTTP Range / refraction 系、PlayCanvas Engine v2.23.2 と v2.23.0 announcement の Inspector / AppStats / GSplat LOD / canvas recovery、Babylon.js 9.30.0 npm release、Codrops の ASCII / Datamosh / Loom / Glass Xylophone 系の表現を接続した。10/12 の partial loading と canvas recovery を踏まえ、描画が詰まる・粗LODへ逃がす・fallbackする・破綻を演出化する、という中間状態そのものを今日のテーマにした。本命サンプルは TSL intent lanes、coarse LOD backpressure、fallback haze の合成。派生サンプルは ASCII glyph cell、velocity datamosh、retry noise を renderer state の診断表示として動かす。</p>
-          <p class="description en-copy">Today's report connects the three.js r187 milestone items around TSL, WebGPU fallback, HTTP Range, and refraction; PlayCanvas Engine v2.23.2 plus the v2.23.0 announcement around Inspector, AppStats, GSplat LOD, and canvas recovery; Babylon.js 9.30.0 on npm; and Codrops examples around ASCII, datamosh, loom, and glass xylophone expression. Extending 10/12 partial loading and canvas recovery, today's theme is the intermediate state itself: render backpressure, coarse LOD escape hatches, fallback behavior, and expressive glitches. The main sample composites TSL intent lanes, coarse LOD backpressure, and fallback haze. The derived sample turns ASCII glyph cells, velocity datamosh, and retry noise into a renderer-state diagnostic surface.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="days/2026-10-13.html">その日のページ / Day</a>
-            <a class="secondary-link" href="outputs/2026-10-13_intent_lod_backpressure_scope.html">代表サンプル / Sample</a>
           </div>
         </article>
       
