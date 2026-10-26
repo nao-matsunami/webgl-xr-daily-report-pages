@@ -1,0 +1,173 @@
+{
+  "date": "2026-10-26",
+  "headline": "複数の描画バッファと検査キャプチャを、空間の記憶として再生する",
+  "headlineEn": "Replay render attachments and inspector captures as spatial memory",
+  "summary": "three.jsのMRT任意texture書き出し提案とGLSLバッファ回帰修正、Babylon.js 9.32.0のInspector Liteキャプチャ、PlayCanvasの距離優先GSplat LODを接続した。捨てられがちなalbedo / normal / depthと検査画面を、観客の操作で重なる残響へ変える二つの依存なしCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js MRT export and GLSL buffer stability with Babylon 9.32 Inspector Lite captures and PlayCanvas distance-prioritized GSplat LOD through two dependency-free Canvas studies.",
+  "links": [
+    {
+      "label": "three.js #35207: EXRExporter MRT textureIndex",
+      "url": "https://github.com/mrdoob/three.js/pull/35207"
+    },
+    {
+      "label": "three.js #35205: GLSLNodeBuilder buffer regression",
+      "url": "https://github.com/mrdoob/three.js/pull/35205"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: MRT Echo Score",
+      "url": "outputs/2026-10-26_mrt_echo_score.html"
+    },
+    {
+      "label": "Derived sample: Inspector Capture Bloom",
+      "url": "outputs/2026-10-26_inspector_capture_bloom.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js #35207 はMRTの任意textureを `textureIndex` でEXRへ出せる提案で、従来先頭attachmentだけだった書き出しをalbedo / normal / depthなど個別に扱えるようにする。2. #35205 はGLSLNodeBuilderのbuffer name回帰を修正し、WebGL/WebGPU双方を通すE2E検証の必要を明示する。3. Babylon.js 9.32.0 はInspector Liteへdebug helperとcapture toolを追加した。4. PlayCanvas v2.23系の距離優先・coarsest-first GSplat LODは、どの状態を最初に記録/再生するかの時間設計に直結する。",
+      "bodyEn": "three.js proposes selecting any MRT attachment for EXR export and fixes a GLSL buffer regression; Babylon 9.32 adds Inspector Lite capture tools; PlayCanvas makes GSplat arrival explicitly priority-driven.",
+      "links": [
+        {
+          "label": "three.js #35207",
+          "url": "https://github.com/mrdoob/three.js/pull/35207"
+        },
+        {
+          "label": "three.js #35205",
+          "url": "https://github.com/mrdoob/three.js/pull/35205"
+        },
+        {
+          "label": "Babylon 9.32.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Codrops Creative HubのPaper × domgl、Atelier UIは、DOMと描画面を対立させず同じ作品の異なる層として扱う。これをMRTへ拡張すると、色・法線・深度はデバッグ出力ではなく、同一場面を別の記憶で語る映像レイヤーになる。Inspectorのcaptureも『問題の証拠』で終わらせず、観客の注視で発火するフラッシュや残像に翻訳できる。",
+      "bodyEn": "Codrops' DOM/WebGL examples suggest treating render layers as one work. MRT attachments and inspector captures can become alternate memories of the same scene.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『MRT Echo Score』はpointerをcapture focusにし、1〜4でalbedo / normal / depth / compositeを分離、click/SpaceでEXR exportの瞬間をechoとして重ねる。2本目『Inspector Capture Bloom』はhelper、metric、captureを切替え、pointerで熱い観測領域を探しcapture flashを発火させる。短期ではWeb Audio onsetをexport beatに、中長期では実render targetのreadbackとWebXR gazeをcapture focusへ接続する。",
+      "bodyEn": "MRT Echo Score lets a pointer select capture attention and turns export into an echo. Inspector Capture Bloom turns inspection into a light cue. Add audio now; connect real readback and XR gaze later.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-26_mrt_echo_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-26_inspector_capture_bloom.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "共通state scoreには `frameId`, `attachmentIndex`, `attachmentName`, `rtWidth`, `rtHeight`, `readbackMs`, `exrBytes`, `bufferName`, `shaderBackend`, `captureId`, `helperCount`, `gpuFrameMs`, `lodLevel`, `streamRank` を残す。MRTは各attachmentの色空間・precision・clear値を明示し、後で色が違う記憶として合成する場合にも変換を固定する。GLSL/TSLのbuffer名はrenderer別のE2E image testで確認し、作品用のcapture経路と診断用readbackを混線させない。",
+      "bodyEn": "Log attachment, readback, buffer, capture and LOD state. Specify color space/precision per attachment and validate buffer paths with renderer-specific E2E images.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas v2.23.0 notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35207 が採用された際のEXR APIとMRT形式制約、#35205 のWebGL/WebGPU E2E範囲を追う。BabylonはInspector Liteのcaptureが統計/transform gizmoとどこまで接続するか、PlayCanvasはGSplatのstream rankとview uniformをどう公開するかを見る。作品面ではDOM、紙、粒子、simulationを別bufferの見え方として往復させる実例を集める。",
+      "bodyEn": "Watch the final MRT export API and test coverage, Inspector Lite's connection to metrics, and public GSplat priority signals.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを中心から外へ動かして1〜3を切替える。depthが最も抽象的な残響として効く位置を見つけ、clickでexport beatを打つ。次に派生でhelperとcaptureを比較し、制作ログがそのまま照明キューになり得るかを見る。実装の一歩目は、既存render targetに1枚だけattachment名とreadback時刻を記録すること。",
+      "bodyEn": "Move through the MRT attachments, locate the most evocative depth echo, then compare helpers and capture. Start by logging one attachment name and readback time.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-26_mrt_echo_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-26_inspector_capture_bloom.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、Babylon/PlayCanvas公式release、Codrops制作者Hubを確認。アイデア検討: 10/25のvisibility/drawer選別から、『残す候補』を複数attachmentの記憶へ広げた。サンプル実装: MRT echo本命とInspector capture派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages公開まで行う。継続案件: portable renderer-state score、GSplat LOD、probe/PMREM。新規案件: MRT memory score、inspection bloom。寝かせる案件: カードUI、重い実EXR資産、WebGPU専用最終形。",
+      "bodyEn": "Collected primary sources, extended selection into attachment memory, built two studies, and will validate/publish. Continue portable state score, LOD and probes; start MRT memory and inspection bloom; park cards and heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10/20〜25はcompile、draw range、shadow、sub-camera、probe、GPU-driven drawerを『何が準備され、何が残るか』として追った。今日は結果の画像そのものを分岐させた。最近はrenderer内部の選択を、性能監視ではなく編集可能な時間・層・記憶へ変える方向が一貫している。育てる価値が高いのは、XR gaze / audio onset / GSplat LOD / probe visibility / MRT attachment / inspector captureを同じstate textureで記録し、展示ごとに再ミックスできるportable scoreである。",
+      "bodyEn": "Recent work staged readiness and selection; today splits the resulting image into memories. A portable score joining gaze, audio, LOD, probes, attachments and capture remains the strongest long-term track."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-26_mrt_echo_score.html` はMRTの3 attachmentを実動Canvasの独立した残響にした。次はthree.jsの実render target readback、HalfFloat EXR、色空間metadataを入れる。2本目 `outputs/2026-10-26_inspector_capture_bloom.html` はInspector Liteのhelper / metric / captureを空間のbloomへ変換する派生試作。次は実frame timeとselection eventを接続し、captureを音や映像のキューにする。",
+      "bodyEn": "The main study makes three MRT attachments into echoes; the derivative turns inspection into bloom. Next add real readback metadata and live timing/selection events.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-26_mrt_echo_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-26_inspector_capture_bloom.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "attachment index、depth、normal方向、capture時刻、helper数、hot metric、pointer/gaze位置は、同じ場面を誰がどの層で記憶したかの譜面になる。Web Audioの帯域をattachment切替、カメラ輝度をdepth echo、MediaPipeの顔向きをinspection lens、WebXR gazeをtextureIndex、GSplatのstream rankをcapture順へ接続できる。展示なら来場者の移動で過去の描画bufferが壁面に薄く現れ、ブランド演出なら素材・表面・輪郭を別々の記憶として再合成できる。",
+      "bodyEn": "Attachment, depth, normal, capture and interaction states become a score of how a scene was remembered. Combine with audio, camera, face pose, XR gaze and GSplat ranks for installations or material-led brand work."
+    }
+  ]
+}
