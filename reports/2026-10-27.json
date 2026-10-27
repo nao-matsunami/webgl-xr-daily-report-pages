@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-27",
+  "headline": "反射の視差とGSplatの到着順を、観客が歩ける時間譜にする",
+  "headlineEn": "Turn reflection parallax and GSplat arrival into a walkable temporal score",
+  "summary": "three.js r187のPMREM/XRカメラ移行点、PlayCanvasのcoarsest-first GSplat LOD、Babylon.jsのGaussian Splatting改善、CodropsのDOM/WebGL同期表現を接続した。反射probeの位置ずれと粗い点群からの到着を、待機ではなく観客の移動で編集できる空間演出として扱う2本の依存なしCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js r187 PMREM/XR changes, PlayCanvas coarsest-first GSplat LOD, Babylon Gaussian Splatting work, and Codrops DOM/WebGL synchrony through two dependency-free Canvas studies.",
+  "links": [
+    {
+      "label": "three.js r187 migration guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "Babylon.js 9.28.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Probe LOD Parallax Score",
+      "url": "outputs/2026-10-27_probe_lod_parallax_score.html"
+    },
+    {
+      "label": "Derived sample: DOM Reflection Trail",
+      "url": "outputs/2026-10-27_dom_reflection_trail.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js r187ではPMREMがcube render target基盤へ移り、反射の見え方が変わる。XRカメラのtransform/projectionも最初のsub cameraから導かれるため、視差を片目ごとの事故ではなく演出パラメータとして検証する必要がある。2. r187 milestoneにはTSLのFP16、on-demand WebGL fallback、screen-space refractionなどが残り、品質・復旧・レイヤー設計を同時に考えられる。3. PlayCanvas v2.23.2はview全体でGSplat LODをcoarsest-firstにstreamする。最初に見える粗さを『未完成』でなく導入のリズムにできる。4. Babylon.js 9.28.0はGaussian Splatting data textureのnearest samplingと複数material pluginのWGSL修正を含み、点群の輪郭を意図どおり保つための足場になる。",
+      "bodyEn": "three.js r187 changes PMREM and XR camera assumptions; PlayCanvas makes GSplat arrival coarsest-first; Babylon improves Gaussian Splat data texture paths.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas v2.23.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon 9.28.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.28.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "CodropsのAtelier UIはDOMとWebGLを同じscroll/画面遷移に同期させ、Paper × domglは紙的な物質感をWebのレイヤーへ翻訳する。ここに反射probeとGSplat LODを足すと、ページの文言・画像・背景が同時に来る必要はない。DOMは意味のアンカー、粗いsplatは距離感、反射は到着前の気配として役割を分けられる。",
+      "bodyEn": "Atelier UI and Paper × domgl show layered DOM/WebGL synchrony. Meaning, distance and anticipation can arrive on separate layers.",
+      "links": [
+        {
+          "label": "Atelier UI",
+          "url": "https://tympanus.net/codrops/hub/tutorials/"
+        },
+        {
+          "label": "Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Probe LOD Parallax Score』はpointerを観客のカメラ/注視点とし、1〜4でprobe、視差、coarse-first到着、合成を分離する。click/Spaceはstream beatで、粗い点が先に場を取り戻す。派生『DOM Reflection Trail』はページ遷移のDOMアンカーを動かし、軌跡と反射リングへ翻訳する。短期ではpointer/scrollとWeb Audio onset、中長期ではWebXR gaze、実probe bounds、実LODイベントを同じscoreへ入れる。",
+      "bodyEn": "The main study makes pointer-driven probe parallax and coarse arrival editable; the derivative translates DOM transition paths into reflection trails.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-27_probe_lod_parallax_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-27_dom_reflection_trail.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "state scoreには `cameraLocalPos`, `xrEyeIndex`, `probeId`, `probeBounds`, `pmremMip`, `lodLevel`, `streamRank`, `coarseReady`, `splatBudget`, `viewUniformVersion`, `pointerOrGaze`, `audioOnset` を残す。r187移行ではcube render target由来のPMREM品質差を同一HDRI/同一materialで比較し、XRでは左右eyeのprojection差を無視して一つの中心rayへ丸めない。GSplatはcoarseデータが無いnode、nearest sampling、multisample target、depth pickingも別々に監視する。",
+      "bodyEn": "Log probe, camera, PMREM and LOD arrival state. Test r187 PMREM changes on identical material/HDRI and preserve stereo differences in XR.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js r187の最終リリースとTSL FP16 / fallback / refractionのAPI確定、PlayCanvasのGSplat LODの可視イベント・view uniform公開、Babylonの次releaseにおけるsplat/readback/XR連携を追う。作品面では、DOM要素の意味がWebGLの光・音・粒子に変わる実例、WebXRのspaceに遷移を持ち込む実例を集める。",
+      "bodyEn": "Watch r187 final APIs, public GSplat arrival signals, Babylon splat/readback/XR work, and creator examples where DOM meaning becomes light, sound or particles.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "Codrops tutorials",
+          "url": "https://tympanus.net/codrops/category/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを横に動かしてprobeの楕円と点群の密度が別々に動くことを見る。1〜3を切替え、最も気持ちよい『粗い到着』の位置でclickしてbeatを入れる。次に派生でpointerを一筆書きに動かし、文章/画像のDOMアンカーが光跡へ変わる感覚を確認する。制作の一歩目は既存sceneで `streamRank` と `cameraLocalPos` だけ記録すること。",
+      "bodyEn": "Move the pointer, isolate the layers, and trigger an arrival beat. Then trace a DOM transition path. Start production by logging stream rank and local camera position.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-27_probe_lod_parallax_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-27_dom_reflection_trail.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式migration/milestone、PlayCanvas/Babylon公式release、Codrops制作者Hubを確認。アイデア検討: 10/26のMRT記憶から、今日は『どの層がいつ到着するか』を視差とLODで再構成。サンプル実装: probe/LOD本命とDOM反射trail派生を追加。結果の検証: JSONとHTML/JS構文、gallery再生成、Pages公開を行う。継続案件: portable renderer-state score、GSplat LOD、probe/PMREM。新規案件: parallax arrival、DOM-to-light trail。寝かせる案件: カードUI、重い外部asset、WebGPU専用の最終表現。",
+      "bodyEn": "Collected primary sources, developed parallax arrival from MRT memory, built two studies, and will validate/publish. Continue portable state score, LOD and probes; start arrival/trail; park cards and heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半はcompile、shadow、draw range、MRT、Inspectorを『描画の準備と残響』として扱ってきた。今日はcamera positionとstream rankを足し、状態が空間移動に反応する段階へ進めた。最近の傾向は、レンダラ内部の最適化を隠すのでなく、到着順・品質差・視差を作品のテンポへ変えること。育てる価値が高いのは、XR gaze / audio onset / GSplat LOD / PMREM probe / MRT captureを同じportable scoreに記録し、展示ごとに光・粒子・音へ再配分するテーマである。",
+      "bodyEn": "The work is moving from readiness and echoes to spatially responsive state. The strongest theme records gaze, audio, LOD, probes and captures in one portable score."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-27_probe_lod_parallax_score.html` は依存なしCanvasでprobe、視差、coarse-first GSplat到着を実際に切替・発火できる。次はthree.js実sceneのcube render target、実stream event、WebXR gazeをつなぐ。2本目 `outputs/2026-10-27_dom_reflection_trail.html` はDOMアンカー、motion trail、反射cueの関係を短時間で確かめる派生試作。次はscroll progressと実DOM bounding rectを入れ、ページ遷移を空間導線へ発展させる。",
+      "bodyEn": "The main Canvas study isolates probe, parallax and coarse arrival; the derivative tests DOM anchors, trails and reflection cues. Next connect real scene and scroll data.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-27_probe_lod_parallax_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-27_dom_reflection_trail.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "camera位置、probeのlocal座標、pointer/gaze軌跡、stream rank、粗密、beat時刻は、観客がどの品質で空間を受け取ったかの演出ログになる。Web Audioの低域でcoarse到着を押し出し、カメラ映像の明度をprobe強度、MediaPipeの顔向きを視差、WebXR gazeをLOD優先度へ接続できる。展示なら人の移動の後に粗い記憶が床へ残り、ブランド演出なら製品の素材・輪郭・反射を別時刻に到着させる構成が有効である。",
+      "bodyEn": "Camera, probe, path, rank and beat data form an experience log. Combine audio, camera brightness, face pose and XR gaze for installations or material-led brand staging."
+    }
+  ]
+}

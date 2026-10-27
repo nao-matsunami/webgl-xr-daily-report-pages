@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 128</span>
+        <span>days: 129</span>
         <span>page: 2 / 11</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -329,6 +329,29 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-10-15">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.10.15</p>
+              <h2>負荷とXRバインディングを、場面転換の譜面にする</h2>
+              <p class="card-subtitle">Make render load and XR bindings a score for scene transitions</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-10-15" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js r187の進行中項目、PlayCanvas Engine v2.23.2、Babylon.js 9.30.0とWebXR/WebGPU Bindingの議論、そしてThree.js + GLSLのブラウザ内ショートフィルムを接続した。描画負荷、draw call、XRの視線・入力を隠れた実装詳細ではなく、物語の切替と粒子のキューとして使う。依存なしの本命WebGL試作と派生Canvas試作を追加した。</p>
+          <p class="description en-copy">This report connects the active three.js r187 work, PlayCanvas Engine v2.23.2, Babylon.js 9.30.0 and WebXR/WebGPU Binding discussion, plus a Three.js + GLSL browser short film. Render load, draw calls, and XR gaze/input become cues for story cuts and particles rather than hidden implementation details. A dependency-free WebGL main prototype and Canvas derivative are included.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">particles</span><span class="tag">xr</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-10-15.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-10-15_xr_binding_particle_cue.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-10-14">
           <div class="card-top">
             <div>
@@ -578,29 +601,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-10-04.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-10-04_xr_probe_residency_echo.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-03">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.03</p>
-              <h2>Inspector、AppStats、近傍優先splatを、触れるGPU状態地図にする</h2>
-              <p class="card-subtitle">Turn inspectors, AppStats, and nearest-first splats into a tactile GPU-state map</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-03" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">PlayCanvas Engine v2.23.0の公式発表とrelease notes、Babylon.js 9.29.0、three.js r187 milestone / TSL examples、Codropsのcustom-shaped cursor trailと直近Creative Hubを確認した。10/2のview bind group / framegraph velocityから、今日はInspector / AppStats / TextureRenderer / streamed GSplat priorityと、frame graph reducer / velocity memory / cursor gridを2本の依存なしraw WebGL試作に展開した。</p>
-          <p class="description en-copy">Reviewed the official PlayCanvas Engine v2.23.0 announcement and release notes, Babylon.js 9.29.0, the three.js r187 milestone and TSL examples, and Codrops' custom-shaped cursor trail plus recent Creative Hub entries. Extending 10/2's view-bind-group and framegraph-velocity work, today's two dependency-free raw WebGL prototypes explore Inspector/AppStats/TextureRenderer/streamed GSplat priority and frame-graph reducer/velocity memory/cursor-grid ideas.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-10-03.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-10-03_splat_resource_inspector_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       
