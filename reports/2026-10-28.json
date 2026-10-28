@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-28",
+  "headline": "可視性と計測ログを、光が居場所を得るための演出譜にする",
+  "headlineEn": "Turn visibility and performance traces into a score for where light can stay",
+  "summary": "three.js のLightProbeGrid/DDGI可視性重みとGPU駆動Drawer、PlayCanvasのGSplat到着順と粒子のfog/tone map、Babylon.js Inspector Liteのcapture/GPU計測を接続する。今日は『見えないものを描かない』最適化を、光が一瞬だけ現れて消える空間演出として扱う依存なしCanvas試作を2本追加した。",
+  "summaryEn": "This report connects three.js DDGI visibility and GPU-driven drawing, PlayCanvas GSplat arrival and particle controls, and Babylon Inspector Lite capture tools through two dependency-free Canvas studies.",
+  "links": [
+    {
+      "label": "three.js pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js r187 milestone",
+      "url": "https://github.com/mrdoob/three.js/milestone/100"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/tutorials/"
+    },
+    {
+      "label": "Main sample: Visibility Leak Score",
+      "url": "outputs/2026-10-28_visibility_leak_score.html"
+    },
+    {
+      "label": "Derived sample: Inspector Capture Echo",
+      "url": "outputs/2026-10-28_inspector_capture_echo.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsではLightProbeGridにinfluence boundsとDDGI由来のvisibility weightingを足す提案が進み、probeの光漏れを単なる破綻ではなく『どこまで光を許すか』として制御できる。2. 同じくWebGPURendererのDrawer / GPUDrivenDrawer / VisibilityBufferDrawer提案は、描く対象の選別を表現設計へ持ち込む入口になる。3. PlayCanvas v2.23系はGSplatをview全体でcoarsest-firstに到着させ、粒子にはfog/tone mapの選択肢もある。4. Babylon.js 9.32.0のInspector Lite capture/debug helpers、9.31.3のGPU performance inspectionは、計測結果をそのまま演出のトリガーへ転写する足場になる。",
+      "bodyEn": "three.js is exploring bounded DDGI visibility and GPU-driven drawers; PlayCanvas continues coarse-first GSplat streaming; Babylon Inspector Lite exposes capture and GPU inspection.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "CodropsのMuseum of Motionはページ遷移とタイポグラフィを時間体験として扱い、Atelier UIはDOMとWebGLを同じUIの層として混ぜる。今日の技術潮流を重ねると、DOMは意味を残し、visibility bufferは見せる粒子だけを選び、Inspectorのcaptureは『いま起きた変化』を残響にできる。最適化の結果を隠すのでなく、照明の選択・記憶・遅延として舞台化できる点が面白い。",
+      "bodyEn": "Museum of Motion and Atelier UI turn transitions into layered time. Visibility selection and captured performance traces can become staging rather than hidden optimization.",
+      "links": [
+        {
+          "label": "Museum of Motion",
+          "url": "https://tympanus.net/codrops/hub/tutorials/"
+        },
+        {
+          "label": "Atelier UI",
+          "url": "https://tympanus.net/codrops/hub/tutorials/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Visibility Leak Score』はpointerを光源、中央の円を遮蔽物として、1〜4でprobe field / visibility / 可視draw set / 合成を切替える。click/Spaceはreveal beatで、遮蔽物の外側だけに点群が戻る。派生『Inspector Capture Echo』はpointer位置を計測地点にし、click/Spaceでcaptureしたframeを後光の輪として残す。短期ではWeb Audio onsetをbeatに、中長期ではXR gazeをDrawerの優先度・probe influenceに接続する。",
+      "bodyEn": "The main study isolates probe, visibility and draw selection. The derivative turns frame capture into a fading afterimage. Audio and XR gaze are the direct next inputs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-28_visibility_leak_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-28_inspector_capture_echo.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "共通state scoreへ `probeGridId`, `influenceBounds`, `visibilityWeight`, `occluderDepth`, `drawerMode`, `visibleInstanceCount`, `culledInstanceCount`, `lodLevel`, `streamRank`, `fogEnabled`, `toneMapMode`, `passId`, `passMs`, `gpuFrameMs`, `captureId` を記録する。DDGIはprobeの有効範囲とleak量を別表示にし、visibility bufferは『消えた』instanceも数える。WebGL fallbackでは同じ状態をCPU側のinstance filterとCanvas/WebGL point spriteで再現し、GPU専用の表現に固定しない。",
+      "bodyEn": "Log probe bounds, visibility, culling, arrival and GPU timing state. Keep visibility loss measurable and provide a WebGL fallback with CPU filtering.",
+      "links": [
+        {
+          "label": "three.js r187 milestone",
+          "url": "https://github.com/mrdoob/three.js/milestone/100"
+        },
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon 9.31.3",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.31.3"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのDrawer系とLightProbeGridのAPI形状・WebGL fallback、r187のFP16/屈折/PMREM移行の確定を追う。PlayCanvasはGSplatのvisible event、focal footprint、stochastic alphaの実例を観察する。BabylonはInspector Liteのcapture出力・Frame Graph・Gaussian Splattingの粗LOD/局所cullingが実制作でどう結べるかをウォッチする。作品側は計測UIを前面に出さず、観客の移動で見える量が変わる事例を集める。",
+      "bodyEn": "Watch API shapes for drawers and probes, GSplat visible events, Inspector output and Frame Graph integration, plus artworks that reveal changing visibility without exposing debugging UI.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを円の内外へ動かして、光の近さと遮蔽が別の条件として働くことを見る。1〜3を切替え、clickで『見える点だけが戻る』タイミングを試す。次に派生で3〜5回captureし、輪の密度が計測履歴として読めるか確認する。実sceneでは最初に `visibleInstanceCount` と `gpuFrameMs` の2値だけを収集し、粒子数とafterimageの長さへ割り当てる。",
+      "bodyEn": "Move through the occluder, isolate the layers and trigger a reveal. Then capture several frames. Start a real scene with visible instance count and GPU frame time.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-28_visibility_leak_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-28_inspector_capture_echo.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js公式PR、PlayCanvas/Babylon公式release、Codrops制作者Hubを確認。アイデア検討: 10/27のprobe/LOD到着を『光が許可される範囲』と『可視drawの選別』へ接続。サンプル実装: visibility本命とcapture echo派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages publishを行う。継続案件: portable renderer-state score、GSplat LOD、probe/PMREM。新規案件: visibility leak score、performance echo。寝かせる案件: カードUI、重い外部asset、WebGPUだけで成立する最終表現。",
+      "bodyEn": "Collected primary sources, extended yesterday's probe/LOD work into visibility selection, built two studies, and will validate/publish. Continue the state score, LOD and probes; start visibility and echo; park cards and WebGPU-only finales."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半はcompile、shadow、draw range、MRT、probe、LODを『準備と到着のテンポ』に翻訳してきた。今日はculling/visibility/captureを加え、何を描かないか、何を残すかまで演出可能になった。最近の傾向はレンダラ内部の選別・品質制御・計測を、観客にとっての光量、距離、記憶へ変えること。育てる価値が高いのは、XR gaze / audio onset / GSplat LOD / DDGI visibility / GPU timing / MRT captureを一つのportable scoreに残し、展示ごとに粒子・照明・音へ再配分するテーマである。",
+      "bodyEn": "The work has moved from arrival to what is intentionally omitted and retained. The strongest theme is a portable score spanning gaze, audio, LOD, DDGI visibility, GPU timing and MRT capture."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-28_visibility_leak_score.html` は依存なしCanvasでprobe、遮蔽、可視drawを実際に切替・発火できる。次はthree.jsのinstanced mesh / frustum culling結果、実probe bounds、WebXR gazeをつなぐ。2本目 `outputs/2026-10-28_inspector_capture_echo.html` は計測位置、frame capture、残響の関係を短時間で検証する派生試作。次はBabylon Inspectorの実frame/GPU metrics、Web Audio onset、MRT textureの縮小画像を入れて、debug記録を映像演出へ発展させる。",
+      "bodyEn": "The main Canvas study isolates probe, occlusion and visible draws. The derivative tests measurement location, capture and echo. Next connect real metrics and MRT imagery.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-28_visibility_leak_score.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-28_inspector_capture_echo.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "visibility weight、culled/visible instance数、probe bounds、pointer/gaze軌跡、capture時刻、GPU frame timeは、『何が見え、何が残ったか』の展示ログになる。音のonsetでreveal beatを鳴らし、カメラ映像の明度でprobeの強さ、MediaPipeの顔向きでoccluder、WebXR gazeでdraw priorityを変えられる。ライブ演出なら演者の位置で光が許可される範囲が動き、ブランド演出なら素材の反射だけが段階的に現れる。GPU計測を抽象化すれば、実装の裏側を見せずにパフォーマンスの緊張を観客の身体感覚へ翻訳できる。",
+      "bodyEn": "Visibility, culling, bounds, paths, captures and GPU time form a log of what was seen and retained. Combine with audio, camera, face pose and XR gaze for live or material-led experiences."
+    }
+  ]
+}
