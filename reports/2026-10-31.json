@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-31",
+  "headline": "時間履歴とGPU計測を、反射と点群の残響として演出する",
+  "headlineEn": "Stage temporal history and GPU timing as reflection and splat afterglow",
+  "summary": "three.js のTRAA履歴交換・velocity整合・SSR再構成、Babylon.js 9.33.0 のGPU timestamp／Gaussian Splat depth sort、PlayCanvasのcoarsest-first GSplat到着を接続する。10/28のvisibility/captureから一歩進め、描画したものを『いつ、どの視点で残すか』を空間演出にする依存なしWebGL試作とCanvas試作を追加した。",
+  "summaryEn": "This report connects three.js temporal reconstruction, Babylon GPU timing and splat depth sorting, and PlayCanvas coarse-first GSplat arrival through two small interactive studies.",
+  "links": [
+    {
+      "label": "three.js TRAANode history swap PR #35241",
+      "url": "https://github.com/mrdoob/three.js/pull/35241"
+    },
+    {
+      "label": "three.js VelocityNode multipass fix PR #35236",
+      "url": "https://github.com/mrdoob/three.js/pull/35236"
+    },
+    {
+      "label": "three.js coverage-based SSR PR #35228",
+      "url": "https://github.com/mrdoob/three.js/pull/35228"
+    },
+    {
+      "label": "Babylon.js 9.33.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.33.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+    },
+    {
+      "label": "Codrops: Drawing With Light",
+      "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+    },
+    {
+      "label": "Main sample: Temporal Reflection Memory Scope",
+      "url": "outputs/2026-10-31_temporal_reflection_memory_scope.html"
+    },
+    {
+      "label": "Derived sample: Timestamp Splat Afterglow",
+      "url": "outputs/2026-10-31_timestamp_splat_afterglow.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.jsではTRAAが色履歴を毎フレームcopyせずtextureをswapする提案があり、steady stateでフル解像度copyを避けられる。2. 同じ流れでmulti-pass時のVelocityNodeのprevious transform保持が10/30にmergeされ、motion/historyの整合が強化された。3. SSRは低sampleでcoverage-based resolveと時空間denoiseを行い、half resolutionで追跡してfull resolutionへ再構成する方向。4. Babylon.js 9.33.0はWebGPU timestampによるframe time、temporal view data/TAA jitter、Gaussian Splatのopt-in GPU depth sortを追加。5. PlayCanvas v2.23.2のview全体coarsest-first GSplat streamは、まず空間の輪郭を到着させる設計を実装側から支える。",
+      "bodyEn": "Temporal history swaps, multipass velocity correctness, coverage-based SSR, GPU timestamps/depth sorting, and coarse-first GSplat arrival are the key threads.",
+      "links": [
+        {
+          "label": "TRAA history swap",
+          "url": "https://github.com/mrdoob/three.js/pull/35241"
+        },
+        {
+          "label": "VelocityNode fix",
+          "url": "https://github.com/mrdoob/three.js/pull/35236"
+        },
+        {
+          "label": "Babylon 9.33.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.33.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "Mathis Biabianyの『Drawing With Light』は、線を画面上のリボンで終わらせず、GPU上で位置・接線・法線を再導出するtubeにしてPBR照明へ戻している。three.js側のhistory/velocityの話と重ねると、作品は『何を描くか』だけでなく『どういう過去を残した光か』まで素材にできる。Babylonのtimestampとdepth sortはその残響の強さ・順序を実測データで変える入口になる。",
+      "bodyEn": "Lit GPU tubes show how parameter-space geometry can regain physical light; temporal history and measured timing extend that idea into time-aware material.",
+      "links": [
+        {
+          "label": "Drawing With Light",
+          "url": "https://tympanus.net/codrops/2026/09/07/drawing-with-light-an-exploration-of-lit-gpu-tubes-with-tsl-and-webgpu/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Temporal Reflection Memory Scope』はpointerをcamera/view offsetとして、velocity・history・reflection・compositeを1〜4で分離する。click/Spaceのmemory cutで過去の反射を一瞬強く残し、履歴をコピーでなく舞台上の記憶として感じられるかを試す。派生『Timestamp Splat Afterglow』はpointerをdepth-sort中心、click/Spaceをtimestamp stampにし、重いframeを暖色のringとして残す。短期はWeb Audio onsetをcutに、中長期はWebXR gazeと実GPU timeを残響の持続／sort budgetへ割り当てる。",
+      "bodyEn": "The main WebGL study makes a camera offset, velocity, history and reflection separable. The derivative turns timestamped splat sorting into a warm afterglow.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-31_temporal_reflection_memory_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-31_timestamp_splat_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "state scoreには `frameId`, `passId`, `previousModelMatrixValid`, `velocityPassCount`, `historySwap`, `historySeeded`, `jitterCurrent`, `jitterPrevious`, `ssrCoverage`, `ssrTraceScale`, `gpuFrameMs`, `timestampReadDelay`, `splatDepthSort`, `visibleSplatCount`, `lodLevel`, `streamRank` を保存する。historyはresize・camera cut・WebXR view変更時だけseedし、通常frameではswapする。WebGL fallbackではvelocityを低解像度bufferへ描き、historyのfadeをCanvasまたはping-pong FBOで再現する。timestampが取れない端末ではCPU frame deltaをproxyにして、表現の入力経路だけは保つ。",
+      "bodyEn": "Log history, jitter, velocity, SSR, timing and splat states. Seed history on discontinuities, swap it in steady state, and keep a WebGL/CPU-timing fallback.",
+      "links": [
+        {
+          "label": "TRAA projection/depth history",
+          "url": "https://github.com/mrdoob/three.js/pull/35239"
+        },
+        {
+          "label": "SSR reconstruction",
+          "url": "https://github.com/mrdoob/three.js/pull/35228"
+        },
+        {
+          "label": "PlayCanvas coarse-first streaming",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsは#35228のSSR本体とTRAA API、shared textureがbuildAsync途中で変わるsampler整合の修正を追う。Babylonはtimestamp readbackの実機差、GPU depth sortとInspector Liteの接続を確認する。PlayCanvasはGSplatのvisible event/focal footprint/stream budgetを、historyと衝突させずに作品の密度へ反映する方法を追う。事例は、反射・motion blur・point cloudを単なるリアルさではなく編集可能な時間として使うWeb作品を集める。",
+      "bodyEn": "Watch SSR/TRAA API progress, async texture build correctness, real timestamp behavior, and GSplat stream signals that can feed temporal staging.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerをゆっくり移動して1〜4を切替える。velocityとhistoryの位相がずれても、反射が単なるtrailでなく『カメラが通った場所の記憶』に読めるかを見る。Spaceを数回押してcutの強さを確認する。次に派生で3〜5回stampし、frame時間の大きい瞬間ほどringを太く/長くする割当が直感的かを検証する。実制作の最初の計測値は `gpuFrameMs` と `velocityMagnitude` の2つで十分。",
+      "bodyEn": "Move slowly, isolate the passes and trigger several cuts. Then test whether a few timestamp stamps make costly frames legible. Start real integration with GPU frame time and velocity magnitude.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-31_temporal_reflection_memory_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-31_timestamp_splat_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsのtime-history/SSR PR、Babylon 9.33.0、PlayCanvas release、制作者によるlit tube解説を確認。アイデア検討: 10/28のvisibility/captureを『見えたものをどの時間だけ残すか』へ拡張。サンプル実装: WebGL本命とtimestamp/splat派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages publishを行う。継続案件: portable renderer-state score、GSplat LOD、probe/PMREM、visibility。新規案件: temporal reflection memory、timestamp afterglow。寝かせる案件: カードUI、重い外部asset、WebGPU限定の最終表現。",
+      "bodyEn": "Collected primary sources, extended visibility/capture into temporal retention, built two studies, and will validate/publish. Continue portable state scoring, LOD, probes and visibility.",
+      "links": [
+        {
+          "label": "Previous local report: 2026-10-28",
+          "url": "reports/2026-10-28.json"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半はcompile、shadow、draw range、MRT、probe、LOD、visibilityを『準備と到着』のテンポに翻訳してきた。今日はhistory・velocity・timestampが加わり、到着後に何を残すかまで演出の対象になった。最近の傾向は、renderer内部の品質制御を隠すのではなく、観客には光量・温度・残像・密度として返すこと。特にXR gaze / audio onset / GSplat LOD / DDGI visibility / velocity history / GPU timestampを共通scoreにして、展示ごとに反射・粒子・音・照明へ再配分するテーマは育てる価値が高い。",
+      "bodyEn": "The project has progressed from preparation and arrival to temporal retention. A portable score spanning gaze, onset, LOD, visibility, history and timing remains the strongest long-term theme."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-10-31_temporal_reflection_memory_scope.html` は依存なしraw WebGL。pointer、click/Space、1〜4でvelocity/history/reflectionを実際に分解できる。次はthree.jsの実velocity texture、TRAA history、SSR resolveを接続し、camera cut時だけhistoryをseedする。2本目 `outputs/2026-10-31_timestamp_splat_afterglow.html` は依存なしCanvasでtimestamp stampとdepth-sort風の点群を検証する派生試作。次はBabylonの実timestamp／GPU depth sort、PlayCanvasのLOD rank、Web Audio onsetを入力にし、重い瞬間を『失敗』でなく呼吸として見せる。",
+      "bodyEn": "The main raw WebGL study isolates temporal reflection passes. The Canvas derivative tests timestamp stamps and depth-sorted splat afterglow; both have clear engine integrations next.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-10-31_temporal_reflection_memory_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-10-31_timestamp_splat_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "camera/gaze軌跡、velocity、history age、SSR coverage、timestamp、splat sort rank、LOD、audio onsetを記録すれば、『観客が何を見たか』だけでなく『何が画面に残ったか』の展示ログになる。カメラ映像の動きでvelocityを作り、MediaPipeの頭部姿勢をview offsetへ、WebXR gazeをhistoryの保持率へ、演奏のonsetをmemory cutへ接続できる。ブランド／空間演出では、素材の反射が人の通過後だけ残る壁面、ライブではGPU負荷を粒子の熱として返す舞台照明へ展開できる。",
+      "bodyEn": "Camera/gaze paths, temporal data, timing, sort rank and audio can form a log of what remains on screen and drive installations, live visuals, or material-focused experiences."
+    }
+  ]
+}
