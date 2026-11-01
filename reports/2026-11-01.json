@@ -1,0 +1,179 @@
+{
+  "date": "2026-11-01",
+  "headline": "テクスチャ差し替えと圧縮メモリを、素材の共鳴と粒子の解放へ翻訳する",
+  "headlineEn": "Translate texture swaps and compressed memory into material resonance and particle release",
+  "summary": "three.jsで10月31日に出たcopyTextureToTextureの領域既定値、圧縮・mipmap・cube textureのメモリ計測、buildAsync中の共有texture sampler整合を、前回のtemporal historyから続く『素材が入れ替わる瞬間』として整理する。依存なしraw WebGL本命と、WebGL2粒子作品から着想したCanvas派生を追加した。",
+  "summaryEn": "This report turns fresh three.js texture-copy, memory-accounting and async-sampler work into two small studies: a raw WebGL material-resonance scope and a particle-release derivative.",
+  "links": [
+    {
+      "label": "three.js copyTextureToTexture region PR #35294",
+      "url": "https://github.com/mrdoob/three.js/pull/35294"
+    },
+    {
+      "label": "three.js compressed texture memory PR #35291",
+      "url": "https://github.com/mrdoob/three.js/pull/35291"
+    },
+    {
+      "label": "three.js shared texture sampler fix PR #35283",
+      "url": "https://github.com/mrdoob/three.js/pull/35283"
+    },
+    {
+      "label": "Babylon.js 9.33.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.33.0"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.3 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+    },
+    {
+      "label": "FCTX HOTARU source and demo",
+      "url": "https://github.com/futurecortexlabs/FCTX_HOTARU"
+    },
+    {
+      "label": "Main sample: Texture Swap Resonance Scope",
+      "url": "outputs/2026-11-01_texture_swap_resonance_scope.html"
+    },
+    {
+      "label": "Derived sample: Particle Word Release Field",
+      "url": "outputs/2026-11-01_particle_word_release_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js #35294はcopyTextureToTextureの既定領域にsource textureのサイズを使う提案で、部分コピーを演出へ使う際の暗黙の範囲を明確にする。2. #35291はcompressed・mipmapped・cube textureのメモリ表示を正す提案で、品質段階を『見えないコスト』のままにしない入口になる。3. #35283はbuildAsync中にshared texture nodeが差し替わる時のsampler mismatchを扱い、非同期到着を素材の切替に使う作品に直結する。4. Babylon.js 9.33.0のGPU timestamp／Gaussian Splat depth sort、PlayCanvas v2.23.3と既存のcoarse-first LODは、重さと到着順を表現制御値に戻す足場になる。5. FCTX HOTARUは一枚HTML・依存なしWebGL2で、文字形状と重力崩壊を直接つなぐ実例。",
+      "bodyEn": "Fresh three.js texture-copy, memory and async-sampler work joins Babylon timing/splat sorting, PlayCanvas LOD, and a zero-dependency WebGL2 particle artwork.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "FCTX HOTARU",
+          "url": "https://github.com/futurecortexlabs/FCTX_HOTARU"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "FCTX HOTARUは、入力文字を粒子の一時的な拘束条件にして、release後はself-gravityへ渡す。ここで重要なのは文字がUIではなく『初期状態』である点だ。前回のhistory/velocityを、今日のtexture swapや圧縮mipに重ねると、画像・反射・文字がいずれも固定素材でなく、到着・保持・解放される物質として扱える。",
+      "bodyEn": "FCTX HOTARU makes text an initial condition rather than UI. Combined with temporal history and texture swaps, images, reflections and letters become material that arrives, holds and releases.",
+      "links": [
+        {
+          "label": "FCTX HOTARU project",
+          "url": "https://vibecruiser.com/v/futurecortexlabs--fctx-hotaru"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Texture Swap Resonance Scope』。pointerでcopy regionを動かし、click/Spaceでsource textureが切り替わった直後のsampler rebuildを環状の残響にする。1〜4でsource/copy/sampler/compositeを分離し、待ち時間をloading indicatorではなく素材の拍として読めるかを試す。派生は『Particle Word Release Field』。文字maskを粒子のcoarse/fine二層へ配り、releaseで風化させる。短期はWeb Audio onsetをreleaseに、中長期はWebXR gazeをcopy region・GSplat LOD rankへつなぐ。",
+      "bodyEn": "The main study turns a texture swap into a sampler-rebuild ring; the derivative forms and releases a text-shaped coarse/fine particle field. Audio onset and XR gaze are direct next inputs.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-01_texture_swap_resonance_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-01_particle_word_release_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "state scoreには `textureId`, `textureVersion`, `sourceWidth`, `sourceHeight`, `copyRegion`, `mipLevel`, `compressedBytes`, `cubeFaceCount`, `samplerKey`, `buildStartedAt`, `buildReadyAt`, `swapCause`, `gpuFrameMs`, `lodRank` を置く。texture差し替えはbuildAsyncの完了後に一括反映し、旧textureを表示し続けるfallbackを残す。copy regionはsourceの実寸を基準にし、resizeやvideo/ExternalTextureの更新時はversionを明示的に増やす。WebGL fallbackではFBO ping-pongで領域コピーを再現し、メモリ値が取れない時はwidth×height×bytes-per-pixelの推定をHUDに出す。",
+      "bodyEn": "Record IDs, versions, source dimensions, regions, mips, bytes, sampler keys, async timings and LOD. Commit swaps after async builds and retain the old texture as fallback.",
+      "links": [
+        {
+          "label": "Sampler mismatch PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35283"
+        },
+        {
+          "label": "Texture memory PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35291"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsでは#35294/#35291/#35283のmergeとAPIへの反映、TRAA/SSRがtexture copyと共有resourceをどう扱うかを追う。Babylonはtimestamp readbackとsplat depth sortの実機差、PlayCanvasはGSplatのstream budgetとfocal footprintを監視する。事例は、動画・カメラ・生成画像をtexture差し替えの『事故』でなく場面転換として見せる作品、文字やロゴを粒子の初期条件にする作品を集める。",
+      "bodyEn": "Watch merge/API progress for the three texture PRs, timing/sort behavior in Babylon, and PlayCanvas streaming signals; collect art that treats texture swaps and text as scenic state changes.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開いてpointerを端から端へ動かし、1→2→3→4で、copy regionが素材の『どこを切り取るか』、sampler ringが『いつ差し替わったか』として読めるかを見る。Spaceを数回押して、残響が長すぎず、待ちを隠さずにリズムへ変えられる値を探す。派生では一度releaseしてpointerで粒子を寄せ、文字として再形成する瞬間と粒子雲として見る瞬間の両方が成立するか検証する。実装へ戻す最初の値は `textureVersion` と `compressedBytes` の二つでよい。",
+      "bodyEn": "Move through the main study's passes, trigger several swaps, then release and reform the derivative. Start real integration with texture version and compressed-byte telemetry.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-01_texture_swap_resonance_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-01_particle_word_release_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: 10/31のthree.js texture PR群、Babylon/PlayCanvasリリース、FCTX HOTARUの制作者ページを確認。アイデア検討: 10/31のhistory/velocityから、過去を残すだけでなく素材が入れ替わる瞬間を演出対象へ拡張。サンプル実装: raw WebGLの本命とCanvas派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages publishを行う。継続案件: portable renderer-state score、temporal history、GSplat LOD、visibility。新規案件: texture swap resonance、text-to-particle release。寝かせる案件: カードUI、重い外部asset、WebGPU限定の最終表現。",
+      "bodyEn": "Collected primary sources, expanded temporal retention into material switching, built two studies, and will validate/publish. Continue portable state scoring; park card UI and heavyweight/WebGPU-only finals.",
+      "links": [
+        {
+          "label": "Previous report: 2026-10-31",
+          "url": "reports/2026-10-31.json"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半はcompile、shadow、LOD、visibility、history、timestampを『準備・到着・残響』として扱ってきた。今日のtexture version・copy region・compressed bytesは、そこへ『変態（metamorphosis）』の軸を足す。最近の傾向は、rendererの品質制御やresource lifecycleを隠さず、光量・温度・密度・切替の物語へ再配分すること。XR gaze / audio onset / texture version / copy region / history age / LOD / GPU timeを共通scoreにして、展示ごとに反射、粒子、照明、音へ割り当てるテーマは引き続き最も育てる価値が高い。",
+      "bodyEn": "The project now spans preparation, arrival, afterglow and metamorphosis. A portable score mapping gaze, onset, texture state, history, LOD and timing into light, particles and sound remains the strongest long-term theme."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-11-01_texture_swap_resonance_scope.html` は依存なしraw WebGL。pointer、click/Space、1〜4でsource/copy/samplerを実際に分解する。次はthree.jsで実texture version、copyTextureToTexture、buildAsyncの完了時刻を入力し、差し替え前textureからblendする。2本目 `outputs/2026-11-01_particle_word_release_field.html` は依存なしCanvasで文字mask→coarse/fine→releaseを検証する派生。次はWebGL2 transform feedbackまたはthree.js GPU computeで粒子を増やし、PlayCanvasのLOD rankと音onsetを入力にする。",
+      "bodyEn": "The raw WebGL main study isolates source/copy/sampler states; the Canvas derivative validates mask-to-particle release. Both have clear engine integrations next.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-01_texture_swap_resonance_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-01_particle_word_release_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "texture ID/version、コピー領域、mip、圧縮bytes、sampler build時間、粒子cohesion、release回数、pointer/gaze軌跡を記録すれば、画面が何を表示したかだけでなく『素材がどう生まれ変わったか』の演出ログになる。カメラ映像のフレーム更新をtexture swapへ、MediaPipeの手をcopy regionへ、WebXR gazeをmip選択へ、音のonsetをparticle releaseへ接続できる。ブランド空間ならロゴが粒子へ崩れ、通行者の視線で新しい素材へ再形成される壁面、ライブなら映像差し替えの遅延を光と粒子の拍に変える演出へ展開できる。",
+      "bodyEn": "Texture state, copy, timing, cohesion, releases and gaze traces can form a metamorphosis log for installations, brands and live visuals; camera, hand tracking, XR gaze and audio are concrete inputs."
+    }
+  ]
+}
