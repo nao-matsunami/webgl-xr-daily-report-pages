@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>環境光の再投影コストとGLSLの継ぎ目を、更新の余韻として見せる | 2026-11-02</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.02</p>
+      <h1>環境光の再投影コストとGLSLの継ぎ目を、更新の余韻として見せる</h1>
+      <p class="hero-subtitle">Turn environment reprojection cost and GLSL seams into visible afterglow</p>
+      <p>PlayCanvasでruntime環境光の再投影が多数のRenderTarget・bind groupを生成破棄する課題、three.jsのtexture copy／compressed memory／async samplerの流れ、Babylon.js Inspector Liteのcapture、Codropsの最新GLSL事例を接続する。環境光の更新を待機表示で終わらせず、空間の余韻と継ぎ目の演出へ変換する2本の軽量試作を追加した。</p>
+      <p class="en-copy">This report connects runtime environment reprojection cost, texture-state work, Inspector capture and current GLSL studies into two lightweight experiments that make an environment update visibly linger.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-02_seam_light_weave_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-01.html">← 2026.11.01</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Seam Light Weave Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-02_seam_light_weave_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Environment Reprojection Afterglow Scope</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-02_env_reprojection_afterglow_scope.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas #9826 は `reprojectTexture` がfaceごとにRenderTargetとquad描画資源を作って破棄し、runtimeのenvironment atlas／skybox生成ではmip・region分だけ繰り返すことを具体化した。2. three.jsの#35291（compressed/mip/cube textureのmemory表示）と#35294（copyTextureToTextureの既定領域）は、質感更新のコストと範囲を演出制御値へ戻せる。3. Babylon.js 9.32.0のInspector Lite capture/debug helpersは、更新の直前・直後を作品の素材として採取する足場になる。4. PlayCanvas v2.23.3と既存のcoarsest-first GSplat streamは、空間が粗く現れ、更新後に精細化する時間を扱える。5. Codropsで10月31日に公開されたLookbook Hover Effectsと10月30日のSeam Transitionsは、GLSLの変形を画面遷移の継ぎ目として使う現行の参照になる。</p>
+          <p class="en-copy">Fresh evidence connects runtime reprojection allocations, three.js texture-state work, Babylon capture tooling, GSplat arrival, and current GLSL transition studies.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/issues/9826" target="_blank" rel="noreferrer">PlayCanvas issue #9826</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>#9826 の要点は、動的な空や反射を更新する体験では『再投影』が一回限りの前計算でなく、視聴中にも反復する可能性があることだ。ここでは無駄なallocationを肯定するのではなく、resource churnを実装ではキャッシュしつつ、更新したという事実だけを光の環・mip面・短い残像で可視化する。Codropsの最近のhover/seam事例は、素材をカードとして並べるのでなく、ポインタ移動を連続した布・光・切り替え面へ変換している点が効く。</p>
+          <p class="en-copy">Runtime reprojection should be cached technically, but its state change can remain legible as rings, mip planes and a brief afterimage; recent GLSL seams show how pointer movement becomes continuous material.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/issues/9826" target="_blank" rel="noreferrer">PlayCanvas reprojectTexture issue</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/all/" target="_blank" rel="noreferrer">Codrops all demos</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は『Environment Reprojection Afterglow Scope』。pointerをsky/probe方向にし、click/Spaceをatlas再生成の合図にする。1〜4でsky source、cube face、cache echo、compositeを切替え、更新が空間の呼吸として読めるかを検証する。派生『Seam Light Weave Field』は、pointer速度と位置を縦の継ぎ目へ送り、クリック地点を光の記憶として残す。短期はaudio onsetを再投影の発火へ、中長期はWebXR gazeを更新するcube face／GSplatのstream rankへ、カメラ映像の露出変化をenvironment updateへつなぐ。</p>
+          <p class="en-copy">The main study maps pointer to sky/probe direction and a click to atlas regeneration. The derivative turns pointer movement into a luminous seam with remembered stitches.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-02_env_reprojection_afterglow_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-02_seam_light_weave_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装では `envVersion`, `reprojectReason`, `cubeFace`, `mipLevel`, `region`, `renderTargetReuse`, `quadReuse`, `bindGroupReuse`, `reprojectMs`, `atlasBytes`, `compressedBytes`, `gpuFrameMs`, `captureId`, `historyAge` を共通scoreへ記録する。PlayCanvas系はRenderTarget/quadをfaceループの外へ持ち、サイズ・format変更時だけ再確保する。three.js系はcopy範囲とtexture versionを明示し、旧environmentを保持してblendする。WebGL fallbackではFBO ping-pongと六方向のscissorで近似し、実測不可のmemoryは推定値であることをHUDに分けて表示する。</p>
+          <p class="en-copy">Log versions, faces, mip regions, reuse, timing, bytes, captures and history. Reuse targets/quads, preserve the prior environment for blending, and make fallback estimates explicit.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35291" target="_blank" rel="noreferrer">three.js texture memory PR</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas release notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvasでは#9826の解決方針とDynamicSkyEffect／EnvLighting周辺の再利用設計、three.jsでは#35291/#35294とshared sampler修正のmerge、BabylonではInspector Liteのcaptureがframe graph・timestamp・splat depth sortへどう接続されるかを追う。事例収集では、ホバーやscrollを『素材の遷移面』にするGLSL、動的空・水面・反射を更新するWebGL/WebGPU作品、品質段階を隠さず演出へ織り込む空間作品を優先する。</p>
+          <p class="en-copy">Watch PlayCanvas reuse work, three.js texture PR merges, Babylon capture integration, and creator work that treats state updates as material transitions.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/issues" target="_blank" rel="noreferrer">PlayCanvas issues</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerをゆっくり回して1→2→3→4を切替える。Spaceを2〜3回押し、環の残り方が『処理待ち』ではなく『光が更新された痕跡』として読める最短の長さを探す。次に派生でpointerを横断させ、クリックを数回打って、継ぎ目が装飾でなく遷移の方向・速度・記憶を伝えられるかを見る。実案件へ戻すなら、最初は `envVersion` と `reprojectMs` の二値だけでよい。</p>
+          <p class="en-copy">Sweep the main study through its passes, trigger a few updates, then test whether the derivative's seams communicate direction, speed and memory. Start real instrumentation with environment version and reprojection milliseconds.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-02_env_reprojection_afterglow_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-02_seam_light_weave_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvasの再投影allocation課題、three.js texture state PR、Babylon capture、Codropsの最新GLSL表現を確認。アイデア検討: 11/01のtexture swap/resonanceから、更新対象を個別textureから空間全体のenvironmentへ拡張。サンプル実装: raw WebGLの本命とCanvasの派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages publishを行う。継続案件: portable renderer-state score、temporal history、GSplat LOD、visibility。新規案件: environment reprojection afterglow、seam light weave。寝かせる案件: カードUI、重い外部asset、WebGPU限定の最終表現。</p>
+          <p class="en-copy">Collected primary evidence, expanded texture resonance into spatial environment updates, built two studies, then validates and publishes them. Continue portable state scoring; park cards, heavy assets and WebGPU-only finals.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="reports/2026-11-01.json" target="_blank" rel="noreferrer">Previous report: 2026-11-01</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月後半から11月初頭にかけ、compile・shadow・LOD・visibility・history・textureを『準備・到着・残響・変態』として扱ってきた。environment reprojectionはそれらを照明の時間へ束ねる節目になる。傾向として、rendererのquality/resource lifecycleを隠さず、光量・色温度・密度・継ぎ目へ再配分する表現が強い。texture version、environment version、history age、LOD、GPU time、gaze、audio onsetを共通scoreにし、反射・粒子・空・投影・音へ配るテーマが中長期で最も育てる価値が高い。</p>
+          <p class="en-copy">Environment reprojection is the next bridge between preparation, arrival, afterglow and metamorphosis. A shared score for texture/environment state, history, LOD, timing, gaze and audio remains the strongest long-term theme.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命 `outputs/2026-11-02_env_reprojection_afterglow_scope.html` は依存なしraw WebGLで、実際にfragment shaderがsky／6面／cache echoを描く。pointer、click/Space、1〜4で分解でき、次はthree.js/PlayCanvasの実 `envVersion` と `reprojectMs` をuniformへ入れる。2本目 `outputs/2026-11-02_seam_light_weave_field.html` は依存なしCanvasで、transition seamと記憶のstitchを検証する派生。次は速度をvelocity textureへ入れ、WebGLのdistortion passまたはthree.js TSLへ移植する。</p>
+          <p class="en-copy">The raw WebGL main study renders sky, six faces and cache echoes; the Canvas derivative validates a remembered transition seam. Both have direct engine paths next.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-02_env_reprojection_afterglow_scope.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-02_seam_light_weave_field.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>environment version、face/mip/region、再投影時間、reuse率、atlas bytes、pointer/gaze軌跡、seam tension、stitch時刻を保存すれば、映像が何を表示したかではなく『空間がいつ・どの面から更新されたか』を再演できる。全天球動画やカメラ映像の露出変化をenvironment updateへ、MediaPipeの手をseam方向へ、WebXR gazeをcube face優先度へ、音のonsetをstitchへ接続できる。展示では来場者の視線で壁面の空が更新され、その遅延を反射環と音の短い残響へ変える。ライブ映像ではショット切替を光の縫い目にして、編集点を空間の出来事として見せられる。</p>
+          <p class="en-copy">Environment state, reprojection timing, reuse and interaction traces can replay how a space updated. Camera exposure, hand tracking, XR gaze and audio onset are direct exhibition and live-visual inputs.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/issues/9826" target="_blank" rel="noreferrer">PlayCanvas: reprojectTexture allocation issue #9826</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.3" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.3 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35291" target="_blank" rel="noreferrer">three.js compressed texture memory PR #35291</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35294" target="_blank" rel="noreferrer">three.js texture-copy region PR #35294</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0" target="_blank" rel="noreferrer">Babylon.js 9.32.0 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub: Lookbook Hover Effects</a></li>
+          
+            <li><a href="outputs/2026-11-02_env_reprojection_afterglow_scope.html" target="_blank" rel="noreferrer">Main sample: Environment Reprojection Afterglow Scope</a></li>
+          
+            <li><a href="outputs/2026-11-02_seam_light_weave_field.html" target="_blank" rel="noreferrer">Derived sample: Seam Light Weave Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-02_seam_light_weave_field.html" loading="lazy" title="Seam Light Weave Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

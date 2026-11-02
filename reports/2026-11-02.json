@@ -1,0 +1,183 @@
+{
+  "date": "2026-11-02",
+  "headline": "環境光の再投影コストとGLSLの継ぎ目を、更新の余韻として見せる",
+  "headlineEn": "Turn environment reprojection cost and GLSL seams into visible afterglow",
+  "summary": "PlayCanvasでruntime環境光の再投影が多数のRenderTarget・bind groupを生成破棄する課題、three.jsのtexture copy／compressed memory／async samplerの流れ、Babylon.js Inspector Liteのcapture、Codropsの最新GLSL事例を接続する。環境光の更新を待機表示で終わらせず、空間の余韻と継ぎ目の演出へ変換する2本の軽量試作を追加した。",
+  "summaryEn": "This report connects runtime environment reprojection cost, texture-state work, Inspector capture and current GLSL studies into two lightweight experiments that make an environment update visibly linger.",
+  "links": [
+    {
+      "label": "PlayCanvas: reprojectTexture allocation issue #9826",
+      "url": "https://github.com/playcanvas/engine/issues/9826"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.3 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+    },
+    {
+      "label": "three.js compressed texture memory PR #35291",
+      "url": "https://github.com/mrdoob/three.js/pull/35291"
+    },
+    {
+      "label": "three.js texture-copy region PR #35294",
+      "url": "https://github.com/mrdoob/three.js/pull/35294"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "Codrops Creative Hub: Lookbook Hover Effects",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "Main sample: Environment Reprojection Afterglow Scope",
+      "url": "outputs/2026-11-02_env_reprojection_afterglow_scope.html"
+    },
+    {
+      "label": "Derived sample: Seam Light Weave Field",
+      "url": "outputs/2026-11-02_seam_light_weave_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas #9826 は `reprojectTexture` がfaceごとにRenderTargetとquad描画資源を作って破棄し、runtimeのenvironment atlas／skybox生成ではmip・region分だけ繰り返すことを具体化した。2. three.jsの#35291（compressed/mip/cube textureのmemory表示）と#35294（copyTextureToTextureの既定領域）は、質感更新のコストと範囲を演出制御値へ戻せる。3. Babylon.js 9.32.0のInspector Lite capture/debug helpersは、更新の直前・直後を作品の素材として採取する足場になる。4. PlayCanvas v2.23.3と既存のcoarsest-first GSplat streamは、空間が粗く現れ、更新後に精細化する時間を扱える。5. Codropsで10月31日に公開されたLookbook Hover Effectsと10月30日のSeam Transitionsは、GLSLの変形を画面遷移の継ぎ目として使う現行の参照になる。",
+      "bodyEn": "Fresh evidence connects runtime reprojection allocations, three.js texture-state work, Babylon capture tooling, GSplat arrival, and current GLSL transition studies.",
+      "links": [
+        {
+          "label": "PlayCanvas issue #9826",
+          "url": "https://github.com/playcanvas/engine/issues/9826"
+        },
+        {
+          "label": "Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "#9826 の要点は、動的な空や反射を更新する体験では『再投影』が一回限りの前計算でなく、視聴中にも反復する可能性があることだ。ここでは無駄なallocationを肯定するのではなく、resource churnを実装ではキャッシュしつつ、更新したという事実だけを光の環・mip面・短い残像で可視化する。Codropsの最近のhover/seam事例は、素材をカードとして並べるのでなく、ポインタ移動を連続した布・光・切り替え面へ変換している点が効く。",
+      "bodyEn": "Runtime reprojection should be cached technically, but its state change can remain legible as rings, mip planes and a brief afterimage; recent GLSL seams show how pointer movement becomes continuous material.",
+      "links": [
+        {
+          "label": "PlayCanvas reprojectTexture issue",
+          "url": "https://github.com/playcanvas/engine/issues/9826"
+        },
+        {
+          "label": "Codrops all demos",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Environment Reprojection Afterglow Scope』。pointerをsky/probe方向にし、click/Spaceをatlas再生成の合図にする。1〜4でsky source、cube face、cache echo、compositeを切替え、更新が空間の呼吸として読めるかを検証する。派生『Seam Light Weave Field』は、pointer速度と位置を縦の継ぎ目へ送り、クリック地点を光の記憶として残す。短期はaudio onsetを再投影の発火へ、中長期はWebXR gazeを更新するcube face／GSplatのstream rankへ、カメラ映像の露出変化をenvironment updateへつなぐ。",
+      "bodyEn": "The main study maps pointer to sky/probe direction and a click to atlas regeneration. The derivative turns pointer movement into a luminous seam with remembered stitches.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-02_env_reprojection_afterglow_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-02_seam_light_weave_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装では `envVersion`, `reprojectReason`, `cubeFace`, `mipLevel`, `region`, `renderTargetReuse`, `quadReuse`, `bindGroupReuse`, `reprojectMs`, `atlasBytes`, `compressedBytes`, `gpuFrameMs`, `captureId`, `historyAge` を共通scoreへ記録する。PlayCanvas系はRenderTarget/quadをfaceループの外へ持ち、サイズ・format変更時だけ再確保する。three.js系はcopy範囲とtexture versionを明示し、旧environmentを保持してblendする。WebGL fallbackではFBO ping-pongと六方向のscissorで近似し、実測不可のmemoryは推定値であることをHUDに分けて表示する。",
+      "bodyEn": "Log versions, faces, mip regions, reuse, timing, bytes, captures and history. Reuse targets/quads, preserve the prior environment for blending, and make fallback estimates explicit.",
+      "links": [
+        {
+          "label": "three.js texture memory PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35291"
+        },
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvasでは#9826の解決方針とDynamicSkyEffect／EnvLighting周辺の再利用設計、three.jsでは#35291/#35294とshared sampler修正のmerge、BabylonではInspector Liteのcaptureがframe graph・timestamp・splat depth sortへどう接続されるかを追う。事例収集では、ホバーやscrollを『素材の遷移面』にするGLSL、動的空・水面・反射を更新するWebGL/WebGPU作品、品質段階を隠さず演出へ織り込む空間作品を優先する。",
+      "bodyEn": "Watch PlayCanvas reuse work, three.js texture PR merges, Babylon capture integration, and creator work that treats state updates as material transitions.",
+      "links": [
+        {
+          "label": "PlayCanvas issues",
+          "url": "https://github.com/playcanvas/engine/issues"
+        },
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerをゆっくり回して1→2→3→4を切替える。Spaceを2〜3回押し、環の残り方が『処理待ち』ではなく『光が更新された痕跡』として読める最短の長さを探す。次に派生でpointerを横断させ、クリックを数回打って、継ぎ目が装飾でなく遷移の方向・速度・記憶を伝えられるかを見る。実案件へ戻すなら、最初は `envVersion` と `reprojectMs` の二値だけでよい。",
+      "bodyEn": "Sweep the main study through its passes, trigger a few updates, then test whether the derivative's seams communicate direction, speed and memory. Start real instrumentation with environment version and reprojection milliseconds.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-02_env_reprojection_afterglow_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-02_seam_light_weave_field.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvasの再投影allocation課題、three.js texture state PR、Babylon capture、Codropsの最新GLSL表現を確認。アイデア検討: 11/01のtexture swap/resonanceから、更新対象を個別textureから空間全体のenvironmentへ拡張。サンプル実装: raw WebGLの本命とCanvasの派生を追加。結果の検証: JSON/HTML/JS構文、gallery再生成、Pages publishを行う。継続案件: portable renderer-state score、temporal history、GSplat LOD、visibility。新規案件: environment reprojection afterglow、seam light weave。寝かせる案件: カードUI、重い外部asset、WebGPU限定の最終表現。",
+      "bodyEn": "Collected primary evidence, expanded texture resonance into spatial environment updates, built two studies, then validates and publishes them. Continue portable state scoring; park cards, heavy assets and WebGPU-only finals.",
+      "links": [
+        {
+          "label": "Previous report: 2026-11-01",
+          "url": "reports/2026-11-01.json"
+        }
+      ]
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半から11月初頭にかけ、compile・shadow・LOD・visibility・history・textureを『準備・到着・残響・変態』として扱ってきた。environment reprojectionはそれらを照明の時間へ束ねる節目になる。傾向として、rendererのquality/resource lifecycleを隠さず、光量・色温度・密度・継ぎ目へ再配分する表現が強い。texture version、environment version、history age、LOD、GPU time、gaze、audio onsetを共通scoreにし、反射・粒子・空・投影・音へ配るテーマが中長期で最も育てる価値が高い。",
+      "bodyEn": "Environment reprojection is the next bridge between preparation, arrival, afterglow and metamorphosis. A shared score for texture/environment state, history, LOD, timing, gaze and audio remains the strongest long-term theme."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-11-02_env_reprojection_afterglow_scope.html` は依存なしraw WebGLで、実際にfragment shaderがsky／6面／cache echoを描く。pointer、click/Space、1〜4で分解でき、次はthree.js/PlayCanvasの実 `envVersion` と `reprojectMs` をuniformへ入れる。2本目 `outputs/2026-11-02_seam_light_weave_field.html` は依存なしCanvasで、transition seamと記憶のstitchを検証する派生。次は速度をvelocity textureへ入れ、WebGLのdistortion passまたはthree.js TSLへ移植する。",
+      "bodyEn": "The raw WebGL main study renders sky, six faces and cache echoes; the Canvas derivative validates a remembered transition seam. Both have direct engine paths next.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-02_env_reprojection_afterglow_scope.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-02_seam_light_weave_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "environment version、face/mip/region、再投影時間、reuse率、atlas bytes、pointer/gaze軌跡、seam tension、stitch時刻を保存すれば、映像が何を表示したかではなく『空間がいつ・どの面から更新されたか』を再演できる。全天球動画やカメラ映像の露出変化をenvironment updateへ、MediaPipeの手をseam方向へ、WebXR gazeをcube face優先度へ、音のonsetをstitchへ接続できる。展示では来場者の視線で壁面の空が更新され、その遅延を反射環と音の短い残響へ変える。ライブ映像ではショット切替を光の縫い目にして、編集点を空間の出来事として見せられる。",
+      "bodyEn": "Environment state, reprojection timing, reuse and interaction traces can replay how a space updated. Camera exposure, hand tracking, XR gaze and audio onset are direct exhibition and live-visual inputs."
+    }
+  ]
+}
