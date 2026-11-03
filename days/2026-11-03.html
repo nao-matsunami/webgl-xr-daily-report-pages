@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>radiosity と GPU データ更新を、解決途中の光として可視化する | 2026-11-03</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.03</p>
+      <h1>radiosity と GPU データ更新を、解決途中の光として可視化する</h1>
+      <p class="hero-subtitle">Make radiosity and GPU data updates visible as light still resolving</p>
+      <p>three.js r188 向けの TSL storage struct と raytraced radiosity、PlayCanvas の view uniform／GSplat LOD、Babylon.js Inspector Lite の capture と GPU 計測、Codrops の DOM×WebGL・軌跡表現を接続した。隠れがちな照明計算とデータ更新を、注視・クリックで変化する光の格子と脈動として試す2本の実装を追加する。</p>
+      <p class="en-copy">This report joins TSL storage structs and radiosity with PlayCanvas view data, Babylon inspection, and contemporary WebGL trail work in two small interactive studies.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-03_storage_struct_pulse_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-02.html">← 2026.11.02</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Storage Struct Pulse Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-03_storage_struct_pulse_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Radiosity Lattice Rehearsal</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-03_radiosity_lattice_rehearsal.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js の r188 向け PR #35310 / #35309 は TSL の `storageStruct()` と raytraced radiosity を提案し、GPU上の構造化データと間接光が制作の制御対象になりつつある。2. #35228 の SSR coverage resolve と時空間 denoise は、反射の不安定さを演出へ転用する足場になる。3. PlayCanvas v2.23.0 は view uniform buffer、scene environment texture uniform、GSplat LOD / nearest-first stream を整備し、視点ごとの品質変化を扱いやすくする。4. Babylon.js 9.32.0 の Inspector Lite capture/debug helpers、9.31.3 のGPU performance inspectionは『今どの状態か』を作品側へ持ち出す入口になる。5. Codrops の DOM×WebGL、motion trail、Three.js/TSL cursor trail は、UIではない連続的なWeb表現の直近参照になる。</p>
+          <p class="en-copy">Fresh engine work focuses on structured GPU state, indirect light, view-scoped quality and inspectable performance.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>radiosity は完成した光だけを見せる技術ではない。probe が届く、跳ね返りが収束する、visibility が選別するという途中状態を、観客が『空間が考えている時間』として読める。storage struct も同様に、見えないbuffer更新を抽象的な点滅で終わらせず、書き込みの方向・密度・commitを光の事件へ変えられる。Codropsのcursor/trail系は、ポインタをボタン操作ではなく時間的な筆跡へ変換する点が有効。</p>
+          <p class="en-copy">Both radiosity and storage updates have expressive intermediate states, not only final output.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は『Radiosity Lattice Rehearsal』。pointerをprobe位置、click/Spaceを再計算開始とし、1=source、2=bounce、3=visibility、4=compositeで観測する。派生『Storage Struct Pulse Field』は、pointerをGPU write head、clickをcommitとして扱い、更新が同心円と格子の輝度として残るかを試す。短期は音のonsetをsolve/commitへ、中長期はWebXR gazeをprobe priority、カメラ映像のluminanceをbounce energy、GSplatのLOD arrivalを格子密度へつなぐ。</p>
+          <p class="en-copy">The main maps input to probe solving; the derivative maps it to storage writes and commits.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>記録候補は `probeId`, `bounceIndex`, `visibilityWeight`, `rayBudget`, `denoiseHistory`, `storageStructVersion`, `writeCount`, `commitMs`, `viewId`, `environmentVersion`, `lodLevel`, `gpuFrameMs`。three.js/TSLは構造が変わらない限りstorageを再利用し、更新はrange化する。PlayCanvasはview uniform / bind groupの寿命を作品のstate scoreに反映する。Babylon InspectorのcaptureはHUDではなく、クリックごとの『照明スコア譜』として保存する。WebGL fallbackではCPU配列+instancing、または小さなFBO ping-pongに絞り、計測値と推定値を混同しない。</p>
+          <p class="en-copy">Log solve, storage, view, LOD and timing state; reuse stable GPU allocations and distinguish measured from estimated values.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35309/#35310/#35228 の仕様とmerge、PlayCanvasのGSplat stream・environment/reproject関連issue、BabylonのInspector Lite capture/GPU timingの拡張を追う。事例は、進行中のGI・denoise・反射・粒子を隠さず、trail、文字、音、空間照明へ変換する制作者ページを優先する。</p>
+          <p class="en-copy">Watch radiosity/storage/SSR changes, GSplat/environment handling, Inspector timing, and creator work exposing progressive render states.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerを格子上でゆっくり動かしながら 1→2→3→4 を切替える。Spaceを数回押し、『待機』ではなく光が解決へ向かう余韻に読めるかを見る。次に派生でpointerを横切らせ、commit環が更新量・位置・履歴を十分に伝えるか確認する。実案件の最初の接続は `probeId`、`bounceIndex`、`gpuFrameMs` の3値で足りる。</p>
+          <p class="en-copy">Test pass isolation and pulse readability first; three measurements are enough to connect it to a real renderer.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r188のTSL/radiosity/SSR、PlayCanvas release、Babylon release、Codropsを確認。アイデア検討: 11/02のenvironment reprojection afterglowを、更新対象が空全体から間接光とGPU stateへ移る流れとして拡張。サンプル実装: 依存なしCanvasの本命・派生を2本追加。結果の検証: JSON/HTML/JS parse、gallery再生成、Pages publishを行う。継続案件: renderer-state score、temporal history、GSplat LOD、environment。新規: radiosity lattice / storage pulse。寝かせる: カードUI、重いray tracing実装、WebGPU専用の最終形。</p>
+          <p class="en-copy">Collected current primary sources, expanded environment afterglow into GI/GPU state, built two prototypes, then validates and publishes.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月後半から、compile、shadow、LOD、visibility、history、texture、environmentを『準備・到着・残響』として扱ってきた。radiosityとstorage stateはその核になる。最近はエンジン側でGPU resourceの寿命とviewごとのデータ整理が進む一方、表現側ではDOM/WebGLの境界やcursorの軌跡を素材として扱う傾向がある。`gaze + audio onset + LOD + probe solve + history age`を共通scoreにして、反射、粒子、空、照明、文字へ再配分するテーマを継続する価値が高い。</p>
+          <p class="en-copy">The long-running theme is a shared score for lifecycle, arrival and afterglow across light, particles, environment and typography.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命 `outputs/2026-11-03_radiosity_lattice_rehearsal.html` は、実際に動くCanvas描画でprobe距離・bounce波・visibility・solve pulseを分解表示する。pointer、click/Space、1〜4キーが動作し、次はthree.jsのLightProbeGridまたは実GIバッファの値を入れる。派生 `outputs/2026-11-03_storage_struct_pulse_field.html` はwrite headとcommitを格子・環の動きで検証する。次はWebGPU storage bufferの更新範囲またはWebGL texture/FBOのdirty regionを接続する。</p>
+          <p class="en-copy">The main visualizes probe/bounce/visibility/solve; the derivative visualizes GPU write and commit state.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>probe座標、bounce energy、visibility、solve時間、write位置、commit時刻、pointer/gaze軌跡を時系列として残せば、空間がどのように『明るくなったか』を再演できる。音楽のkickをsolve開始へ、MediaPipe handをwrite headへ、WebXR gazeをprobe priorityへ、ライブカメラの露出変化をbounce energyへ接続できる。展示では来場者が近づく方向から壁面の光が収束し、ライブ映像ではショット切替の一瞬をstorage commitの環として残す。</p>
+          <p class="en-copy">Solve and commit traces can drive installations, live visuals, hand tracking, XR gaze and music-reactive light.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests (r188)</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.23.0 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0" target="_blank" rel="noreferrer">Babylon.js 9.32.0 release</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/demos/" target="_blank" rel="noreferrer">Codrops Demos Hub</a></li>
+          
+            <li><a href="outputs/2026-11-03_radiosity_lattice_rehearsal.html" target="_blank" rel="noreferrer">Main sample: Radiosity Lattice Rehearsal</a></li>
+          
+            <li><a href="outputs/2026-11-03_storage_struct_pulse_field.html" target="_blank" rel="noreferrer">Derived sample: Storage Struct Pulse Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-03_storage_struct_pulse_field.html" loading="lazy" title="Storage Struct Pulse Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

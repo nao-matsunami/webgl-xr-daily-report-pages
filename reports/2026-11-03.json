@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-03",
+  "headline": "radiosity と GPU データ更新を、解決途中の光として可視化する",
+  "headlineEn": "Make radiosity and GPU data updates visible as light still resolving",
+  "summary": "three.js r188 向けの TSL storage struct と raytraced radiosity、PlayCanvas の view uniform／GSplat LOD、Babylon.js Inspector Lite の capture と GPU 計測、Codrops の DOM×WebGL・軌跡表現を接続した。隠れがちな照明計算とデータ更新を、注視・クリックで変化する光の格子と脈動として試す2本の実装を追加する。",
+  "summaryEn": "This report joins TSL storage structs and radiosity with PlayCanvas view data, Babylon inspection, and contemporary WebGL trail work in two small interactive studies.",
+  "links": [
+    {
+      "label": "three.js pull requests (r188)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "Codrops Demos Hub",
+      "url": "https://tympanus.net/codrops/demos/"
+    },
+    {
+      "label": "Main sample: Radiosity Lattice Rehearsal",
+      "url": "outputs/2026-11-03_radiosity_lattice_rehearsal.html"
+    },
+    {
+      "label": "Derived sample: Storage Struct Pulse Field",
+      "url": "outputs/2026-11-03_storage_struct_pulse_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の r188 向け PR #35310 / #35309 は TSL の `storageStruct()` と raytraced radiosity を提案し、GPU上の構造化データと間接光が制作の制御対象になりつつある。2. #35228 の SSR coverage resolve と時空間 denoise は、反射の不安定さを演出へ転用する足場になる。3. PlayCanvas v2.23.0 は view uniform buffer、scene environment texture uniform、GSplat LOD / nearest-first stream を整備し、視点ごとの品質変化を扱いやすくする。4. Babylon.js 9.32.0 の Inspector Lite capture/debug helpers、9.31.3 のGPU performance inspectionは『今どの状態か』を作品側へ持ち出す入口になる。5. Codrops の DOM×WebGL、motion trail、Three.js/TSL cursor trail は、UIではない連続的なWeb表現の直近参照になる。",
+      "bodyEn": "Fresh engine work focuses on structured GPU state, indirect light, view-scoped quality and inspectable performance."
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "radiosity は完成した光だけを見せる技術ではない。probe が届く、跳ね返りが収束する、visibility が選別するという途中状態を、観客が『空間が考えている時間』として読める。storage struct も同様に、見えないbuffer更新を抽象的な点滅で終わらせず、書き込みの方向・密度・commitを光の事件へ変えられる。Codropsのcursor/trail系は、ポインタをボタン操作ではなく時間的な筆跡へ変換する点が有効。",
+      "bodyEn": "Both radiosity and storage updates have expressive intermediate states, not only final output."
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Radiosity Lattice Rehearsal』。pointerをprobe位置、click/Spaceを再計算開始とし、1=source、2=bounce、3=visibility、4=compositeで観測する。派生『Storage Struct Pulse Field』は、pointerをGPU write head、clickをcommitとして扱い、更新が同心円と格子の輝度として残るかを試す。短期は音のonsetをsolve/commitへ、中長期はWebXR gazeをprobe priority、カメラ映像のluminanceをbounce energy、GSplatのLOD arrivalを格子密度へつなぐ。",
+      "bodyEn": "The main maps input to probe solving; the derivative maps it to storage writes and commits."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "記録候補は `probeId`, `bounceIndex`, `visibilityWeight`, `rayBudget`, `denoiseHistory`, `storageStructVersion`, `writeCount`, `commitMs`, `viewId`, `environmentVersion`, `lodLevel`, `gpuFrameMs`。three.js/TSLは構造が変わらない限りstorageを再利用し、更新はrange化する。PlayCanvasはview uniform / bind groupの寿命を作品のstate scoreに反映する。Babylon InspectorのcaptureはHUDではなく、クリックごとの『照明スコア譜』として保存する。WebGL fallbackではCPU配列+instancing、または小さなFBO ping-pongに絞り、計測値と推定値を混同しない。",
+      "bodyEn": "Log solve, storage, view, LOD and timing state; reuse stable GPU allocations and distinguish measured from estimated values."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35309/#35310/#35228 の仕様とmerge、PlayCanvasのGSplat stream・environment/reproject関連issue、BabylonのInspector Lite capture/GPU timingの拡張を追う。事例は、進行中のGI・denoise・反射・粒子を隠さず、trail、文字、音、空間照明へ変換する制作者ページを優先する。",
+      "bodyEn": "Watch radiosity/storage/SSR changes, GSplat/environment handling, Inspector timing, and creator work exposing progressive render states."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを格子上でゆっくり動かしながら 1→2→3→4 を切替える。Spaceを数回押し、『待機』ではなく光が解決へ向かう余韻に読めるかを見る。次に派生でpointerを横切らせ、commit環が更新量・位置・履歴を十分に伝えるか確認する。実案件の最初の接続は `probeId`、`bounceIndex`、`gpuFrameMs` の3値で足りる。",
+      "bodyEn": "Test pass isolation and pulse readability first; three measurements are enough to connect it to a real renderer."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r188のTSL/radiosity/SSR、PlayCanvas release、Babylon release、Codropsを確認。アイデア検討: 11/02のenvironment reprojection afterglowを、更新対象が空全体から間接光とGPU stateへ移る流れとして拡張。サンプル実装: 依存なしCanvasの本命・派生を2本追加。結果の検証: JSON/HTML/JS parse、gallery再生成、Pages publishを行う。継続案件: renderer-state score、temporal history、GSplat LOD、environment。新規: radiosity lattice / storage pulse。寝かせる: カードUI、重いray tracing実装、WebGPU専用の最終形。",
+      "bodyEn": "Collected current primary sources, expanded environment afterglow into GI/GPU state, built two prototypes, then validates and publishes."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半から、compile、shadow、LOD、visibility、history、texture、environmentを『準備・到着・残響』として扱ってきた。radiosityとstorage stateはその核になる。最近はエンジン側でGPU resourceの寿命とviewごとのデータ整理が進む一方、表現側ではDOM/WebGLの境界やcursorの軌跡を素材として扱う傾向がある。`gaze + audio onset + LOD + probe solve + history age`を共通scoreにして、反射、粒子、空、照明、文字へ再配分するテーマを継続する価値が高い。",
+      "bodyEn": "The long-running theme is a shared score for lifecycle, arrival and afterglow across light, particles, environment and typography."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-11-03_radiosity_lattice_rehearsal.html` は、実際に動くCanvas描画でprobe距離・bounce波・visibility・solve pulseを分解表示する。pointer、click/Space、1〜4キーが動作し、次はthree.jsのLightProbeGridまたは実GIバッファの値を入れる。派生 `outputs/2026-11-03_storage_struct_pulse_field.html` はwrite headとcommitを格子・環の動きで検証する。次はWebGPU storage bufferの更新範囲またはWebGL texture/FBOのdirty regionを接続する。",
+      "bodyEn": "The main visualizes probe/bounce/visibility/solve; the derivative visualizes GPU write and commit state."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "probe座標、bounce energy、visibility、solve時間、write位置、commit時刻、pointer/gaze軌跡を時系列として残せば、空間がどのように『明るくなったか』を再演できる。音楽のkickをsolve開始へ、MediaPipe handをwrite headへ、WebXR gazeをprobe priorityへ、ライブカメラの露出変化をbounce energyへ接続できる。展示では来場者が近づく方向から壁面の光が収束し、ライブ映像ではショット切替の一瞬をstorage commitの環として残す。",
+      "bodyEn": "Solve and commit traces can drive installations, live visuals, hand tracking, XR gaze and music-reactive light."
+    }
+  ]
+}
