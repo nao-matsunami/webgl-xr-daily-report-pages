@@ -1,0 +1,115 @@
+{
+  "date": "2026-11-04",
+  "headline": "粗い像が先に届き、境界が残像になる──空間ストリーミングを演出へ転用する",
+  "headlineEn": "Let coarse imagery arrive first and turn blend boundaries into afterimages",
+  "summary": "PlayCanvas の GSplat coarse-first streaming、Babylon.js の mesh blending と Inspector Lite、three.js の r188 系 TSL/GPU state を接続し、品質が到着する順序そのものを空間演出として扱う。WebGL/GLSL の本命・派生試作を2本追加した。",
+  "summaryEn": "This report turns coarse-first streaming and mesh blending into an expressive sequence, with two dependency-free WebGL/GLSL studies.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine releases (v2.23.x)",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "three.js releases",
+      "url": "https://github.com/mrdoob/three.js/releases"
+    },
+    {
+      "label": "HadeanEon — browser-native procedural WebGL artwork",
+      "url": "https://www.hadeaneon.com/about"
+    },
+    {
+      "label": "Main sample: Coarse First Arrival Field",
+      "url": "outputs/2026-11-04_coarse_first_arrival_field.html"
+    },
+    {
+      "label": "Derived sample: Mesh Blend Afterimage",
+      "url": "outputs/2026-11-04_mesh_blend_afterimage.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. PlayCanvas v2.23.2 はストリームする GSplat LOD をビュー全体で coarse-first にし、まず読める輪郭を出す到着順を明示した。v2.23.0 の distance-only LOD・nearest-first load と合わせ、待ち時間を段階的な空間変化として設計できる。2. Babylon.js 9.26.2 の mesh blending post process は、二つの形の交差面／遷移面を独立した表現レイヤーにできる。3. Babylon 9.31–9.32 の Inspector Lite は capture と GPU performance inspection を追加し、品質変化を計測して作品のスコアへ戻す入口になる。4. three.js r188 系の TSL storage struct / radiosity と SSR history の流れは、到着・更新・解決を GPU state の時間として扱う下地になる。",
+      "bodyEn": "Current engine work makes staged arrival, blend surfaces and inspected GPU state practical expressive material.",
+      "links": [
+        {
+          "label": "PlayCanvas v2.23.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        },
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "HadeanEon はブラウザだけで手続き的 shader 数学を使い、初期地球の変容を時間をかけて見せる。重要なのは“重い計算を隠す”のではなく、変化の速度・粒度・層を作品の時間として読ませる点だ。GSplat の coarse-first は同じ発想を実データの到着へ持ち込める。mesh blending は完全に滑らかな結合を目指すだけでなく、境界を短い閃光、切替、記憶面として残せる。",
+      "bodyEn": "HadeanEon demonstrates procedural transformation as narrative time; coarse arrivals and blend seams can inherit that role.",
+      "links": [
+        {
+          "label": "HadeanEon about",
+          "url": "https://www.hadeaneon.com/about"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Coarse First Arrival Field』。pointer を視点 priority、click/Space をストリーム到着に見立て、粗いセルから細かな splat へ解像する波を描く。派生『Mesh Blend Afterimage』は pointer を blend plane、click を境界の保持として、二つの SDF 形状の seam を残像へ変える。短期では音の onset を arrival burst、スクロール速度を LOD 密度、映像の optical flow を blend plane へ接続する。中長期では WebXR gaze を priority、実 GSplat の LOD event と GPU frame time を、光・粒子・文字に共通な quality score として再配分する。",
+      "bodyEn": "Map attention to priority and events to arrival or retained seams; later feed real LOD and frame-time telemetry into the same score."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "まず coarse asset を単独で意味のある silhouette / 色面にする。LOD event は `requestedAt`, `arrivedAt`, `level`, `cameraDistance`, `gpuFrameMs` を記録し、読み込み比率だけでなく“観客に見えた時刻”を評価する。blend は alpha の穴ではなく signed distance または depth/normal 差から seam mask を作ると、境界だけを発光・音・粒子に送れる。WebGL fallback は 1 枚の full-screen fragment shader か、小さな ping-pong FBO のみに留める。Inspector の計測値は必ず実測値として表示し、演出用の推定 quality と混ぜない。",
+      "bodyEn": "Make the coarse state meaningful, log perceptual arrival separately, derive seams from distance/depth/normal, and keep WebGL fallbacks small."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvas の GSplat streaming / sorting / WebGPU issue、Babylon の mesh blending と frame graph の実例、three.js の radiosity・storageStruct・SSR history の merge を追う。制作者事例は、progressive load、低解像度→高解像度、切替面、reprojection を失敗扱いにせず時間表現にする作品を優先する。",
+      "bodyEn": "Watch GSplat streaming, Babylon blend/frame-graph examples, and three.js GPU-state work, plus artwork that exposes progressive arrival."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開いて pointer を止め、1→3 で密度を変えた後、Space を数回押す。粗い像でも方向・距離・到着が読めるかを確認する。次に派生で境界を横切り、click した seam が単なるグリッチでなく“場面の記憶”に見えるかを判定する。実制作への最初の接続は `lodLevel`、`arrivedAt`、`gpuFrameMs` の3値でよい。",
+      "bodyEn": "Test whether low-detail arrival remains legible, then whether a retained seam reads as memory; start integration with three metrics."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas release、Babylon release、three.js PR、HadeanEon を確認。アイデア検討: 11/03 の radiosity/storage の『解決途中』を、LOD の『到着途中』と blend の『境界の記憶』へ接続。サンプル実装: 依存なし WebGL/GLSL を本命・派生の2本追加。結果の検証: shader compile、JSON parse、gallery 再生成、Pages publish を実施する。継続案件: renderer-state score、temporal history、GSplat LOD。新規: coarse-first arrival / retained seam。寝かせる案件: カード UI、フル実装の WebGPU streaming、重い GI。",
+      "bodyEn": "Research, concept extension, two GLSL prototypes, and publish validation; continue renderer-state score and defer heavyweight streaming/GI."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半から、compile・shadow・LOD・visibility・history・environment・radiosity を『準備→到着→残響』として扱ってきた。今日の核は、品質を単なる最適化結果でなく、観客へ情報が届く順番として設計することにある。`gaze + audio onset + lod arrival + seam age + gpuFrameMs` を共通 score にすれば、GSplat、反射、文字、粒子、空、照明の時間を同期できる。特に “粗いものが先に意味を持つ” 設計はモバイル・XR・展示のすべてで育てる価値が高い。",
+      "bodyEn": "The durable theme is a shared score for preparation, arrival and afterglow across rendering systems; meaningful coarse states are especially valuable."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-11-04_coarse_first_arrival_field.html` は実際に動く WebGL/GLSL full-screen shader。pointer で priority を置き、click/Space で coarse-to-fine の arrival wave、1〜3 でセル密度を切り替える。次は実 GSplat の LOD event または GLTF progressive load を入れる。派生 `outputs/2026-11-04_mesh_blend_afterimage.html` は二つの SDF を blend plane で混ぜ、click/Space で seam の明るさを保持する。次は depth texture / normal buffer と音の短い envelope をつなぐ。",
+      "bodyEn": "The main is a real GLSL arrival-wave study; the derivative is a retained-seam study ready for depth/normal or audio input."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "この2本からは priority 座標、arrival wave、選択した密度、seam の位置・年齢、click 時刻を時系列で取れる。これを音の onset、カメラの動き、MediaPipe hand の速度、WebXR gaze、実際の LOD request/arrival と結べば、展示では来場者の注視方向から風景が“思い出され”、ライブ映像ではショットの切替面が音楽に同期して残る。ブランド演出では商品形状が粗い記号から質感へ育つ opening に使える。",
+      "bodyEn": "Priority, arrival, density and seam-history data can combine with audio, camera, hand tracking, gaze and real LOD events for installations and openings."
+    }
+  ]
+}

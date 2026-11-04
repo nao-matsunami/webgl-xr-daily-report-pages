@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>粗い像が先に届き、境界が残像になる──空間ストリーミングを演出へ転用する | 2026-11-04</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.04</p>
+      <h1>粗い像が先に届き、境界が残像になる──空間ストリーミングを演出へ転用する</h1>
+      <p class="hero-subtitle">Let coarse imagery arrive first and turn blend boundaries into afterimages</p>
+      <p>PlayCanvas の GSplat coarse-first streaming、Babylon.js の mesh blending と Inspector Lite、three.js の r188 系 TSL/GPU state を接続し、品質が到着する順序そのものを空間演出として扱う。WebGL/GLSL の本命・派生試作を2本追加した。</p>
+      <p class="en-copy">This report turns coarse-first streaming and mesh blending into an expressive sequence, with two dependency-free WebGL/GLSL studies.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-04_mesh_blend_afterimage.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-03.html">← 2026.11.03</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Mesh Blend Afterimage</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-04_mesh_blend_afterimage.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Coarse First Arrival Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-04_coarse_first_arrival_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. PlayCanvas v2.23.2 はストリームする GSplat LOD をビュー全体で coarse-first にし、まず読める輪郭を出す到着順を明示した。v2.23.0 の distance-only LOD・nearest-first load と合わせ、待ち時間を段階的な空間変化として設計できる。2. Babylon.js 9.26.2 の mesh blending post process は、二つの形の交差面／遷移面を独立した表現レイヤーにできる。3. Babylon 9.31–9.32 の Inspector Lite は capture と GPU performance inspection を追加し、品質変化を計測して作品のスコアへ戻す入口になる。4. three.js r188 系の TSL storage struct / radiosity と SSR history の流れは、到着・更新・解決を GPU state の時間として扱う下地になる。</p>
+          <p class="en-copy">Current engine work makes staged arrival, blend surfaces and inspected GPU state practical expressive material.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.2" target="_blank" rel="noreferrer">PlayCanvas v2.23.2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>HadeanEon はブラウザだけで手続き的 shader 数学を使い、初期地球の変容を時間をかけて見せる。重要なのは“重い計算を隠す”のではなく、変化の速度・粒度・層を作品の時間として読ませる点だ。GSplat の coarse-first は同じ発想を実データの到着へ持ち込める。mesh blending は完全に滑らかな結合を目指すだけでなく、境界を短い閃光、切替、記憶面として残せる。</p>
+          <p class="en-copy">HadeanEon demonstrates procedural transformation as narrative time; coarse arrivals and blend seams can inherit that role.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://www.hadeaneon.com/about" target="_blank" rel="noreferrer">HadeanEon about</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命は『Coarse First Arrival Field』。pointer を視点 priority、click/Space をストリーム到着に見立て、粗いセルから細かな splat へ解像する波を描く。派生『Mesh Blend Afterimage』は pointer を blend plane、click を境界の保持として、二つの SDF 形状の seam を残像へ変える。短期では音の onset を arrival burst、スクロール速度を LOD 密度、映像の optical flow を blend plane へ接続する。中長期では WebXR gaze を priority、実 GSplat の LOD event と GPU frame time を、光・粒子・文字に共通な quality score として再配分する。</p>
+          <p class="en-copy">Map attention to priority and events to arrival or retained seams; later feed real LOD and frame-time telemetry into the same score.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>まず coarse asset を単独で意味のある silhouette / 色面にする。LOD event は `requestedAt`, `arrivedAt`, `level`, `cameraDistance`, `gpuFrameMs` を記録し、読み込み比率だけでなく“観客に見えた時刻”を評価する。blend は alpha の穴ではなく signed distance または depth/normal 差から seam mask を作ると、境界だけを発光・音・粒子に送れる。WebGL fallback は 1 枚の full-screen fragment shader か、小さな ping-pong FBO のみに留める。Inspector の計測値は必ず実測値として表示し、演出用の推定 quality と混ぜない。</p>
+          <p class="en-copy">Make the coarse state meaningful, log perceptual arrival separately, derive seams from distance/depth/normal, and keep WebGL fallbacks small.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvas の GSplat streaming / sorting / WebGPU issue、Babylon の mesh blending と frame graph の実例、three.js の radiosity・storageStruct・SSR history の merge を追う。制作者事例は、progressive load、低解像度→高解像度、切替面、reprojection を失敗扱いにせず時間表現にする作品を優先する。</p>
+          <p class="en-copy">Watch GSplat streaming, Babylon blend/frame-graph examples, and three.js GPU-state work, plus artwork that exposes progressive arrival.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開いて pointer を止め、1→3 で密度を変えた後、Space を数回押す。粗い像でも方向・距離・到着が読めるかを確認する。次に派生で境界を横切り、click した seam が単なるグリッチでなく“場面の記憶”に見えるかを判定する。実制作への最初の接続は `lodLevel`、`arrivedAt`、`gpuFrameMs` の3値でよい。</p>
+          <p class="en-copy">Test whether low-detail arrival remains legible, then whether a retained seam reads as memory; start integration with three metrics.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas release、Babylon release、three.js PR、HadeanEon を確認。アイデア検討: 11/03 の radiosity/storage の『解決途中』を、LOD の『到着途中』と blend の『境界の記憶』へ接続。サンプル実装: 依存なし WebGL/GLSL を本命・派生の2本追加。結果の検証: shader compile、JSON parse、gallery 再生成、Pages publish を実施する。継続案件: renderer-state score、temporal history、GSplat LOD。新規: coarse-first arrival / retained seam。寝かせる案件: カード UI、フル実装の WebGPU streaming、重い GI。</p>
+          <p class="en-copy">Research, concept extension, two GLSL prototypes, and publish validation; continue renderer-state score and defer heavyweight streaming/GI.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月後半から、compile・shadow・LOD・visibility・history・environment・radiosity を『準備→到着→残響』として扱ってきた。今日の核は、品質を単なる最適化結果でなく、観客へ情報が届く順番として設計することにある。`gaze + audio onset + lod arrival + seam age + gpuFrameMs` を共通 score にすれば、GSplat、反射、文字、粒子、空、照明の時間を同期できる。特に “粗いものが先に意味を持つ” 設計はモバイル・XR・展示のすべてで育てる価値が高い。</p>
+          <p class="en-copy">The durable theme is a shared score for preparation, arrival and afterglow across rendering systems; meaningful coarse states are especially valuable.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命 `outputs/2026-11-04_coarse_first_arrival_field.html` は実際に動く WebGL/GLSL full-screen shader。pointer で priority を置き、click/Space で coarse-to-fine の arrival wave、1〜3 でセル密度を切り替える。次は実 GSplat の LOD event または GLTF progressive load を入れる。派生 `outputs/2026-11-04_mesh_blend_afterimage.html` は二つの SDF を blend plane で混ぜ、click/Space で seam の明るさを保持する。次は depth texture / normal buffer と音の短い envelope をつなぐ。</p>
+          <p class="en-copy">The main is a real GLSL arrival-wave study; the derivative is a retained-seam study ready for depth/normal or audio input.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>この2本からは priority 座標、arrival wave、選択した密度、seam の位置・年齢、click 時刻を時系列で取れる。これを音の onset、カメラの動き、MediaPipe hand の速度、WebXR gaze、実際の LOD request/arrival と結べば、展示では来場者の注視方向から風景が“思い出され”、ライブ映像ではショットの切替面が音楽に同期して残る。ブランド演出では商品形状が粗い記号から質感へ育つ opening に使える。</p>
+          <p class="en-copy">Priority, arrival, density and seam-history data can combine with audio, camera, hand tracking, gaze and real LOD events for installations and openings.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases (v2.23.x)</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0" target="_blank" rel="noreferrer">Babylon.js 9.32.0 release</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/releases" target="_blank" rel="noreferrer">three.js releases</a></li>
+          
+            <li><a href="https://www.hadeaneon.com/about" target="_blank" rel="noreferrer">HadeanEon — browser-native procedural WebGL artwork</a></li>
+          
+            <li><a href="outputs/2026-11-04_coarse_first_arrival_field.html" target="_blank" rel="noreferrer">Main sample: Coarse First Arrival Field</a></li>
+          
+            <li><a href="outputs/2026-11-04_mesh_blend_afterimage.html" target="_blank" rel="noreferrer">Derived sample: Mesh Blend Afterimage</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-04_mesh_blend_afterimage.html" loading="lazy" title="Mesh Blend Afterimage"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
