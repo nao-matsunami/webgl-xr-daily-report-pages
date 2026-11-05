@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPU の計測時刻と属性更新を、光が育つ拍へ変える | 2026-11-05</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.05</p>
+      <h1>GPU の計測時刻と属性更新を、光が育つ拍へ変える</h1>
+      <p class="hero-subtitle">Turn GPU timestamps and dynamic attributes into beats of growing light</p>
+      <p>three.js の r188 系で進む timestamp query・radiosity・TSL storage、Babylon.js Inspector Lite の capture/GPU 計測、PlayCanvas の persistent storage/MRT を接続し、描画の更新時刻を隠さず空間演出の譜面にする。WebGL/GLSL の本命・派生試作を2本追加した。</p>
+      <p class="en-copy">This report turns rendering timestamps, state storage, and dynamic attributes into an expressive score, with two dependency-free WebGL/GLSL studies.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-05_timestamp_radiance_score.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-04.html">← 2026.11.04</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Timestamp Radiance Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-05_timestamp_radiance_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Dynamic Attribute Afterglow</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-05_dynamic_attribute_afterglow.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1. three.js の直近 r188 系では、再開／layered render pass の timestamp query 修正、in-flight の compute compile 待機、TSL の `storageStruct()`、raytraced radiosity が並行している。GPU の『いつ解決したか』を信頼できる信号として扱う基盤が整いつつある。2. Babylon.js 9.31–9.32 は Inspector Lite に capture tools と GPU performance inspection を追加し、演出の見た目と実測を往復しやすくした。3. PlayCanvas v2.23.0 は WebGPU の persistent mesh-matrix storage、MRT attachment ごとの clear color、CameraFrame bloom threshold を導入しており、属性更新・複数出力・発光を同じ譜面に置ける。4. Codrops の WebGL/GLSL 事例群は、カーソル・音・質感変化を小さな入力から全画面の時間変化へ翻訳する参照になる。</p>
+          <p class="en-copy">Recent engine work makes completion time, storage state, inspection and multi-output color usable as one expressive timing system.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0" target="_blank" rel="noreferrer">Babylon.js 9.32.0</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.23.0" target="_blank" rel="noreferrer">PlayCanvas v2.23.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why they matter</span></span></h2>
+          <p>今回の注目は単体作品ではなく、three.js の radiosity／timestamp と Babylon Inspector Lite の組み合わせだ。これまで 11/03 の radiosity lattice、11/04 の coarse-first arrival は『結果が届く途中』を扱った。ここで capture 時刻と pass ごとの実測を足すと、待機、反射、解決、再描画を恣意的なローディング演出ではなく、実際のレンダラの呼吸として見せられる。Codrops の WebGL 作品が得意な強い一入力→大きい視覚変化の構図とも相性が良い。</p>
+          <p class="en-copy">Measured pass completion can make radiosity and progressive arrival feel like renderer breath rather than fictional loading.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js commits</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>本命『Timestamp Radiance Score』は pointer を inspection light、click/Space を GPU pass marker として、direct→bounce→composite の到着を同じ画面で見せる。派生『Dynamic Attribute Afterglow』は属性 upload を光の筆跡へ変える。短期では Web Audio の onset を marker、スクロールや pointer velocity を dynamic attribute の更新量にする。中長期では `passStart/passEnd`, `queryAvailable`, `compileReady`, `uploadBytes`, `lodArrivedAt` を共通 state texture に記録し、計測の遅延そのものを影・粒子・文字の密度にする。</p>
+          <p class="en-copy">Map real completion and upload signals to light, afterglow and density; start with audio onset or pointer velocity, then wire telemetry into a shared state texture.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>timestamp query は availability を確認してから読み、CPU 時刻と混同しない。render pass が再開・分割される構成では `passId`, `layer`, `begin`, `end`, `queryAvailable` を一組で保存する。dynamic attributes は毎フレーム丸ごと更新せず、dirty range と `uploadBytes` を取り、更新された頂点だけを発光させると意味が生まれる。MRT は色、輝度、motion／history を分け、clear color も出力ごとに意図を持たせる。WebGL fallback は今回のような full-screen fragment shader にして、実測が取れない環境では『推定』と明記する。</p>
+          <p class="en-copy">Keep timestamp availability distinct from CPU time; log pass identity and dirty ranges; use MRT outputs with intentional clears, and label fallback signals as estimates.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js の timestamp／compute compile／radiosity／TSL storageStruct の merge と API 形状、Babylon Inspector Lite の capture/GPU performance の実利用例、PlayCanvas の persistent storage・MRT・GSplat telemetry を追う。制作者事例は、性能表示を HUD に閉じ込めず、光・音・カメラワークの一部にする作品を優先する。</p>
+          <p class="en-copy">Watch the APIs and examples around timestamps, compile/radiosity, Inspector capture and persistent storage/MRT telemetry.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointer を止めて 1→2→3 と切り替え、Space を数回押す。direct と bounce の役割が、色だけでなく時間差でも読めるかを確認する。次に派生で cursor を速く振り、click で upload burst を入れる。残像が単なる trail ではなく『どの属性が更新されたか』の手掛かりになるなら成功。実装への最初の接続は `passEnd - passStart` と `uploadBytes` の2値だけでよい。</p>
+          <p class="en-copy">Check whether timing makes direct and bounce distinct, then whether upload trails reveal what changed; begin integration with duration and upload bytes.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js PR／commit、Babylon release、PlayCanvas release、Codrops を確認。アイデア検討: 11/03 の radiosity、11/04 の arrival を『計測時刻で演奏する』方向へ接続。サンプル実装: 依存なし WebGL/GLSL の本命・派生2本を追加。結果の検証: shader compile、JSON parse、gallery 再生成、Pages publish を実施する。継続案件: renderer-state score、temporal history、GSplat LOD。新規: timestamp radiance／attribute afterglow。寝かせる案件: カードUI、フル WebGPU profiler、重い外部 asset。</p>
+          <p class="en-copy">Research, connect the last two studies, implement two GLSL prototypes, validate and publish; continue state score/history/LOD and defer heavy profiler work.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月後半から compile、shadow、LOD、history、reflection、radiosity を『準備→到着→残響』として扱ってきた。今日加えるべきなのは到着の正確な時計だ。`gaze + audio onset + pass duration + query availability + upload bytes + lod arrival + seam age` を共通 score にすると、実装上の変化と観客の注視を同じテンポで編集できる。計測を可視化するのではなく、計測が起きた瞬間だけ世界が少し変わる設計は、展示・ライブ演出・プロダクトの opening まで育てる価値が高い。</p>
+          <p class="en-copy">The durable next step is a shared clock: performance events should subtly alter the world, not merely appear as diagnostics.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidates</span></span></h2>
+          <p>本命 `outputs/2026-11-05_timestamp_radiance_score.html` は実際に動く WebGL/GLSL full-screen shader。pointer で inspection light、click/Space で pass marker、1〜3 で direct／bounce／composite を切り替える。次は `GPUQuerySet` の実 timestamp を記録して pulse 時刻へ置換する。派生 `outputs/2026-11-05_dynamic_attribute_afterglow.html` は cursor を dynamic attribute source、click/Space を upload burst とし、1〜3 で source／motion／afterglow を切り替える。次は three.js `BufferAttribute.updateRanges` または PlayCanvas の partial upload を接続する。</p>
+          <p class="en-copy">The main is a working timestamp-radiance study; the derivative turns dynamic attribute uploads into trails ready for real dirty ranges.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>2本からは inspection 座標、marker 時刻、pass mode、burst 強度、attribute cursor、trail age を時系列で採れる。これを audio onset、ライブカメラの optical flow、MediaPipe hand velocity、WebXR gaze、実 GPU query、実 LOD arrival と合わせると、来場者が注視した場所だけ光の解決が早まり、演奏のアタックが GPU pass の境目を押す展示になる。ブランド演出では製品の輪郭が upload のたびに光を引き、データ可視化では更新されたレコードが残像で地図や3D空間に刻まれる。</p>
+          <p class="en-copy">Interaction and pass/tail data can combine with audio, camera, hand tracking, gaze and real queries for installations, openings and spatial data visualization.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests (r188 work)</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/commits" target="_blank" rel="noreferrer">three.js recent commits</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL tag</a></li>
+          
+            <li><a href="outputs/2026-11-05_timestamp_radiance_score.html" target="_blank" rel="noreferrer">Main sample: Timestamp Radiance Score</a></li>
+          
+            <li><a href="outputs/2026-11-05_dynamic_attribute_afterglow.html" target="_blank" rel="noreferrer">Derived sample: Dynamic Attribute Afterglow</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-05_timestamp_radiance_score.html" loading="lazy" title="Timestamp Radiance Score"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

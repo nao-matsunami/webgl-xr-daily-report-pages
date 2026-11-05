@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-05",
+  "headline": "GPU の計測時刻と属性更新を、光が育つ拍へ変える",
+  "headlineEn": "Turn GPU timestamps and dynamic attributes into beats of growing light",
+  "summary": "three.js の r188 系で進む timestamp query・radiosity・TSL storage、Babylon.js Inspector Lite の capture/GPU 計測、PlayCanvas の persistent storage/MRT を接続し、描画の更新時刻を隠さず空間演出の譜面にする。WebGL/GLSL の本命・派生試作を2本追加した。",
+  "summaryEn": "This report turns rendering timestamps, state storage, and dynamic attributes into an expressive score, with two dependency-free WebGL/GLSL studies.",
+  "links": [
+    {
+      "label": "three.js pull requests (r188 work)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js recent commits",
+      "url": "https://github.com/mrdoob/three.js/commits"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Codrops WebGL tag",
+      "url": "https://tympanus.net/codrops/tag/webgl/"
+    },
+    {
+      "label": "Main sample: Timestamp Radiance Score",
+      "url": "outputs/2026-11-05_timestamp_radiance_score.html"
+    },
+    {
+      "label": "Derived sample: Dynamic Attribute Afterglow",
+      "url": "outputs/2026-11-05_dynamic_attribute_afterglow.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の直近 r188 系では、再開／layered render pass の timestamp query 修正、in-flight の compute compile 待機、TSL の `storageStruct()`、raytraced radiosity が並行している。GPU の『いつ解決したか』を信頼できる信号として扱う基盤が整いつつある。2. Babylon.js 9.31–9.32 は Inspector Lite に capture tools と GPU performance inspection を追加し、演出の見た目と実測を往復しやすくした。3. PlayCanvas v2.23.0 は WebGPU の persistent mesh-matrix storage、MRT attachment ごとの clear color、CameraFrame bloom threshold を導入しており、属性更新・複数出力・発光を同じ譜面に置ける。4. Codrops の WebGL/GLSL 事例群は、カーソル・音・質感変化を小さな入力から全画面の時間変化へ翻訳する参照になる。",
+      "bodyEn": "Recent engine work makes completion time, storage state, inspection and multi-output color usable as one expressive timing system.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon.js 9.32.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+        },
+        {
+          "label": "PlayCanvas v2.23.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why they matter",
+      "body": "今回の注目は単体作品ではなく、three.js の radiosity／timestamp と Babylon Inspector Lite の組み合わせだ。これまで 11/03 の radiosity lattice、11/04 の coarse-first arrival は『結果が届く途中』を扱った。ここで capture 時刻と pass ごとの実測を足すと、待機、反射、解決、再描画を恣意的なローディング演出ではなく、実際のレンダラの呼吸として見せられる。Codrops の WebGL 作品が得意な強い一入力→大きい視覚変化の構図とも相性が良い。",
+      "bodyEn": "Measured pass completion can make radiosity and progressive arrival feel like renderer breath rather than fictional loading.",
+      "links": [
+        {
+          "label": "three.js commits",
+          "url": "https://github.com/mrdoob/three.js/commits"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命『Timestamp Radiance Score』は pointer を inspection light、click/Space を GPU pass marker として、direct→bounce→composite の到着を同じ画面で見せる。派生『Dynamic Attribute Afterglow』は属性 upload を光の筆跡へ変える。短期では Web Audio の onset を marker、スクロールや pointer velocity を dynamic attribute の更新量にする。中長期では `passStart/passEnd`, `queryAvailable`, `compileReady`, `uploadBytes`, `lodArrivedAt` を共通 state texture に記録し、計測の遅延そのものを影・粒子・文字の密度にする。",
+      "bodyEn": "Map real completion and upload signals to light, afterglow and density; start with audio onset or pointer velocity, then wire telemetry into a shared state texture."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "timestamp query は availability を確認してから読み、CPU 時刻と混同しない。render pass が再開・分割される構成では `passId`, `layer`, `begin`, `end`, `queryAvailable` を一組で保存する。dynamic attributes は毎フレーム丸ごと更新せず、dirty range と `uploadBytes` を取り、更新された頂点だけを発光させると意味が生まれる。MRT は色、輝度、motion／history を分け、clear color も出力ごとに意図を持たせる。WebGL fallback は今回のような full-screen fragment shader にして、実測が取れない環境では『推定』と明記する。",
+      "bodyEn": "Keep timestamp availability distinct from CPU time; log pass identity and dirty ranges; use MRT outputs with intentional clears, and label fallback signals as estimates."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js の timestamp／compute compile／radiosity／TSL storageStruct の merge と API 形状、Babylon Inspector Lite の capture/GPU performance の実利用例、PlayCanvas の persistent storage・MRT・GSplat telemetry を追う。制作者事例は、性能表示を HUD に閉じ込めず、光・音・カメラワークの一部にする作品を優先する。",
+      "bodyEn": "Watch the APIs and examples around timestamps, compile/radiosity, Inspector capture and persistent storage/MRT telemetry."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointer を止めて 1→2→3 と切り替え、Space を数回押す。direct と bounce の役割が、色だけでなく時間差でも読めるかを確認する。次に派生で cursor を速く振り、click で upload burst を入れる。残像が単なる trail ではなく『どの属性が更新されたか』の手掛かりになるなら成功。実装への最初の接続は `passEnd - passStart` と `uploadBytes` の2値だけでよい。",
+      "bodyEn": "Check whether timing makes direct and bounce distinct, then whether upload trails reveal what changed; begin integration with duration and upload bytes."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js PR／commit、Babylon release、PlayCanvas release、Codrops を確認。アイデア検討: 11/03 の radiosity、11/04 の arrival を『計測時刻で演奏する』方向へ接続。サンプル実装: 依存なし WebGL/GLSL の本命・派生2本を追加。結果の検証: shader compile、JSON parse、gallery 再生成、Pages publish を実施する。継続案件: renderer-state score、temporal history、GSplat LOD。新規: timestamp radiance／attribute afterglow。寝かせる案件: カードUI、フル WebGPU profiler、重い外部 asset。",
+      "bodyEn": "Research, connect the last two studies, implement two GLSL prototypes, validate and publish; continue state score/history/LOD and defer heavy profiler work."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月後半から compile、shadow、LOD、history、reflection、radiosity を『準備→到着→残響』として扱ってきた。今日加えるべきなのは到着の正確な時計だ。`gaze + audio onset + pass duration + query availability + upload bytes + lod arrival + seam age` を共通 score にすると、実装上の変化と観客の注視を同じテンポで編集できる。計測を可視化するのではなく、計測が起きた瞬間だけ世界が少し変わる設計は、展示・ライブ演出・プロダクトの opening まで育てる価値が高い。",
+      "bodyEn": "The durable next step is a shared clock: performance events should subtly alter the world, not merely appear as diagnostics."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "本命 `outputs/2026-11-05_timestamp_radiance_score.html` は実際に動く WebGL/GLSL full-screen shader。pointer で inspection light、click/Space で pass marker、1〜3 で direct／bounce／composite を切り替える。次は `GPUQuerySet` の実 timestamp を記録して pulse 時刻へ置換する。派生 `outputs/2026-11-05_dynamic_attribute_afterglow.html` は cursor を dynamic attribute source、click/Space を upload burst とし、1〜3 で source／motion／afterglow を切り替える。次は three.js `BufferAttribute.updateRanges` または PlayCanvas の partial upload を接続する。",
+      "bodyEn": "The main is a working timestamp-radiance study; the derivative turns dynamic attribute uploads into trails ready for real dirty ranges."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "2本からは inspection 座標、marker 時刻、pass mode、burst 強度、attribute cursor、trail age を時系列で採れる。これを audio onset、ライブカメラの optical flow、MediaPipe hand velocity、WebXR gaze、実 GPU query、実 LOD arrival と合わせると、来場者が注視した場所だけ光の解決が早まり、演奏のアタックが GPU pass の境目を押す展示になる。ブランド演出では製品の輪郭が upload のたびに光を引き、データ可視化では更新されたレコードが残像で地図や3D空間に刻まれる。",
+      "bodyEn": "Interaction and pass/tail data can combine with audio, camera, hand tracking, gaze and real queries for installations, openings and spatial data visualization."
+    }
+  ]
+}
