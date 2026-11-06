@@ -1,0 +1,127 @@
+{
+  "date": "2026-11-06",
+  "headline": "更新された属性だけを、空間の発光イベントにする",
+  "headlineEn": "Make only changed attributes become spatial light events",
+  "summary": "three.js r188 の dynamic index attribute 再アップロード最適化、GPUTimer、compileAsync 再設計を軸に、Babylon Lite の実GPU task profiler と PlayCanvas の永続 storage/MRT を接続した。更新量・version・readback を診断表示で終わらせず、光と残響の譜面にする2本の WebGL/GLSL 試作を追加。",
+  "summaryEn": "This report turns attribute versions and GPU task readbacks into light and afterglow, with two dependency-free WebGL/GLSL studies.",
+  "links": [
+    {
+      "label": "three.js open pull requests — r188 work",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js PR #35363 — version-gated dynamic index upload",
+      "url": "https://github.com/mrdoob/three.js/pull/35363"
+    },
+    {
+      "label": "three.js PR #35356 — GPUTimer",
+      "url": "https://github.com/mrdoob/three.js/pull/35356"
+    },
+    {
+      "label": "Babylon Inspector Lite performance documentation",
+      "url": "https://github.com/BabylonJS/Babylon.js/blob/master/packages/dev/inspector-v2/readme.md"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.0",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+    },
+    {
+      "label": "Creator reference — The Lab",
+      "url": "https://2027.delowarhossain.dev/lab"
+    },
+    {
+      "label": "Main sample: Version-Gated Light Score",
+      "url": "outputs/2026-11-06_version_gated_light_score.html"
+    },
+    {
+      "label": "Derived sample: GPU Task Latency Weave",
+      "url": "outputs/2026-11-06_gpu_task_latency_weave.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1. three.js の11月5日付 PR #35363 は、dynamic index attribute を version が変わったときだけ再アップロードする提案。『更新がある頂点だけ発光する』という、更新範囲を表現へ直結する実装の手掛かりになる。2. 同日の PR #35356 は WebGPURenderer 向け GPUTimer。昨日の timestamp query を、利用者が扱える時間信号へ近づける。3. #35359 の compileAsync 再設計、#35361 の縮小解像度における SSGI/AO の暗い輪郭修正も、非同期準備と低解像度の粗さを演出上のレイヤーとして扱う流れを補強する。4. Babylon Inspector Lite は lazy timestamp-query profiler、pending/available/error 状態、最大120件の非同期readback履歴とCSV出力を明文化している。5. PlayCanvas v2.23.0 の persistent mesh-matrix storage、MRT attachment 別 clear color、partial buffer upload は、同じ『変化量を出力ごとに演出する』実装の足場になる。",
+      "bodyEn": "three.js version-gated uploads and GPUTimer, Babylon Lite readbacks, and PlayCanvas storage/MRT make change itself a dependable visual signal.",
+      "links": [
+        {
+          "label": "three.js PR #35363",
+          "url": "https://github.com/mrdoob/three.js/pull/35363"
+        },
+        {
+          "label": "three.js PR #35356",
+          "url": "https://github.com/mrdoob/three.js/pull/35356"
+        },
+        {
+          "label": "Babylon Inspector Lite performance",
+          "url": "https://github.com/BabylonJS/Babylon.js/blob/master/packages/dev/inspector-v2/readme.md"
+        },
+        {
+          "label": "PlayCanvas v2.23.0 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "制作者ページ The Lab の30本の実験は、流体、霧、パーティクル、FFT、反応拡散を『hover/click の小さな入力→全画面の物理的な変化』に翻訳している。ここへ attribute version や GPU task duration を入れると、入力の結果だけでなく、ブラウザがその変化を処理し終えた瞬間を作品の一部にできる。昨日の Timestamp Radiance Score の時計を、本日は範囲更新の光へ具体化する接続である。",
+      "bodyEn": "The Lab demonstrates small-input-to-full-field translation; version and completion signals can make the browser's own response part of that material.",
+      "links": [
+        {
+          "label": "The Lab — live WebGL/GLSL experiments",
+          "url": "https://2027.delowarhossain.dev/lab"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "本命は『Version-Gated Light Score』。pointer を編集フロンティア、click/Space を attribute version 更新として、source→changed range→afterglow→composite を切替表示する。派生は『GPU Task Latency Weave』で、queue/pending/available/readback を織物の横糸として扱う。短期では pointer velocity、audio onset、scroll の dirty range だけで成立する。中長期では `attributeVersion`, `updateRangeStart`, `updateRangeCount`, `uploadBytes`, `taskStart`, `taskEnd`, `queryState`, `droppedTasks` を共通state textureへ記録し、観客の注視・音・到着したLODを同じ譜面に置く。",
+      "bodyEn": "Use an edit frontier and a version pulse now; later connect attribute ranges, GPU task states, audio and LOD arrival through one state texture."
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "dynamic attribute は `version` と dirty range を対にして記録し、version が不変なら upload も発光も行わない。index update は描画範囲・topology と結び付くため、更新点を丸ではなく線・切れ目・群れの分岐として見せると意味が明快になる。GPU timer は pending と available を混ぜず、readback が遅れたフレーム番号も保存する。Babylon Lite のように、CPU側の draw count と非同期GPU readbackを同じフレームだと誤認しない。WebGL fallback は `performance.now()` を推定時間として別色にし、実GPU計測ではないことを保つ。",
+      "bodyEn": "Log version and dirty ranges together; keep pending GPU reads distinct from available samples, and label WebGL wall-clock estimates honestly."
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js の #35363/#35356/#35359 のAPI形状・merge、radiance cascades と VirtualShadowNode の実例、Babylon Lite profilerの実用事例、PlayCanvas の partial upload と GSplat telemetry を追う。制作者事例では、フレーム時間を数字HUDに閉じず、霧・光・音・カメラの編集へ翻訳しているものを優先する。",
+      "bodyEn": "Watch the merge/API shape of version-gated upload, timers and async compile, plus artworks that turn performance state into atmosphere rather than HUD."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerをゆっくり動かして1→2→3→4を切替え、Spaceを押す。更新領域だけが一拍早く立ち上がり、残りは残響へ回るかを確認する。次に派生で Space を押し、pending から available へ読める遅延が生まれるかを観察する。実装へつなぐ最初の値は `attribute.version` と `uploadBytes` の二つで十分。",
+      "bodyEn": "Test whether only the edited range lights first, then add just attribute.version and uploadBytes to begin real integration."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js の11/5 PR、Babylon Lite readme、PlayCanvas release、制作者のライブ実験を確認。アイデア検討: 11/05 の timestamp radiance を『versionで選ばれた変化だけが発光する』方向へ更新。サンプル実装: 依存なし WebGL/GLSL の本命と派生を追加。結果の検証: JSON/HTML/shader構文、gallery生成、Pages publishを行う。継続案件: renderer-state score、temporal history、GSplat LOD。新規: version-gated light、task latency weave。寝かせる案件: カードUI、重いGPU profiler、WebGPU限定の完成形。",
+      "bodyEn": "Research, refine yesterday's clock into version-selected change, implement two shaders, validate and publish; continue state/history/LOD while deferring heavy tooling."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月末から11月初めにかけて、compile、shadow、LOD、radiosity、timestampを『準備→到着→残響』で扱ってきた。今回の version gate は、その間に『何が変わったか』という編集点を与える。`gaze + audio onset + attributeVersion + dirtyRange + uploadBytes + taskState + lodArrival + historyAge` を共通scoreにすれば、重い3Dシーンでも変化した場所だけが観客の注意を先取りできる。これは展示の反応面、音楽ライブの照明、更新の多いデータ空間に育てる価値が高い。",
+      "bodyEn": "A version gate supplies the missing edit point in the prepare-arrive-afterglow arc; it is a strong long-term bridge across installations, live light and changing data spaces."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-06_version_gated_light_score.html` は実際に動く WebGL/GLSL full-screen shader。pointerで編集フロンティア、click/Spaceでattribute versionを更新、1〜4で source／changed range／afterglow／composite を表示する。次は three.js `BufferAttribute.version` と `updateRanges` を接続する。派生 `outputs/2026-11-06_gpu_task_latency_weave.html` は queue／pending／available の query lifecycle を織物のlaneで検証し、click/Spaceでreadback pulseを入れる。次は `GPUTimer` または Babylon LiteのCSVを実値として流す。",
+      "bodyEn": "The main shader turns version changes into selective light; the derivative makes queue-to-readback state readable as a weave, ready for real timer data."
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "2本からは edit frontier、version番号、range座標、afterglow age、task lane、query state、readback pulse を時系列で採れる。これを Web Audio の onset、ライブカメラ optical flow、MediaPipe hand velocity、WebXR gaze、GSplatのLOD到着、CMS更新ログと合わせると、『更新された展示物だけが一瞬先に光る』空間を作れる。ブランドでは製品の部位更新を透明な光の縫い目に、データ可視化では差分レコードを地図・粒子・音のいずれかへ多重出力する設計が有効。",
+      "bodyEn": "Version, range and task-state time series can combine with audio, camera, hands, gaze, LOD and CMS deltas for installations, brand reveals and spatial data stories."
+    }
+  ]
+}
