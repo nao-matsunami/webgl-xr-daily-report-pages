@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SVGF Seam Memory Score</title>
+<style>html,body{margin:0;height:100%;background:#07090e;color:#dbe7ff;font:13px ui-monospace,SFMono-Regular,monospace}canvas{width:100%;height:100%;display:block}#ui{position:fixed;inset:18px auto auto 18px;max-width:390px;line-height:1.55;text-shadow:0 1px #000}b{color:#fff}kbd{padding:2px 5px;border:1px solid #6380ae;border-radius:3px}small{color:#9aabc7}</style>
+<canvas></canvas><div id="ui"><b>SVGF SEAM MEMORY SCORE</b><br><small>pointer: view / seam &nbsp; <kbd>1</kbd> noisy input <kbd>2</kbd> temporal memory <kbd>3</kbd> edge gate <kbd>4</kbd> composite<br>click / Space: inject a lighting cut</small></div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d');let W,H,p={x:.5,y:.5},mode=4,cut=0,history=[];
+function size(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',size);size();
+addEventListener('pointermove',e=>p={x:e.clientX/W,y:e.clientY/H});addEventListener('keydown',e=>{if(+e.key)mode=+e.key;if(e.code==='Space')cut=1});addEventListener('pointerdown',()=>cut=1);
+function glow(px,py,r,col,a=1){let g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,col);g.addColorStop(1,'transparent');x.globalAlpha=a;x.fillStyle=g;x.fillRect(px-r,py-r,r*2,r*2);x.globalAlpha=1}
+function frame(t){requestAnimationFrame(frame);let q=t*.001;cut*=.945;x.fillStyle='#07090e';x.fillRect(0,0,W,H);let sx=W*(.15+p.x*.7),sy=H*(.22+p.y*.56),seam=W*(.48+.12*Math.sin(q*.45));
+// moving field / deliberately noisy lighting input
+for(let i=0;i<135;i++){let a=i*2.399+q*.6,r=18+(i%17)*10,px=sx+Math.cos(a)*r*1.55,py=sy+Math.sin(a)*r*.68;let n=Math.sin(i*91.7+q*16)*7*(1+cut*4);if(mode===1||mode===4){x.fillStyle=i%3?'#7bcaff':'#fa8d61';x.globalAlpha=.18+(i%7)/38;x.fillRect(px+n,py-n,2+(i%3),2+(i%3));x.globalAlpha=1}}
+history.unshift({x:sx,y:sy,a:1});history=history.slice(0,20); if(mode===2||mode===4)history.forEach((h,i)=>{h.a*=.92;glow(h.x-(i*3),h.y+(i*1.2),72+i*5,i%2?'#334fca':'#a54087',.035*h.a)});
+// edge-aware gate: seam receives memory only at a locally supported edge
+if(mode===3||mode===4){for(let j=0;j<42;j++){let yy=j/41*H,edge=seam+Math.sin(yy*.021+q)*25; x.strokeStyle=j%2?'#6ee7d4':'#ffba6b';x.globalAlpha=.12+cut*.25;x.beginPath();x.moveTo(edge-34,yy);x.lineTo(edge+34,yy+Math.sin(j+q)*8);x.stroke();}x.globalAlpha=1;}
+if(mode===4){glow(sx,sy,150,'#579aff',.24);glow(seam,H*.5,120,'#ff6f91',.13+cut*.2)}
+x.fillStyle='#b7c7e8';x.fillText(['NOISY LIGHT','TEMPORAL HISTORY','NORMAL/DEPTH GATE','COMPOSITE'][mode-1]||'COMPOSITE',18,H-24);x.fillStyle='#7290be';x.fillText('history '+history.length+'  •  cut '+cut.toFixed(2)+'  •  mouse '+p.x.toFixed(2)+','+p.y.toFixed(2),18,H-8)}requestAnimationFrame(frame);
+</script></html>

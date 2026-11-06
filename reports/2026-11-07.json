@@ -1,0 +1,161 @@
+{
+  "date": "2026-11-07",
+  "headline": "SVGFの残像とワールド単位の凹凸を、待ち時間ではなく空間のリズムにする",
+  "headlineEn": "Turn SVGF memory and world-scale bump detail into spatial rhythm",
+  "summary": "three.js のSVGFデノイズ、computeコンパイル待機、ワールド単位のバンプ改良を手掛かりに、確定前の照明・履歴・表面勾配を見せる演出を整理。11/06の属性バージョン／GPU待ち時間のスコアを、より感覚的な光の残り方へ進める。",
+  "summaryEn": "SVGF denoising, compute compilation synchronization and world-unit bump mapping extend the prior change/version score into perceptible light memory and surface rhythm.",
+  "links": [
+    {
+      "label": "three.js PRs: SVGF, compute compilation, bump maps",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23 release notes",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases / Inspector Lite",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Creative Hub: Seam Transitions / Ocarina",
+      "url": "https://tympanus.net/codrops/hub/"
+    },
+    {
+      "label": "本命試作: SVGF Seam Memory Score",
+      "url": "../outputs/2026-11-07_svgf_seam_memory_score.html"
+    },
+    {
+      "label": "派生試作: World-scale Bump Rhythm",
+      "url": "../outputs/2026-11-07_worldscale_bump_rhythm.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js の #35318 はSVGF系のDenoiseNodeを追加し、時系列の蓄積を前提にしたノイズ除去を扱う。2) #35321 は進行中のcompute compileをcompileComputeAsync()で待機し、同じ作業を二重に走らせない方向。3) #35330/#35332/#35329 はバンプをワールド単位の高さとして扱い、斜面での破綻を抑える。4) PlayCanvasのcoarsest-first GSplat到着と、Babylon Inspector Liteのcapture/性能観測は、品質の『確定途中』を演出入力にできる。5) CodropsのSeam TransitionsとOcarinaは、継ぎ目と音を主役にする実演として参照価値が高い。",
+      "bodyEn": "SVGF temporal denoising, synchronized compute compilation, world-unit bump mapping, progressive GSplat arrival, and creative seam/audio studies all make unfinished rendering states artistically useful.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas v2.23.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.2"
+        },
+        {
+          "label": "Babylon.js 9.32.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "SVGFは『前フレームを使う』処理なので、単なる画質改善ではなく、視線・音・カメラが変わった直後だけ旧い光が残る映画的なカットにできる。CodropsのSeam Transitionsは画面の境目を遷移の意味に変える参照、Ocarinaは音を操作規則に変える参照になる。PlayCanvasのcoarsest-firstも、粗い光景→細部という到着順をそのまま物語のテンポにできる。",
+      "bodyEn": "Temporal denoising can make previous light visible after a camera or audio event; creative seam and audio demos show how a technical boundary becomes a narrative rule.",
+      "links": [
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A. 『照明の記憶の継ぎ目』: ポインタ/視線の移動で旧い照明だけが境界に残り、normal/depth差の大きい場所でだけ消す。B. 『凹凸の楽器』: バンプの実ワールド高さを音の帯域へ結び、低音は大きい地形、高音は微細な彫りとして出す。C. 『compile待ちの合唱』: 進行中のcompute compileを保留音、readyを発音として視覚・音声化する。短期はA、育成はB+CのXR空間版。",
+      "bodyEn": "Use light-memory seams, world-scale bump as an instrument, and compile readiness as a choir. Prototype A now; grow B/C toward XR.",
+      "links": [
+        {
+          "label": "本命試作",
+          "url": "../outputs/2026-11-07_svgf_seam_memory_score.html"
+        },
+        {
+          "label": "派生試作",
+          "url": "../outputs/2026-11-07_worldscale_bump_rhythm.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "SVGFを入れる前に、historyが無効になる条件（カメラcut、解像度変更、depth/normalの不一致）を明示的にログ化する。three.jsのcomputeはcompileComputeAsync()を一か所で集約してready Promiseを共有する。バンプはheightをテクスチャ解像度の任意値ではなくsceneのメートル尺度へ寄せ、斜面ではnormalに直交する勾配を使う。PlayCanvasはLOD到着時刻、Babylonはcapture IDとGPU計測値を共通state texture/JSONに載せる。",
+      "bodyEn": "Log history invalidation, share compute readiness promises, express bump height in world scale, and store LOD/capture timing in a shared telemetry schema.",
+      "links": [
+        {
+          "label": "three.js Migration Guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのDenoiseNode APIとSSRのspatio-temporal denoising、timestamp queryのsplit/layered pass、compute compilerの安定化を追う。PlayCanvasではGSplat LODの到着順とGPU sort/影の更新、BabylonではInspector Liteのcapture/exportとFrame Graphを追う。制作者側はCodropsのSeam Transitions、Ocarina、Ultra Waterを、継ぎ目・音・水面の入力設計として見る。",
+      "bodyEn": "Watch the DenoiseNode API, temporal SSR, timestamps, GSplat arrival/sort, Inspector capture, Frame Graph, and seam/audio/water interaction references.",
+      "links": [
+        {
+          "label": "three.js PRs",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Codrops hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命は『SVGF Seam Memory Score』。ポインタで視点と継ぎ目を動かし、click/Spaceで照明cutを注入、1〜4で入力ノイズ／履歴／エッジゲート／合成を切り替える。次に実装へ足すなら、実sceneのmotion vector、depth、normal、historyResetReasonを渡して、履歴を残す条件を作品固有のルールにする。",
+      "bodyEn": "Try the SVGF Seam Memory Score: move the pointer, inject a light cut, and inspect input/history/edge/composite. Next feed real motion vectors, depth, normals and reset reasons.",
+      "links": [
+        {
+          "label": "open prototype",
+          "url": "../outputs/2026-11-07_svgf_seam_memory_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: SVGF、world-scale bump、compute待機、GSplat到着、seam/audio参照を継続収集。アイデア検討: 11/06のversion-gated lightを、historyの許可/拒否と表面勾配の音階へ接続。サンプル実装: 本命はSVGFの継ぎ目、派生は高さ・勾配・光の分離を実装済み。結果の検証: 実rendererでhistory invalidation率、ghost持続時間、compile待機、傾斜別のbump強度を採取する。短期=本命の実scene接続、中長期=XR gaze+audio+GSplatの到着劇。",
+      "bodyEn": "Research continues; ideation connects version-gated light to history permission and surface pitch; two samples are built; validate reset/ghost/compile/slope metrics. Short-term real-scene wiring, long-term XR/audio/GSplat staging."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近は『品質を上げる仕組み』そのものが、履歴、到着、計測、更新という時間表現を持ちはじめている。10月のLOD・MRT・probe・timestamp、11/01-06のtexture/env/version/taskは、今日のSVGFで一本の『状態が光へ変換される』線になる。高く育てる価値があるのは、renderer telemetryを隠さず、視線・音・スクロールで残像の寿命と到着優先度を演出化する共通スコア。",
+      "bodyEn": "Quality systems now contain time. October LOD/MRT/probe/timing and November texture/version/task work converge into a score that turns renderer state into light; grow a telemetry-to-afterimage system driven by gaze, sound and scroll."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "選定: 本命は `outputs/2026-11-07_svgf_seam_memory_score.html`。依存なしCanvasで、ノイジー入力・20フレームの履歴・継ぎ目のエッジゲートを別々に観察できる。派生は `outputs/2026-11-07_worldscale_bump_rhythm.html`。高さ・勾配・光を1〜4で分離し、ポインタで実ワールド尺度風の周波数、click/Spaceでrelief beatを確認できる。次は前者に実G-buffer、後者にAudioContext FFTまたは地形heightmapを渡す。",
+      "bodyEn": "Selected: a dependency-free SVGF seam prototype and a world-scale bump study. Next feed real G-buffer data into the first, and FFT or a terrain heightmap into the second.",
+      "links": [
+        {
+          "label": "SVGF Seam Memory Score",
+          "url": "../outputs/2026-11-07_svgf_seam_memory_score.html"
+        },
+        {
+          "label": "World-scale Bump Rhythm",
+          "url": "../outputs/2026-11-07_worldscale_bump_rhythm.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命が持つpointer位置、cut時刻、history年齢、継ぎ目位置は、カメラ、MediaPipeの顔向き、WebXR gaze、音のonsetに置換できる。派生の高さ・勾配・光量は、都市の標高、商品の表面スキャン、ライブ映像のluma、楽曲のスペクトルとして読める。二つを合わせると、観客の注視でだけ壁面の微細な凹凸と過去の照明が立ち上がる展示、または粗LODの都市が音に応じて彫刻化するブランド導入へ展開できる。",
+      "bodyEn": "Pointer/cut/history data can become camera, face, gaze or audio input; height/gradient/light can encode terrain, scans, video luma or spectra. Together they support gaze-revealed installations or an audio-carved progressive city."
+    }
+  ]
+}
