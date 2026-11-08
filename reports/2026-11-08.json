@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-08",
+  "headline": "復帰するGPU状態を、照明の再点火と音の残響として扱う",
+  "headlineEn": "Turn recovered GPU state into relit space and audio resonance",
+  "summary": "Babylon.js 9.35 のcontext loss時のWebGL sampler保持とInspector Liteの音声観測、three.js r187のPMREM／BatchedMesh改善、PlayCanvas 2.23.3を起点に、失われて再構築される描画状態を空間演出へ変換する。11/07のSVGF履歴テーマを、復帰・再seed・音のonsetまで広げる。",
+  "summaryEn": "Babylon's context-loss sampler fix and audio inspection, plus three.js r187 and PlayCanvas 2.23.3, extend temporal memory into a visible recovery and onset score.",
+  "links": [
+    {
+      "label": "Babylon.js 9.35.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.35.0"
+    },
+    {
+      "label": "three.js r187 release",
+      "url": "https://github.com/mrdoob/three.js/releases/tag/r187"
+    },
+    {
+      "label": "PlayCanvas Engine v2.23.3",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+    },
+    {
+      "label": "Codrops: Infinite Loom",
+      "url": "https://tympanus.net/codrops/2026/09/05/building-an-infinite-loom-unravelling-images-into-threads-with-three-js/"
+    },
+    {
+      "label": "本命試作: Context Recovery Light Score",
+      "url": "../outputs/2026-11-08_context_recovery_light_score.html"
+    },
+    {
+      "label": "派生試作: Audio Inspector Resonance",
+      "url": "../outputs/2026-11-08_audio_inspector_resonance.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) Babylon.js 9.35.0 はcontext loss中にコンパイルされたWebGL effectのsamplerが落ちる問題を修正し、ProceduralTexture/HDRIフィルタ/DynamicTextureのGPU資源解放も整理した。2) 同版のInspector Liteはaudio engine inspectionを追加。3) three.js r187はPMREMをCubeUV atlasからcube render targetsへ置換し、BatchedMeshの前フレーム行列リークやdraw rangeも修正。4) PlayCanvas 2.23.3はrender containerの警告発火をpreload開始時だけに限定。5) CodropsのInfinite Loomは画像を糸と流れへ変換する、状態変化を物質にする好例。",
+      "bodyEn": "Babylon 9.35 fixes sampler/state loss and adds audio inspection; three.js r187 improves PMREM and BatchedMesh lifetime; PlayCanvas 2.23.3 narrows a preload warning; Infinite Loom makes image state into material flow.",
+      "links": [
+        {
+          "label": "Babylon 9.35",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.35.0"
+        },
+        {
+          "label": "three.js r187",
+          "url": "https://github.com/mrdoob/three.js/releases/tag/r187"
+        },
+        {
+          "label": "PlayCanvas 2.23.3",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.23.3"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "context lossの本質は画面が一瞬暗くなることではなく、テクスチャ・sampler・履歴・shaderが別々の寿命を持つことだ。これを隠すのでなく、復帰順を『空間が再び息をする順番』にできる。Infinite Loomの糸のように、欠けた期間をノイズや線ではなく、再接続される光の繊維として残す。Inspectorの音声観測も、GPU計測だけに閉じずonsetを復帰のトリガーにできる。",
+      "bodyEn": "Context recovery has separate lifetimes for textures, samplers, history and shaders. Treat their return order as space breathing back; use audio onset as a recovery trigger.",
+      "links": [
+        {
+          "label": "Codrops Playground",
+          "url": "https://tympanus.net/codrops/category/playground/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『復帰する照明譜』: click、gaze逸脱、またはXR session再開で、source→retained sampler→rebuild waveの順に光が戻る。本命として実装済み。B.『音声Inspectorの残響』: 音のonsetを帯域ごとの凍結線として貯め、復帰とともに薄くほどく。派生として実装済み。C.『PMREMの部屋替え』: 環境マップのmip/face更新を、部屋の角から別の時刻が漏れる演出にする。短期はA+Bを実sceneのイベントへ接続、中長期はCをXRの空間アンカーへ。",
+      "bodyEn": "Prototype a recovery light score and an audio-inspector resonance now; grow PMREM face/mip changes into an XR room-transition system.",
+      "links": [
+        {
+          "label": "Context Recovery Light Score",
+          "url": "../outputs/2026-11-08_context_recovery_light_score.html"
+        },
+        {
+          "label": "Audio Inspector Resonance",
+          "url": "../outputs/2026-11-08_audio_inspector_resonance.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "復帰処理は単一の『ready』に畳まず、contextEpoch、programReady、textureReady、samplerReady、historySeeded、envVersionを分けて記録する。WebGLではwebglcontextlost/restoredで描画停止とpreventDefaultを明示し、GPUオブジェクトは復元可能なCPU側記述から再作成する。three.jsのPMREM／BatchedMeshを使う場合は、環境更新とdraw range更新の直後にhistoryを無条件で信用しない。Babylon Inspector Liteのaudio観測はonset、RMS、capture IDを共通state scoreへ渡す入口になる。",
+      "bodyEn": "Do not collapse recovery into one ready flag: track context epoch, program/texture/sampler readiness, seeded history and environment version. Rebuild GPU objects from CPU descriptors and gate temporal history after environment or draw-range changes.",
+      "links": [
+        {
+          "label": "WebGL context loss specification",
+          "url": "https://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2"
+        },
+        {
+          "label": "three.js migration guide",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide#186--187"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのr188以降におけるtimestamp query、compile同期、SVGF/SSR履歴のAPI変化を追う。Babylonは9.35のcontext-loss修正がWebGL/WebGPUの両方でどの復元順を採るか、Inspector Liteのaudio inspectionがどこまでデータを出すかを見る。PlayCanvasはGSplat LODの到着、render container preload、環境再投影を継続監視。表現側はCodropsの糸、ガラス、音反応を『資源復帰の可視化』として読む。",
+      "bodyEn": "Watch timestamp/compile/history APIs, Babylon recovery ordering and audio inspection output, PlayCanvas LOD/preload/environment work, and creative thread/glass/audio studies."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命は `outputs/2026-11-08_context_recovery_light_score.html`。ポインタで残る光の位置を決め、click/Spaceでcontext loss→sampler残留→再構築波を再生、1〜4で層を分解する。次は実際のWebGL context-lossテストに接続し、復帰の実測時間を波の長さへ入れる。",
+      "bodyEn": "Try Context Recovery Light Score: move, trigger recovery with click/Space, and isolate source/sampler/rebuild/composite. Next map real recovery timing to the wave.",
+      "links": [
+        {
+          "label": "open prototype",
+          "url": "../outputs/2026-11-08_context_recovery_light_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: context loss、sampler、PMREM、audio inspection、糸状WebGL事例を収集。アイデア検討: 11/07のhistory acceptance/rejectionを、復帰順とonsetの演出規則へ接続。サンプル実装: 本命Aと派生Bを依存なしCanvasで実装済み。結果の検証: 実rendererでcontextEpoch、復帰ms、program/texture/sampler ready、history reseed数、onsetから可視化までの遅延を採取する。短期=Aを実WebGL復元へ、中長期=XR gaze/audio/PMREMを統合。",
+      "bodyEn": "Research recovery and audio; connect prior history gating to recovery order; two Canvas prototypes are built; validate epochs, readiness timing, reseeds and onset latency. Wire WebGL next, grow XR/audio/PMREM later."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD・probe・timestampから11月のversion gate・SVGFへ続いた線は、今日『状態の寿命』に収束する。品質が完全になるまで待つのでなく、各資源が戻る順番を観客が読める素材へ変えるのが筋が良い。特に育てる価値が高いのは、renderer telemetry（変更、待機、復帰、計測）を、音のonsetと視線の優先度で再編曲する共通スコア。カードUIは引き続き別スレッドへ置き、ここでは空間・光・粒子・後処理に集中する。",
+      "bodyEn": "The line from LOD/probes/timestamps through version gating and SVGF converges on state lifetime. Grow a common score that orchestrates renderer telemetry with audio onset and gaze priority, while keeping this track spatial and non-card-based."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidates",
+      "body": "選定した本命は `outputs/2026-11-08_context_recovery_light_score.html`。光源、保持されたsampler粒子、再構築波を分離し、click/Spaceで0.95秒の復帰を観察する。派生は `outputs/2026-11-08_audio_inspector_resonance.html`。ポインタで帯域を選び、click/Spaceでonsetをcaptureし、スペクトル・残響・保存線を1〜4で切り替える。次に足すなら、本命へ実contextイベント、派生へAudioContext AnalyserNodeを加える。",
+      "bodyEn": "The selected main prototype isolates source, retained sampler particles and rebuild wave. The derived prototype captures an onset into spectrum, tail and retained lines. Next add real context events and AudioContext analyser data.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-08_context_recovery_light_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-08_audio_inspector_resonance.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命のpointer、context epoch、recovery age、rebuild laneは、WebXRのgaze、カメラの露出変化、ネットワーク到着、GSplat LODにも置換できる。派生の帯域、onset、capture列は、ライブ音楽、商品音、来場者の声、映像のluma変化と組み合わせられる。二つを合わせると、観客の注視と音で都市の反射や粒子が段階的に再点火する展示、またはページ遷移中にブランドの環境光が織り直されるWeb導入へ発展する。",
+      "bodyEn": "Pointer/epoch/recovery lanes can become gaze, exposure, network arrival or GSplat LOD; band/onset/capture data can use live sound, voice or video luma. Together they support relit installations or a woven environment-light web intro."
+    }
+  ]
+}

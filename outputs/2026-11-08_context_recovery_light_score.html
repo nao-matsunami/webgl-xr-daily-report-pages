@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Context Recovery Light Score</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#060711;color:#dfe9ff;font:12px ui-monospace,monospace}canvas{width:100%;height:100%;display:block}#hud{position:fixed;inset:18px auto auto 18px;line-height:1.6;letter-spacing:.04em;text-shadow:0 1px 10px #000}b{color:#9cecff}span{color:#ffd47a}</style>
+<canvas id="c"></canvas><div id="hud"><b>CONTEXT RECOVERY / LIGHT SCORE</b><br>move: shift the surviving light · click / Space: lose &amp; recover context<br><span>1 source · 2 retained sampler · 3 rebuild wave · 4 composite</span></div>
+<script>
+const c=document.querySelector('#c'),x=c.getContext('2d');let W,H,px=.5,py=.5,mode=4,cut=-9;
+function resize(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}addEventListener('resize',resize);resize();
+addEventListener('pointermove',e=>{px=e.clientX/innerWidth;py=e.clientY/innerHeight});addEventListener('pointerdown',()=>cut=performance.now()/1000);addEventListener('keydown',e=>{if(e.code==='Space')cut=performance.now()/1000;if(+e.key>0&&+e.key<5)mode=+e.key});
+function glow(cx,cy,r,col,a=1){let g=x.createRadialGradient(cx,cy,0,cx,cy,r);g.addColorStop(0,`rgba(${col},${a})`);g.addColorStop(.25,`rgba(${col},${a*.35})`);g.addColorStop(1,`rgba(${col},0)`);x.fillStyle=g;x.beginPath();x.arc(cx,cy,r,0,7);x.fill()}
+function loop(ms){let t=ms/1000,age=t-cut, recovering=Math.max(0,Math.min(1,age/.95));x.fillStyle='#060711';x.fillRect(0,0,innerWidth,innerHeight);
+  let sx=innerWidth*(.15+px*.7),sy=innerHeight*(.22+py*.56); if(mode!==3){glow(sx,sy,260,'55,180,255',age>0&&age<.95?(.35+recovering*.65):1);x.fillStyle='#c4f2ff';x.beginPath();x.arc(sx,sy,3,0,7);x.fill()}
+  if(mode!==1&&mode!==3){for(let i=0;i<90;i++){let a=i*2.399,r=18+Math.sqrt(i)*19,q=age>0&&age<.95?(1-recovering)*i*.12:0;let xx=sx+Math.cos(a+q)*r,yy=sy+Math.sin(a+q)*r*.52; x.fillStyle=`rgba(255,211,110,${.07+(i%7)/90})`;x.fillRect(xx,yy,2,2)}}
+  if(mode!==1&&mode!==2&&age>0&&age<1.5){for(let i=0;i<12;i++){let p=Math.max(0,Math.min(1,(age-i*.055)/.38));if(p>0){let yy=H/devicePixelRatio*.13+i*H/devicePixelRatio*.065;x.strokeStyle=`rgba(155,110,255,${(1-p)*.7})`;x.lineWidth=1+p*8;x.beginPath();x.moveTo(0,yy);x.lineTo(innerWidth*p,yy+Math.sin(i*3+t)*30);x.stroke()}}}
+  if(age>0&&age<.95){x.fillStyle=`rgba(255,246,226,${.8*(1-recovering)})`;x.fillText('CONTEXT LOST  →  shader + sampler state rebuilding',18,innerHeight-28)}else{x.fillStyle='rgba(180,220,255,.7)';x.fillText('sampler retained · history reseeded · recovery complete',18,innerHeight-28)}requestAnimationFrame(loop)}requestAnimationFrame(loop);
+</script></html>
