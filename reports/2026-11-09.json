@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-09",
+  "headline": "水面の物理とスプラットの収束を、見える時間素材へ変える",
+  "headlineEn": "Turn physical water and splat convergence into visible time material",
+  "summary": "three.jsのWater改善案とPlayCanvasのSteadySplats案を手掛かりに、波・反射・時間蓄積を待ち時間ではなく操作できる空間のリズムとして扱う。11/07–08の履歴・復帰テーマを、連続的な収束と水面の光へ接続する。",
+  "summaryEn": "three.js water work and PlayCanvas SteadySplats turn waves, reflection and temporal accumulation from waiting into an interactive spatial rhythm.",
+  "links": [
+    {
+      "label": "three.js Water physical realism PR #35370",
+      "url": "https://github.com/mrdoob/three.js/pull/35370"
+    },
+    {
+      "label": "PlayCanvas SteadySplats PR #9819",
+      "url": "https://github.com/playcanvas/engine/pull/9819"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops: Chasing the Moment",
+      "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+    },
+    {
+      "label": "本命試作: Dispersive Water Memory Score",
+      "url": "../outputs/2026-11-09_dispersive_water_memory_score.html"
+    },
+    {
+      "label": "派生試作: Steady Splat Convergence Garden",
+      "url": "../outputs/2026-11-09_steady_splat_convergence_garden.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.jsのdraft PR #35370は、追加pass/texture fetchを増やさず、回転した4オクターブ波、掠れ角の反射補正、距離フィルタGGXの太陽グリッタ、crestの散乱と屈折吸収をWater/Water2へ提案している。2) PlayCanvasのdraft PR #9819はWebGPU/WebGL2のSteadySplatsを提案し、空間再標本化と時間蓄積で静止時に既定16フレーム収束させる。3) Babylon.js 9.32系はInspector Liteのdebug/captureとGPU performance inspectionを持ち、収束の計測・記録の入口になる。4) CodropsのWebfilm事例は、長いsceneの品質変化をカットや叙事へ変える参考になる。",
+      "bodyEn": "A three.js water proposal adds multi-scale waves and physically motivated reflection without extra passes; PlayCanvas proposes 16-frame SteadySplats convergence; Babylon Inspector Lite can observe the result; browser webfilms provide the narrative reference.",
+      "links": [
+        {
+          "label": "three.js PR #35370",
+          "url": "https://github.com/mrdoob/three.js/pull/35370"
+        },
+        {
+          "label": "PlayCanvas PR #9819",
+          "url": "https://github.com/playcanvas/engine/pull/9819"
+        },
+        {
+          "label": "Babylon 9.32.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "#35370が面白いのは、見栄えを増すためにpassを重ねるのでなく、波の速度・反射の歪み・視線角という少数の変数を整理している点。#9819は逆に、ノイズを一度に消すのではなく、停止後に画像が落ち着く時間を持たせる。前者を『光が揺れる時間』、後者を『像が決まる時間』として連結すると、読み込みや履歴を隠さない静かな空間演出になる。",
+      "bodyEn": "Water realism comes from better variables rather than more passes, while SteadySplats lets an image settle after motion. Their two timescales can form a quiet visible transition.",
+      "links": [
+        {
+          "label": "Chasing the Moment case study",
+          "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『分散する水面記憶』: 視線の低さで反射を縦に締め、click/gazeでcrestを打つ。本命として実装済み。B.『収束するスプラット庭園』: カメラ停止後の16フレームを花粉が像を結ぶ時間として見せ、移動/音onsetでhistoryをresetする。派生として実装済み。C.『雨後の都市』: GSplatのcoarse arrivalを水たまりの反射から始め、精細LOD到着で建物が反射面から立ち上がる。短期はA/Bを実scene telemetryへ、中長期はCをXR散歩へ育てる。",
+      "bodyEn": "Built: a dispersive water memory score and a converging splat garden. Next combine coarse-to-fine city arrival with puddle reflections for XR.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-09_dispersive_water_memory_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-09_steady_splat_convergence_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "水面ではwave phaseを大/中/小の別周期で回し、view elevationに応じてreflection normalの横方向摂動を弱めると地平線の破綻を避けやすい。GGXやBeer–Lambertを実装する前でも、crest mask・Fresnel・distance roughnessを別のuniformにしておく。SteadySplats系はhistoryWeightだけでなく、camera cut、外部shader入力、depth/normal差、view条件不適合をreset reasonとしてログ化する。WebGL2 MRTの可否とrender targetメモリも先に確認する。",
+      "bodyEn": "Separate wave phases, grazing reflection perturbation, crest mask, Fresnel and distance roughness. For temporal splats, log reset reasons and verify WebGL2 MRT capability and memory.",
+      "links": [
+        {
+          "label": "Khronos WebGL 2 specification",
+          "url": "https://registry.khronos.org/webgl/specs/latest/2.0/"
+        },
+        {
+          "label": "PlayCanvas Engine releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35370のreview/merge状況とWater2のflow-map挙動、PlayCanvas #9819のbrowser/GPU追加検証とAPI確定を追う。BabylonのInspector Liteはcapture結果を時間軸で取り出せるか、Gaussian Splat/Frame Graph側で同じ履歴reasonを扱えるかを確認する。表現側は水、ガラス、都市、webfilmのカット設計を継続監視する。",
+      "bodyEn": "Watch water PR review, SteadySplats browser/GPU validation and API, Babylon capture export, and water/glass/city webfilm references."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命は `outputs/2026-11-09_dispersive_water_memory_score.html`。ポインタで視線角と流れを変え、click/Spaceでcrestの打撃を入れ、1〜4で波・反射・散乱・合成を分解する。次はthree.js PlaneGeometryへ移し、実カメラ高さをelevationへ、audio onsetをcrestへ接続する。",
+      "bodyEn": "Try the water score: move, strike with click/Space, isolate spectrum/reflection/scatter/composite. Next map real camera height and audio onset.",
+      "links": [
+        {
+          "label": "open prototype",
+          "url": "../outputs/2026-11-09_dispersive_water_memory_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: water spectrum、GGX、SteadySplats、Inspector capture、webfilmを収集。アイデア検討: 11/07のhistory acceptanceと11/08のrecoveryを、連続的な収束/波の物語へ接続。サンプル実装: AとBを依存なしHTMLで実装済み。結果の検証: wave phase、view elevation、Fresnel、history reset reason、convergence frame、GPU ms、MRT bytesを採取する。短期=Aをthree.js sceneへ、中長期=CをGSplat/XRへ。",
+      "bodyEn": "Research water, convergence and capture; connect prior temporal history/recovery; two dependency-free samples are built; validate wave and history telemetry; grow from three.js to GSplat/XR."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD/probe/timestamp、11月のversion gate/SVGF/context復帰を並べると、次の核は『品質が時間を持つ』こと。水面は空間的な時間差、SteadySplatsは時間的な空間差を与える。両者を同じstate score（camera motion、history age、LOD arrival、onset、GPU budget）で鳴らす価値が高い。カードUIは引き続き別スレッドに置き、この軸は光・粒子・反射・後処理へ集中する。",
+      "bodyEn": "The durable thread is quality with duration: water spatializes time while SteadySplats temporalizes space. A common state score should join motion, history age, LOD arrival, onset and budget."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命は `outputs/2026-11-09_dispersive_water_memory_score.html`。raw WebGL/GLSLで4オクターブ風の波、Fresnel反射、crest散乱、入力ringを最小構成で確認できる。派生は `outputs/2026-11-09_steady_splat_convergence_garden.html`。Canvasでノイズ→空間reuse→時間収束を1〜4で切り替え、click/Spaceでhistoryをresetする。次に足すなら、本命へ音解析、派生へ実GSplat frame dataを渡す。",
+      "bodyEn": "The raw WebGL main tests waves, reflection and crest scattering; the Canvas derivative shows noisy samples, reuse and temporal settlement. Next add audio analysis and real GSplat frames.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-09_dispersive_water_memory_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-09_steady_splat_convergence_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命のpointer/view elevation/wave phase/crest onsetは、ジャイロ、WebXR gaze、風センサー、音、映像のmotion vectorへ差し替えられる。派生のhistory age/convergence frame/resetは、GSplat LOD到着、ネットワークpacket、顔/手の移動量、来場者の滞留時間として使える。二つを合わせれば、観客が止まるほど水面に都市の像が収束し、動くと反射がほどけるインスタレーション、またはブランド映像が音とスクロールで『解像する』Web導入になる。",
+      "bodyEn": "Water inputs can be gyro, gaze, wind, audio or video motion; convergence data can be LOD arrival, packets, tracking or dwell. Together they support a city-reflection installation or a resolving brand-web intro."
+    }
+  ]
+}

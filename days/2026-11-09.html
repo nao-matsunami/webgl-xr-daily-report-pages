@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>水面の物理とスプラットの収束を、見える時間素材へ変える | 2026-11-09</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.09</p>
+      <h1>水面の物理とスプラットの収束を、見える時間素材へ変える</h1>
+      <p class="hero-subtitle">Turn physical water and splat convergence into visible time material</p>
+      <p>three.jsのWater改善案とPlayCanvasのSteadySplats案を手掛かりに、波・反射・時間蓄積を待ち時間ではなく操作できる空間のリズムとして扱う。11/07–08の履歴・復帰テーマを、連続的な収束と水面の光へ接続する。</p>
+      <p class="en-copy">three.js water work and PlayCanvas SteadySplats turn waves, reflection and temporal accumulation from waiting into an interactive spatial rhythm.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-09_steady_splat_convergence_garden.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-08.html">← 2026.11.08</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Steady Splat Convergence Garden</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-09_steady_splat_convergence_garden.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Dispersive Water Memory Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-09_dispersive_water_memory_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.jsのdraft PR #35370は、追加pass/texture fetchを増やさず、回転した4オクターブ波、掠れ角の反射補正、距離フィルタGGXの太陽グリッタ、crestの散乱と屈折吸収をWater/Water2へ提案している。2) PlayCanvasのdraft PR #9819はWebGPU/WebGL2のSteadySplatsを提案し、空間再標本化と時間蓄積で静止時に既定16フレーム収束させる。3) Babylon.js 9.32系はInspector Liteのdebug/captureとGPU performance inspectionを持ち、収束の計測・記録の入口になる。4) CodropsのWebfilm事例は、長いsceneの品質変化をカットや叙事へ変える参考になる。</p>
+          <p class="en-copy">A three.js water proposal adds multi-scale waves and physically motivated reflection without extra passes; PlayCanvas proposes 16-frame SteadySplats convergence; Babylon Inspector Lite can observe the result; browser webfilms provide the narrative reference.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35370" target="_blank" rel="noreferrer">three.js PR #35370</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9819" target="_blank" rel="noreferrer">PlayCanvas PR #9819</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0" target="_blank" rel="noreferrer">Babylon 9.32.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why</span></span></h2>
+          <p>#35370が面白いのは、見栄えを増すためにpassを重ねるのでなく、波の速度・反射の歪み・視線角という少数の変数を整理している点。#9819は逆に、ノイズを一度に消すのではなく、停止後に画像が落ち着く時間を持たせる。前者を『光が揺れる時間』、後者を『像が決まる時間』として連結すると、読み込みや履歴を隠さない静かな空間演出になる。</p>
+          <p class="en-copy">Water realism comes from better variables rather than more passes, while SteadySplats lets an image settle after motion. Their two timescales can form a quiet visible transition.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Chasing the Moment case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A.『分散する水面記憶』: 視線の低さで反射を縦に締め、click/gazeでcrestを打つ。本命として実装済み。B.『収束するスプラット庭園』: カメラ停止後の16フレームを花粉が像を結ぶ時間として見せ、移動/音onsetでhistoryをresetする。派生として実装済み。C.『雨後の都市』: GSplatのcoarse arrivalを水たまりの反射から始め、精細LOD到着で建物が反射面から立ち上がる。短期はA/Bを実scene telemetryへ、中長期はCをXR散歩へ育てる。</p>
+          <p class="en-copy">Built: a dispersive water memory score and a converging splat garden. Next combine coarse-to-fine city arrival with puddle reflections for XR.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-09_dispersive_water_memory_score.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-09_steady_splat_convergence_garden.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>水面ではwave phaseを大/中/小の別周期で回し、view elevationに応じてreflection normalの横方向摂動を弱めると地平線の破綻を避けやすい。GGXやBeer–Lambertを実装する前でも、crest mask・Fresnel・distance roughnessを別のuniformにしておく。SteadySplats系はhistoryWeightだけでなく、camera cut、外部shader入力、depth/normal差、view条件不適合をreset reasonとしてログ化する。WebGL2 MRTの可否とrender targetメモリも先に確認する。</p>
+          <p class="en-copy">Separate wave phases, grazing reflection perturbation, crest mask, Fresnel and distance roughness. For temporal splats, log reset reasons and verify WebGL2 MRT capability and memory.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://registry.khronos.org/webgl/specs/latest/2.0/" target="_blank" rel="noreferrer">Khronos WebGL 2 specification</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35370のreview/merge状況とWater2のflow-map挙動、PlayCanvas #9819のbrowser/GPU追加検証とAPI確定を追う。BabylonのInspector Liteはcapture結果を時間軸で取り出せるか、Gaussian Splat/Frame Graph側で同じ履歴reasonを扱えるかを確認する。表現側は水、ガラス、都市、webfilmのカット設計を継続監視する。</p>
+          <p class="en-copy">Watch water PR review, SteadySplats browser/GPU validation and API, Babylon capture export, and water/glass/city webfilm references.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命は `outputs/2026-11-09_dispersive_water_memory_score.html`。ポインタで視線角と流れを変え、click/Spaceでcrestの打撃を入れ、1〜4で波・反射・散乱・合成を分解する。次はthree.js PlaneGeometryへ移し、実カメラ高さをelevationへ、audio onsetをcrestへ接続する。</p>
+          <p class="en-copy">Try the water score: move, strike with click/Space, isolate spectrum/reflection/scatter/composite. Next map real camera height and audio onset.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-09_dispersive_water_memory_score.html" target="_blank" rel="noreferrer">open prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: water spectrum、GGX、SteadySplats、Inspector capture、webfilmを収集。アイデア検討: 11/07のhistory acceptanceと11/08のrecoveryを、連続的な収束/波の物語へ接続。サンプル実装: AとBを依存なしHTMLで実装済み。結果の検証: wave phase、view elevation、Fresnel、history reset reason、convergence frame、GPU ms、MRT bytesを採取する。短期=Aをthree.js sceneへ、中長期=CをGSplat/XRへ。</p>
+          <p class="en-copy">Research water, convergence and capture; connect prior temporal history/recovery; two dependency-free samples are built; validate wave and history telemetry; grow from three.js to GSplat/XR.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月のLOD/probe/timestamp、11月のversion gate/SVGF/context復帰を並べると、次の核は『品質が時間を持つ』こと。水面は空間的な時間差、SteadySplatsは時間的な空間差を与える。両者を同じstate score（camera motion、history age、LOD arrival、onset、GPU budget）で鳴らす価値が高い。カードUIは引き続き別スレッドに置き、この軸は光・粒子・反射・後処理へ集中する。</p>
+          <p class="en-copy">The durable thread is quality with duration: water spatializes time while SteadySplats temporalizes space. A common state score should join motion, history age, LOD arrival, onset and budget.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命は `outputs/2026-11-09_dispersive_water_memory_score.html`。raw WebGL/GLSLで4オクターブ風の波、Fresnel反射、crest散乱、入力ringを最小構成で確認できる。派生は `outputs/2026-11-09_steady_splat_convergence_garden.html`。Canvasでノイズ→空間reuse→時間収束を1〜4で切り替え、click/Spaceでhistoryをresetする。次に足すなら、本命へ音解析、派生へ実GSplat frame dataを渡す。</p>
+          <p class="en-copy">The raw WebGL main tests waves, reflection and crest scattering; the Canvas derivative shows noisy samples, reuse and temporal settlement. Next add audio analysis and real GSplat frames.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-09_dispersive_water_memory_score.html" target="_blank" rel="noreferrer">main</a></li>
+          
+            <li><a href="../outputs/2026-11-09_steady_splat_convergence_garden.html" target="_blank" rel="noreferrer">derived</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Sample data possibilities and combinations</span></span></h2>
+          <p>本命のpointer/view elevation/wave phase/crest onsetは、ジャイロ、WebXR gaze、風センサー、音、映像のmotion vectorへ差し替えられる。派生のhistory age/convergence frame/resetは、GSplat LOD到着、ネットワークpacket、顔/手の移動量、来場者の滞留時間として使える。二つを合わせれば、観客が止まるほど水面に都市の像が収束し、動くと反射がほどけるインスタレーション、またはブランド映像が音とスクロールで『解像する』Web導入になる。</p>
+          <p class="en-copy">Water inputs can be gyro, gaze, wind, audio or video motion; convergence data can be LOD arrival, packets, tracking or dwell. Together they support a city-reflection installation or a resolving brand-web intro.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35370" target="_blank" rel="noreferrer">three.js Water physical realism PR #35370</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9819" target="_blank" rel="noreferrer">PlayCanvas SteadySplats PR #9819</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Codrops: Chasing the Moment</a></li>
+          
+            <li><a href="../outputs/2026-11-09_dispersive_water_memory_score.html" target="_blank" rel="noreferrer">本命試作: Dispersive Water Memory Score</a></li>
+          
+            <li><a href="../outputs/2026-11-09_steady_splat_convergence_garden.html" target="_blank" rel="noreferrer">派生試作: Steady Splat Convergence Garden</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-09_steady_splat_convergence_garden.html" loading="lazy" title="Steady Splat Convergence Garden"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
