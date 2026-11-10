@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>再生成された描画面と、収束するスプラットを同じ反射の時間軸に置く | 2026-11-10</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.10</p>
+      <h1>再生成された描画面と、収束するスプラットを同じ反射の時間軸に置く</h1>
+      <p class="hero-subtitle">Put rebuilt render surfaces and converging splats on one reflective timeline</p>
+      <p>Babylon.jsの破棄済みGPUテクスチャ対策、PlayCanvasのSteadySplatsと安定ソート、three.jsの水面物理表現を接続し、リサイズ・復帰・収束を隠す待機ではなく、反射が像を結ぶ時間として扱う。11/09の水面／収束案を継続し、2本の操作可能な最小試作へ落とした。</p>
+      <p class="en-copy">Babylon texture recovery, PlayCanvas steady splats and three.js water work become a single visible reflection-and-settling timeline.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-10_stable_splat_reflection_orbit.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-09.html">← 2026.11.09</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Stable Splat Reflection Orbit</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-10_stable_splat_reflection_orbit.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Resize Recovery Waterglass Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-10_resize_recovery_waterglass_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) Babylon.js のPR #19123は、InternalTexture.updateSize後に破棄済みGPUテクスチャをWebGPU drawで使わないようにする修正案。2) PlayCanvasの#9819はWebGPU/WebGL2で静止時に既定16フレームの空間再利用＋時間蓄積を行うSteadySplatsを提案。3) #9553の同一GSplat sort keyを毎フレーム同順で解決する修正は、反射やafterimageのちらつきを減らす基盤になる。4) three.js #35370の水面案は、追加passを増やさず波・掠れ角反射・距離フィルタGGXを整理する。</p>
+          <p class="en-copy">Babylon protects resized textures; PlayCanvas proposes 16-frame steady splats and deterministic sorting; three.js continues physical water work.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19123" target="_blank" rel="noreferrer">Babylon #19123</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9819" target="_blank" rel="noreferrer">PlayCanvas #9819</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35370" target="_blank" rel="noreferrer">three.js #35370</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why</span></span></h2>
+          <p>破棄と再確保は通常はエラー回避の内部処理だが、反射・水・ガラスの作品では『画面が一瞬だけ新しい容器になる』転換にできる。SteadySplatsの停止後の収束と安定ソートを重ねれば、観客が止まるほど像が確定し、動くと水面へほどける。CodropsのWebfilm的なカット設計を、この品質変化に当てる価値がある。</p>
+          <p class="en-copy">Recovery can become a visible scene cut; stable temporal splats let a reflection resolve when the visitor stops.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Codrops: Chasing the Moment</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A.『Waterglass Recovery』: リサイズ／context復帰を輪郭の再鋳造と水面反射の再点火にする（本命）。B.『Stable Reflection Orbit』: 視線が止まるとスプラット星座の反射が16フレームで定着し、動くと散る（派生）。C.『雨後のXR広場』: coarse LODを水たまりに先着させ、fine LODを建物の反射として立ち上げる。短期はA/Bへ実telemetry、中長期はCをWebXR散歩へ。</p>
+          <p class="en-copy">Built: recovery waterglass and stable reflection orbit; grow them into a coarse-to-fine XR plaza.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-10_resize_recovery_waterglass_score.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-10_stable_splat_reflection_orbit.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>resize/context復帰は generation番号を持たせ、old targetを同フレームで参照しない。`targetGeneration`, `textureId`, `resizeAt`, `rebuildMs`, `deviceLost`を記録する。SteadySplats側は`historyAge`, `resetReason`, `cameraVelocity`, `sortKeyTieCount`, `visibleSplats`を同じstate textureへ置く。反射はhistoryをそのまま混ぜず、depth/normal差とmotionでrejectする。WebGL2ではMRT数・render target bytesを先に予算化する。</p>
+          <p class="en-copy">Version targets and log recovery; log history, motion and sort ties; reject reflection history by depth/normal/motion.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://registry.khronos.org/webgl/specs/latest/2.0/" target="_blank" rel="noreferrer">Khronos WebGL 2 specification</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU/webGPUStatus.md" target="_blank" rel="noreferrer">Babylon WebGPU status</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>Babylon #19123のmergeとresize test範囲、PlayCanvas #9819のAPI／各GPU検証、#9553のsort安定化がtemporal accumulationに与える効果、three.js #35370のreviewを追う。Babylon WebGPUの非同期pipeline作成・indirect draw提案も、復帰をカットにする制作と接続する。</p>
+          <p class="en-copy">Watch merge/API/GPU validation for recovery, steady splats, sorting and physical water.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命の `outputs/2026-11-10_resize_recovery_waterglass_score.html` を開く。ポインタで新しい描画面の大きさを変え、click/Spaceで再構築pulse、1〜4で旧target／rebuild／反射relay／合成を切り替える。次は実three.js render target resizeとaudio onsetへ接続する。</p>
+          <p class="en-copy">Try the recovery score: resize with pointer, trigger rebuild, inspect four stages; next connect a real three.js target and audio onset.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-10_resize_recovery_waterglass_score.html" target="_blank" rel="noreferrer">open prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: #19123、#9819、#9553、#35370、Webfilmを収集。アイデア検討: 11/09の水面記憶／収束をresize復帰へ接続。サンプル実装: AとBを依存なしHTMLで実装済み。結果の検証: target世代、rebuild ms、history age、sort tie、GPU ms、反射reject率を採取。継続=水面／収束／history、 新規=回復surface、寝かせる=カードUIと重い外部asset。</p>
+          <p class="en-copy">Research is collected, two samples are built, and telemetry is defined; keep water/history, start recovery surface, park cards/heavy assets.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月のLOD・probe・timestamp、11月のSVGF・context復帰・水面を並べると、核は『品質がいつ確定したか』を見せること。LOD到着、texture再生成、temporal convergeはどれも空間が一度ほどけ、再び像を持つ現象である。反射／粒子／音onset／視線停止を共通のstate scoreへ入れるテーマを育てる価値が高い。</p>
+          <p class="en-copy">The durable theme is making quality settlement visible: LOD arrival, texture recovery and temporal convergence are one score.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 `outputs/2026-11-10_resize_recovery_waterglass_score.html` はCanvasで旧面・rebuild輪郭・waterglass relayを操作できる。派生 `outputs/2026-11-10_stable_splat_reflection_orbit.html` は、ポインタ移動でhistoryをresetし、停止で16フレーム相当の定着を見せる。次に足すなら前者へWebGL framebuffer、後者へ実GSplat sort/historical colorを渡す。</p>
+          <p class="en-copy">The main is an interactive recovery-waterglass score; the derivative shows 16-step stable splat settling.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-10_resize_recovery_waterglass_score.html" target="_blank" rel="noreferrer">main</a></li>
+          
+            <li><a href="../outputs/2026-11-10_stable_splat_reflection_orbit.html" target="_blank" rel="noreferrer">derived</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Sample data possibilities and combinations</span></span></h2>
+          <p>Aのresize／generation／pulseは、ブラウザwindow、映像のscene cut、WebXR session restart、展示の照明cueに差し替えられる。Bのattention orbit／history age／sort安定度は、gaze、カメラ移動、ネットワークpacket、来場者の滞留、音のrestとして使える。二つを組み合わせれば、客が立ち止まるほど雨後の都市が水面から現れ、場面転換時はその像が再鋳造されるWeb導入・空間展示になる。</p>
+          <p class="en-copy">Recovery and convergence data can combine gaze, media cuts, XR restarts, packets and dwell into a resolving city-reflection installation.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19123" target="_blank" rel="noreferrer">Babylon.js PR #19123: destroyed texture draw fix</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9819" target="_blank" rel="noreferrer">PlayCanvas PR #9819: SteadySplats</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9553" target="_blank" rel="noreferrer">PlayCanvas PR #9553: stable equal GSplat sort</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35370" target="_blank" rel="noreferrer">three.js PR #35370: physical water</a></li>
+          
+            <li><a href="../outputs/2026-11-10_resize_recovery_waterglass_score.html" target="_blank" rel="noreferrer">本命試作: Resize Recovery Waterglass Score</a></li>
+          
+            <li><a href="../outputs/2026-11-10_stable_splat_reflection_orbit.html" target="_blank" rel="noreferrer">派生試作: Stable Splat Reflection Orbit</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-10_stable_splat_reflection_orbit.html" loading="lazy" title="Stable Splat Reflection Orbit"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

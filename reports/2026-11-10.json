@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-10",
+  "headline": "再生成された描画面と、収束するスプラットを同じ反射の時間軸に置く",
+  "headlineEn": "Put rebuilt render surfaces and converging splats on one reflective timeline",
+  "summary": "Babylon.jsの破棄済みGPUテクスチャ対策、PlayCanvasのSteadySplatsと安定ソート、three.jsの水面物理表現を接続し、リサイズ・復帰・収束を隠す待機ではなく、反射が像を結ぶ時間として扱う。11/09の水面／収束案を継続し、2本の操作可能な最小試作へ落とした。",
+  "summaryEn": "Babylon texture recovery, PlayCanvas steady splats and three.js water work become a single visible reflection-and-settling timeline.",
+  "links": [
+    {
+      "label": "Babylon.js PR #19123: destroyed texture draw fix",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/19123"
+    },
+    {
+      "label": "PlayCanvas PR #9819: SteadySplats",
+      "url": "https://github.com/playcanvas/engine/pull/9819"
+    },
+    {
+      "label": "PlayCanvas PR #9553: stable equal GSplat sort",
+      "url": "https://github.com/playcanvas/engine/pull/9553"
+    },
+    {
+      "label": "three.js PR #35370: physical water",
+      "url": "https://github.com/mrdoob/three.js/pull/35370"
+    },
+    {
+      "label": "本命試作: Resize Recovery Waterglass Score",
+      "url": "../outputs/2026-11-10_resize_recovery_waterglass_score.html"
+    },
+    {
+      "label": "派生試作: Stable Splat Reflection Orbit",
+      "url": "../outputs/2026-11-10_stable_splat_reflection_orbit.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) Babylon.js のPR #19123は、InternalTexture.updateSize後に破棄済みGPUテクスチャをWebGPU drawで使わないようにする修正案。2) PlayCanvasの#9819はWebGPU/WebGL2で静止時に既定16フレームの空間再利用＋時間蓄積を行うSteadySplatsを提案。3) #9553の同一GSplat sort keyを毎フレーム同順で解決する修正は、反射やafterimageのちらつきを減らす基盤になる。4) three.js #35370の水面案は、追加passを増やさず波・掠れ角反射・距離フィルタGGXを整理する。",
+      "bodyEn": "Babylon protects resized textures; PlayCanvas proposes 16-frame steady splats and deterministic sorting; three.js continues physical water work.",
+      "links": [
+        {
+          "label": "Babylon #19123",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/19123"
+        },
+        {
+          "label": "PlayCanvas #9819",
+          "url": "https://github.com/playcanvas/engine/pull/9819"
+        },
+        {
+          "label": "three.js #35370",
+          "url": "https://github.com/mrdoob/three.js/pull/35370"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "破棄と再確保は通常はエラー回避の内部処理だが、反射・水・ガラスの作品では『画面が一瞬だけ新しい容器になる』転換にできる。SteadySplatsの停止後の収束と安定ソートを重ねれば、観客が止まるほど像が確定し、動くと水面へほどける。CodropsのWebfilm的なカット設計を、この品質変化に当てる価値がある。",
+      "bodyEn": "Recovery can become a visible scene cut; stable temporal splats let a reflection resolve when the visitor stops.",
+      "links": [
+        {
+          "label": "Codrops: Chasing the Moment",
+          "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『Waterglass Recovery』: リサイズ／context復帰を輪郭の再鋳造と水面反射の再点火にする（本命）。B.『Stable Reflection Orbit』: 視線が止まるとスプラット星座の反射が16フレームで定着し、動くと散る（派生）。C.『雨後のXR広場』: coarse LODを水たまりに先着させ、fine LODを建物の反射として立ち上げる。短期はA/Bへ実telemetry、中長期はCをWebXR散歩へ。",
+      "bodyEn": "Built: recovery waterglass and stable reflection orbit; grow them into a coarse-to-fine XR plaza.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-10_resize_recovery_waterglass_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-10_stable_splat_reflection_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "resize/context復帰は generation番号を持たせ、old targetを同フレームで参照しない。`targetGeneration`, `textureId`, `resizeAt`, `rebuildMs`, `deviceLost`を記録する。SteadySplats側は`historyAge`, `resetReason`, `cameraVelocity`, `sortKeyTieCount`, `visibleSplats`を同じstate textureへ置く。反射はhistoryをそのまま混ぜず、depth/normal差とmotionでrejectする。WebGL2ではMRT数・render target bytesを先に予算化する。",
+      "bodyEn": "Version targets and log recovery; log history, motion and sort ties; reject reflection history by depth/normal/motion.",
+      "links": [
+        {
+          "label": "Khronos WebGL 2 specification",
+          "url": "https://registry.khronos.org/webgl/specs/latest/2.0/"
+        },
+        {
+          "label": "Babylon WebGPU status",
+          "url": "https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU/webGPUStatus.md"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "Babylon #19123のmergeとresize test範囲、PlayCanvas #9819のAPI／各GPU検証、#9553のsort安定化がtemporal accumulationに与える効果、three.js #35370のreviewを追う。Babylon WebGPUの非同期pipeline作成・indirect draw提案も、復帰をカットにする制作と接続する。",
+      "bodyEn": "Watch merge/API/GPU validation for recovery, steady splats, sorting and physical water."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命の `outputs/2026-11-10_resize_recovery_waterglass_score.html` を開く。ポインタで新しい描画面の大きさを変え、click/Spaceで再構築pulse、1〜4で旧target／rebuild／反射relay／合成を切り替える。次は実three.js render target resizeとaudio onsetへ接続する。",
+      "bodyEn": "Try the recovery score: resize with pointer, trigger rebuild, inspect four stages; next connect a real three.js target and audio onset.",
+      "links": [
+        {
+          "label": "open prototype",
+          "url": "../outputs/2026-11-10_resize_recovery_waterglass_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: #19123、#9819、#9553、#35370、Webfilmを収集。アイデア検討: 11/09の水面記憶／収束をresize復帰へ接続。サンプル実装: AとBを依存なしHTMLで実装済み。結果の検証: target世代、rebuild ms、history age、sort tie、GPU ms、反射reject率を採取。継続=水面／収束／history、 新規=回復surface、寝かせる=カードUIと重い外部asset。",
+      "bodyEn": "Research is collected, two samples are built, and telemetry is defined; keep water/history, start recovery surface, park cards/heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD・probe・timestamp、11月のSVGF・context復帰・水面を並べると、核は『品質がいつ確定したか』を見せること。LOD到着、texture再生成、temporal convergeはどれも空間が一度ほどけ、再び像を持つ現象である。反射／粒子／音onset／視線停止を共通のstate scoreへ入れるテーマを育てる価値が高い。",
+      "bodyEn": "The durable theme is making quality settlement visible: LOD arrival, texture recovery and temporal convergence are one score."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-10_resize_recovery_waterglass_score.html` はCanvasで旧面・rebuild輪郭・waterglass relayを操作できる。派生 `outputs/2026-11-10_stable_splat_reflection_orbit.html` は、ポインタ移動でhistoryをresetし、停止で16フレーム相当の定着を見せる。次に足すなら前者へWebGL framebuffer、後者へ実GSplat sort/historical colorを渡す。",
+      "bodyEn": "The main is an interactive recovery-waterglass score; the derivative shows 16-step stable splat settling.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-10_resize_recovery_waterglass_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-10_stable_splat_reflection_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "Aのresize／generation／pulseは、ブラウザwindow、映像のscene cut、WebXR session restart、展示の照明cueに差し替えられる。Bのattention orbit／history age／sort安定度は、gaze、カメラ移動、ネットワークpacket、来場者の滞留、音のrestとして使える。二つを組み合わせれば、客が立ち止まるほど雨後の都市が水面から現れ、場面転換時はその像が再鋳造されるWeb導入・空間展示になる。",
+      "bodyEn": "Recovery and convergence data can combine gaze, media cuts, XR restarts, packets and dwell into a resolving city-reflection installation."
+    }
+  ]
+}
