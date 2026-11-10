@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>過去フレームの反射を、天候が解像していく時間にする | 2026-11-11</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.11</p>
+      <h1>過去フレームの反射を、天候が解像していく時間にする</h1>
+      <p class="hero-subtitle">Make reflected history a weather system that resolves over time</p>
+      <p>three.js のTRAA Catmull-Rom履歴サンプリング、前フレーム放射輝度を使うSSR、雲ノイズの一回焼き込みを、昨日までの水面／収束案へ接続する。移動でほどけ、静止で空と反射が解像する演出を本命・派生の2本で検証した。</p>
+      <p class="en-copy">three.js temporal history, previous-frame SSR and baked cloud noise extend the water-and-convergence thread into a resolving weather reflection.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-11_velocity_reprojection_lanterns.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-10.html">← 2026.11.10</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Velocity Reprojection Lanterns</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-11_velocity_reprojection_lanterns.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Catmull Reflection Weather Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-11_catmull_reflection_weather_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js draft #35447 は、TRAAの履歴を単一bilinear fetchではなく既定5-tap Catmull-Romで読む `historySampling` を提案し、移動時の平均PSNRを +0.77 dB と報告している。2) #35430 はSSRで前フレームの放射輝度を速度・想定前depthで再投影し、4 bilinear tapをdepth妥当性でrejectする案。3) #35438 は厚み・self-shadowを持つ雲と、GPUで一度だけ512² mipmapped textureへ焼くノイズを提案。4) PlayCanvas #9819 の静止後16フレーム収束、Babylon #19024 のinstanced velocity修正は、履歴を作品で安全に扱う両端を補う。</p>
+          <p class="en-copy">three.js proposes sharper temporal history, reprojected SSR and one-time cloud-noise baking; PlayCanvas settlement and Babylon instance velocity complete the temporal stack.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35447" target="_blank" rel="noreferrer">TRAA #35447</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35430" target="_blank" rel="noreferrer">SSR #35430</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35438" target="_blank" rel="noreferrer">Sky #35438</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why</span></span></h2>
+          <p>#35447 は『履歴を残すほどぼやける』という時間表現の弱点を、選択可能な補間品質へ変える。#35430は反射の記憶を現在のscene colorから切り離し、velocity/depthで信頼度を決める。#35438の雲ノイズ焼き込みは、毎pixelで天気を再計算せず、ひとつの空の素材を静かに使い回す発想だ。これを11/09–10の水面・recoveryと結ぶと、止まるほど空の反射が定まり、場面転換では再び天候が組み直される。Codropsの音・ガラス・causticsを束ねる作品は、技術状態を物語の光へ置き換える参考になる。</p>
+          <p class="en-copy">Sharpened history, validated reprojection and cached sky material make temporal quality a controllable artistic cue.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/08/31/volatile-nexus-tinkering-with-glass-caustics-cubes-and-sound-in-three-js/" target="_blank" rel="noreferrer">Codrops: Volatile Nexus</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A.『Catmull Reflection Weather』: 視線の移動では水面の空が複数の履歴にほどけ、停止でくっきり戻る。本命として実装済み。B.『Velocity Reprojection Lanterns』: 移動するinstanced lantern群の過去位置を淡い灯りで示し、velocity不整合は赤いreject ringにする。派生として実装済み。C.『雨後のXR広場』: gaze停止で空・水たまり・coarse splatが同時に収束し、歩き出すと光だけが先に残る。短期はA/Bをthree.js telemetryへ、中長期はCをWebXR/GSplatへ。</p>
+          <p class="en-copy">Built: a weather-reflection score and velocity lanterns. Grow them into an XR plaza where stillness resolves sky, water and splats.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-11_catmull_reflection_weather_score.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-11_velocity_reprojection_lanterns.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>TRAAはbilinearとCatmull-Romを切替可能にし、camera velocity、history age、resample mode、reprojection reject率を表示用state textureにも残す。SSRの前フレームradianceはoff-screen/background/resized/depth不一致をtap単位で捨て、source切替時にdenoiser historyもresetする。雲はnoiseをRTTへ焼いてdispose/resize時のgenerationを持つ。Babylonのようにinstanced geometryのprevious world matrixがvelocity passに必ず来ることを確認する。WebGL2 fallbackでは精密なvelocity MRTがない場合、screen-space pointer/camera deltaだけでも演出上の信頼度は作れる。</p>
+          <p class="en-copy">Expose history mode and rejection telemetry; validate each reprojection tap; version cached cloud targets; ensure instance previous matrices feed velocity.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://registry.khronos.org/webgl/specs/latest/2.0/" target="_blank" rel="noreferrer">Khronos WebGL 2 specification</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19024" target="_blank" rel="noreferrer">Babylon velocity fix #19024</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35447 のreview・API確定とlive comparison、#35430 のGPU再計測とSSR source切替、#35438 のmergeとSky/SkyMesh parityを追う。PlayCanvas #9819 はhistory reset条件と各GPUの収束品質、Babylon #19024 はmerge後のTAA/instancesの実装を確認する。表現側では雲・雨・水・retroreflection・音を、単なる環境ではなく品質遷移の合図として使う事例を継続ウォッチする。</p>
+          <p class="en-copy">Watch temporal API reviews, SSR GPU measurements, sky parity, splat reset criteria and instanced TAA adoption.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命の `outputs/2026-11-11_catmull_reflection_weather_score.html`。ポインタでcamera drift、click/Spaceでweather cutを入れ、1〜4でsource/history/cloud cache/compositeを比較する。短時間でも『履歴は残すが、停止時には視認性を返す』感触を確かめられる。次はthree.jsのRenderTargetへ、実camera velocity、Catmull-Rom history、water normalを接続する。</p>
+          <p class="en-copy">Try the weather score, compare four stages, then connect actual three.js camera velocity and temporal history.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-11_catmull_reflection_weather_score.html" target="_blank" rel="noreferrer">open main prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: TRAA、previous radiance SSR、Sky bake、SteadySplats、instanced TAA velocity、glass/sound事例を収集。アイデア検討: 11/09のwater convergence と11/10のrecovery surfaceを、天候の解像／再鋳造へ接続。サンプル実装: A/Bを依存なしHTML Canvasで実装済み。結果の検証: `historyAge`, `historySampling`, `cameraVelocity`, `velocityValid`, `rejectCount`, `cloudCacheGeneration`, `resizeAt`, `gpuMs` を記録する。継続=水面・収束・履歴。新規=天候cache/velocity lantern。寝かせる=カードUI、重い外部asset、WebGPU限定の完成形。</p>
+          <p class="en-copy">Research and two builds are complete; validate history, velocity, rejection and cloud-cache telemetry; keep water/convergence/history active.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月のLOD/probe/Frame Graph、11月のSVGF/context recovery/waterを俯瞰すると、中心テーマは『空間の品質がいつ、なぜ信頼できる像になるか』で一貫している。TRAAは解像感、SSRは履歴の選別、雲cacheは計算の持続、SteadySplatsは停止の収束を担当する。これらを同じstate scoreに置けば、品質設定ではなく、観客の移動・呼吸・音のrestで編まれる空間演出になる。</p>
+          <p class="en-copy">The durable theme is trustworthy spatial images: sharp history, selected reflection, persistent sky cache and stillness-driven splat convergence.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 `outputs/2026-11-11_catmull_reflection_weather_score.html` は、履歴・雲cache・水面反射を分け、停止でsharpnessが戻る最小のweather score。派生 `outputs/2026-11-11_velocity_reprojection_lanterns.html` は、pointer velocityとinstance cutでprevious位置／rejectを可視化する。次に足すなら本命へWebGL fragment shaderとaudio onset、派生へ実scene velocity bufferとdepth rejectionを渡す。</p>
+          <p class="en-copy">The main exposes history, cloud cache and water reflection; the derivative visualizes velocity reprojection and rejection.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-11_catmull_reflection_weather_score.html" target="_blank" rel="noreferrer">main</a></li>
+          
+            <li><a href="../outputs/2026-11-11_velocity_reprojection_lanterns.html" target="_blank" rel="noreferrer">derived</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Sample data possibilities and combinations</span></span></h2>
+          <p>本命のcamera drift/history age/sharpness/weather cutは、WebXR gaze、IMU、映像motion vector、音のonset、気象APIの風向へ差し替えられる。派生のvelocity/reject/instance cutは、実splatのmotion、MediaPipe手勢、来場者の移動量、ネットワークpacket欠落へつなげられる。二つを組めば、人が動くと雨後の都市が水面へ溶け、止まると雲と灯りが像を結ぶ展示、あるいは音のbreakで天候が再編集されるWebfilm導入になる。</p>
+          <p class="en-copy">Drift and history can use gaze, IMU, media motion, audio or weather; velocity/rejection can use splats, hands, visitors and packets for an installation or webfilm.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35447" target="_blank" rel="noreferrer">three.js TRAANode Catmull-Rom history PR #35447</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35430" target="_blank" rel="noreferrer">three.js previous-frame radiance SSR PR #35430</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35438" target="_blank" rel="noreferrer">three.js Sky/SkyMesh cloud-noise bake PR #35438</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9819" target="_blank" rel="noreferrer">PlayCanvas SteadySplats PR #9819</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19024" target="_blank" rel="noreferrer">Babylon.js instanced TAA velocity PR #19024</a></li>
+          
+            <li><a href="../outputs/2026-11-11_catmull_reflection_weather_score.html" target="_blank" rel="noreferrer">本命試作: Catmull Reflection Weather Score</a></li>
+          
+            <li><a href="../outputs/2026-11-11_velocity_reprojection_lanterns.html" target="_blank" rel="noreferrer">派生試作: Velocity Reprojection Lanterns</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-11_velocity_reprojection_lanterns.html" loading="lazy" title="Velocity Reprojection Lanterns"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

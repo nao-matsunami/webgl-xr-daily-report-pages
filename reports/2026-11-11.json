@@ -1,0 +1,155 @@
+{
+  "date": "2026-11-11",
+  "headline": "過去フレームの反射を、天候が解像していく時間にする",
+  "headlineEn": "Make reflected history a weather system that resolves over time",
+  "summary": "three.js のTRAA Catmull-Rom履歴サンプリング、前フレーム放射輝度を使うSSR、雲ノイズの一回焼き込みを、昨日までの水面／収束案へ接続する。移動でほどけ、静止で空と反射が解像する演出を本命・派生の2本で検証した。",
+  "summaryEn": "three.js temporal history, previous-frame SSR and baked cloud noise extend the water-and-convergence thread into a resolving weather reflection.",
+  "links": [
+    {
+      "label": "three.js TRAANode Catmull-Rom history PR #35447",
+      "url": "https://github.com/mrdoob/three.js/pull/35447"
+    },
+    {
+      "label": "three.js previous-frame radiance SSR PR #35430",
+      "url": "https://github.com/mrdoob/three.js/pull/35430"
+    },
+    {
+      "label": "three.js Sky/SkyMesh cloud-noise bake PR #35438",
+      "url": "https://github.com/mrdoob/three.js/pull/35438"
+    },
+    {
+      "label": "PlayCanvas SteadySplats PR #9819",
+      "url": "https://github.com/playcanvas/engine/pull/9819"
+    },
+    {
+      "label": "Babylon.js instanced TAA velocity PR #19024",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/19024"
+    },
+    {
+      "label": "本命試作: Catmull Reflection Weather Score",
+      "url": "../outputs/2026-11-11_catmull_reflection_weather_score.html"
+    },
+    {
+      "label": "派生試作: Velocity Reprojection Lanterns",
+      "url": "../outputs/2026-11-11_velocity_reprojection_lanterns.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js draft #35447 は、TRAAの履歴を単一bilinear fetchではなく既定5-tap Catmull-Romで読む `historySampling` を提案し、移動時の平均PSNRを +0.77 dB と報告している。2) #35430 はSSRで前フレームの放射輝度を速度・想定前depthで再投影し、4 bilinear tapをdepth妥当性でrejectする案。3) #35438 は厚み・self-shadowを持つ雲と、GPUで一度だけ512² mipmapped textureへ焼くノイズを提案。4) PlayCanvas #9819 の静止後16フレーム収束、Babylon #19024 のinstanced velocity修正は、履歴を作品で安全に扱う両端を補う。",
+      "bodyEn": "three.js proposes sharper temporal history, reprojected SSR and one-time cloud-noise baking; PlayCanvas settlement and Babylon instance velocity complete the temporal stack.",
+      "links": [
+        {
+          "label": "TRAA #35447",
+          "url": "https://github.com/mrdoob/three.js/pull/35447"
+        },
+        {
+          "label": "SSR #35430",
+          "url": "https://github.com/mrdoob/three.js/pull/35430"
+        },
+        {
+          "label": "Sky #35438",
+          "url": "https://github.com/mrdoob/three.js/pull/35438"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "#35447 は『履歴を残すほどぼやける』という時間表現の弱点を、選択可能な補間品質へ変える。#35430は反射の記憶を現在のscene colorから切り離し、velocity/depthで信頼度を決める。#35438の雲ノイズ焼き込みは、毎pixelで天気を再計算せず、ひとつの空の素材を静かに使い回す発想だ。これを11/09–10の水面・recoveryと結ぶと、止まるほど空の反射が定まり、場面転換では再び天候が組み直される。Codropsの音・ガラス・causticsを束ねる作品は、技術状態を物語の光へ置き換える参考になる。",
+      "bodyEn": "Sharpened history, validated reprojection and cached sky material make temporal quality a controllable artistic cue.",
+      "links": [
+        {
+          "label": "Codrops: Volatile Nexus",
+          "url": "https://tympanus.net/codrops/2026/08/31/volatile-nexus-tinkering-with-glass-caustics-cubes-and-sound-in-three-js/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『Catmull Reflection Weather』: 視線の移動では水面の空が複数の履歴にほどけ、停止でくっきり戻る。本命として実装済み。B.『Velocity Reprojection Lanterns』: 移動するinstanced lantern群の過去位置を淡い灯りで示し、velocity不整合は赤いreject ringにする。派生として実装済み。C.『雨後のXR広場』: gaze停止で空・水たまり・coarse splatが同時に収束し、歩き出すと光だけが先に残る。短期はA/Bをthree.js telemetryへ、中長期はCをWebXR/GSplatへ。",
+      "bodyEn": "Built: a weather-reflection score and velocity lanterns. Grow them into an XR plaza where stillness resolves sky, water and splats.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-11_catmull_reflection_weather_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-11_velocity_reprojection_lanterns.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "TRAAはbilinearとCatmull-Romを切替可能にし、camera velocity、history age、resample mode、reprojection reject率を表示用state textureにも残す。SSRの前フレームradianceはoff-screen/background/resized/depth不一致をtap単位で捨て、source切替時にdenoiser historyもresetする。雲はnoiseをRTTへ焼いてdispose/resize時のgenerationを持つ。Babylonのようにinstanced geometryのprevious world matrixがvelocity passに必ず来ることを確認する。WebGL2 fallbackでは精密なvelocity MRTがない場合、screen-space pointer/camera deltaだけでも演出上の信頼度は作れる。",
+      "bodyEn": "Expose history mode and rejection telemetry; validate each reprojection tap; version cached cloud targets; ensure instance previous matrices feed velocity.",
+      "links": [
+        {
+          "label": "Khronos WebGL 2 specification",
+          "url": "https://registry.khronos.org/webgl/specs/latest/2.0/"
+        },
+        {
+          "label": "Babylon velocity fix #19024",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/19024"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35447 のreview・API確定とlive comparison、#35430 のGPU再計測とSSR source切替、#35438 のmergeとSky/SkyMesh parityを追う。PlayCanvas #9819 はhistory reset条件と各GPUの収束品質、Babylon #19024 はmerge後のTAA/instancesの実装を確認する。表現側では雲・雨・水・retroreflection・音を、単なる環境ではなく品質遷移の合図として使う事例を継続ウォッチする。",
+      "bodyEn": "Watch temporal API reviews, SSR GPU measurements, sky parity, splat reset criteria and instanced TAA adoption."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命の `outputs/2026-11-11_catmull_reflection_weather_score.html`。ポインタでcamera drift、click/Spaceでweather cutを入れ、1〜4でsource/history/cloud cache/compositeを比較する。短時間でも『履歴は残すが、停止時には視認性を返す』感触を確かめられる。次はthree.jsのRenderTargetへ、実camera velocity、Catmull-Rom history、water normalを接続する。",
+      "bodyEn": "Try the weather score, compare four stages, then connect actual three.js camera velocity and temporal history.",
+      "links": [
+        {
+          "label": "open main prototype",
+          "url": "../outputs/2026-11-11_catmull_reflection_weather_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: TRAA、previous radiance SSR、Sky bake、SteadySplats、instanced TAA velocity、glass/sound事例を収集。アイデア検討: 11/09のwater convergence と11/10のrecovery surfaceを、天候の解像／再鋳造へ接続。サンプル実装: A/Bを依存なしHTML Canvasで実装済み。結果の検証: `historyAge`, `historySampling`, `cameraVelocity`, `velocityValid`, `rejectCount`, `cloudCacheGeneration`, `resizeAt`, `gpuMs` を記録する。継続=水面・収束・履歴。新規=天候cache/velocity lantern。寝かせる=カードUI、重い外部asset、WebGPU限定の完成形。",
+      "bodyEn": "Research and two builds are complete; validate history, velocity, rejection and cloud-cache telemetry; keep water/convergence/history active."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD/probe/Frame Graph、11月のSVGF/context recovery/waterを俯瞰すると、中心テーマは『空間の品質がいつ、なぜ信頼できる像になるか』で一貫している。TRAAは解像感、SSRは履歴の選別、雲cacheは計算の持続、SteadySplatsは停止の収束を担当する。これらを同じstate scoreに置けば、品質設定ではなく、観客の移動・呼吸・音のrestで編まれる空間演出になる。",
+      "bodyEn": "The durable theme is trustworthy spatial images: sharp history, selected reflection, persistent sky cache and stillness-driven splat convergence."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-11_catmull_reflection_weather_score.html` は、履歴・雲cache・水面反射を分け、停止でsharpnessが戻る最小のweather score。派生 `outputs/2026-11-11_velocity_reprojection_lanterns.html` は、pointer velocityとinstance cutでprevious位置／rejectを可視化する。次に足すなら本命へWebGL fragment shaderとaudio onset、派生へ実scene velocity bufferとdepth rejectionを渡す。",
+      "bodyEn": "The main exposes history, cloud cache and water reflection; the derivative visualizes velocity reprojection and rejection.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-11_catmull_reflection_weather_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-11_velocity_reprojection_lanterns.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命のcamera drift/history age/sharpness/weather cutは、WebXR gaze、IMU、映像motion vector、音のonset、気象APIの風向へ差し替えられる。派生のvelocity/reject/instance cutは、実splatのmotion、MediaPipe手勢、来場者の移動量、ネットワークpacket欠落へつなげられる。二つを組めば、人が動くと雨後の都市が水面へ溶け、止まると雲と灯りが像を結ぶ展示、あるいは音のbreakで天候が再編集されるWebfilm導入になる。",
+      "bodyEn": "Drift and history can use gaze, IMU, media motion, audio or weather; velocity/rejection can use splats, hands, visitors and packets for an installation or webfilm."
+    }
+  ]
+}
