@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>露出の遅れと反射の穴を、空間が呼吸する譜面にする | 2026-11-12</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.12</p>
+      <h1>露出の遅れと反射の穴を、空間が呼吸する譜面にする</h1>
+      <p class="hero-subtitle">Turn exposure lag and reflection gaps into a breathing spatial score</p>
+      <p>PlayCanvas 2.24.0 の CameraFrame（時間的アップスケール、自動露出、Dynamic Sky）、three.js のSSR coverage／denoiser と ReflectorNode state 修復、Babylon.js の非同期 pipeline を、11/10–11 の水面・天候・履歴の流れへ接続する。自動露出の追従とSSR coverageを、待ち時間ではなく光が信頼を獲得する演出として本命・派生の2本で検証した。</p>
+      <p class="en-copy">PlayCanvas CameraFrame, three.js coverage-based SSR and Babylon asynchronous pipelines become a spatial score where light gradually earns trust.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-11.html">← 2026.11.11</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>SSR Coverage Lantern Pool</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Histogram Sky Breath Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-12_histogram_sky_breath_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) PlayCanvas Engine v2.24.0（11月9日リリース）はCameraFrameへSMAA、auto exposure、lens flare、TAAのtemporal upscaling、DynamicSkyEffect/hazeを加えた。特にauto exposureはGPU histogramを読み戻し、明転を速く・暗転を遅く追従させ、WebGL2とWebGPUで同じ設計を取る。2) three.js #35459 はSSRを環境map追跡ではなく coverage をalpha、hit distanceを別textureとして出す方向へ更新し、covered texelだけをdenoiseする。3) #35474 はReflectorNodeをrender-state APIへ移し、反射前passが残す状態の復元を狙う。4) Babylon #19090 はmesh drawのasync pipeline作成をopt-inで提案しており、未完成frameをどう作品化するかという共通の課題を示す。</p>
+          <p class="en-copy">PlayCanvas 2.24 adds a camera-frame stack; three.js makes SSR coverage explicit and repairs reflector state; Babylon proposes opt-in async mesh pipelines.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.0" target="_blank" rel="noreferrer">PlayCanvas v2.24.0</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">SSR #35459</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19090" target="_blank" rel="noreferrer">Babylon #19090</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable examples and why</span></span></h2>
+          <p>#9757 のauto exposureは、全画素ではなく暗部・極端なハイライトを外した帯域を64-bin histogramで取り、camera cutでは即時resetする。この『遅れて追いつくが、切替時だけ決然と切る』振る舞いは11/11のweather reflectionに自然な呼吸を与える。#35459のSSR coverageは、反射が無いpixelを黒として平均しない。つまり穴を失敗として隠すのでなく、空・環境反射へ譲るべき信頼度として扱える。CodropsのWebfilm的な短いカットと組めば、品質移行がそのままシーン転換になる。</p>
+          <p class="en-copy">Histogram adaptation makes camera cuts decisive and ambient change gradual; coverage lets a reflection hand off to the sky instead of turning a miss into black.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9757" target="_blank" rel="noreferrer">Auto exposure design</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/10/12/chasing-the-moment/" target="_blank" rel="noreferrer">Codrops: Chasing the Moment</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A.『Histogram Sky Breath』: 観客の視線で太陽と画角を動かすと、空は即座に反応せず、露出が呼吸のように追随する。本命として実装済み。B.『SSR Coverage Lantern Pool』: 水面の灯りはcoverageが高い時だけ青い反射を結び、missは赤い穴ではなく空のfallbackへ溶ける。派生として実装済み。C.『露出を共有するXR広場』: 一人のgaze停留をhistogram中心weight、群衆の滞留をsplat LOD／反射coverageへ入れ、場所全体が暗順応する。短期はA/Bへ実render telemetry、中長期はCをWebXRとGSplatで育てる。</p>
+          <p class="en-copy">Built: an adapting sky and a coverage-gated lantern pool. Grow them into an XR plaza that adapts to communal gaze.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-12_histogram_sky_breath_score.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>PlayCanvasのauto exposureはhalf-resolution sceneを128×64へ平均し、integer histogramをGPUで作って最大256 bytesのreadbackを一つだけ飛ばす設計。実装では`exposure`, `targetEv`, `histogramP50`, `histogramP95`, `readbackFrame`, `cutReset`をstate scoreへ残す。SSR側はcoverageとhit distanceをradianceと分離し、coverage不足はenvironment specularへ渡す。denoiserはcovered texelのみで統計・anti-lag・clampを行い、roughness上限でcoverageをfadeさせる。ReflectorNode／RTTはpass前後にrenderer stateを必ず保存・復帰する。WebGL2 fallbackなら低解像度luminance gridとpointer velocityだけでも、この演出の核は作れる。</p>
+          <p class="en-copy">Keep exposure telemetry, separate coverage/hit distance from radiance, denoise only valid samples, and restore render state around reflection passes.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pull/9757" target="_blank" rel="noreferrer">AutoExposureEffect details</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">SSR implementation notes</a></li>
+          
+            <li><a href="https://registry.khronos.org/webgl/specs/latest/2.0/" target="_blank" rel="noreferrer">WebGL 2 spec</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35459 のSSRデモ／denoiser validationの修正、#35474のmergeとAO pre-pass周辺のedge case、PlayCanvas v2.24のCameraFrame APIとDynamicSkyEffectの実例、Babylon #19090 が未完成pipeline frameをどう扱うかを追う。GSplatではv2.24のcoarsest-first、log-distance sort key、anti-alias filterを、histogramとcoverageが落ち着く順番へ接続する。</p>
+          <p class="en-copy">Watch SSR validation, reflector-state merge, real CameraFrame usage, async pipeline behavior and how v2.24 GSplats settle alongside exposure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js open pull requests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pulls" target="_blank" rel="noreferrer">Babylon pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命の `outputs/2026-11-12_histogram_sky_breath_score.html`。ポインタでsun/framingを動かし、click/Spaceでcamera cut、1〜4でhistogram・adaptation・sky・合成を比較する。短時間でも『明るさを即時に変えず、遅れを空間の呼吸にする』感触を確認できる。次は実scene colorのdownsample、64-bin histogram、audio onsetによるcut resetをthree.js/PlayCanvasへ接続する。</p>
+          <p class="en-copy">Try the sky score: steer the sun, cut with click, compare its four passes, then connect real downsampled scene color and audio cuts.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-12_histogram_sky_breath_score.html" target="_blank" rel="noreferrer">open main prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas v2.24 CameraFrame、three.js SSR coverage/Reflector state、Babylon async pipeline、Codrops Webfilmを収集。アイデア検討: 11/10のwaterglass recovery と11/11のweather historyを、露出の遅れ／coverageのhandoffへ接続。サンプル実装: A/Bを依存なしHTML Canvasで実装済み。結果の検証: `histogram`, `exposure`, `targetEv`, `coverage`, `hitDistance`, `historyAge`, `fallbackRatio`, `renderStateGeneration`, `pipelineReadyAt`を採取。継続=水面・天候・履歴。新規=exposure breathing／coverage handoff。寝かせる=カードUI、重い外部asset、WebGPU限定の完成形。</p>
+          <p class="en-copy">Research and two builds are complete; validate exposure, coverage, fallback and pipeline state. Keep water/weather/history active and park cards/heavy assets.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>10月のLOD到着・probe・timestamp、11月のrecovery・water・historyを並べると、『像の品質が確定する前の不確かさを、何で美しく保つか』が中心テーマになっている。v2.24の露出は明度の信頼度、SSR coverageは反射の信頼度、async pipelineは描画の信頼度を扱う。同じstate scoreで読み、音のrestやgaze停留をreset／priorityへ使えば、技術的なfallbackが作品の呼吸になる。育てる価値が高いのは、空・水・splatの三層を一つの「settling score」として同期するテーマ。</p>
+          <p class="en-copy">The persistent theme is preserving uncertainty before an image settles. Exposure, coverage and pipeline readiness can share one artistic state score.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 `outputs/2026-11-12_histogram_sky_breath_score.html` は、明部をpointerで動かし、64-bin風histogramと追従の異なる露出を見せる。派生 `outputs/2026-11-12_ssr_coverage_lantern_pool.html` は、coverageがある灯りだけを水面へ再投影し、missをsky fallbackへ渡す。両者とも1〜4でpassを分けて確認できる。次に足すなら本命へWebGL luminance pass、派生へ実depth/normal rejectionとhistory clampを入れる。</p>
+          <p class="en-copy">The main visualizes a histogram-driven sky; the derivative visualizes coverage-gated reflections and fallback. Both expose four stages.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-12_histogram_sky_breath_score.html" target="_blank" rel="noreferrer">main</a></li>
+          
+            <li><a href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html" target="_blank" rel="noreferrer">derived</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Sample data possibilities and combinations</span></span></h2>
+          <p>本命のhistogram bins、exposure、target EV、cut resetは、実カメラ映像、音量、昼夜時刻、気象API、会場の照度センサー、WebXR eye gazeと交換できる。派生のcoverage、hit distance、fallback ratio、history ageは、GSplat LODの到着、ネットワークpacket、MediaPipeの手の遮蔽、来場者の移動へ接続できる。二つを重ねれば、観客が歩くと水面の灯りが空へ譲り、立ち止まると空・反射・splatが徐々に一致する、Webfilm冒頭や展示用の暗順応広場になる。</p>
+          <p class="en-copy">Histogram and exposure data can use camera, audio, weather or gaze; coverage and fallback can use splats, packets, hands and dwell for a dark-adapting installation.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.24.0 release</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/9757" target="_blank" rel="noreferrer">PlayCanvas AutoExposureEffect PR #9757</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">three.js SSR coverage and denoiser PR #35459</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35474" target="_blank" rel="noreferrer">three.js ReflectorNode render-state PR #35474</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19090" target="_blank" rel="noreferrer">Babylon.js async mesh pipeline PR #19090</a></li>
+          
+            <li><a href="../outputs/2026-11-12_histogram_sky_breath_score.html" target="_blank" rel="noreferrer">本命試作: Histogram Sky Breath Score</a></li>
+          
+            <li><a href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html" target="_blank" rel="noreferrer">派生試作: SSR Coverage Lantern Pool</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-12_ssr_coverage_lantern_pool.html" loading="lazy" title="SSR Coverage Lantern Pool"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,177 @@
+{
+  "date": "2026-11-12",
+  "headline": "露出の遅れと反射の穴を、空間が呼吸する譜面にする",
+  "headlineEn": "Turn exposure lag and reflection gaps into a breathing spatial score",
+  "summary": "PlayCanvas 2.24.0 の CameraFrame（時間的アップスケール、自動露出、Dynamic Sky）、three.js のSSR coverage／denoiser と ReflectorNode state 修復、Babylon.js の非同期 pipeline を、11/10–11 の水面・天候・履歴の流れへ接続する。自動露出の追従とSSR coverageを、待ち時間ではなく光が信頼を獲得する演出として本命・派生の2本で検証した。",
+  "summaryEn": "PlayCanvas CameraFrame, three.js coverage-based SSR and Babylon asynchronous pipelines become a spatial score where light gradually earns trust.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.24.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+    },
+    {
+      "label": "PlayCanvas AutoExposureEffect PR #9757",
+      "url": "https://github.com/playcanvas/engine/pull/9757"
+    },
+    {
+      "label": "three.js SSR coverage and denoiser PR #35459",
+      "url": "https://github.com/mrdoob/three.js/pull/35459"
+    },
+    {
+      "label": "three.js ReflectorNode render-state PR #35474",
+      "url": "https://github.com/mrdoob/three.js/pull/35474"
+    },
+    {
+      "label": "Babylon.js async mesh pipeline PR #19090",
+      "url": "https://github.com/BabylonJS/Babylon.js/pull/19090"
+    },
+    {
+      "label": "本命試作: Histogram Sky Breath Score",
+      "url": "../outputs/2026-11-12_histogram_sky_breath_score.html"
+    },
+    {
+      "label": "派生試作: SSR Coverage Lantern Pool",
+      "url": "../outputs/2026-11-12_ssr_coverage_lantern_pool.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) PlayCanvas Engine v2.24.0（11月9日リリース）はCameraFrameへSMAA、auto exposure、lens flare、TAAのtemporal upscaling、DynamicSkyEffect/hazeを加えた。特にauto exposureはGPU histogramを読み戻し、明転を速く・暗転を遅く追従させ、WebGL2とWebGPUで同じ設計を取る。2) three.js #35459 はSSRを環境map追跡ではなく coverage をalpha、hit distanceを別textureとして出す方向へ更新し、covered texelだけをdenoiseする。3) #35474 はReflectorNodeをrender-state APIへ移し、反射前passが残す状態の復元を狙う。4) Babylon #19090 はmesh drawのasync pipeline作成をopt-inで提案しており、未完成frameをどう作品化するかという共通の課題を示す。",
+      "bodyEn": "PlayCanvas 2.24 adds a camera-frame stack; three.js makes SSR coverage explicit and repairs reflector state; Babylon proposes opt-in async mesh pipelines.",
+      "links": [
+        {
+          "label": "PlayCanvas v2.24.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+        },
+        {
+          "label": "SSR #35459",
+          "url": "https://github.com/mrdoob/three.js/pull/35459"
+        },
+        {
+          "label": "Babylon #19090",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/19090"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable examples and why",
+      "body": "#9757 のauto exposureは、全画素ではなく暗部・極端なハイライトを外した帯域を64-bin histogramで取り、camera cutでは即時resetする。この『遅れて追いつくが、切替時だけ決然と切る』振る舞いは11/11のweather reflectionに自然な呼吸を与える。#35459のSSR coverageは、反射が無いpixelを黒として平均しない。つまり穴を失敗として隠すのでなく、空・環境反射へ譲るべき信頼度として扱える。CodropsのWebfilm的な短いカットと組めば、品質移行がそのままシーン転換になる。",
+      "bodyEn": "Histogram adaptation makes camera cuts decisive and ambient change gradual; coverage lets a reflection hand off to the sky instead of turning a miss into black.",
+      "links": [
+        {
+          "label": "Auto exposure design",
+          "url": "https://github.com/playcanvas/engine/pull/9757"
+        },
+        {
+          "label": "Codrops: Chasing the Moment",
+          "url": "https://tympanus.net/codrops/2026/10/12/chasing-the-moment/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『Histogram Sky Breath』: 観客の視線で太陽と画角を動かすと、空は即座に反応せず、露出が呼吸のように追随する。本命として実装済み。B.『SSR Coverage Lantern Pool』: 水面の灯りはcoverageが高い時だけ青い反射を結び、missは赤い穴ではなく空のfallbackへ溶ける。派生として実装済み。C.『露出を共有するXR広場』: 一人のgaze停留をhistogram中心weight、群衆の滞留をsplat LOD／反射coverageへ入れ、場所全体が暗順応する。短期はA/Bへ実render telemetry、中長期はCをWebXRとGSplatで育てる。",
+      "bodyEn": "Built: an adapting sky and a coverage-gated lantern pool. Grow them into an XR plaza that adapts to communal gaze.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-12_histogram_sky_breath_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-12_ssr_coverage_lantern_pool.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "PlayCanvasのauto exposureはhalf-resolution sceneを128×64へ平均し、integer histogramをGPUで作って最大256 bytesのreadbackを一つだけ飛ばす設計。実装では`exposure`, `targetEv`, `histogramP50`, `histogramP95`, `readbackFrame`, `cutReset`をstate scoreへ残す。SSR側はcoverageとhit distanceをradianceと分離し、coverage不足はenvironment specularへ渡す。denoiserはcovered texelのみで統計・anti-lag・clampを行い、roughness上限でcoverageをfadeさせる。ReflectorNode／RTTはpass前後にrenderer stateを必ず保存・復帰する。WebGL2 fallbackなら低解像度luminance gridとpointer velocityだけでも、この演出の核は作れる。",
+      "bodyEn": "Keep exposure telemetry, separate coverage/hit distance from radiance, denoise only valid samples, and restore render state around reflection passes.",
+      "links": [
+        {
+          "label": "AutoExposureEffect details",
+          "url": "https://github.com/playcanvas/engine/pull/9757"
+        },
+        {
+          "label": "SSR implementation notes",
+          "url": "https://github.com/mrdoob/three.js/pull/35459"
+        },
+        {
+          "label": "WebGL 2 spec",
+          "url": "https://registry.khronos.org/webgl/specs/latest/2.0/"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35459 のSSRデモ／denoiser validationの修正、#35474のmergeとAO pre-pass周辺のedge case、PlayCanvas v2.24のCameraFrame APIとDynamicSkyEffectの実例、Babylon #19090 が未完成pipeline frameをどう扱うかを追う。GSplatではv2.24のcoarsest-first、log-distance sort key、anti-alias filterを、histogramとcoverageが落ち着く順番へ接続する。",
+      "bodyEn": "Watch SSR validation, reflector-state merge, real CameraFrame usage, async pipeline behavior and how v2.24 GSplats settle alongside exposure.",
+      "links": [
+        {
+          "label": "three.js open pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon pull requests",
+          "url": "https://github.com/BabylonJS/Babylon.js/pulls"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命の `outputs/2026-11-12_histogram_sky_breath_score.html`。ポインタでsun/framingを動かし、click/Spaceでcamera cut、1〜4でhistogram・adaptation・sky・合成を比較する。短時間でも『明るさを即時に変えず、遅れを空間の呼吸にする』感触を確認できる。次は実scene colorのdownsample、64-bin histogram、audio onsetによるcut resetをthree.js/PlayCanvasへ接続する。",
+      "bodyEn": "Try the sky score: steer the sun, cut with click, compare its four passes, then connect real downsampled scene color and audio cuts.",
+      "links": [
+        {
+          "label": "open main prototype",
+          "url": "../outputs/2026-11-12_histogram_sky_breath_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas v2.24 CameraFrame、three.js SSR coverage/Reflector state、Babylon async pipeline、Codrops Webfilmを収集。アイデア検討: 11/10のwaterglass recovery と11/11のweather historyを、露出の遅れ／coverageのhandoffへ接続。サンプル実装: A/Bを依存なしHTML Canvasで実装済み。結果の検証: `histogram`, `exposure`, `targetEv`, `coverage`, `hitDistance`, `historyAge`, `fallbackRatio`, `renderStateGeneration`, `pipelineReadyAt`を採取。継続=水面・天候・履歴。新規=exposure breathing／coverage handoff。寝かせる=カードUI、重い外部asset、WebGPU限定の完成形。",
+      "bodyEn": "Research and two builds are complete; validate exposure, coverage, fallback and pipeline state. Keep water/weather/history active and park cards/heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD到着・probe・timestamp、11月のrecovery・water・historyを並べると、『像の品質が確定する前の不確かさを、何で美しく保つか』が中心テーマになっている。v2.24の露出は明度の信頼度、SSR coverageは反射の信頼度、async pipelineは描画の信頼度を扱う。同じstate scoreで読み、音のrestやgaze停留をreset／priorityへ使えば、技術的なfallbackが作品の呼吸になる。育てる価値が高いのは、空・水・splatの三層を一つの「settling score」として同期するテーマ。",
+      "bodyEn": "The persistent theme is preserving uncertainty before an image settles. Exposure, coverage and pipeline readiness can share one artistic state score."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-12_histogram_sky_breath_score.html` は、明部をpointerで動かし、64-bin風histogramと追従の異なる露出を見せる。派生 `outputs/2026-11-12_ssr_coverage_lantern_pool.html` は、coverageがある灯りだけを水面へ再投影し、missをsky fallbackへ渡す。両者とも1〜4でpassを分けて確認できる。次に足すなら本命へWebGL luminance pass、派生へ実depth/normal rejectionとhistory clampを入れる。",
+      "bodyEn": "The main visualizes a histogram-driven sky; the derivative visualizes coverage-gated reflections and fallback. Both expose four stages.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-12_histogram_sky_breath_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-12_ssr_coverage_lantern_pool.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命のhistogram bins、exposure、target EV、cut resetは、実カメラ映像、音量、昼夜時刻、気象API、会場の照度センサー、WebXR eye gazeと交換できる。派生のcoverage、hit distance、fallback ratio、history ageは、GSplat LODの到着、ネットワークpacket、MediaPipeの手の遮蔽、来場者の移動へ接続できる。二つを重ねれば、観客が歩くと水面の灯りが空へ譲り、立ち止まると空・反射・splatが徐々に一致する、Webfilm冒頭や展示用の暗順応広場になる。",
+      "bodyEn": "Histogram and exposure data can use camera, audio, weather or gaze; coverage and fallback can use splats, packets, hands and dwell for a dark-adapting installation."
+    }
+  ]
+}
