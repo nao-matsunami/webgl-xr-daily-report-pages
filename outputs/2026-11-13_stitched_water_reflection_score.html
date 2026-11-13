@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stitched Water Reflection Score</title>
+<style>html,body{margin:0;background:#07111d;color:#dcecff;font-family:ui-monospace,monospace;overflow:hidden}canvas{width:100vw;height:100vh;display:block}.hud{position:fixed;inset:18px auto auto 18px;max-width:430px;font-size:12px;line-height:1.55;text-shadow:0 2px 8px #000}.key{color:#8ef1d0}.mode{color:#ffcf8a}.bar{position:fixed;right:18px;bottom:18px;font-size:11px;text-align:right;color:#a9bed2}</style>
+<canvas></canvas><div class="hud"><b>STITCHED WATER / REFLECTION SCORE</b><br>pointer: light &amp; seam · click / Space: send a repair wave<br><span class="key">1</span> source <span class="key">2</span> seam field <span class="key">3</span> reflected history <span class="key">4</span> composite<br><span class="mode" id="readout"></span></div><div class="bar">physical-water sketch · seam is a cue, not a defect</div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d');let W,H,dpr,px=.5,py=.42,mode=4,pulse=0,seed=0;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=c.width=innerWidth*dpr;H=c.height=innerHeight*dpr;c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';x.setTransform(dpr,0,0,dpr,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',resize);resize();
+addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});function hit(){pulse=1;seed=Math.random()}addEventListener('pointerdown',hit);addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();hit()}if(+e.key>=1&&+e.key<=4)mode=+e.key});
+function line(a,b,color,w=1){x.strokeStyle=color;x.lineWidth=w;x.beginPath();x.moveTo(...a);x.lineTo(...b);x.stroke()}
+function frame(t){requestAnimationFrame(frame);t*=.001;pulse*=.972;const q=Math.sin(t*1.8+seed*9),sy=H*(.53+py*.12),sx=W*px;x.fillStyle='#07111d';x.fillRect(0,0,W,H);
+// sky source
+let g=x.createLinearGradient(0,0,0,H*.58);g.addColorStop(0,'#07111d');g.addColorStop(.55,'#183d5b');g.addColorStop(1,'#ef9a66');x.fillStyle=g;x.fillRect(0,0,W,H*.58);
+x.globalCompositeOperation='screen';for(let i=0;i<30;i++){let a=i/29*Math.PI*2,rr=18+i*3;let yy=sy+Math.sin(a+t)*rr*.18;x.fillStyle=`rgba(255,206,130,${.015+i*.001})`;x.beginPath();x.arc(sx,yy,rr,0,7);x.fill()}x.globalCompositeOperation='source-over';
+if(mode===1){document.querySelector('#readout').textContent='01 / sky source — a decisive sun position';return}
+// seam/gutter field
+x.fillStyle='#091c2b';x.fillRect(0,H*.58,W,H*.42);for(let y=H*.58;y<H;y+=5){let v=(y-H*.58)/(H*.42),wave=Math.sin(y*.045+t*2.2)+Math.sin(y*.019-t)*.7;let seam=Math.sin((y*.02+t)*2+px*7);let amp=(1-v)*16+3;for(let k=0;k<9;k++){let xx=(k/8)*W+Math.sin(y*.025+k*2+t)*amp;let cut=Math.exp(-Math.pow((xx-sx)/150,2));line([xx,y],[xx+wave*4+(cut*pulse*30),y+4],`rgba(83,196,211,${.18+cut*.35})`,1)}}
+for(let i=0;i<6;i++){let yy=H*.59+i*H*.068+Math.sin(t+i)*8;line([0,yy],[W,yy+Math.sin(t*2+i)*18],`rgba(255,181,116,${.16+i*.015})`,1)}
+if(mode===2){document.querySelector('#readout').textContent='02 / seam field — repair wave travels through the gutter';return}
+// reflected history
+x.save();x.beginPath();x.rect(0,H*.58,W,H*.42);x.clip();x.globalCompositeOperation='screen';for(let i=0;i<70;i++){let u=i/69, yy=H*.6+u*H*.38, spread=12+u*90, drift=Math.sin(t*1.7+i*.8)*u*28;let alpha=.04+(1-u)*.07;let col=i%3===0?'255,155,102':'91,205,226';x.strokeStyle=`rgba(${col},${alpha})`;x.lineWidth=1+u*2;x.beginPath();x.moveTo(sx-spread+drift,yy);x.bezierCurveTo(sx-spread*.4-drift,yy-8,sx+spread*.3+drift,yy+10,sx+spread,yy);x.stroke()}x.restore();
+if(mode===3){document.querySelector('#readout').textContent='03 / reflected history — stretched light accepts the seam';return}
+// composite markings
+let rg=x.createRadialGradient(sx,sy,0,sx,sy,Math.max(W,H)*.55);rg.addColorStop(0,'rgba(255,239,187,.18)');rg.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=rg;x.fillRect(0,0,W,H);line([0,H*.58],[W,H*.58],'rgba(225,243,255,.45)',1);document.querySelector('#readout').textContent='04 / composite — repair becomes a temporal water cue';}
+requestAnimationFrame(frame);
+</script></html>

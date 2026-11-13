@@ -1,0 +1,173 @@
+{
+  "date": "2026-11-13",
+  "headline": "水面の継ぎ目と遠景スプラットを、像が落ち着く織り目にする",
+  "headlineEn": "Make water seams and horizon splats a weave of settling imagery",
+  "summary": "three.js の水表現・SeamStitch/GutterFill提案と、PlayCanvas 2.24 のcoarse-first GSplat・アンチエイリアスを、11/12の露出／SSR coverageの続きとして読む。失敗に見える継ぎ目、粗い到着、反射の揺れを、画が信頼を獲得する時間として扱う2本の最小試作を実装した。",
+  "summaryEn": "Three.js water and seam proposals plus PlayCanvas 2.24 GSplat updates become a pair of sketches where seams, coarse arrival and reflection noise are the time an image earns trust.",
+  "links": [
+    {
+      "label": "three.js Water physical-realism PR #35405",
+      "url": "https://github.com/mrdoob/three.js/pull/35405"
+    },
+    {
+      "label": "three.js SeamStitch/GutterFill proposal #35430",
+      "url": "https://github.com/mrdoob/three.js/pull/35430"
+    },
+    {
+      "label": "three.js r188 migration guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas Engine v2.24.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+    },
+    {
+      "label": "Babylon.js 9.32.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+    },
+    {
+      "label": "本命試作: Stitched Water Reflection Score",
+      "url": "../outputs/2026-11-13_stitched_water_reflection_score.html"
+    },
+    {
+      "label": "派生試作: Splat Horizon Weave",
+      "url": "../outputs/2026-11-13_splat_horizon_weave.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35405 は Water / WaterMesh / Water2 の物理的な見え方とshader mathの改善を進める。2) #35430 は画像のseamとgutterを埋める生成器を提案し、継ぎ目を後段の補正対象として明示した。3) r188移行では旧TemporalReprojectNode/RecurrentDenoiseNodeがSVGFベースの新しいDenoiseInsteadへ移る。4) PlayCanvas 2.24はGSplatを全viewでcoarse-firstに配信し、log-distance sort key、ファイル由来のper-splat anti-alias filter、低pass filterを追加した。5) Babylon 9.32のInspector Lite capture/debug helpersは、この種の時間的な揺れを現場で採取する導線になる。",
+      "bodyEn": "Water math, seam generation, SVGF migration, coarse-first GSplats and capture tooling all make image settling explicit.",
+      "links": [
+        {
+          "label": "Water #35405",
+          "url": "https://github.com/mrdoob/three.js/pull/35405"
+        },
+        {
+          "label": "SeamStitch #35430",
+          "url": "https://github.com/mrdoob/three.js/pull/35430"
+        },
+        {
+          "label": "PlayCanvas v2.24.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "#35430の重要さは、seamを単なる品質事故にせず「前景と背景、フレームとフレームの間に何を渡すか」という素材に変える点にある。11/12のSSR coverageが反射の欠損を空へのhandoffにしたのと同じく、継ぎ目は隠すより通過の合図にできる。PlayCanvasのcoarse-firstとanti-alias filterは、遠景が粗く届く局面にも輪郭を残せるので、Webfilmのカット終端や展示の暗順応と相性がよい。",
+      "bodyEn": "A seam can be a handoff cue, just as SSR coverage hands a miss to the sky; coarse-first splats preserve a readable arrival.",
+      "links": [
+        {
+          "label": "three.js open PRs",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A.『Stitched Water Reflection』: 観客が光源を動かすと、水面のgutterを修復波が横切り、反射履歴が継ぎ目を吸収する。本命として実装済み。B.『Splat Horizon Weave』: 視線位置へ向けて遠景がcoarseからfineへ織られ、splatのanti-alias輪郭が地平線を保つ。派生として実装済み。C.『共有の岸辺』: 滞留gazeをGSplatのpriorityに、音のrestをwater-history resetにして、複数人の注意で夜景が少しずつ結像する。短期はA/Bへ実データ接続、中長期はCをWebXRへ。",
+      "bodyEn": "Two implemented studies turn repair and LOD arrival into touchable cues; grow them into a shared XR shoreline.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-13_stitched_water_reflection_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-13_splat_horizon_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "water passではscene color/depth/normalとreflection historyを分け、`seamMask`を単なるblur maskではなく反射weight・bloom threshold・audio transientの共通入力にする。GSplatは`lodLevel`, `streamRank`, `antiAliasFilterSize`, `minContribution`, `sortKey`, `cameraDistance`を記録する。r188ではDenoiseInsteadへ移行するため、history accept/rejectを水面と遠景で共通化する。Babylon Inspector Liteのcaptureを使う場合はframe/camera cut時の画像とpass時間を対にして保存する。",
+      "bodyEn": "Keep seam masks, reflection history and splat arrival telemetry separate but drive them from one settling score.",
+      "links": [
+        {
+          "label": "r188 migration",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "Babylon release notes",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.32.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのWater関連PRが実例・API・WebGL fallbackをどう定めるか、#35430のseam/gutter生成器がmergeされるか、SSR coverage／DenoiseInsteadのvalidation、PlayCanvas 2.24のGSplat LOD hierarchyとanti-alias filterの実例、Babylon Inspector Liteでのcapture exportを追う。",
+      "bodyEn": "Watch Water API decisions, seam-generator adoption, SVGF validation, real GSplat filtering and Inspector capture export.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        },
+        {
+          "label": "Babylon releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命の `outputs/2026-11-13_stitched_water_reflection_score.html`。ポインタで光／seamの位置を決め、click/Spaceで修復波、1〜4でsource・seam field・reflection history・合成を比べる。次はCanvasの波をthree.jsのdepth/normal-aware reflectionへ置き換え、`seamMask`をSSR coverageと共有する。",
+      "bodyEn": "Try the water score first, then replace its drawing with depth/normal-aware reflection and share seamMask with SSR coverage.",
+      "links": [
+        {
+          "label": "open main prototype",
+          "url": "../outputs/2026-11-13_stitched_water_reflection_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: Water/#35430、r188 migration、PlayCanvas 2.24、Babylon Inspectorを収集。アイデア検討: 11/12のexposure/coverage handoffを、水面のrepairと地平線のarrivalへ接続。サンプル実装: A/Bを依存なしHTML Canvasで実装済み。結果の検証: `seamMask`, `historyAge`, `coverage`, `lodLevel`, `streamRank`, `antiAliasFilterSize`, `cameraVelocity`, `gpuFrameMs`を採取する。継続=空・水・履歴・settling score。新規=seam as cue／horizon weave。寝かせる=カードUI、重量asset、WebGPU限定の完成形。",
+      "bodyEn": "Research and both builds are done; validate seam/history/LOD telemetry. Continue settling scores, park cards and heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "10月のLOD到着・probe・timestampと、11月のrecovery・water・exposure・SSRを並べると、中心は『失敗や未到着をどの素材で美しく保留するか』である。seamは空間的な保留、coverageは反射の保留、coarse splatは幾何の保留。これらを同じstate scoreで読み、gazeと音をpriority/resetへ使うと、品質制御が演出そのものになる。育てる価値が高いのは、空・水・地平線を一つのsettling scoreとして同期する岸辺の作品。",
+      "bodyEn": "Seams, coverage and coarse splats are three materials for holding uncertainty. A shared settling score can turn quality control into staging."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-13_stitched_water_reflection_score.html` は、光を追うrepair waveと伸びた反射履歴を分離表示する。派生 `outputs/2026-11-13_splat_horizon_weave.html` は、attentionに応じてsplat密度／filter／織り目を切り替える。両方とも1〜4でpassを比較できる。次に足すならAへ実scene depth、Bへ実GSplat stream eventとWebXR gazeを入れる。",
+      "bodyEn": "The main separates repair and reflection memory; the derivative separates LOD, filtering and weave. Both reveal four stages.",
+      "links": [
+        {
+          "label": "main",
+          "url": "../outputs/2026-11-13_stitched_water_reflection_score.html"
+        },
+        {
+          "label": "derived",
+          "url": "../outputs/2026-11-13_splat_horizon_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Sample data possibilities and combinations",
+      "body": "本命の`seamMask`、repair pulse、反射方向、history ageは、カメラ映像のoptical flow、会場の照度、音のonset、潮汐や天候APIへ接続できる。派生のattention、lod level、filter size、arrival rankは、WebXR gaze、GSplat packet、MediaPipeの姿勢、観客密度へ置換できる。二つを重ねれば、人が岸辺で立ち止まるほど水面の継ぎ目と遠景の粒が静かに一致する、音楽映像の導入や展示の空間演出になる。",
+      "bodyEn": "Repair and arrival data can combine with camera motion, audio, weather, XR gaze, splat packets and visitor density for a settling shoreline installation."
+    }
+  ]
+}
