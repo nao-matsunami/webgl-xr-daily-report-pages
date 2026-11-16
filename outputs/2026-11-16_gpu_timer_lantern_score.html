@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GPU Timer Lantern Score</title>
+<style>html,body{margin:0;background:#060915;color:#dce8ff;font:13px ui-monospace,monospace;overflow:hidden}canvas{width:100vw;height:100vh;display:block}#ui{position:fixed;left:18px;bottom:16px;line-height:1.55;text-shadow:0 1px 4px #000;pointer-events:none}b{color:#fff1bd}span{color:#8facd6}</style>
+<canvas></canvas><div id="ui"><b>GPU TIMER / LANTERN SCORE</b><br><span>pointer: attention · click / space: resolve a batch · 1–4: source / query / delayed light / composite</span></div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d');let W,H,d=1,px=.5,py=.5,mode=4,pulse=0,phase=0;
+const samples=Array.from({length:88},(_,i)=>({a:i*1.71,r:.12+Math.random()*.48,s:.25+Math.random()*.8,delay:Math.random()*1.2}));
+function size(){d=Math.min(devicePixelRatio,2);W=c.width=innerWidth*d;H=c.height=innerHeight*d;x.setTransform(d,0,0,d,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',size);size();
+addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});addEventListener('pointerdown',()=>pulse=1);addEventListener('keydown',e=>{if(e.key===' ')pulse=1;if(+e.key>=1&&+e.key<=4)mode=+e.key});
+function glow(X,Y,r,col){let g=x.createRadialGradient(X,Y,0,X,Y,r);g.addColorStop(0,col);g.addColorStop(1,'transparent');x.fillStyle=g;x.beginPath();x.arc(X,Y,r,0,7);x.fill()}
+function frame(t){requestAnimationFrame(frame);phase=t*.001;pulse*=.965;x.fillStyle='#060915';x.fillRect(0,0,W,H);let cx=W*(.5+(px-.5)*.18),cy=H*(.52+(py-.5)*.14),rad=Math.min(W,H)*.36;
+// source: tiny query starts around an attention orbit
+if(mode===1||mode===4){for(const q of samples){let a=q.a+phase*(.16+q.s*.09),rr=rad*q.r*(1+.08*Math.sin(phase+q.a));let X=cx+Math.cos(a)*rr*1.55,Y=cy+Math.sin(a)*rr*.58;glow(X,Y,2+q.s*3,'rgba(118,174,255,.85)');}}
+// query lanes: GPU work becomes concentric pending marks
+if(mode===2||mode===4){x.save();x.globalAlpha=.75;for(let j=0;j<8;j++){let rr=rad*(.22+j*.09),lag=(phase*.45+j*.17)%1;x.strokeStyle=`hsla(${195+j*9},85%,70%,${.13+lag*.22})`;x.lineWidth=1;x.setLineDash([2,10]);x.lineDashOffset=-phase*35*(j%2?1:-1);x.beginPath();x.ellipse(cx,cy,rr*1.58,rr*.58,0,0,7);x.stroke()}x.restore()}
+// delayed readback: warm lanterns resolve after different lag
+if(mode===3||mode===4){for(const q of samples){let a=q.a+phase*.18,rr=rad*q.r;let X=cx+Math.cos(a)*rr*1.55,Y=cy+Math.sin(a)*rr*.58;let ready=Math.max(0,Math.sin(phase*.75-q.delay*5+pulse*3));glow(X,Y,(7+ready*31)*q.s,`rgba(255,${150+ready*85},70,${.07+ready*.28})`)}glow(cx,cy,rad*(.18+pulse*.2),'rgba(255,194,91,.16)')}
+// deliberate delayed ray: attention crosses performance sampling
+x.strokeStyle='rgba(190,220,255,.28)';x.lineWidth=1;x.beginPath();x.moveTo(W*px,H*py);x.lineTo(cx,cy);x.stroke();glow(W*px,H*py,22,'rgba(100,178,255,.22)');
+x.fillStyle='rgba(220,235,255,.68)';x.fillText(['SOURCE QUERIES','PENDING RINGS','BATCH READBACK','COMPOSITE'][mode-1],18,28);x.fillStyle='rgba(255,205,110,.8)';x.fillText(`resolve Δ ${(7+Math.abs(Math.sin(phase))*9).toFixed(1)} ms  ·  batch ${Math.floor(phase)%8+1}`,18,47)
+}requestAnimationFrame(frame);
+</script></html>

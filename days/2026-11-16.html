@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPUの計測遅延とscene depthを、夜景が結像する余韻にする | 2026-11-16</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.16</p>
+      <h1>GPUの計測遅延とscene depthを、夜景が結像する余韻にする</h1>
+      <p class="hero-subtitle">Turn GPU measurement delay and scene depth into an afterglow of a settling nightscape</p>
+      <p>three.js r188のGPUTimer／readbackバッチ化、PlayCanvasのアプリフレームパス由来scene-depth公開、Babylon.js 9.36のGaussian Splat streaming atlasとsnapshot更新を、11/13の水面・地平線の『到着』の続きとして読む。本命はGPUクエリが遅れて灯るランタン、派生は深度を霧とスプラットの優先度へ変える最小試作である。</p>
+      <p class="en-copy">Three.js GPU timer batching, PlayCanvas published scene depth and Babylon Gaussian-splat updates become a pair of sketches where delayed measurement and depth arrival settle into light.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-16_scene_depth_afterglow_field.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-13.html">← 2026.11.13</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Scene Depth Afterglow Field</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-16_scene_depth_afterglow_field.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>GPU Timer Lantern Score</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-16_gpu_timer_lantern_score.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js r188の進行ではGPUTimerがstart/end/deltaを持つ形へ整理され、同じtaskで終わるreadbackをまとめるPRが出ている。2) PlayCanvasにはWebGPU reverse-Z、アプリ側frame passで描いたscene depthの公開、indirect draw/dispatch bufferのreadback提案が並ぶ。3) Babylon.js 9.36.0はNative上のGaussian Splat streaming atlasをrender targetで保持し、splat range/compound partのsortも修正した。4) Delowar HossainのThe LabはGLSL fluid、volumetric light、frame-budget付きparticleを個別に触れる30本の実験として公開しており、『内部の処理を小さく公開する』参考になる。</p>
+          <p class="en-copy">GPU timing, published depth, readback and splat streaming make rendering state an expressive material.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js PR list</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas PR list</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0" target="_blank" rel="noreferrer">Babylon 9.36.0</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>GPUTimerの価値は速い／遅いの採点ではなく、描画が『いつ答えを返したか』を素材にできる点にある。11/13のcoarse-to-fine地平線を、今日はquery開始→保留→まとめて読出し→光が残る、という拍に展開する。The Labのようにfluid、fog、particleを独立した触れる習作として出す構造は、このプロジェクトの本命／派生の並べ方とも相性がよい。</p>
+          <p class="en-copy">Timing is not just a performance score; it provides a rhythm for when an image answers back.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://2027.delowarhossain.dev/lab" target="_blank" rel="noreferrer">The Lab</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A. 本命『GPU Timer Lantern Score』は、注意位置の周囲でqueryが青い点として始まり、保留ringを経て琥珀のランタンとして遅れて灯る。pointerで注視、click/Spaceでbatch resolve、1〜4で層を分ける。B. 派生『Scene Depth Afterglow Field』は、publishされたdepthを薄い霧と遠景splatの到着優先度に変換する。C. 中長期『観客の夜景』ではXR gazeをdepth focus、音のrestをtimer batchの区切りとして複数人の歩留まりを一枚の夜景にする。</p>
+          <p class="en-copy">The two implemented studies make timer batches and depth publication touchable; the longer-term work is a shared XR nightscape.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-16_gpu_timer_lantern_score.html" target="_blank" rel="noreferrer">本命HTML</a></li>
+          
+            <li><a href="../outputs/2026-11-16_scene_depth_afterglow_field.html" target="_blank" rel="noreferrer">派生HTML</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>実装ではtimer queryの開始・終了・readback完了を別イベントとして保持し、`queryId`, `passName`, `startMs`, `endMs`, `deltaMs`, `readbackTask`, `frameId`をstate textureまたはリングbufferへ記録する。scene depthはviewport・near/far・generationと対で扱い、screen-spaceのfog/粒子/SSR rejectionに渡す。reverse-Z採用時は深度比較・linearize式・clear値を一括で切り替える。Babylonのsplat streamingは`atlasGeneration`, `rangeId`, `sortPass`, `lodLevel`を同じscoreへ載せる。</p>
+          <p class="en-copy">Log timing and depth generations separately, then use their shared timeline for fog, particles and reflection decisions.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas scene-depth PR list</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0" target="_blank" rel="noreferrer">Babylon release</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsのGPUTimer APIとWebGL fallback、PlayCanvasのreverse-Z／published scene depth／readbackがmerge後にどう接続されるか、Babylon 9.36のstreaming atlasがWeb版へどう還流するかを追う。併せてtiming値をアートに変える制作者デモ、特にframe-budgetとaudio/粒子を結ぶものを継続観測する。</p>
+          <p class="en-copy">Watch the final timing API, depth publication integration, streaming atlas behavior and art demos that expose frame budgets.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>最短では本命のランタン試作を開き、mode 2で保留ring、mode 3で読出し後の灯りを往復する。次に実プロジェクトでrAFごとのGPU timer readbackを『一度に表示しない』よう2〜4 frameまとめ、音の休符またはカメラ停止でまとめて解決する。数値の監視ではなく、静止した瞬間に街が読める演出として試す。</p>
+          <p class="en-copy">Batch a few frames of timer readback and resolve them on stillness or an audio rest, rather than showing metrics continuously.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-16_gpu_timer_lantern_score.html" target="_blank" rel="noreferrer">GPU Timer Lantern Score</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: GPUTimer/readback、scene-depth、reverse-Z、splat streaming atlasの一次情報を確認。アイデア検討: 11/09〜13の水面・反射・coarse horizonを『遅れて答える画面』へ接続。サンプル実装: 本命ランタンと派生depth fieldを依存なしCanvasで作成。結果の検証: JSON/HTML/スクリプト構文、gallery生成、公開用pushを確認する。継続=settling score、 新規=timer afterglow／depth veil、寝かせる=重いWebGPU専用最終表現とカードUI。</p>
+          <p class="en-copy">Research feeds a settling-score line; two Canvas studies validate it while WebGPU-only final treatments remain parked.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近は『品質を即時に完成させない』APIが増えている。SVGF history、SSR coverage、coarse-first splat、seam repair、そしてtimer readbackは、いずれも未確定な像をどう保持して渡すかの技術である。組み合わせる価値が高いのは、depthの近遠でhistory許容時間を変え、timerの遅延を音・霧・発光へ写し、静止gazeだけが反射と遠景を収束させる一本の空間譜面。</p>
+          <p class="en-copy">Temporal history, coverage, coarse arrival, repair and readback are all techniques for holding an unfinished image gracefully.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>選定: A『GPU Timer Lantern Score』を本命にした。外部依存なしで、click/Spaceによるbatch resolve、pointer注視、1〜4の構成切替が動く。派生B『Scene Depth Afterglow Field』は、depth publishを霧とsplat優先度に変える検証で、同じ操作体系を持つ。次に足すなら、本命へWebGL2のEXT_disjoint_timer_query_webgl2実測値を、派生へ実scene depth textureを入れ、両者を同じaudio onsetログで同期する。</p>
+          <p class="en-copy">The main lantern study and derived depth field are working, dependency-free interaction tests; next, replace synthetic values with actual GPU queries and depth textures.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-16_gpu_timer_lantern_score.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-16_scene_depth_afterglow_field.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>本日の入力はpointer位置、resolve pulse、mode、疑似query delay、depth focus、splatのz値である。これを実データ化すれば、pass timing、camera depth、gaze dwell、audio onset、scene captureの時系列になる。展示では来場者の停止時間をランタンの残光に、映像サイトではスクロール速度を深度veilの濃さに、WebXRでは視線をsplat到着順位に使える。MediaPipeの頭部速度でhistory resetを、カメラ映像の明度で霧色を、ブランド音の休符でbatch resolveを駆動すると、計測ログがそのまま演出譜になる。</p>
+          <p class="en-copy">The prototype's inputs can become a timeline of timing, depth, gaze and audio for installations, WebXR and branded motion.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js open PRs — GPUTimer/readback</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas open PRs — reverse-Z, scene depth and indirect readback</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0" target="_blank" rel="noreferrer">Babylon.js 9.36.0 release</a></li>
+          
+            <li><a href="https://2027.delowarhossain.dev/lab" target="_blank" rel="noreferrer">制作者事例: Delowar Hossain The Lab</a></li>
+          
+            <li><a href="../outputs/2026-11-16_gpu_timer_lantern_score.html" target="_blank" rel="noreferrer">本命試作: GPU Timer Lantern Score</a></li>
+          
+            <li><a href="../outputs/2026-11-16_scene_depth_afterglow_field.html" target="_blank" rel="noreferrer">派生試作: Scene Depth Afterglow Field</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-16_scene_depth_afterglow_field.html" loading="lazy" title="Scene Depth Afterglow Field"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

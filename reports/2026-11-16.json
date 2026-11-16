@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-16",
+  "headline": "GPUの計測遅延とscene depthを、夜景が結像する余韻にする",
+  "headlineEn": "Turn GPU measurement delay and scene depth into an afterglow of a settling nightscape",
+  "summary": "three.js r188のGPUTimer／readbackバッチ化、PlayCanvasのアプリフレームパス由来scene-depth公開、Babylon.js 9.36のGaussian Splat streaming atlasとsnapshot更新を、11/13の水面・地平線の『到着』の続きとして読む。本命はGPUクエリが遅れて灯るランタン、派生は深度を霧とスプラットの優先度へ変える最小試作である。",
+  "summaryEn": "Three.js GPU timer batching, PlayCanvas published scene depth and Babylon Gaussian-splat updates become a pair of sketches where delayed measurement and depth arrival settle into light.",
+  "links": [
+    {
+      "label": "three.js open PRs — GPUTimer/readback",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas open PRs — reverse-Z, scene depth and indirect readback",
+      "url": "https://github.com/playcanvas/engine/pulls"
+    },
+    {
+      "label": "Babylon.js 9.36.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0"
+    },
+    {
+      "label": "制作者事例: Delowar Hossain The Lab",
+      "url": "https://2027.delowarhossain.dev/lab"
+    },
+    {
+      "label": "本命試作: GPU Timer Lantern Score",
+      "url": "../outputs/2026-11-16_gpu_timer_lantern_score.html"
+    },
+    {
+      "label": "派生試作: Scene Depth Afterglow Field",
+      "url": "../outputs/2026-11-16_scene_depth_afterglow_field.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js r188の進行ではGPUTimerがstart/end/deltaを持つ形へ整理され、同じtaskで終わるreadbackをまとめるPRが出ている。2) PlayCanvasにはWebGPU reverse-Z、アプリ側frame passで描いたscene depthの公開、indirect draw/dispatch bufferのreadback提案が並ぶ。3) Babylon.js 9.36.0はNative上のGaussian Splat streaming atlasをrender targetで保持し、splat range/compound partのsortも修正した。4) Delowar HossainのThe LabはGLSL fluid、volumetric light、frame-budget付きparticleを個別に触れる30本の実験として公開しており、『内部の処理を小さく公開する』参考になる。",
+      "bodyEn": "GPU timing, published depth, readback and splat streaming make rendering state an expressive material.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas PR list",
+          "url": "https://github.com/playcanvas/engine/pulls"
+        },
+        {
+          "label": "Babylon 9.36.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "GPUTimerの価値は速い／遅いの採点ではなく、描画が『いつ答えを返したか』を素材にできる点にある。11/13のcoarse-to-fine地平線を、今日はquery開始→保留→まとめて読出し→光が残る、という拍に展開する。The Labのようにfluid、fog、particleを独立した触れる習作として出す構造は、このプロジェクトの本命／派生の並べ方とも相性がよい。",
+      "bodyEn": "Timing is not just a performance score; it provides a rhythm for when an image answers back.",
+      "links": [
+        {
+          "label": "The Lab",
+          "url": "https://2027.delowarhossain.dev/lab"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A. 本命『GPU Timer Lantern Score』は、注意位置の周囲でqueryが青い点として始まり、保留ringを経て琥珀のランタンとして遅れて灯る。pointerで注視、click/Spaceでbatch resolve、1〜4で層を分ける。B. 派生『Scene Depth Afterglow Field』は、publishされたdepthを薄い霧と遠景splatの到着優先度に変換する。C. 中長期『観客の夜景』ではXR gazeをdepth focus、音のrestをtimer batchの区切りとして複数人の歩留まりを一枚の夜景にする。",
+      "bodyEn": "The two implemented studies make timer batches and depth publication touchable; the longer-term work is a shared XR nightscape.",
+      "links": [
+        {
+          "label": "本命HTML",
+          "url": "../outputs/2026-11-16_gpu_timer_lantern_score.html"
+        },
+        {
+          "label": "派生HTML",
+          "url": "../outputs/2026-11-16_scene_depth_afterglow_field.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "実装ではtimer queryの開始・終了・readback完了を別イベントとして保持し、`queryId`, `passName`, `startMs`, `endMs`, `deltaMs`, `readbackTask`, `frameId`をstate textureまたはリングbufferへ記録する。scene depthはviewport・near/far・generationと対で扱い、screen-spaceのfog/粒子/SSR rejectionに渡す。reverse-Z採用時は深度比較・linearize式・clear値を一括で切り替える。Babylonのsplat streamingは`atlasGeneration`, `rangeId`, `sortPass`, `lodLevel`を同じscoreへ載せる。",
+      "bodyEn": "Log timing and depth generations separately, then use their shared timeline for fog, particles and reflection decisions.",
+      "links": [
+        {
+          "label": "PlayCanvas scene-depth PR list",
+          "url": "https://github.com/playcanvas/engine/pulls"
+        },
+        {
+          "label": "Babylon release",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのGPUTimer APIとWebGL fallback、PlayCanvasのreverse-Z／published scene depth／readbackがmerge後にどう接続されるか、Babylon 9.36のstreaming atlasがWeb版へどう還流するかを追う。併せてtiming値をアートに変える制作者デモ、特にframe-budgetとaudio/粒子を結ぶものを継続観測する。",
+      "bodyEn": "Watch the final timing API, depth publication integration, streaming atlas behavior and art demos that expose frame budgets."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "最短では本命のランタン試作を開き、mode 2で保留ring、mode 3で読出し後の灯りを往復する。次に実プロジェクトでrAFごとのGPU timer readbackを『一度に表示しない』よう2〜4 frameまとめ、音の休符またはカメラ停止でまとめて解決する。数値の監視ではなく、静止した瞬間に街が読める演出として試す。",
+      "bodyEn": "Batch a few frames of timer readback and resolve them on stillness or an audio rest, rather than showing metrics continuously.",
+      "links": [
+        {
+          "label": "GPU Timer Lantern Score",
+          "url": "../outputs/2026-11-16_gpu_timer_lantern_score.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: GPUTimer/readback、scene-depth、reverse-Z、splat streaming atlasの一次情報を確認。アイデア検討: 11/09〜13の水面・反射・coarse horizonを『遅れて答える画面』へ接続。サンプル実装: 本命ランタンと派生depth fieldを依存なしCanvasで作成。結果の検証: JSON/HTML/スクリプト構文、gallery生成、公開用pushを確認する。継続=settling score、 新規=timer afterglow／depth veil、寝かせる=重いWebGPU専用最終表現とカードUI。",
+      "bodyEn": "Research feeds a settling-score line; two Canvas studies validate it while WebGPU-only final treatments remain parked."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近は『品質を即時に完成させない』APIが増えている。SVGF history、SSR coverage、coarse-first splat、seam repair、そしてtimer readbackは、いずれも未確定な像をどう保持して渡すかの技術である。組み合わせる価値が高いのは、depthの近遠でhistory許容時間を変え、timerの遅延を音・霧・発光へ写し、静止gazeだけが反射と遠景を収束させる一本の空間譜面。",
+      "bodyEn": "Temporal history, coverage, coarse arrival, repair and readback are all techniques for holding an unfinished image gracefully."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "選定: A『GPU Timer Lantern Score』を本命にした。外部依存なしで、click/Spaceによるbatch resolve、pointer注視、1〜4の構成切替が動く。派生B『Scene Depth Afterglow Field』は、depth publishを霧とsplat優先度に変える検証で、同じ操作体系を持つ。次に足すなら、本命へWebGL2のEXT_disjoint_timer_query_webgl2実測値を、派生へ実scene depth textureを入れ、両者を同じaudio onsetログで同期する。",
+      "bodyEn": "The main lantern study and derived depth field are working, dependency-free interaction tests; next, replace synthetic values with actual GPU queries and depth textures.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-16_gpu_timer_lantern_score.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-16_scene_depth_afterglow_field.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本日の入力はpointer位置、resolve pulse、mode、疑似query delay、depth focus、splatのz値である。これを実データ化すれば、pass timing、camera depth、gaze dwell、audio onset、scene captureの時系列になる。展示では来場者の停止時間をランタンの残光に、映像サイトではスクロール速度を深度veilの濃さに、WebXRでは視線をsplat到着順位に使える。MediaPipeの頭部速度でhistory resetを、カメラ映像の明度で霧色を、ブランド音の休符でbatch resolveを駆動すると、計測ログがそのまま演出譜になる。",
+      "bodyEn": "The prototype's inputs can become a timeline of timing, depth, gaze and audio for installations, WebXR and branded motion."
+    }
+  ]
+}

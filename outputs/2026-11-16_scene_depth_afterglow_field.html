@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scene Depth Afterglow Field</title>
+<style>html,body{margin:0;background:#050b0e;color:#d7fff5;font:13px ui-monospace,monospace;overflow:hidden}canvas{display:block;width:100vw;height:100vh}#ui{position:fixed;left:18px;bottom:16px;line-height:1.55;pointer-events:none;text-shadow:0 1px 4px #000}b{color:#efffd4}span{color:#9acfc5}</style>
+<canvas></canvas><div id="ui"><b>SCENE DEPTH / AFTERGLOW FIELD</b><br><span>pointer: depth focus · click / space: publish a depth frame · 1–4: depth / veil / splats / composite</span></div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d');let W,H,D=1,m=4,px=.5,py=.5,hit=0,time=0;let pts=Array.from({length:360},()=>({x:Math.random(),y:Math.random(),z:Math.random()}));
+function rs(){D=Math.min(devicePixelRatio,2);c.width=innerWidth*D;c.height=innerHeight*D;x.setTransform(D,0,0,D,0,0);W=innerWidth;H=innerHeight}rs();addEventListener('resize',rs);addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});addEventListener('pointerdown',()=>hit=1);addEventListener('keydown',e=>{if(e.key===' ')hit=1;if(+e.key>0&&+e.key<5)m=+e.key});
+function f(t){requestAnimationFrame(f);time=t*.001;hit*=.966;x.fillStyle='#050b0e';x.fillRect(0,0,W,H);let horizon=H*(.48+(py-.5)*.16),focus=W*px;
+if(m===1||m===4){let g=x.createLinearGradient(0,horizon,0,H);g.addColorStop(0,'#17424a');g.addColorStop(1,'#071013');x.fillStyle=g;x.fillRect(0,horizon,W,H-horizon);for(let i=0;i<16;i++){x.strokeStyle=`rgba(142,255,225,${.2-i*.01})`;x.beginPath();x.moveTo(0,horizon+i*i*2.7);x.lineTo(W,horizon+i*i*2.7);x.stroke()}}
+if(m===2||m===4){for(let i=0;i<9;i++){let r=(.12+i*.1)*Math.min(W,H),g=x.createRadialGradient(focus,horizon,0,focus,horizon,r);g.addColorStop(0,`rgba(104,255,213,${.08-i*.005})`);g.addColorStop(1,'transparent');x.fillStyle=g;x.fillRect(focus-r,horizon-r,r*2,r*2)}}
+if(m===3||m===4){for(const p of pts){let drift=Math.sin(time*.3+p.z*12)*.02;let X=(p.x+drift)*W,Y=horizon+(p.y-.18)*H*.72;let att=Math.exp(-(((X-focus)/W)**2)*9);let a=.13+.65*(1-p.z)*att+hit*.25;let r=.5+(1-p.z)*3.2;x.fillStyle=`rgba(${100+Math.floor((1-p.z)*110)},255,${180+Math.floor(p.z*50)},${a})`;x.beginPath();x.arc(X,Y,r,0,7);x.fill()}}
+x.strokeStyle='rgba(246,255,201,.5)';x.setLineDash([5,8]);x.lineDashOffset=-time*18;x.beginPath();x.moveTo(focus,0);x.lineTo(focus,H);x.stroke();x.setLineDash([]);x.fillStyle='#d7fff5';x.fillText(['PUBLISHED DEPTH','DEPTH VEIL','SPLAT ARRIVAL','COMPOSITE'][m-1],18,28);x.fillStyle='#a7d8ca';x.fillText(`scene depth generation ${Math.floor(time)%12} · attention ${(px*100).toFixed(0)}%`,18,47)}requestAnimationFrame(f);
+</script></html>
