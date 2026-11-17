@@ -1,0 +1,159 @@
+{
+  "date": "2026-11-17",
+  "headline": "補間と収束を、夜景が記憶を選ぶ時間にする",
+  "headlineEn": "Make interpolation and convergence the time in which a nightscape chooses its memory",
+  "summary": "three.js r188のTRAA履歴Catmull–Rom補間、GPUTimerのreadback集約、PlayCanvasのSteadySplatsとscene-depth公開、Babylon.jsのGaussian Splat streaming atlasを、11/16の『遅れて答える画面』の続きとして読む。本命は履歴タップを琥珀の光へ再構成する試作、派生はスプラットが16フレームで合唱のように落ち着く試作である。",
+  "summaryEn": "TRAA history reconstruction and SteadySplats become two compact studies of a scene settling into a chosen memory.",
+  "links": [
+    {
+      "label": "three.js r188 pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine pull requests",
+      "url": "https://github.com/playcanvas/engine/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js 9.36.0 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.36.0"
+    },
+    {
+      "label": "Codrops: They Are Coming — browser projection mapping",
+      "url": "https://tympanus.net/codrops/2026/11/13/they-are-coming-web-based-projection-mapping-for-a-techno-release/"
+    },
+    {
+      "label": "本命試作: Catmull History Lantern",
+      "url": "../outputs/2026-11-17_catmull_history_lantern.html"
+    },
+    {
+      "label": "派生試作: Steady Splat Choir",
+      "url": "../outputs/2026-11-17_steady_splat_choir.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js r188ではTRAAのhistoryをCatmull–Rom filterでsampleするPR #35447、前フレームradianceをSSRへreprojectionするPR #35430、GPUTimerのstart/end/deltaと同一taskのreadback集約が並ぶ。2) PlayCanvasはopt-inのSteadySplatsをWebGPU/WebGL2へ提案し、公開済みリリースにはcoarsest-first LOD、log-distance sort、per-splat anti-alias filterと0.3 px² low-pass filterがある。3) PlayCanvasのapplication frame passで描いたscene depthを公開するPRは、ポストFXだけでなく粒子・霧・到着順へ深度を渡せる入口になる。4) Babylon.js 9.36.0のNative Gaussian Splat streaming atlas/sort修正は、ストリーミング途中の像を壊さず保持する方向の実例。",
+      "bodyEn": "History reconstruction, batched timing, steady splats and published depth all treat an incomplete image as a useful state.",
+      "links": [
+        {
+          "label": "three.js PR #35447",
+          "url": "https://github.com/mrdoob/three.js/pull/35447"
+        },
+        {
+          "label": "three.js PR #35519",
+          "url": "https://github.com/mrdoob/three.js/pull/35519"
+        },
+        {
+          "label": "PlayCanvas PR #9819",
+          "url": "https://github.com/playcanvas/engine/pull/9819"
+        },
+        {
+          "label": "PlayCanvas PR #10008",
+          "url": "https://github.com/playcanvas/engine/pull/10008"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Codropsの『They Are Coming』は、ブラウザ内のlive shaderとcustom mapping toolを実際のテクノ・リリースのprojectionへつなぐ事例である。重要なのは完成画像だけでなく、投影の座標・明るさ・タイミングが音楽と空間を結ぶ制作パラメータになる点。今日のCatmull–Rom補間を映像の“つなぎ”、SteadySplatsの収束を壁面の粒子が音の休符で揃う“合唱”にすれば、画質制御を上演の譜面へ変えられる。",
+      "bodyEn": "A browser projection-mapping case study shows how render parameters can become performance parameters.",
+      "links": [
+        {
+          "label": "They Are Coming case study",
+          "url": "https://tympanus.net/codrops/2026/11/13/they-are-coming-web-based-projection-mapping-for-a-techno-release/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A. 本命『Catmull History Lantern』ではpointer移動をcamera traceとみなし、現在フレーム、履歴tap、再構成された琥珀の光を1〜4で切り替える。click/Spaceでhistoryを切れば、cut後に何を保持し何を忘れるかが見える。B. 派生『Steady Splat Choir』はpointerをattention focusにし、raw sample→spatial reuse→temporal settleを合唱の層として描く。C. 中長期は、XR gazeが止まった場所だけhistoryを長く採用し、音のrestでsplat convergenceを進める“静止で結像する部屋”。",
+      "bodyEn": "The main study exposes history reconstruction; the derived study turns spatial and temporal reuse into a choir of settling splats.",
+      "links": [
+        {
+          "label": "本命HTML",
+          "url": "../outputs/2026-11-17_catmull_history_lantern.html"
+        },
+        {
+          "label": "派生HTML",
+          "url": "../outputs/2026-11-17_steady_splat_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "TRAA/SSRは`frameId`, `historyAge`, `jitterCurrent`, `jitterPrevious`, `motionVector`, `depthDelta`, `normalDelta`, `historyWeight`, `reprojectionValid`を一緒に残す。Catmull–Romはhistory tapを鮮明にする代わりにdisocclusion/急なcutを越境しないacceptance maskが必要。SteadySplats側は`convergenceFrame`, `lodLevel`, `sortKey`, `antiAliasFilterSize`, `minContribution`, `cameraStillness`を記録し、リセット理由を別channelにする。scene depthを使う時はnear/far/reverse-Z/viewport/generationを同じ構造体で渡す。",
+      "bodyEn": "Keep motion, depth, validity and reset reasons together; sharp reconstruction needs a conservative acceptance mask.",
+      "links": [
+        {
+          "label": "three.js PR #35430",
+          "url": "https://github.com/mrdoob/three.js/pull/35430"
+        },
+        {
+          "label": "PlayCanvas releases — GSplat notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのTRAA/SSR historyとGPUTimer APIがmerge後にどの例へ落ちるか、PlayCanvasのSteadySplatsがdefault/opt-inのどちらへ進むか、scene-depth公開とreverse-Zが実際のframe passでどう結ばれるかを追う。Babylonのstreaming atlasがWeb版のsplat到着・sort安定性へどう還元されるか、また制作者側ではprojection mapping、音反応、粒子を一体にするWebGL作品を観測する。",
+      "bodyEn": "Watch the merge path of history, timing, steady splats, depth publication and production-facing WebGL work."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 2（履歴tap）とmode 3（再構成）を往復し、pointerを急に動かしてclickでcutする。次に実装へは、カメラ移動量またはXR head velocityが閾値を越えたらhistoryWeightを0へ落とし、静止時だけCatmull–Rom reconstructionを強める、という小さな規則を入れる。派生の16-frame convergenceは、静止、音の休符、またはネットワーク到着に割り当てられる。",
+      "bodyEn": "Gate sharp history reconstruction by stillness and reset it decisively on cuts; use convergence as an event-driven quality cue.",
+      "links": [
+        {
+          "label": "Catmull History Lantern",
+          "url": "../outputs/2026-11-17_catmull_history_lantern.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: TRAA Catmull–Rom、SSR前フレームreprojection、GPUTimer、SteadySplats、scene depth、streaming atlasを一次情報で確認。アイデア検討: 11/09〜16の水面・反射・timer/depthのsettling scoreを『記憶を選ぶ画面』へ接続。サンプル実装: 本命history lanternと派生splat choirを依存なしCanvasで制作。結果の検証: JSON/HTML/スクリプト構文、gallery/day/index生成、Pages pushを確認。継続=settling score、新規=history reconstruction/steady convergence、寝かせる=重いWebGPU専用の最終品質・カードUI。",
+      "bodyEn": "Research feeds the settling score; two portable studies test reconstruction and convergence while WebGPU-only final treatments stay parked."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは“少ないフレームで一度に完成する”より、“不確かな画像を安全に保持して、条件が整ったら鮮明にする”設計へ寄っている。TRAA、SSR、SVGF、SteadySplats、coarse-first LOD、scene depth、timer readbackは全て、像の到着順・採用条件・忘却条件を扱う技術である。組み合わせる価値が高いのは、depthでhistoryの寿命を変え、camera stillnessでsplat収束を許可し、timerの解決を音の休符に合わせる一本の空間譜面。",
+      "bodyEn": "Modern rendering increasingly manages when an unfinished image is retained, accepted, sharpened or forgotten."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "選定: A『Catmull History Lantern』を本命にした。外部依存なしでpointerによるcamera trace、click/Spaceでhistory cut、1〜4でcurrent/tap/reconstruction/compositeが動く。派生B『Steady Splat Choir』は同じ操作でraw/spatial/temporalの収束を検証する。次に足すなら、本命にWebGL velocity/depth textureとreprojection validityを、派生に実GSplatのLOD/sort/anti-alias metricsを入れ、両方をaudio onsetとXR gazeで同期する。",
+      "bodyEn": "Two working Canvas studies isolate history reconstruction and temporal splat convergence; next replace their synthetic signals with renderer telemetry.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-17_catmull_history_lantern.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-17_steady_splat_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本日の入力はpointer位置、history tap列、cut、mode、convergence age、疑似noiseである。実値に置き換えると、camera/XR gazeの軌跡、history accept/reject、motion/depth境界、splat LOD・sort・arrival、audio onset/休符の時系列になる。展示では観客の静止時間を壁面の高解像度化へ、ライブ映像では演者の停止を反射の保持へ、ブランド映像では楽曲のブレイクをhistory resetへ使える。MediaPipe head pose、カメラ映像の輝度、WebXR depth sensing、会場のDMXを同じscoreへ接続すれば、技術ログが空間演出の楽譜になる。",
+      "bodyEn": "Interaction, history and convergence signals can become an audiovisual score for installations, WebXR and projection work."
+    }
+  ]
+}

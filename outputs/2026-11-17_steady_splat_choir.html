@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Steady Splat Choir</title>
+<style>html,body{margin:0;background:#07100e;color:#dbfff4;font:13px ui-monospace,monospace;overflow:hidden}canvas{display:block;width:100vw;height:100vh}#ui{position:fixed;left:18px;bottom:16px;line-height:1.55;text-shadow:0 1px 4px #000;pointer-events:none}b{color:#bfffe3}span{color:#8bc9b7}</style>
+<canvas></canvas><div id="ui"><b>STEADY SPLAT / CHOIR</b><br><span>pointer: attention focus · click / space: reset convergence · 1–4: raw / spatial reuse / temporal settle / composite</span></div>
+<script>
+const c=document.querySelector('canvas'),g=c.getContext('2d');let W,H,px=.5,py=.5,mode=4,age=0,t=0;let dots=Array.from({length:260},(_,i)=>({u:Math.random(),v:Math.random(),r:1+Math.random()*3,n:Math.random()}));
+function resize(){let d=Math.min(devicePixelRatio,2);c.width=innerWidth*d;c.height=innerHeight*d;g.setTransform(d,0,0,d,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',resize);resize();addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});addEventListener('pointerdown',()=>age=0);addEventListener('keydown',e=>{if(e.key===' ')age=0;if(+e.key>0&&+e.key<5)mode=+e.key});
+function glow(x,y,r,col){let q=g.createRadialGradient(x,y,0,x,y,r);q.addColorStop(0,col);q.addColorStop(1,'transparent');g.fillStyle=q;g.beginPath();g.arc(x,y,r,0,7);g.fill()}
+function draw(now){requestAnimationFrame(draw);t=now*.001;age=Math.min(1,age+.004);g.fillStyle='#07100e';g.fillRect(0,0,W,H);let fx=W*px,fy=H*py;let field=(u,v)=>Math.sin(u*9+t*.5)+Math.cos(v*7-t*.35)+Math.sin((u+v)*12); 
+// raw samples arrive with sparkle/noise
+if(mode===1||mode===4)dots.forEach(p=>{let X=p.u*W,Y=p.v*H,noise=(Math.sin(t*7+p.n*99)*.5+.5);let a=.08+.46*noise;g.fillStyle=`rgba(137,255,213,${a})`;g.fillRect(X,Y,p.r,p.r)});
+// local spatial reuse forms short connecting contours around attention
+if(mode===2||mode===4){for(let i=0;i<36;i++){let a=i*.45+t*.2,r=20+(i%7)*14;let X=fx+Math.cos(a)*r*2.1,Y=fy+Math.sin(a)*r*.75;glow(X,Y,12,'rgba(87,237,184,.2)')}g.strokeStyle='rgba(94,250,190,.38)';g.beginPath();for(let i=0;i<100;i++){let X=i/99*W,Y=H*.55+field(i/99,py)*22;if(i)g.lineTo(X,Y);else g.moveTo(X,Y)}g.stroke()}
+// temporal accumulation turns random samples into a calm luminous group
+if(mode===3||mode===4){dots.forEach((p,i)=>{let X=p.u*W,Y=p.v*H;let dist=Math.hypot(X-fx,Y-fy)/Math.max(W,H),a=age*(.08+Math.max(0,.55-dist)*.8);if(i%2===0)glow(X,Y,p.r*(4+age*9),`rgba(255,${170+Math.floor(age*70)},105,${a})`)});glow(fx,fy,50+age*120,'rgba(255,201,111,.24)')}
+g.strokeStyle='rgba(202,255,230,.35)';g.beginPath();g.arc(fx,fy,15+age*16,0,7);g.stroke();g.fillStyle='rgba(215,255,240,.76)';g.fillText(['RAW SAMPLES','SPATIAL REUSE','TEMPORAL SETTLING','COMPOSITE'][mode-1],18,28);g.fillStyle='rgba(255,213,142,.85)';g.fillText(`convergence ${Math.round(age*16)}/16 frames · focus ${(px*100|0)},${(py*100|0)}`,18,48)}requestAnimationFrame(draw);
+</script></html>

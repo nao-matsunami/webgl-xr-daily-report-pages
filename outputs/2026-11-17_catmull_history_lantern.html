@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Catmull History Lantern</title>
+<style>html,body{margin:0;background:#050711;color:#d9e7ff;font:13px ui-monospace,monospace;overflow:hidden}canvas{display:block;width:100vw;height:100vh}#ui{position:fixed;left:18px;bottom:16px;line-height:1.55;text-shadow:0 1px 4px #000;pointer-events:none}b{color:#ffe1a0}span{color:#91acd2}</style>
+<canvas></canvas><div id="ui"><b>CATMULL–ROM / HISTORY LANTERN</b><br><span>pointer: move the camera trace · click / space: cut history · 1–4: current / taps / reconstruction / composite</span></div>
+<script>
+const c=document.querySelector('canvas'),g=c.getContext('2d');let W,H,px=.5,py=.5,mode=4,cut=0,t=0,history=[];
+function resize(){let d=Math.min(devicePixelRatio,2);c.width=innerWidth*d;c.height=innerHeight*d;g.setTransform(d,0,0,d,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',resize);resize();
+addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});addEventListener('pointerdown',()=>{cut=1;history=[]});addEventListener('keydown',e=>{if(e.key===' ') {cut=1;history=[]}if(+e.key>0&&+e.key<5)mode=+e.key});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));function glow(x,y,r,col){let q=g.createRadialGradient(x,y,0,x,y,r);q.addColorStop(0,col);q.addColorStop(1,'transparent');g.fillStyle=q;g.beginPath();g.arc(x,y,r,0,7);g.fill()}
+function curve(a,b,c,d,u){let u2=u*u,u3=u2*u;return .5*((2*b)+(-a+c)*u+(2*a-5*b+4*c-d)*u2+(-a+3*b-3*c+d)*u3)}
+function draw(now){requestAnimationFrame(draw);t=now*.001;cut*=.95;let target={x:W*(.5+(px-.5)*.72),y:H*(.5+(py-.5)*.54)};history.unshift(target);if(history.length>18)history.pop();g.fillStyle='#050711';g.fillRect(0,0,W,H);
+// current radiance: a moving cold source
+if(mode===1||mode===4){glow(target.x,target.y,92,'rgba(92,168,255,.30)');glow(target.x,target.y,14,'rgba(225,244,255,.95)');g.strokeStyle='rgba(130,196,255,.55)';g.beginPath();g.arc(target.x,target.y,28+Math.sin(t*3)*5,0,7);g.stroke()}
+// taps: history samples, held separate so a cut is legible
+if(mode===2||mode===4){history.forEach((p,i)=>{let a=(1-i/history.length)*.65;glow(p.x,p.y,8+i*1.7,`rgba(117,132,255,${a*.23})`);g.fillStyle=`rgba(172,194,255,${a})`;g.fillRect(p.x-1,p.y-1,2,2)});g.setLineDash([3,8]);g.strokeStyle='rgba(137,151,255,.35)';g.beginPath();history.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.stroke();g.setLineDash([])}
+// reconstructed position uses Catmull-Rom over the four freshest samples
+if(mode===3||mode===4&&history.length>3){let q=history;let u=.52+.38*Math.sin(t*.8);let X=curve(q[3].x,q[2].x,q[1].x,q[0].x,u),Y=curve(q[3].y,q[2].y,q[1].y,q[0].y,u);glow(X,Y,120,'rgba(255,173,76,.18)');glow(X,Y,38,'rgba(255,203,113,.35)');g.strokeStyle='rgba(255,222,163,.6)';g.beginPath();g.arc(X,Y,17+cut*54,0,7);g.stroke();g.fillStyle='rgba(255,229,183,.85)';g.fillText('reconstructed radiance',X+18,Y-18)}
+// foreground frame makes the reconstruction read as a projected night window
+g.strokeStyle='rgba(150,180,255,.14)';for(let i=0;i<7;i++){let y=H*.18+i*H*.1;g.beginPath();g.moveTo(0,y);g.lineTo(W,y+(px-.5)*30);g.stroke()}glow(W*px,H*py,22,'rgba(120,190,255,.16)');g.fillStyle='rgba(220,235,255,.74)';g.fillText(['CURRENT FRAME','HISTORY TAPS','CATMULL–ROM RECONSTRUCTION','COMPOSITE'][mode-1],18,28);g.fillStyle='rgba(255,207,128,.78)';g.fillText(`history age ${history.length} · cut ${cut>.1?'reset':'stable'}`,18,48)}requestAnimationFrame(draw);
+</script></html>
