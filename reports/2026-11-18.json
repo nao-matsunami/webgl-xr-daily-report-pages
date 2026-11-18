@@ -1,0 +1,155 @@
+{
+  "date": "2026-11-18",
+  "headline": "残像とLOD境界を、音の余韻として演出する",
+  "headlineEn": "Stage temporal afterglow and LOD boundaries as musical decay",
+  "summary": "three.js r188候補のdithered LOD transitionとGPU timer、PlayCanvas 2.24のCameraFrame/TAA・scene depth・planar reflection、Babylon.jsのWebGPU色管理を接続し、画質の変化を水面と粒子の上演へ転用する。依存なしCanvasで本命と派生の2試作を追加した。",
+  "summaryEn": "Dithered LOD, temporal resolve, scene depth and color management become two small performable studies.",
+  "links": [
+    {
+      "label": "three.js r188 pull requests",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.24.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+    },
+    {
+      "label": "Babylon.js WebGPU documentation",
+      "url": "https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md"
+    },
+    {
+      "label": "Codrops WebGL Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/tag/webgl/"
+    },
+    {
+      "label": "本命: Temporal Tide Afterglow",
+      "url": "../outputs/2026-11-18_temporal_tide_afterglow.html"
+    },
+    {
+      "label": "派生: Dithered LOD Rain",
+      "url": "../outputs/2026-11-18_dithered_lod_rain.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js r188候補にはMeshletDrawingPipelineのdithered LOD transition、GPUTimerのstart/end/delta、clearcoatのspecular occlusionが並ぶ。2) PlayCanvas 2.24はCameraFrameへTAA/SMAA/auto exposure/lens flareを統合し、scene depthをeffectへ渡す。planar reflectionとGaussian mipmap filterも水面表現に直結する。3) Babylon.jsはWebGPUでtone mappingとsRGB/Display-P3を明示し、WebGLとの併存を維持する。4) CodropsのWebGL作品群ではaudio、手触り、物理、hoverが画面遷移の主役になっている。",
+      "bodyEn": "Current engine work makes temporal quality, depth and output color explicit creative controls.",
+      "links": [
+        {
+          "label": "three.js PR #35566",
+          "url": "https://github.com/mrdoob/three.js/pull/35566"
+        },
+        {
+          "label": "three.js PR #35554",
+          "url": "https://github.com/mrdoob/three.js/pull/35554"
+        },
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "PlayCanvas 2.24のCameraFrameは、通常なら後処理の設定群に見えるTAA・露出・bloom・fogを、同じフレーム譜面として扱える形へ寄せている。これは“何を描くか”だけでなく“いつ鮮明にし、いつ光を残すか”を作品側が指示できるということ。Codropsのaudio/WebGL事例と結ぶと、露出の収束をキックの余韻、dither境界をハイハットの粒へ置換できる。",
+      "bodyEn": "Camera-frame effects make quality changes composable timing material, not merely rendering settings.",
+      "links": [
+        {
+          "label": "CameraFrame changes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+        },
+        {
+          "label": "Codrops Creative Hub",
+          "url": "https://tympanus.net/codrops/hub/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A. 本命「Temporal Tide Afterglow」はpointerを潮流、履歴を水面のwake、click/Spaceを露出フラッシュとして扱う。1〜4でsource/history/resolve/compositeを分離し、残像を制御できる。B. 派生「Dithered LOD Rain」は視線周辺だけ粒を細かくし、境界をdither雨として可視化する。C. 中長期は音の減衰でhistory weightを下げ、XR gazeの静止でLOD境界を止める“静かなほど結像する水庭”。",
+      "bodyEn": "A temporal tide and a dithered rain turn two quality transitions into controllable spatial rhythms.",
+      "links": [
+        {
+          "label": "本命HTML",
+          "url": "../outputs/2026-11-18_temporal_tide_afterglow.html"
+        },
+        {
+          "label": "派生HTML",
+          "url": "../outputs/2026-11-18_dithered_lod_rain.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "TAA/反射は`frameId, historyAge, historyWeight, jitter, velocity, depthDelta, resolveMs, exposure`を一緒に記録し、cut・disocclusion・露出急変を明示的なreset理由にする。LODは`cameraDistance, lodFrom, lodTo, ditherPhase, transitionMs, visibleCount`を取り、alpha blendではなくscreen-space ditherを優先すると奥行きの切替が濁りにくい。Babylonで広色域を使うならoutput color spaceと素材テクスチャの色空間を分けて監査する。",
+      "bodyEn": "Log quality decisions with their reset causes; use screen-space dithering for readable LOD handoffs.",
+      "links": [
+        {
+          "label": "Babylon WebGPU color-space options",
+          "url": "https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md"
+        },
+        {
+          "label": "PlayCanvas frame effects",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.jsのdithered LOD transitionとGPUTimerがr188へどう着地するか、PlayCanvasのCameraFrame effectsが実例・WebGL fallbackでどう使われるか、Babylon.jsのWebGPU/XR色管理が実機でどこまで一貫するかを追う。制作側ではaudio/WebGLのライブ表現、ditherを美術として使う作品、軽量な水面・反射デモを観測する。",
+      "bodyEn": "Watch merge status, fallback behavior and production examples that treat quality changes as art direction."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 2と3を切り替えながらpointerを急に動かし、clickで露出フラッシュを入れる。次の実装では、audio analyserのlow bandをflash、high bandをdither phaseに結び、カメラ速度が閾値を超えたらhistoryWeightをゼロにする。短時間で“残像が意図的に見える”か検証できる。",
+      "bodyEn": "Gate temporal history by motion, then map low and high audio bands to exposure and dither phase.",
+      "links": [
+        {
+          "label": "Temporal Tide Afterglow",
+          "url": "../outputs/2026-11-18_temporal_tide_afterglow.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js r188候補、PlayCanvas 2.24、Babylon WebGPU、Codropsを一次情報で確認。アイデア検討: 11/17のhistory/convergenceを、水面の余韻とdither境界へ接続。サンプル実装: 本命Temporal Tideと派生Dithered LOD Rainを依存なしCanvasで追加。結果の検証: JSON/HTML/スクリプト構文、gallery/day/index生成、Pages公開を確認する。継続=temporal settle score、新規=afterglow/LOD rain、寝かせる=WebGPU専用の最終反射・カードUI。",
+      "bodyEn": "Research, design, two portable studies and publishing verification keep the temporal-score track moving."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "ここ数週間はhistory reconstruction、SteadySplats、coarse-to-fine streaming、scene depth、timer readbackと、“途中の像をどう扱うか”に技術が集中している。今日のLOD ditherは、待ち時間や品質劣化を隠すのでなく、到着の粒度を見せる方法である。特に育てる価値が高いのは、historyの寿命・LOD境界・露出を同一の音/XR入力から鳴らす空間譜面。",
+      "bodyEn": "Rendering is converging on controlled incompleteness; synchronization between history, detail and exposure is the strongest long-term seam."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "選定した本命は「Temporal Tide Afterglow」。Canvasのみで、履歴tap、再解決、露出pulseの関係を即座に確認できる。派生「Dithered LOD Rain」は、視線周辺の詳細化とその境界の美術性を検証する。次に足すなら前者へ実audio analyser/velocity texture、後者へ実Meshlet/GSplat LOD metricsを接続し、両者をXR gazeで共有する。",
+      "bodyEn": "The main and derived prototypes isolate temporal resolve and dithered detail handoff without heavy dependencies.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-18_temporal_tide_afterglow.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-18_dithered_lod_rain.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本日の入力はpointer、history列、flash、focus半径、dither phaseである。実データに差し替えると、audio spectrum、camera/XR gaze速度、motion/depth buffer、GPU timer、LOD遷移ログになる。展示では観客の移動を水面の残光へ、ライブでは楽曲の休符を解像度収束へ、ブランド演出では商品への視線停留を細密化へ使える。MediaPipe head pose、会場照明、WebXR depth sensingを重ねれば、renderer telemetryをそのまま上演の譜面にできる。",
+      "bodyEn": "Renderer telemetry can become audiovisual control data for installations, XR and responsive brand worlds."
+    }
+  ]
+}

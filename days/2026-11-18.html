@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>残像とLOD境界を、音の余韻として演出する | 2026-11-18</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.18</p>
+      <h1>残像とLOD境界を、音の余韻として演出する</h1>
+      <p class="hero-subtitle">Stage temporal afterglow and LOD boundaries as musical decay</p>
+      <p>three.js r188候補のdithered LOD transitionとGPU timer、PlayCanvas 2.24のCameraFrame/TAA・scene depth・planar reflection、Babylon.jsのWebGPU色管理を接続し、画質の変化を水面と粒子の上演へ転用する。依存なしCanvasで本命と派生の2試作を追加した。</p>
+      <p class="en-copy">Dithered LOD, temporal resolve, scene depth and color management become two small performable studies.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-18_temporal_tide_afterglow.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-17.html">← 2026.11.17</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Temporal Tide Afterglow</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-18_temporal_tide_afterglow.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Dithered LOD Rain</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-18_dithered_lod_rain.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js r188候補にはMeshletDrawingPipelineのdithered LOD transition、GPUTimerのstart/end/delta、clearcoatのspecular occlusionが並ぶ。2) PlayCanvas 2.24はCameraFrameへTAA/SMAA/auto exposure/lens flareを統合し、scene depthをeffectへ渡す。planar reflectionとGaussian mipmap filterも水面表現に直結する。3) Babylon.jsはWebGPUでtone mappingとsRGB/Display-P3を明示し、WebGLとの併存を維持する。4) CodropsのWebGL作品群ではaudio、手触り、物理、hoverが画面遷移の主役になっている。</p>
+          <p class="en-copy">Current engine work makes temporal quality, depth and output color explicit creative controls.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35566" target="_blank" rel="noreferrer">three.js PR #35566</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35554" target="_blank" rel="noreferrer">three.js PR #35554</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas release notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>PlayCanvas 2.24のCameraFrameは、通常なら後処理の設定群に見えるTAA・露出・bloom・fogを、同じフレーム譜面として扱える形へ寄せている。これは“何を描くか”だけでなく“いつ鮮明にし、いつ光を残すか”を作品側が指示できるということ。Codropsのaudio/WebGL事例と結ぶと、露出の収束をキックの余韻、dither境界をハイハットの粒へ置換できる。</p>
+          <p class="en-copy">Camera-frame effects make quality changes composable timing material, not merely rendering settings.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.0" target="_blank" rel="noreferrer">CameraFrame changes</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/" target="_blank" rel="noreferrer">Codrops Creative Hub</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A. 本命「Temporal Tide Afterglow」はpointerを潮流、履歴を水面のwake、click/Spaceを露出フラッシュとして扱う。1〜4でsource/history/resolve/compositeを分離し、残像を制御できる。B. 派生「Dithered LOD Rain」は視線周辺だけ粒を細かくし、境界をdither雨として可視化する。C. 中長期は音の減衰でhistory weightを下げ、XR gazeの静止でLOD境界を止める“静かなほど結像する水庭”。</p>
+          <p class="en-copy">A temporal tide and a dithered rain turn two quality transitions into controllable spatial rhythms.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-18_temporal_tide_afterglow.html" target="_blank" rel="noreferrer">本命HTML</a></li>
+          
+            <li><a href="../outputs/2026-11-18_dithered_lod_rain.html" target="_blank" rel="noreferrer">派生HTML</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>TAA/反射は`frameId, historyAge, historyWeight, jitter, velocity, depthDelta, resolveMs, exposure`を一緒に記録し、cut・disocclusion・露出急変を明示的なreset理由にする。LODは`cameraDistance, lodFrom, lodTo, ditherPhase, transitionMs, visibleCount`を取り、alpha blendではなくscreen-space ditherを優先すると奥行きの切替が濁りにくい。Babylonで広色域を使うならoutput color spaceと素材テクスチャの色空間を分けて監査する。</p>
+          <p class="en-copy">Log quality decisions with their reset causes; use screen-space dithering for readable LOD handoffs.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon WebGPU color-space options</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.0" target="_blank" rel="noreferrer">PlayCanvas frame effects</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.jsのdithered LOD transitionとGPUTimerがr188へどう着地するか、PlayCanvasのCameraFrame effectsが実例・WebGL fallbackでどう使われるか、Babylon.jsのWebGPU/XR色管理が実機でどこまで一貫するかを追う。制作側ではaudio/WebGLのライブ表現、ditherを美術として使う作品、軽量な水面・反射デモを観測する。</p>
+          <p class="en-copy">Watch merge status, fallback behavior and production examples that treat quality changes as art direction.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、mode 2と3を切り替えながらpointerを急に動かし、clickで露出フラッシュを入れる。次の実装では、audio analyserのlow bandをflash、high bandをdither phaseに結び、カメラ速度が閾値を超えたらhistoryWeightをゼロにする。短時間で“残像が意図的に見える”か検証できる。</p>
+          <p class="en-copy">Gate temporal history by motion, then map low and high audio bands to exposure and dither phase.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-18_temporal_tide_afterglow.html" target="_blank" rel="noreferrer">Temporal Tide Afterglow</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js r188候補、PlayCanvas 2.24、Babylon WebGPU、Codropsを一次情報で確認。アイデア検討: 11/17のhistory/convergenceを、水面の余韻とdither境界へ接続。サンプル実装: 本命Temporal Tideと派生Dithered LOD Rainを依存なしCanvasで追加。結果の検証: JSON/HTML/スクリプト構文、gallery/day/index生成、Pages公開を確認する。継続=temporal settle score、新規=afterglow/LOD rain、寝かせる=WebGPU専用の最終反射・カードUI。</p>
+          <p class="en-copy">Research, design, two portable studies and publishing verification keep the temporal-score track moving.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>ここ数週間はhistory reconstruction、SteadySplats、coarse-to-fine streaming、scene depth、timer readbackと、“途中の像をどう扱うか”に技術が集中している。今日のLOD ditherは、待ち時間や品質劣化を隠すのでなく、到着の粒度を見せる方法である。特に育てる価値が高いのは、historyの寿命・LOD境界・露出を同一の音/XR入力から鳴らす空間譜面。</p>
+          <p class="en-copy">Rendering is converging on controlled incompleteness; synchronization between history, detail and exposure is the strongest long-term seam.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>選定した本命は「Temporal Tide Afterglow」。Canvasのみで、履歴tap、再解決、露出pulseの関係を即座に確認できる。派生「Dithered LOD Rain」は、視線周辺の詳細化とその境界の美術性を検証する。次に足すなら前者へ実audio analyser/velocity texture、後者へ実Meshlet/GSplat LOD metricsを接続し、両者をXR gazeで共有する。</p>
+          <p class="en-copy">The main and derived prototypes isolate temporal resolve and dithered detail handoff without heavy dependencies.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-18_temporal_tide_afterglow.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-18_dithered_lod_rain.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>本日の入力はpointer、history列、flash、focus半径、dither phaseである。実データに差し替えると、audio spectrum、camera/XR gaze速度、motion/depth buffer、GPU timer、LOD遷移ログになる。展示では観客の移動を水面の残光へ、ライブでは楽曲の休符を解像度収束へ、ブランド演出では商品への視線停留を細密化へ使える。MediaPipe head pose、会場照明、WebXR depth sensingを重ねれば、renderer telemetryをそのまま上演の譜面にできる。</p>
+          <p class="en-copy">Renderer telemetry can become audiovisual control data for installations, XR and responsive brand worlds.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js r188 pull requests</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.0" target="_blank" rel="noreferrer">PlayCanvas Engine v2.24.0 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Documentation/blob/master/content/setup/support/webGPU.md" target="_blank" rel="noreferrer">Babylon.js WebGPU documentation</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/hub/tag/webgl/" target="_blank" rel="noreferrer">Codrops WebGL Creative Hub</a></li>
+          
+            <li><a href="../outputs/2026-11-18_temporal_tide_afterglow.html" target="_blank" rel="noreferrer">本命: Temporal Tide Afterglow</a></li>
+          
+            <li><a href="../outputs/2026-11-18_dithered_lod_rain.html" target="_blank" rel="noreferrer">派生: Dithered LOD Rain</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-18_temporal_tide_afterglow.html" loading="lazy" title="Temporal Tide Afterglow"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
