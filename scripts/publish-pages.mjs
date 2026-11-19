@@ -28,9 +28,10 @@ function run(command, args, cwd) {
       stdio: "inherit"
     });
 
+    child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`${command} ${args.join(" ")} failed with code ${code}`));
+      else reject(new Error(`${command} failed with code ${code}`));
     });
   });
 }
@@ -53,9 +54,10 @@ function runCapture(command, args, cwd) {
       stderr += chunk.toString();
     });
 
+    child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) resolve(stdout.trim());
-      else reject(new Error(stderr.trim() || `${command} ${args.join(" ")} failed with code ${code}`));
+      else reject(new Error(stderr.trim() || `${command} failed with code ${code}`));
     });
   });
 }
@@ -157,12 +159,11 @@ async function publishInPlace(repoDir) {
   }
 
   if (!hasChanges) {
-    console.log("No changes to publish.");
-    return;
+    console.log("No new file changes; checking for an unpublished commit.");
   }
 
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-  await run("git", ["commit", "-m", `Publish daily update ${stamp}`], repoDir);
+  if (hasChanges) await run("git", ["commit", "-m", `Publish daily update ${stamp}`], repoDir);
   const token = await runCapture("gh", ["auth", "token"], repoDir);
   const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
   const gitPushArgs = ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`];
