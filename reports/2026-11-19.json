@@ -1,0 +1,163 @@
+{
+  "date": "2026-11-19",
+  "headline": "未解決の描画状態を、ビート同期の空間譜面にする",
+  "headlineEn": "Turn unresolved rendering states into a beat-locked spatial score",
+  "summary": "11月18日公開のPlayCanvas Engine 2.24.2とBabylon.js 9.37.1、three.jsのTSL/MRT後処理、ブラウザ実装のプロジェクション・マッピング事例を接続した。GSplatの復旧・視点順序・非同期パイプラインを“待ち”ではなく演出上の拍として扱う、依存なしCanvas試作を2本追加した。",
+  "summaryEn": "Fresh engine releases and browser projection mapping inform two small studies where pipeline readiness and splat convergence become a spatial rhythm.",
+  "links": [
+    {
+      "label": "PlayCanvas Engine v2.24.2 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+    },
+    {
+      "label": "Babylon.js 9.37.1 release",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+    },
+    {
+      "label": "three.js WebGPU post-processing manual",
+      "url": "https://threejs.org/manual/pages/webgpu-postprocessing.html"
+    },
+    {
+      "label": "Codrops: They Are Coming",
+      "url": "https://tympanus.net/codrops/2026/11/13/they-are-coming/"
+    },
+    {
+      "label": "本命: Beat Locked Projection Weave",
+      "url": "../outputs/2026-11-19_beat_locked_projection_weave.html"
+    },
+    {
+      "label": "派生: Async Splat Choir",
+      "url": "../outputs/2026-11-19_async_splat_choir.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) PlayCanvas Engine 2.24.2（11月18日）はGSplatのgraphics context loss後のshadow復旧、packed work bufferの回転符号、indirect draw/dispatch bufferのreadbackを更新した。2) Babylon.js 9.37.1（11月18日）はcached compute effectの全待機者へcallbackを返し、Native splat sortへview-space matrixを渡す。3) three.jsのWebGPURenderer後処理はTSL node compositionとMRTでbeauty/velocity/depthを受け渡せる。4) Codropsの『They Are Coming』はブラウザ上のThree.js/GLSLを物理キューブへ投影し、15個の小さなshaderをビート単位で重ねている。",
+      "bodyEn": "Fresh releases make recovery, view ordering and asynchronous readiness observable; TSL/MRT and browser projection mapping make them scoreable.",
+      "links": [
+        {
+          "label": "PlayCanvas release notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+        },
+        {
+          "label": "Babylon release notes",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+        },
+        {
+          "label": "three.js MRT guide",
+          "url": "https://threejs.org/manual/pages/webgpu-postprocessing.html"
+        },
+        {
+          "label": "Projection-mapping case study",
+          "url": "https://tympanus.net/codrops/2026/11/13/they-are-coming/"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "『They Are Coming』は、抽象的なWebGL映像を“完成した画面”に閉じず、木製キューブの面・角・欠けまで含む空間の出来事にした点が強い。効果を一枚の巨大shaderへ詰めるのではなく、ひとつずつ役割が明快な15効果を同じ座標系・音楽時計へ揃えている。これはPlayCanvas/Babylonの復旧・sort・pipeline待機を、障害表示ではなく短いclipとして鳴らす発想と相性がよい。",
+      "bodyEn": "A browser projection work shows how small, legible shader layers and a shared musical clock turn technical transitions into stage language.",
+      "links": [
+        {
+          "label": "They Are Coming: case study",
+          "url": "https://tympanus.net/codrops/2026/11/13/they-are-coming/"
+        },
+        {
+          "label": "three.js TSL reference",
+          "url": "https://threejs.org/docs/pages/TSL.html"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction ideas",
+      "body": "A. 本命「Beat Locked Projection Weave」: pointerで物体のseamを動かし、click/Spaceでビートを送り、grid/scan/memory/compositeを1〜4で分離する。projection面をまたぐ線の記憶を、audioのrestで消す。B. 派生「Async Splat Choir」: pointerを注視点にして、pending pipeline→view-space sort→stable splatの到着を合唱の入りとして見る。C. 中長期: 実プロジェクタではBroadcastChannelで演出用timelineとfullscreen playbackを分け、XR gazeの静止をfine LODの入場条件にする。",
+      "bodyEn": "The main study scores seams and scans; the derived study scores pending-to-settled splats. Both stay intentionally lightweight.",
+      "links": [
+        {
+          "label": "本命HTML",
+          "url": "../outputs/2026-11-19_beat_locked_projection_weave.html"
+        },
+        {
+          "label": "派生HTML",
+          "url": "../outputs/2026-11-19_async_splat_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production notes",
+      "body": "three.jsではscene passのMRTへ`output`と`velocity`を保存し、必要時だけdepthを取得する。TSLで後段のhistory/scanをnodeとして組めるため、作品用のclock値もuniformとして一箇所から渡せる。PlayCanvas/Babylonでは`contextLost, shadowRestored, sortMatrixGeneration, pipelineQueuedAt, pipelineReadyAt, readbackFrame, indirectCount`をイベントログ化し、待機を固定秒数ではなく実際の準備完了へ結ぶ。fallbackではWebGL2/Canvasで同じ拍の意味だけを保つ。",
+      "bodyEn": "Keep the clock semantic stable across renderers; drive it from actual readiness and telemetry, not a guessed loading duration.",
+      "links": [
+        {
+          "label": "three.js WebGPURenderer",
+          "url": "https://threejs.org/manual/pages/webgpurenderer"
+        },
+        {
+          "label": "PlayCanvas v2.24.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+        },
+        {
+          "label": "Babylon async pipelines",
+          "url": "https://github.com/BabylonJS/Babylon.js/pull/19090"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "PlayCanvasのcontext-loss復帰が実GSplat作品でどう見えるか、Babylonのasync mesh pipelineがWebGPU初回描画をどう変えるか、three.jsのGPUTimer/MRT/TRAAがr188でどのAPIへ収束するかを追う。表現側は、音楽時計・複数画面・projection mappingを使う制作と、空間を横切るshared UV/seam設計を優先して観測する。",
+      "bodyEn": "Watch real recovery behavior, first-frame pipeline timing, and production work that synchronizes multiple surfaces to one clock."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 3（MEMORY）でpointerを動かしてからclick/Spaceを数回送る。線が面をまたぐ“前のビート”として読めるかを確認する。次の30分ではWeb Audio APIの`audio.currentTime`を1/4拍へquantizeし、scan開始とmemory消去だけをそこへ同期する。音反応の派手さより、休符で像が片付く感触を先に評価する。",
+      "bodyEn": "Quantize only scan starts and memory clearing to quarter beats; test whether rests make the scene legible.",
+      "links": [
+        {
+          "label": "Beat Locked Projection Weave",
+          "url": "../outputs/2026-11-19_beat_locked_projection_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: PlayCanvas 2.24.2、Babylon 9.37.1、three.js公式MRT/TSL、制作者のprojection mapping事例を確認。アイデア検討: 11/16〜18のtimer/readback・temporal settle・dither LODを、beat同期の“到着順”へ接続。サンプル実装: 本命Projection Weaveと派生Splat Choirを依存なしCanvasで追加。結果の検証: JSON/inline script/generation/公開まで確認する。継続=settling score、新規=projection beatとasync choir、寝かせる=カードUI・重いasset配信・WebGPU専用の最終品質。",
+      "bodyEn": "Research, score design, two portable implementations and publishing verification continue the settling-score track."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "直近はTRAA/SSR history、timer readback、scene depth、dithered LOD、GSplat streamingと、画質が“到着する途中”を扱う技術が重なっている。今日の更新はその到着をさらに具体的にし、影の復旧、視点依存sort、非同期pipelineという別の待機状態を同じ譜面へ置ける。育てる価値が高いのは、実renderer telemetryを舞台時計に翻訳し、完全なフレームだけを正解にしない空間演出。",
+      "bodyEn": "The strongest seam is a stage clock that translates real renderer telemetry into visible, intentional arrival states."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "選定した本命は「Beat Locked Projection Weave」。軽いCanvasだけで、shared surface・scan・記憶・合成の四層が拍入力にどう反応するかを検証できる。派生「Async Splat Choir」は同じ入力で、pipelineの待機、view-space rank、収束を分けて観察する。次に足すなら、本命へ実AudioAnalyser/BroadcastChannel、派生へ実PlayCanvas GSplat/Babylon pipeline telemetryを接続する。",
+      "bodyEn": "The main and derived prototypes expose projection timing and convergence timing with no heavy setup.",
+      "links": [
+        {
+          "label": "main prototype",
+          "url": "../outputs/2026-11-19_beat_locked_projection_weave.html"
+        },
+        {
+          "label": "derived prototype",
+          "url": "../outputs/2026-11-19_async_splat_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "試作の入力はpointer、beat、clip履歴、attention位置、queue率である。実データへ替えると、audio spectrum/transport、cameraまたはXR gaze、context-loss/recovery、pipeline callback、view matrix、splat visible count、GPU timerになる。展示では観客の移動をsortの揺れ、音楽の休符をhistory reset、照明変化をscanにできる。11/18のtemporal tide/LOD rainとは、同一のbeatをhistory weight・dither phase・queue resolveへ配ることで自然に接続する。",
+      "bodyEn": "Audio, gaze and actual renderer events can all feed one shared clock across the recent temporal and LOD studies."
+    }
+  ]
+}

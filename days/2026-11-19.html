@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>未解決の描画状態を、ビート同期の空間譜面にする | 2026-11-19</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.19</p>
+      <h1>未解決の描画状態を、ビート同期の空間譜面にする</h1>
+      <p class="hero-subtitle">Turn unresolved rendering states into a beat-locked spatial score</p>
+      <p>11月18日公開のPlayCanvas Engine 2.24.2とBabylon.js 9.37.1、three.jsのTSL/MRT後処理、ブラウザ実装のプロジェクション・マッピング事例を接続した。GSplatの復旧・視点順序・非同期パイプラインを“待ち”ではなく演出上の拍として扱う、依存なしCanvas試作を2本追加した。</p>
+      <p class="en-copy">Fresh engine releases and browser projection mapping inform two small studies where pipeline readiness and splat convergence become a spatial rhythm.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-19_beat_locked_projection_weave.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-18.html">← 2026.11.18</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Beat Locked Projection Weave</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-19_beat_locked_projection_weave.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Async Splat Choir</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-19_async_splat_choir.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) PlayCanvas Engine 2.24.2（11月18日）はGSplatのgraphics context loss後のshadow復旧、packed work bufferの回転符号、indirect draw/dispatch bufferのreadbackを更新した。2) Babylon.js 9.37.1（11月18日）はcached compute effectの全待機者へcallbackを返し、Native splat sortへview-space matrixを渡す。3) three.jsのWebGPURenderer後処理はTSL node compositionとMRTでbeauty/velocity/depthを受け渡せる。4) Codropsの『They Are Coming』はブラウザ上のThree.js/GLSLを物理キューブへ投影し、15個の小さなshaderをビート単位で重ねている。</p>
+          <p class="en-copy">Fresh releases make recovery, view ordering and asynchronous readiness observable; TSL/MRT and browser projection mapping make them scoreable.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.2" target="_blank" rel="noreferrer">PlayCanvas release notes</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1" target="_blank" rel="noreferrer">Babylon release notes</a></li>
+          
+            <li><a href="https://threejs.org/manual/pages/webgpu-postprocessing.html" target="_blank" rel="noreferrer">three.js MRT guide</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/11/13/they-are-coming/" target="_blank" rel="noreferrer">Projection-mapping case study</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>『They Are Coming』は、抽象的なWebGL映像を“完成した画面”に閉じず、木製キューブの面・角・欠けまで含む空間の出来事にした点が強い。効果を一枚の巨大shaderへ詰めるのではなく、ひとつずつ役割が明快な15効果を同じ座標系・音楽時計へ揃えている。これはPlayCanvas/Babylonの復旧・sort・pipeline待機を、障害表示ではなく短いclipとして鳴らす発想と相性がよい。</p>
+          <p class="en-copy">A browser projection work shows how small, legible shader layers and a shared musical clock turn technical transitions into stage language.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://tympanus.net/codrops/2026/11/13/they-are-coming/" target="_blank" rel="noreferrer">They Are Coming: case study</a></li>
+          
+            <li><a href="https://threejs.org/docs/pages/TSL.html" target="_blank" rel="noreferrer">three.js TSL reference</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction ideas</span></span></h2>
+          <p>A. 本命「Beat Locked Projection Weave」: pointerで物体のseamを動かし、click/Spaceでビートを送り、grid/scan/memory/compositeを1〜4で分離する。projection面をまたぐ線の記憶を、audioのrestで消す。B. 派生「Async Splat Choir」: pointerを注視点にして、pending pipeline→view-space sort→stable splatの到着を合唱の入りとして見る。C. 中長期: 実プロジェクタではBroadcastChannelで演出用timelineとfullscreen playbackを分け、XR gazeの静止をfine LODの入場条件にする。</p>
+          <p class="en-copy">The main study scores seams and scans; the derived study scores pending-to-settled splats. Both stay intentionally lightweight.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-19_beat_locked_projection_weave.html" target="_blank" rel="noreferrer">本命HTML</a></li>
+          
+            <li><a href="../outputs/2026-11-19_async_splat_choir.html" target="_blank" rel="noreferrer">派生HTML</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production notes</span></span></h2>
+          <p>three.jsではscene passのMRTへ`output`と`velocity`を保存し、必要時だけdepthを取得する。TSLで後段のhistory/scanをnodeとして組めるため、作品用のclock値もuniformとして一箇所から渡せる。PlayCanvas/Babylonでは`contextLost, shadowRestored, sortMatrixGeneration, pipelineQueuedAt, pipelineReadyAt, readbackFrame, indirectCount`をイベントログ化し、待機を固定秒数ではなく実際の準備完了へ結ぶ。fallbackではWebGL2/Canvasで同じ拍の意味だけを保つ。</p>
+          <p class="en-copy">Keep the clock semantic stable across renderers; drive it from actual readiness and telemetry, not a guessed loading duration.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://threejs.org/manual/pages/webgpurenderer" target="_blank" rel="noreferrer">three.js WebGPURenderer</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.2" target="_blank" rel="noreferrer">PlayCanvas v2.24.2</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/pull/19090" target="_blank" rel="noreferrer">Babylon async pipelines</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>PlayCanvasのcontext-loss復帰が実GSplat作品でどう見えるか、Babylonのasync mesh pipelineがWebGPU初回描画をどう変えるか、three.jsのGPUTimer/MRT/TRAAがr188でどのAPIへ収束するかを追う。表現側は、音楽時計・複数画面・projection mappingを使う制作と、空間を横切るshared UV/seam設計を優先して観測する。</p>
+          <p class="en-copy">Watch real recovery behavior, first-frame pipeline timing, and production work that synchronizes multiple surfaces to one clock.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、mode 3（MEMORY）でpointerを動かしてからclick/Spaceを数回送る。線が面をまたぐ“前のビート”として読めるかを確認する。次の30分ではWeb Audio APIの`audio.currentTime`を1/4拍へquantizeし、scan開始とmemory消去だけをそこへ同期する。音反応の派手さより、休符で像が片付く感触を先に評価する。</p>
+          <p class="en-copy">Quantize only scan starts and memory clearing to quarter beats; test whether rests make the scene legible.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-19_beat_locked_projection_weave.html" target="_blank" rel="noreferrer">Beat Locked Projection Weave</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: PlayCanvas 2.24.2、Babylon 9.37.1、three.js公式MRT/TSL、制作者のprojection mapping事例を確認。アイデア検討: 11/16〜18のtimer/readback・temporal settle・dither LODを、beat同期の“到着順”へ接続。サンプル実装: 本命Projection Weaveと派生Splat Choirを依存なしCanvasで追加。結果の検証: JSON/inline script/generation/公開まで確認する。継続=settling score、新規=projection beatとasync choir、寝かせる=カードUI・重いasset配信・WebGPU専用の最終品質。</p>
+          <p class="en-copy">Research, score design, two portable implementations and publishing verification continue the settling-score track.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>直近はTRAA/SSR history、timer readback、scene depth、dithered LOD、GSplat streamingと、画質が“到着する途中”を扱う技術が重なっている。今日の更新はその到着をさらに具体的にし、影の復旧、視点依存sort、非同期pipelineという別の待機状態を同じ譜面へ置ける。育てる価値が高いのは、実renderer telemetryを舞台時計に翻訳し、完全なフレームだけを正解にしない空間演出。</p>
+          <p class="en-copy">The strongest seam is a stage clock that translates real renderer telemetry into visible, intentional arrival states.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>選定した本命は「Beat Locked Projection Weave」。軽いCanvasだけで、shared surface・scan・記憶・合成の四層が拍入力にどう反応するかを検証できる。派生「Async Splat Choir」は同じ入力で、pipelineの待機、view-space rank、収束を分けて観察する。次に足すなら、本命へ実AudioAnalyser/BroadcastChannel、派生へ実PlayCanvas GSplat/Babylon pipeline telemetryを接続する。</p>
+          <p class="en-copy">The main and derived prototypes expose projection timing and convergence timing with no heavy setup.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="../outputs/2026-11-19_beat_locked_projection_weave.html" target="_blank" rel="noreferrer">main prototype</a></li>
+          
+            <li><a href="../outputs/2026-11-19_async_splat_choir.html" target="_blank" rel="noreferrer">derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>試作の入力はpointer、beat、clip履歴、attention位置、queue率である。実データへ替えると、audio spectrum/transport、cameraまたはXR gaze、context-loss/recovery、pipeline callback、view matrix、splat visible count、GPU timerになる。展示では観客の移動をsortの揺れ、音楽の休符をhistory reset、照明変化をscanにできる。11/18のtemporal tide/LOD rainとは、同一のbeatをhistory weight・dither phase・queue resolveへ配ることで自然に接続する。</p>
+          <p class="en-copy">Audio, gaze and actual renderer events can all feed one shared clock across the recent temporal and LOD studies.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.2" target="_blank" rel="noreferrer">PlayCanvas Engine v2.24.2 release</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1" target="_blank" rel="noreferrer">Babylon.js 9.37.1 release</a></li>
+          
+            <li><a href="https://threejs.org/manual/pages/webgpu-postprocessing.html" target="_blank" rel="noreferrer">three.js WebGPU post-processing manual</a></li>
+          
+            <li><a href="https://tympanus.net/codrops/2026/11/13/they-are-coming/" target="_blank" rel="noreferrer">Codrops: They Are Coming</a></li>
+          
+            <li><a href="../outputs/2026-11-19_beat_locked_projection_weave.html" target="_blank" rel="noreferrer">本命: Beat Locked Projection Weave</a></li>
+          
+            <li><a href="../outputs/2026-11-19_async_splat_choir.html" target="_blank" rel="noreferrer">派生: Async Splat Choir</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-19_beat_locked_projection_weave.html" loading="lazy" title="Beat Locked Projection Weave"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
