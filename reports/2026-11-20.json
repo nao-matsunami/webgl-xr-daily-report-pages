@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-20",
+  "headline": "欠けた反射と圧縮された粒子を、到着の光として扱う",
+  "headlineEn": "Treat incomplete reflections and packed splats as arriving light",
+  "summary": "three.js r188のSSR向けjoint bilateral upsampling、GaussianSplatのhalf-float covarianceとminPixelSize、PlayCanvas CameraFrameのscene depth / TAA、Babylon.jsのInspector Lite texture previewをつなぎ、画像が完全になる前の状態を静かな空間演出として試作した。",
+  "summaryEn": "Connected r188 SSR upsampling and GaussianSplat packing with PlayCanvas CameraFrame depth/TAA and Babylon Inspector Lite previews, treating partial imagery as a quiet spatial performance state.",
+  "links": [
+    {
+      "label": "three.js open PRs (r188)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "PlayCanvas Engine v2.24.0 release",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Codrops Creative Hub",
+      "url": "https://tympanus.net/codrops/hub/all/"
+    },
+    {
+      "label": "Main prototype: Reflection Patchwork Score",
+      "url": "outputs/2026-11-20_reflection_patchwork_score.html"
+    },
+    {
+      "label": "Derived prototype: Splat Half-Float Lanterns",
+      "url": "outputs/2026-11-20_splat_half_float_lanterns.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js r188のopen PRでは、SSR/AO/SSGIなど縮小解像度の結果を戻すjoint bilateral upsampling (#35602)、環境反射のhorizon occlusion (#35587)、GaussianSplat covarianceのhalf-float packing (#35610)とminPixelSize (#35609)が並ぶ。2) PlayCanvas 2.24.0はCameraFrameへscene depth、TAA resolve、frame time、debug viewを渡す構成にした。3) Babylon 9.37.0はInspector Liteのtexture previewとGaussian Splat upload順維持を含む。4) Codrops Creative HubではDomGL Clothが公開され、simulationの触覚的な速度をWeb上の画として使う流れが続く。",
+      "bodyEn": "three.js r188 points toward coverage-aware reconstruction and compact splat data; PlayCanvas turns depth, resolve timing and debug views into CameraFrame inputs; Babylon adds Inspector Lite texture previews and ordered splat uploads; Codrops continues tactile browser simulation.",
+      "links": [
+        {
+          "label": "three.js #35602",
+          "url": "https://github.com/mrdoob/three.js/pull/35602"
+        },
+        {
+          "label": "three.js #35610",
+          "url": "https://github.com/mrdoob/three.js/pull/35610"
+        },
+        {
+          "label": "PlayCanvas v2.24.0",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.0"
+        },
+        {
+          "label": "Babylon 9.37.0",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.0"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "DomGL Clothは、布を“ページ遷移の装飾”ではなく、時間差と力を持つ薄い空間として扱う。今日の技術側では反射coverageやsplatの最小pixelも同じく、消すべき欠損ではなく触れられる中間状態にできる。Inspectorのtexture previewを本番作品では使わずとも、その観察態度を画面の一層へ翻訳する価値がある。",
+      "bodyEn": "DomGL Cloth treats cloth as a thin space with delay and force. Reflection coverage and a splat minimum pixel size can likewise be authored as touchable intermediate states rather than hidden defects.",
+      "links": [
+        {
+          "label": "DomGL Cloth",
+          "url": "https://tympanus.net/codrops/hub/all/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命は「Reflection Patchwork Score」。pointerを水平線へ見立て、click/Spaceで欠けた反射tileを修復する拍を送る。coverageの穴と修復履歴を別レイヤーにして、完成像ではなく継ぎ目が残る夜景を作る。派生「Splat Half-Float Lanterns」は注視面に近い粒子を最低pixelで残し、圧縮binをランタンの合唱にする。次はWeb Audioの休符で修復を起動し、XR gaze静止でminPixelSizeを上げる。",
+      "bodyEn": "The main idea repairs reflection tiles on a beat; the derived study keeps focal splats alive at a minimum pixel size. Next, use audio rests for repairs and XR gaze stillness for retention.",
+      "links": [
+        {
+          "label": "Reflection Patchwork Score",
+          "url": "outputs/2026-11-20_reflection_patchwork_score.html"
+        },
+        {
+          "label": "Splat Half-Float Lanterns",
+          "url": "outputs/2026-11-20_splat_half_float_lanterns.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "SSR/AOを半解像度で走らせるなら、depth/normalをguideにするbilateral upsampleを“品質設定”だけに閉じず、coverageとrepair ageを取り出す。three.jsのsplatはcovarianceをhalf-floatへ詰める提案なので、位置・scale・向きの量子化境界を色ではなく粒度のリズムへ使える。PlayCanvasではCameraFrameのscene depthとframe time、Babylonではtexture preview相当の小さな検査面を、開発時だけ記録する。",
+      "bodyEn": "Treat bilateral upsampling coverage and repair age as artistic inputs. Use packed covariance boundaries as particle rhythm, while logging CameraFrame depth/time and small inspection surfaces during development.",
+      "links": [
+        {
+          "label": "three.js #35602",
+          "url": "https://github.com/mrdoob/three.js/pull/35602"
+        },
+        {
+          "label": "three.js #35609",
+          "url": "https://github.com/mrdoob/three.js/pull/35609"
+        },
+        {
+          "label": "three.js #35610",
+          "url": "https://github.com/mrdoob/three.js/pull/35610"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35602/#35609/#35610が実例・APIへ落ちるか、PlayCanvasのCameraFrame debug viewが表現制作の試写に使えるか、Babylonのtexture previewとrender-pass command streamがどこまで軽量に観察できるかを追う。表現側は布・水・粒子を同じ“修復速度”で接続する作品を観測する。",
+      "bodyEn": "Watch API and example landing for r188 reconstruction/splat PRs, CameraFrame debug-view practice, and lightweight Babylon inspection paths."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 2で穴のある反射coverageを見てからmode 3へ切替え、pointerを変えつつclick/Spaceを打つ。30分の次手は、実素材の動画またはcanvasを低解像度reflection targetにし、depthが無ければluma edgeをguideにしてrepair historyだけを残すこと。静止画の豪華さより“直った場所が記憶される”感触を評価する。",
+      "bodyEn": "Open the main study, inspect coverage in mode 2, then repair history in mode 3. Next, use a low-resolution canvas target and retain only repair history."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: r188のupsample/splat PR、PlayCanvas CameraFrame、Babylon Inspector Lite、DomGL Clothを確認。アイデア検討: 11/16〜19のtimer/readback/beat/projectionを、coverage repairとmin-pixel retentionへ接続。サンプル実装: 本命Reflection Patchworkと派生Half-Float Lanternsを依存なしCanvasで作成。結果の検証: JSON、script構文、gallery/day生成、公開を確認する。継続=settling score、新規=repair/retention、寝かせる=カードUI・重いasset配信・WebGPU専用最終画質。",
+      "bodyEn": "Research: reconstruction, splat packing, CameraFrame, Inspector Lite and DomGL. Ideation: connect last week's timing/projection track to repair and retention. Build: two dependency-free Canvas studies. Verify: JSON, scripts, gallery, day page and publishing."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の流れは、temporal history・GPU timer・scene depth・dithered LODに加え、低解像度結果の復元、圧縮されたsplat属性、textureを観察する面へ広がっている。共通するのは「画が足りない」状態を測れること。そこで完成を急がず、欠けた場所／残した粒子／修復時刻を同一の舞台時計に置くと、11/9以降の水・反射・splat・投影の案を一つの静かな展示言語へまとめられる。",
+      "bodyEn": "The shared direction is measurable incompleteness: history, timers, depth, LOD, reconstruction and packed attributes. A single stage clock can unify missing regions, retained particles and repair time."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-20_reflection_patchwork_score.html` は、source / coverage / stitch / compositeを1〜4で切替え、pointerで水平線、click/Spaceで修復pulseを操作する。派生 `outputs/2026-11-20_splat_half_float_lanterns.html` はraw / quantize / min-pixel / compositeを切替え、focal plane近くの粒子保持を確認する。次に足すなら、前者へ実depth-aware upsample、後者へ実GaussianSplat telemetryを接続する。",
+      "bodyEn": "The main prototype isolates source, coverage, stitching and composite. The derived study isolates raw, quantized and minimum-pixel splats. Next, attach depth-aware upsampling and real splat telemetry.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-20_reflection_patchwork_score.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-20_splat_half_float_lanterns.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "今日の入力はhorizon、coverage格子、repair履歴、focal plane、quantize binである。実データに替えると、velocity/depth/normal、SSR hit distance、history age、splat visible count、covariance precision、audio onset、XR gazeになる。展示では観客の立ち止まりをminPixelSizeの上昇、音の休符をrepair、カメラ映像を低解像度の水面として使える。11/18のdithered LOD rainと組めば、遠景は“欠けながら届く光”、近景は“保持される灯”という対比になる。",
+      "bodyEn": "Inputs can become velocity/depth/normal, SSR distance, history age, visible splats, covariance precision, audio and gaze. Pairing with dithered LOD rain yields missing arriving light in the distance and retained lanterns nearby."
+    }
+  ]
+}
