@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Radiance Probe Chorus</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#070910;color:#eaf2ff;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}canvas{display:block;width:100vw;height:100vh}#ui{position:fixed;inset:18px auto auto 18px;max-width:390px;padding:12px 14px;background:#0b1020cc;border:1px solid #88a7d644;backdrop-filter:blur(8px);border-radius:10px}h1{font-size:14px;margin:0 0 5px;letter-spacing:.08em}p{margin:4px 0;color:#aebbd2}.key{color:#ffda88}button{font:inherit;background:#15213a;color:#eaf2ff;border:1px solid #6b8bc0;border-radius:5px;padding:5px 8px;margin:8px 4px 0 0;cursor:pointer}#readout{color:#8ce7d0}
+</style><canvas></canvas><section id="ui"><h1>RADIANCE PROBE CHORUS</h1><p>ポインタで太陽を動かす。クリック／Spaceで発光体を置き、粗いプローブが光を受け渡す様子を聴く。</p><p><span class="key">1</span> cascade <span class="key">2</span> probes <span class="key">3</span> light path <span class="key">4</span> composite</p><button id="sound">sound: off</button> <span id="readout"></span></section>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d'),r=document.querySelector('#readout'),sound=document.querySelector('#sound');let W,H,dpr,mode=4,mouse={x:.72,y:.23},pulses=[],audio=null,muted=true,last=0;
+function size(){dpr=Math.min(devicePixelRatio,2);W=c.width=innerWidth*dpr;H=c.height=innerHeight*dpr;c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';x.setTransform(dpr,0,0,dpr,0,0);W=innerWidth;H=innerHeight}addEventListener('resize',size);size();
+function drop(px=mouse.x,py=mouse.y){pulses.push({x:px,y:py,t:performance.now()*.001});if(audio){let o=audio.createOscillator(),g=audio.createGain();o.frequency.value=150+py*300;o.type='sine';g.gain.setValueAtTime(.0001,audio.currentTime);g.gain.exponentialRampToValueAtTime(.09,audio.currentTime+.015);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.55);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.56)}}
+addEventListener('pointermove',e=>{mouse.x=e.clientX/W;mouse.y=e.clientY/H});addEventListener('pointerdown',e=>drop(e.clientX/W,e.clientY/H));addEventListener('keydown',e=>{if('1234'.includes(e.key))mode=+e.key;if(e.code==='Space'){e.preventDefault();drop()}});sound.onclick=()=>{if(!audio){audio=new AudioContext()}audio.resume();muted=!muted;sound.textContent='sound: '+(muted?'off':'on');if(muted)audio.suspend();else audio.resume()};
+function noise(a,b){return .5+.5*Math.sin(a*12.3+b*19.1+Math.sin(a*5-b*3));}function draw(t){requestAnimationFrame(draw);t*=.001;let gx=18,gy=11;x.fillStyle='#070910';x.fillRect(0,0,W,H);let horizon=H*.61;
+// ground and sky
+let sky=x.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#101d39');sky.addColorStop(.6,'#17284a');sky.addColorStop(.61,'#0c1220');sky.addColorStop(1,'#03050b');x.fillStyle=sky;x.fillRect(0,0,W,H);
+let sunX=mouse.x*W,sunY=mouse.y*H;x.globalCompositeOperation='lighter';for(let q=6;q>0;q--){x.fillStyle=`rgba(255,${150+q*12},85,${.009*q})`;x.beginPath();x.arc(sunX,sunY,q*38,0,7);x.fill()}x.globalCompositeOperation='source-over';
+let live=[];for(let iy=0;iy<gy;iy++)for(let ix=0;ix<gx;ix++){let px=(ix+.5)/gx*W,py=horizon+(iy+.5)/gy*(H-horizon),nx=px/W,ny=py/H;let d=Math.hypot(nx-mouse.x,(ny-mouse.y)*.8),energy=Math.max(0,1-d*1.35)*(.55+.45*noise(ix*.1+t*.05,iy*.15));for(const p of pulses){let age=t-p.t,dd=Math.hypot(nx-p.x,ny-p.y);energy+=Math.max(0,1-Math.abs(dd-age*.22)*11)*.72*Math.max(0,1-age/4)}energy=Math.min(1,energy);live.push({px,py,energy,ix,iy});}
+// diffuse propagation: each probe leaks to lower neighbours as a visual-only cascade
+for(let pass=0;pass<3;pass++)live.forEach((a,i)=>{let n=live[i-gx]||a;a.energy=Math.min(1,a.energy*.76+n.energy*.24)});
+if(mode===1||mode===4){for(const a of live){let h=H-horizon;let yy=a.py;let col=`hsla(${205-a.energy*155},85%,${8+a.energy*54}%,${.18+a.energy*.72})`;x.fillStyle=col;x.fillRect(a.px-W/gx*.48,yy-h/gy*.46,W/gx*.96,h/gy*.92)}}
+if(mode===2||mode===4){for(const a of live){x.strokeStyle=`rgba(175,220,255,${.08+a.energy*.65})`;x.lineWidth=1;x.beginPath();x.arc(a.px,a.py,2+a.energy*8,0,7);x.stroke()}}
+if(mode===3||mode===4){x.strokeStyle='rgba(255,205,125,.22)';for(const a of live){if(a.energy>.17&&a.iy>0){x.beginPath();x.moveTo(sunX,sunY);x.lineTo(a.px,a.py);x.stroke()}}}
+for(const p of pulses){let age=t-p.t;if(age<4){x.strokeStyle=`rgba(255,239,190,${.6*(1-age/4)})`;x.lineWidth=2;x.beginPath();x.arc(p.x*W,p.y*H,age*W*.22,0,7);x.stroke()}}pulses=pulses.filter(p=>t-p.t<4);
+x.fillStyle='#dbe8ff';x.fillRect(0,horizon,W,1);r.textContent=`mode ${mode} · ${live.filter(a=>a.energy>.32).length}/${live.length} active probes`;
+}requestAnimationFrame(draw);
+</script></html>

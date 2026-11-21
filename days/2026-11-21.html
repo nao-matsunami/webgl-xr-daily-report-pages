@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>粗い間接光と深度の継ぎ目を、観客が鳴らす舞台照明にする | 2026-11-21</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.21</p>
+      <h1>粗い間接光と深度の継ぎ目を、観客が鳴らす舞台照明にする</h1>
+      <p class="hero-subtitle">Make coarse indirect light and depth seams into audience-played stage lighting</p>
+      <p>three.js の共有depth-aware downsample、SSR coverage / denoiser、WebGPU Radiance Cascades、PlayCanvas 2.24.1のMRT clear、Babylon.js 9.37.1を踏まえ、低解像度の光を隠さず操作可能な合唱として見せる2本のCanvas試作を作成した。</p>
+      <p class="en-copy">Informed by three.js depth-aware downsampling, SSR coverage/denoising and WebGPU Radiance Cascades, plus PlayCanvas 2.24.1 MRT clearing and Babylon.js 9.37.1, two Canvas studies expose coarse light as a playable chorus rather than hiding it.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-21_radiance_probe_chorus.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-20.html">← 2026.11.20</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Radiance Probe Chorus</h3>
+              <p>ポインタで太陽を動かす。クリック／Spaceで発光体を置き、粗いプローブが光を受け渡す様子を聴く。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-21_radiance_probe_chorus.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Depth Stitch Tide</h3>
+              <p>低解像度の水面を、深度境界で縫い直す実験。ポインタで境界を傾け、クリック／Spaceで潮の記憶を残す。</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-21_depth_stitch_tide.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js r188の新規PR #35641 は screen-space effects 向けのdepth-aware downsample共有を提案している。SSR/AO/SSGIを別々の“綺麗にする後処理”ではなく、同じ粗密の舞台素材として扱える入口になる。2) #35459 はSSRで環境を追う代わりにcoverageを出し、temporal passで欠損をno dataとして扱うdenoiser例を含む。3) #35349 のWebGPU Radiance Cascadesは、G-bufferからBVHをトレースしsparse probeへ多重反射を蓄える実験。4) PlayCanvas 2.24.1 は WebGPU viewport clearのMRT全color attachmentをclearする修正、Babylon 9.37.1 は現行安定版として公開中。</p>
+          <p class="en-copy">three.js is converging screen-space effects on shared depth-aware reduction, explicit SSR coverage, and sparse-probe global illumination. PlayCanvas 2.24.1 fixes WebGPU MRT clearing, while Babylon 9.37.1 is the current stable release.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35641" target="_blank" rel="noreferrer">three.js #35641</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">three.js #35459</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35349" target="_blank" rel="noreferrer">three.js #35349</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.1" target="_blank" rel="noreferrer">PlayCanvas v2.24.1</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1" target="_blank" rel="noreferrer">Babylon.js 9.37.1</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>Afterlightはcustom WebGL shaderと小さなWeb Audio synthだけで、カーソルのdragを“銀河を引く／花や潮へ折る／鳴らす”操作に変換している。共有リンクに世界・palette・flow・energyを保存でき、重い3D sceneより先に“光の状態をスコアとして共有する”設計を成立させている。今日のprobe案にも、完成画像でなく、観客が置いた発光点と残響をURL stateへ持たせる方向が有効。Vital Interactiveの1 draw call brick fieldも、instancingとpointer waveの因果が見えるよい対照である。</p>
+          <p class="en-copy">Afterlight turns cursor gestures into pull/fold/ring actions using custom WebGL and a small synth, then shares the exact light-state through a link. Vital Interactive similarly makes a one-draw-call field legible through a direct pointer wave.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://dbaney.com/projects/afterlight/" target="_blank" rel="noreferrer">Afterlight</a></li>
+          
+            <li><a href="https://www.vitalinteractive.com/tech-lab/" target="_blank" rel="noreferrer">Vital Interactive Tech Lab</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>本命は「Radiance Probe Chorus」: 画面下の粗いprobe格子が太陽（pointer）と観客が置く発光pulseを順番に受け渡す。1〜4でcascade / probe / light path / compositeを切替え、GIの中間表現そのものを演出の楽器にする。派生「Depth Stitch Tide」: 深度境界の近くだけ低解像度の水面を高密度に縫い直し、クリックで縫い目の記憶を流す。前日のreflection repair / splat retentionの延長として、今日は“直す”対象を反射tileから光の伝播と深度境界へ移した。次に足すなら、Audio FFTでpulseの発火を制御し、WebXR gazeの静止でprobe解像度を上げる。</p>
+          <p class="en-copy">The main study makes cascading probes playable; the derivative selectively stitches a coarse water field near a depth boundary. They extend yesterday's reflection repair and splat retention toward propagation and edge reconstruction.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-21_radiance_probe_chorus.html" target="_blank" rel="noreferrer">Main local sample</a></li>
+          
+            <li><a href="outputs/2026-11-21_depth_stitch_tide.html" target="_blank" rel="noreferrer">Derived local sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>低解像度passを作品化する前提では、colorだけで拡大しない。depthとnormalのedgeをguideにして、(a) coverage、(b) history age、(c) bilateral weight を可視ログとして保持すると、画の欠損が“失敗”でなく楽器の反応へ変わる。#35459の要点はcoverage=0を暗い色と誤認せずno dataとしてtemporal historyから除くこと。Radiance Cascadesは現状texture非対応・単純scene中心の実験なので、本番採用ではなくprobe density、ray budget、更新周期を画面のテンポへ翻訳する参照として使う。PlayCanvasのMRT clear修正に倣い、複数render targetでは未clear attachmentを残響演出と偶然に混同しない。</p>
+          <p class="en-copy">For artistic low-resolution passes, log coverage, history age and bilateral weight alongside color. Treat zero coverage as missing data, not black. Use Radiance Cascades as a timing/probe-budget reference, and explicitly clear every MRT attachment before relying on persistence.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">SSR coverage PR</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35349" target="_blank" rel="noreferrer">Radiance Cascades PR</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.1" target="_blank" rel="noreferrer">PlayCanvas 2.24.1 release notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35641 がSSR/AO/SSGIの実例へどう接続されるか、#35459 のcoverage semanticsとdenoiser APIが固定されるか、#35349がtextureを含むsceneとmoving objectにどう拡張されるかを見る。PlayCanvasはSOG/gsplatとWebGPU clearの更新、Babylonは9.37系のInspector・rendering周辺の小修正を追う。作品側では、light stateをURLへ保存するWebGL/Web Audio作品と、debug viewを本編の一部にする展示を収集する。</p>
+          <p class="en-copy">Watch three.js API/example landing for shared downsampling, coverage semantics and textured/moving radiance cascades; follow PlayCanvas SOG/gsplat/WebGPU fixes and Babylon's rendering tooling; collect shareable light-state artworks.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、mode 2でprobeの偏りを見てからmode 4へ戻し、pointerをゆっくり動かしつつclick/Spaceを3回打つ。30分の次手は、各pulseをWeb Audio analyserのband値に置換し、低音だけを遠いcascade、高音だけを近いprobeへ入れること。評価は光の写実性より、音を止めた後も“どこへ光が渡ったか”が読めるかに置く。</p>
+          <p class="en-copy">Open the main study, inspect probe mode, then place three pulses in composite mode. In 30 minutes, route low/high audio bands to far/near cascades and judge whether propagation remains readable after sound stops.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: shared depth-aware downsample、SSR coverage/denoiser、Radiance Cascades、PlayCanvas/Babylon release、Afterlight/Vitalを確認。アイデア検討: 11/18〜20のtemporal tide・repair・splat retentionを、probe chorusとdepth stitchへ接続。サンプル実装: 依存なしCanvasの本命と派生を作成。結果の検証: script構文、gallery/day生成、Pages pushを確認する。継続案件=repair/retention/temporal tideを一つの舞台時計へ統合、新規=probe chorusとdepth-stitch、寝かせる=実BVH GI・実XR multiview・重いassetストリーミング。短期=Audio analyser接続、中長期=実depth/normal・XR gaze・状態共有URL。</p>
+          <p class="en-copy">Collect: reconstruction, coverage, probes, releases and artworks. Ideate: connect recent tide/repair/retention studies. Build: two dependency-free canvases. Verify: syntax, gallery, day page and Pages. Continue the shared stage clock; incubate probes/stitching; defer production BVH GI, multiview and heavy assets.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の傾向は、scene depth・velocity・timer・coverage・compressed splat・dither LODを“品質調整の内部値”で終わらせず、可視の時間軸に引き出せることにある。three.js側ではSSR/AO/SSGIの縮小passを共有し、GIもsparse probe化している。昨日までの水・反射・ランタンに今日のprobeを足すと、遠景=低密度の到着光、境界=縫い直される潮、近景=残る粒子、観客入力=拍、という一枚の展示言語になる。育てる価値が高いのは、debug値を隠す代わりに舞台の譜面として翻訳する“観察可能なポストプロセス”。</p>
+          <p class="en-copy">The recurring direction is to expose quality-control values—depth, velocity, timer, coverage, packed splats and dithered LOD—as a visible time axis. Probes complete a language of arriving light, stitched boundaries, retained particles and audience beats.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 `outputs/2026-11-21_radiance_probe_chorus.html` は、pointerで太陽位置、click/Spaceで発光pulse、1〜4でcascade/probe/light path/compositeを操作する。何が動くか: 粗い格子がpulseを下流へ伝え、modeごとに中間情報を露出する。次に足すなら実Audio analyser、URL state、WebGL MRTを加える。派生 `outputs/2026-11-21_depth_stitch_tide.html` はpointerで深度境界を傾け、click/Spaceでstitch confidenceの残響を加える。何が動くか: coarse waveを境界近傍だけ高信頼度に戻す。次は実depth textureとnormal edgeをguideにする。</p>
+          <p class="en-copy">Radiance Probe Chorus exposes cascade/probe/path/composite modes with pointer light and pulse input; add analyser, URL state and WebGL MRT next. Depth Stitch Tide selectively restores a coarse wave near an interactive depth boundary; attach real depth and normal guides next.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-21_radiance_probe_chorus.html" target="_blank" rel="noreferrer">Main local sample</a></li>
+          
+            <li><a href="outputs/2026-11-21_depth_stitch_tide.html" target="_blank" rel="noreferrer">Derived local sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>本命のデータはsun位置、probe energy、cascade pass、pulse時刻・位置、active probe数。派生はdepth edge、coarse / reconstructed wave、stitch confidence、操作履歴を持つ。これを展示ログにすれば、観客の滞在をprobe密度、会場音をpulse、カメラ映像のsegmentation edgeを縫い目、MediaPipeの手の静止をhistory retention、WebXR gazeをresolution allocationへ割り当てられる。ブランド演出なら商品輪郭だけを縫い直し、触れられた部分から間接光が伝播するweb pageにできる。11/20のreflection repairと組めば、反射を直した操作がGIの発光源にもなる。</p>
+          <p class="en-copy">Inputs include sun position, probe energy, passes, pulse history, depth edge and stitch confidence. They can map audience dwell, venue audio, segmentation, hands and XR gaze into an installation or product silhouette experience; yesterday's reflection repair can become today's indirect-light source.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js open pull requests (r188)</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35641" target="_blank" rel="noreferrer">three.js: shared depth-aware downsample #35641</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35459" target="_blank" rel="noreferrer">three.js: SSR coverage + denoiser #35459</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35349" target="_blank" rel="noreferrer">three.js: WebGPU Radiance Cascades #35349</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases/tag/v2.24.1" target="_blank" rel="noreferrer">PlayCanvas Engine v2.24.1</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1" target="_blank" rel="noreferrer">Babylon.js 9.37.1</a></li>
+          
+            <li><a href="https://dbaney.com/projects/afterlight/" target="_blank" rel="noreferrer">Afterlight — WebGL/Web Audio artwork</a></li>
+          
+            <li><a href="outputs/2026-11-21_radiance_probe_chorus.html" target="_blank" rel="noreferrer">Main prototype: Radiance Probe Chorus</a></li>
+          
+            <li><a href="outputs/2026-11-21_depth_stitch_tide.html" target="_blank" rel="noreferrer">Derived prototype: Depth Stitch Tide</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-21_radiance_probe_chorus.html" loading="lazy" title="Radiance Probe Chorus"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

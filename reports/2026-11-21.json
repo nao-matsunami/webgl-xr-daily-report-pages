@@ -1,0 +1,173 @@
+{
+  "date": "2026-11-21",
+  "headline": "粗い間接光と深度の継ぎ目を、観客が鳴らす舞台照明にする",
+  "headlineEn": "Make coarse indirect light and depth seams into audience-played stage lighting",
+  "summary": "three.js の共有depth-aware downsample、SSR coverage / denoiser、WebGPU Radiance Cascades、PlayCanvas 2.24.1のMRT clear、Babylon.js 9.37.1を踏まえ、低解像度の光を隠さず操作可能な合唱として見せる2本のCanvas試作を作成した。",
+  "summaryEn": "Informed by three.js depth-aware downsampling, SSR coverage/denoising and WebGPU Radiance Cascades, plus PlayCanvas 2.24.1 MRT clearing and Babylon.js 9.37.1, two Canvas studies expose coarse light as a playable chorus rather than hiding it.",
+  "links": [
+    {
+      "label": "three.js open pull requests (r188)",
+      "url": "https://github.com/mrdoob/three.js/pulls"
+    },
+    {
+      "label": "three.js: shared depth-aware downsample #35641",
+      "url": "https://github.com/mrdoob/three.js/pull/35641"
+    },
+    {
+      "label": "three.js: SSR coverage + denoiser #35459",
+      "url": "https://github.com/mrdoob/three.js/pull/35459"
+    },
+    {
+      "label": "three.js: WebGPU Radiance Cascades #35349",
+      "url": "https://github.com/mrdoob/three.js/pull/35349"
+    },
+    {
+      "label": "PlayCanvas Engine v2.24.1",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.1"
+    },
+    {
+      "label": "Babylon.js 9.37.1",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+    },
+    {
+      "label": "Afterlight — WebGL/Web Audio artwork",
+      "url": "https://dbaney.com/projects/afterlight/"
+    },
+    {
+      "label": "Main prototype: Radiance Probe Chorus",
+      "url": "outputs/2026-11-21_radiance_probe_chorus.html"
+    },
+    {
+      "label": "Derived prototype: Depth Stitch Tide",
+      "url": "outputs/2026-11-21_depth_stitch_tide.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js r188の新規PR #35641 は screen-space effects 向けのdepth-aware downsample共有を提案している。SSR/AO/SSGIを別々の“綺麗にする後処理”ではなく、同じ粗密の舞台素材として扱える入口になる。2) #35459 はSSRで環境を追う代わりにcoverageを出し、temporal passで欠損をno dataとして扱うdenoiser例を含む。3) #35349 のWebGPU Radiance Cascadesは、G-bufferからBVHをトレースしsparse probeへ多重反射を蓄える実験。4) PlayCanvas 2.24.1 は WebGPU viewport clearのMRT全color attachmentをclearする修正、Babylon 9.37.1 は現行安定版として公開中。",
+      "bodyEn": "three.js is converging screen-space effects on shared depth-aware reduction, explicit SSR coverage, and sparse-probe global illumination. PlayCanvas 2.24.1 fixes WebGPU MRT clearing, while Babylon 9.37.1 is the current stable release.",
+      "links": [
+        {
+          "label": "three.js #35641",
+          "url": "https://github.com/mrdoob/three.js/pull/35641"
+        },
+        {
+          "label": "three.js #35459",
+          "url": "https://github.com/mrdoob/three.js/pull/35459"
+        },
+        {
+          "label": "three.js #35349",
+          "url": "https://github.com/mrdoob/three.js/pull/35349"
+        },
+        {
+          "label": "PlayCanvas v2.24.1",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.1"
+        },
+        {
+          "label": "Babylon.js 9.37.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Afterlightはcustom WebGL shaderと小さなWeb Audio synthだけで、カーソルのdragを“銀河を引く／花や潮へ折る／鳴らす”操作に変換している。共有リンクに世界・palette・flow・energyを保存でき、重い3D sceneより先に“光の状態をスコアとして共有する”設計を成立させている。今日のprobe案にも、完成画像でなく、観客が置いた発光点と残響をURL stateへ持たせる方向が有効。Vital Interactiveの1 draw call brick fieldも、instancingとpointer waveの因果が見えるよい対照である。",
+      "bodyEn": "Afterlight turns cursor gestures into pull/fold/ring actions using custom WebGL and a small synth, then shares the exact light-state through a link. Vital Interactive similarly makes a one-draw-call field legible through a direct pointer wave.",
+      "links": [
+        {
+          "label": "Afterlight",
+          "url": "https://dbaney.com/projects/afterlight/"
+        },
+        {
+          "label": "Vital Interactive Tech Lab",
+          "url": "https://www.vitalinteractive.com/tech-lab/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命は「Radiance Probe Chorus」: 画面下の粗いprobe格子が太陽（pointer）と観客が置く発光pulseを順番に受け渡す。1〜4でcascade / probe / light path / compositeを切替え、GIの中間表現そのものを演出の楽器にする。派生「Depth Stitch Tide」: 深度境界の近くだけ低解像度の水面を高密度に縫い直し、クリックで縫い目の記憶を流す。前日のreflection repair / splat retentionの延長として、今日は“直す”対象を反射tileから光の伝播と深度境界へ移した。次に足すなら、Audio FFTでpulseの発火を制御し、WebXR gazeの静止でprobe解像度を上げる。",
+      "bodyEn": "The main study makes cascading probes playable; the derivative selectively stitches a coarse water field near a depth boundary. They extend yesterday's reflection repair and splat retention toward propagation and edge reconstruction.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-21_radiance_probe_chorus.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-21_depth_stitch_tide.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "低解像度passを作品化する前提では、colorだけで拡大しない。depthとnormalのedgeをguideにして、(a) coverage、(b) history age、(c) bilateral weight を可視ログとして保持すると、画の欠損が“失敗”でなく楽器の反応へ変わる。#35459の要点はcoverage=0を暗い色と誤認せずno dataとしてtemporal historyから除くこと。Radiance Cascadesは現状texture非対応・単純scene中心の実験なので、本番採用ではなくprobe density、ray budget、更新周期を画面のテンポへ翻訳する参照として使う。PlayCanvasのMRT clear修正に倣い、複数render targetでは未clear attachmentを残響演出と偶然に混同しない。",
+      "bodyEn": "For artistic low-resolution passes, log coverage, history age and bilateral weight alongside color. Treat zero coverage as missing data, not black. Use Radiance Cascades as a timing/probe-budget reference, and explicitly clear every MRT attachment before relying on persistence.",
+      "links": [
+        {
+          "label": "SSR coverage PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35459"
+        },
+        {
+          "label": "Radiance Cascades PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35349"
+        },
+        {
+          "label": "PlayCanvas 2.24.1 release notes",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.1"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "three.js #35641 がSSR/AO/SSGIの実例へどう接続されるか、#35459 のcoverage semanticsとdenoiser APIが固定されるか、#35349がtextureを含むsceneとmoving objectにどう拡張されるかを見る。PlayCanvasはSOG/gsplatとWebGPU clearの更新、Babylonは9.37系のInspector・rendering周辺の小修正を追う。作品側では、light stateをURLへ保存するWebGL/Web Audio作品と、debug viewを本編の一部にする展示を収集する。",
+      "bodyEn": "Watch three.js API/example landing for shared downsampling, coverage semantics and textured/moving radiance cascades; follow PlayCanvas SOG/gsplat/WebGPU fixes and Babylon's rendering tooling; collect shareable light-state artworks."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 2でprobeの偏りを見てからmode 4へ戻し、pointerをゆっくり動かしつつclick/Spaceを3回打つ。30分の次手は、各pulseをWeb Audio analyserのband値に置換し、低音だけを遠いcascade、高音だけを近いprobeへ入れること。評価は光の写実性より、音を止めた後も“どこへ光が渡ったか”が読めるかに置く。",
+      "bodyEn": "Open the main study, inspect probe mode, then place three pulses in composite mode. In 30 minutes, route low/high audio bands to far/near cascades and judge whether propagation remains readable after sound stops."
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: shared depth-aware downsample、SSR coverage/denoiser、Radiance Cascades、PlayCanvas/Babylon release、Afterlight/Vitalを確認。アイデア検討: 11/18〜20のtemporal tide・repair・splat retentionを、probe chorusとdepth stitchへ接続。サンプル実装: 依存なしCanvasの本命と派生を作成。結果の検証: script構文、gallery/day生成、Pages pushを確認する。継続案件=repair/retention/temporal tideを一つの舞台時計へ統合、新規=probe chorusとdepth-stitch、寝かせる=実BVH GI・実XR multiview・重いassetストリーミング。短期=Audio analyser接続、中長期=実depth/normal・XR gaze・状態共有URL。",
+      "bodyEn": "Collect: reconstruction, coverage, probes, releases and artworks. Ideate: connect recent tide/repair/retention studies. Build: two dependency-free canvases. Verify: syntax, gallery, day page and Pages. Continue the shared stage clock; incubate probes/stitching; defer production BVH GI, multiview and heavy assets."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の傾向は、scene depth・velocity・timer・coverage・compressed splat・dither LODを“品質調整の内部値”で終わらせず、可視の時間軸に引き出せることにある。three.js側ではSSR/AO/SSGIの縮小passを共有し、GIもsparse probe化している。昨日までの水・反射・ランタンに今日のprobeを足すと、遠景=低密度の到着光、境界=縫い直される潮、近景=残る粒子、観客入力=拍、という一枚の展示言語になる。育てる価値が高いのは、debug値を隠す代わりに舞台の譜面として翻訳する“観察可能なポストプロセス”。",
+      "bodyEn": "The recurring direction is to expose quality-control values—depth, velocity, timer, coverage, packed splats and dithered LOD—as a visible time axis. Probes complete a language of arriving light, stitched boundaries, retained particles and audience beats."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 `outputs/2026-11-21_radiance_probe_chorus.html` は、pointerで太陽位置、click/Spaceで発光pulse、1〜4でcascade/probe/light path/compositeを操作する。何が動くか: 粗い格子がpulseを下流へ伝え、modeごとに中間情報を露出する。次に足すなら実Audio analyser、URL state、WebGL MRTを加える。派生 `outputs/2026-11-21_depth_stitch_tide.html` はpointerで深度境界を傾け、click/Spaceでstitch confidenceの残響を加える。何が動くか: coarse waveを境界近傍だけ高信頼度に戻す。次は実depth textureとnormal edgeをguideにする。",
+      "bodyEn": "Radiance Probe Chorus exposes cascade/probe/path/composite modes with pointer light and pulse input; add analyser, URL state and WebGL MRT next. Depth Stitch Tide selectively restores a coarse wave near an interactive depth boundary; attach real depth and normal guides next.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-21_radiance_probe_chorus.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-21_depth_stitch_tide.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "本命のデータはsun位置、probe energy、cascade pass、pulse時刻・位置、active probe数。派生はdepth edge、coarse / reconstructed wave、stitch confidence、操作履歴を持つ。これを展示ログにすれば、観客の滞在をprobe密度、会場音をpulse、カメラ映像のsegmentation edgeを縫い目、MediaPipeの手の静止をhistory retention、WebXR gazeをresolution allocationへ割り当てられる。ブランド演出なら商品輪郭だけを縫い直し、触れられた部分から間接光が伝播するweb pageにできる。11/20のreflection repairと組めば、反射を直した操作がGIの発光源にもなる。",
+      "bodyEn": "Inputs include sun position, probe energy, passes, pulse history, depth edge and stitch confidence. They can map audience dwell, venue audio, segmentation, hands and XR gaze into an installation or product silhouette experience; yesterday's reflection repair can become today's indirect-light source."
+    }
+  ]
+}
