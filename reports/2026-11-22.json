@@ -1,0 +1,171 @@
+{
+  "date": "2026-11-22",
+  "headline": "履歴補間と雲ノイズを、観客が演奏する光の織物へ",
+  "headlineEn": "Turn history filtering and cloud noise into audience-played light weaving",
+  "summary": "three.js のSSR標準化、Skyの雲ノイズ・太陽改善、TRAANodeのCatmull–Rom履歴サンプリングを軸に、残像と雲の反復を隠さない2本の軽量Canvas試作を実装した。",
+  "summaryEn": "Guided by three.js work on SSR standardization, Sky cloud-noise/sun improvements, and Catmull–Rom history sampling, two lightweight Canvas studies make temporal residue and repeated cloud texture playable.",
+  "links": [
+    {
+      "label": "three.js: SSR example standardization + animation #35432",
+      "url": "https://github.com/mrdoob/three.js/pull/35432"
+    },
+    {
+      "label": "three.js: Sky clouds/sun and baked cloud noise #35438",
+      "url": "https://github.com/mrdoob/three.js/pull/35438"
+    },
+    {
+      "label": "three.js: TRAANode Catmull–Rom history filter #35447",
+      "url": "https://github.com/mrdoob/three.js/pull/35447"
+    },
+    {
+      "label": "three.js WebGPU compileAsync depth-buffer issue #35524",
+      "url": "https://github.com/mrdoob/three.js/issues/35524"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Akshay Pachouri — Creative Coding Lab",
+      "url": "https://www.akshaypachouri.com/lab/"
+    },
+    {
+      "label": "Main prototype: History Light Garden",
+      "url": "outputs/2026-11-22_history_light_garden.html"
+    },
+    {
+      "label": "Derived prototype: Cloud Noise Lantern Weave",
+      "url": "outputs/2026-11-22_cloud_noise_lantern_weave.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35432 はWebGPU SSR例の命名・構成を揃え、animation exampleを加える提案。SSRを単発の反射効果でなく、動き込みで読ませる素材へ寄せる。2) #35438 はSky/SkyMeshの雲・太陽を改善し、雲ノイズをテクスチャへ焼く。重い手続き計算を“繰り返せる舞台布”へ変えるヒントになる。3) #35447 はTRAANodeがhistoryをCatmull–Rom filterでsampleする提案。履歴が滑らかになるほど残像の癖も表出する。4) #35524 はcompileAsync後にcanvas depthが壊れ得る報告で、depth依存のsoft particle/後処理を持つ作品では再現テストが要る。PlayCanvas/Babylonはリリース一覧を日次で追跡する。",
+      "bodyEn": "three.js is aligning animated SSR examples, baking Sky cloud noise to a texture, and improving temporal history sampling. A current compileAsync depth-buffer report is a practical warning for depth-aware artworks; PlayCanvas and Babylon release feeds remain watch points.",
+      "links": [
+        {
+          "label": "SSR #35432",
+          "url": "https://github.com/mrdoob/three.js/pull/35432"
+        },
+        {
+          "label": "Sky #35438",
+          "url": "https://github.com/mrdoob/three.js/pull/35438"
+        },
+        {
+          "label": "TRAA #35447",
+          "url": "https://github.com/mrdoob/three.js/pull/35447"
+        },
+        {
+          "label": "Depth issue #35524",
+          "url": "https://github.com/mrdoob/three.js/issues/35524"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Akshay PachouriのCreative Coding Labは、WebGL/three.js/GLSLの実演を、実装・コスト・実案件への適用まで同じページで説明している。例えば画像を三角片に割るtransition、displacementで溶かすhover、FFTでcurl noiseを回す粒子は、派手な画だけを孤立させない。今回の試作も、残像を“高品質化の副作用”として隠すのでなく、操作した光がどこへ残ったかを読める状態変数にした。",
+      "bodyEn": "Akshay Pachouri’s lab pairs live WebGL/GLSL effects with implementation, cost and production adaptation. It is a useful model for making a visual parameter—here, temporal history—legible instead of treating it as invisible polish.",
+      "links": [
+        {
+          "label": "Creative Coding Lab",
+          "url": "https://www.akshaypachouri.com/lab/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命「History Light Garden」は、pointerを風、click/Spaceを光の種、1〜3をraw/history/compositeとする。観客の入力が粒子群へ即時に入る値と、ゆっくり残る履歴の差を、庭の発芽速度として体感させる。派生「Cloud Noise Lantern Weave」は、雲ノイズの横糸をpointerの太陽で持ち上げ、clickで灯を縫う。前日までのprobe chorus/depth stitchを、今日は“時間方向の補間”と“空の反復”に接続した。次に足すなら、速度ベクトルを風の筋として描き、静止時のみhistory gainを上げる。",
+      "bodyEn": "History Light Garden contrasts raw input, history and composite as germination speeds. Cloud Noise Lantern Weave turns repeated cloud texture into lifted threads and stitched lights. Add velocity trails and increase history gain only during stillness next.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-22_history_light_garden.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-22_cloud_noise_lantern_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "temporal passを作品に使うときは、historyを一枚の見えないtextureに閉じない。raw input、history age、reprojection validity、velocityをdebug表示ではなく色・密度・残響に変換すると、ghostingを意図的な振る舞いにできる。一方、正しいdepthが必要なsoft particleやSSRでは#35524型のpipeline warmup後を含む回帰確認が必要。雲のような低頻度更新のnoiseは、textureへbakeし、UV drift・太陽方向・局所的なdisplacementだけを毎フレーム動かすと予算を読みやすい。",
+      "bodyEn": "Do not hide temporal state: translate raw input, history age, reprojection validity and velocity into visible color/density/reverb. Still regression-test depth after pipeline warmup. For slow cloud-like noise, bake the base texture and animate only UV drift, sun direction and local displacement.",
+      "links": [
+        {
+          "label": "TRAA filter proposal",
+          "url": "https://github.com/mrdoob/three.js/pull/35447"
+        },
+        {
+          "label": "WebGPU depth issue",
+          "url": "https://github.com/mrdoob/three.js/issues/35524"
+        },
+        {
+          "label": "Sky cloud-noise proposal",
+          "url": "https://github.com/mrdoob/three.js/pull/35438"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "#35432のSSR APIとanimation exampleが実例へどう着地するか、#35438のtexture化した雲noiseの更新頻度・memory cost、#35447のhistory filterがclamp/validityとどう組まれるかを追う。#35524はfixとaffected revisionを確認する。PlayCanvasはWebGPU/gsplat/VAT、Babylonはrendering/Inspector/XRのrelease noteを日次で確認。作品側は、時間補間・粒子・音を同じ操作スコアにしている制作者ページを優先収集する。",
+      "bodyEn": "Track SSR API/example landing, the update and memory profile of baked cloud noise, and the interaction of history filtering with validity/clamping. Confirm the fix scope for the WebGPU depth issue; continue PlayCanvas WebGPU/gsplat/VAT and Babylon rendering/Inspector/XR monitoring."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、mode 1で光の種を3つ置き、mode 2で残留する密度を見て、mode 3へ戻す。次の30分は、pointer velocityが低いときだけhistoryの混合率を0.95へ上げ、速いときは0.65へ下げる実装を足す。評価基準は“滑らかさ”ではなく、観客が手を止めた後に自分の操作の痕跡を追えるか。",
+      "bodyEn": "Open the main study, plant three seeds in raw mode, inspect history, then return to composite. In 30 minutes, raise history mixing when pointer velocity is low and judge whether a paused visitor can still trace their gesture.",
+      "links": [
+        {
+          "label": "Open main sample",
+          "url": "outputs/2026-11-22_history_light_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsのSSR/Sky/TRAA/depth issue、PlayCanvas/Babylon release feed、Creative Coding Labを確認。アイデア検討: 11/18〜21のtemporal tide、reflection repair、probe chorus、depth stitchを“履歴は舞台の記憶”へ統合。サンプル実装: 依存なしCanvas 2本を追加。結果の検証: JSON構文、gallery/day再生成、Pages publishを確認。継続案件=repair/retention/probeを共通の状態スコアにする。新規=history gardenとcloud weave。寝かせる=production BVH GI、実XR multiview、重いasset streaming。短期=pointer velocityとAudio analyser、中長期=実motion vector/depthとURL state共有。",
+      "bodyEn": "Collect current renderer work and a production-minded creative lab; connect recent tide/repair/probe/stitch studies into stage memory; build two dependency-free samples; verify JSON, gallery/day and publish. Continue the shared state score, incubate history/cloud studies, defer production BVH GI, multiview XR and heavy streaming."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird’s-eye memo",
+      "body": "最近の流れは、SSR、depth-aware downsample、coverage、probe、TAAのhistoryといった本来は品質を整える中間値が、創作上は“どの時間を残すか”を選ぶ道具になっていること。ここに雲noiseのbakeを足すと、遠景は更新の遅い記憶、近景は生の入力、境界はrepair、観客のclickはscoreの小節になる。前日のprobe/深度継ぎ目と今日のhistoryを組めば、同じ入力が光の伝播・表面の復元・残像の三層に別時間で現れる展示へ発展できる。育てる価値が高いのは“観察可能なtemporal rendering”である。",
+      "bodyEn": "Renderer intermediates—SSR, depth-aware reduction, coverage, probes and TAA history—are converging into a creative choice about which time to retain. Add baked cloud noise and one gesture can emerge at three rates: light propagation, surface repair and afterimage. Observable temporal rendering is the high-value long-term theme."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today’s mini prototype candidate",
+      "body": "本命 `outputs/2026-11-22_history_light_garden.html` は、pointerで風、click/Spaceで光の種、1〜3でraw/history/compositeを切替える。動くもの: 発光粒子が入力直後と残留historyで異なる密度を持つ。次に足すなら、実WebGL FBOでvelocity/reprojection validityを使う。派生 `outputs/2026-11-22_cloud_noise_lantern_weave.html` は、pointerで太陽、clickで灯、↑↓でnoise密度、Rでreset。動くもの: baked textureを想定した横糸の反復が光源近傍で変形する。次はaudio FFTで横糸の周波数帯を分ける。",
+      "bodyEn": "The main study exposes raw/history/composite particle density with pointer wind and planted light seeds; next use WebGL FBO velocity/validity. The derivative bends repeating cloud threads around an interactive sun; next map FFT bands to separate thread frequencies.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-22_history_light_garden.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-22_cloud_noise_lantern_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "本命にはseedの位置・時刻、粒子のraw/history energy、pointer velocity、mode滞在時間がある。派生には太陽位置、noise密度、lanternの寿命と織り目の局所変位がある。これを保存すれば、会場音の低域をhistory gain、高域を雲の横糸、カメラsegmentationの輪郭をdepth stitch、MediaPipeの静止手をhistory lock、WebXR gazeを局所noise解像度にできる。ブランド演出では、製品に触れた順を光の発芽履歴として残し、最後に全員の操作から一枚の空模様をexportする構成が有効。",
+      "bodyEn": "The samples expose seed timing/position, raw and history energy, pointer velocity, sun position, noise density and lantern life. Persisted data can map venue audio, segmentation edges, hand stillness and XR gaze into an installation; a product experience can export one sky pattern from everybody’s touch history."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>History Light Garden</title><style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#050a16;color:#e7f7ff;font:13px/1.45 ui-monospace,monospace}canvas{width:100vw;height:100vh;display:block}.panel{position:fixed;left:18px;top:18px;max-width:350px;padding:12px 14px;border:1px solid #7ce5ff44;border-radius:13px;background:#071224bb;backdrop-filter:blur(8px)}h1{font:600 16px system-ui;margin:0 0 5px}p{margin:0;color:#a8c7d6}.readout{margin-top:9px;color:#ffd77c}kbd{padding:1px 5px;border:1px solid #9ac3d155;border-radius:4px;color:#fff}</style></head><body>
+<canvas></canvas><div class="panel"><h1>History Light Garden</h1><p>ポインタで風向きを変え、click / <kbd>Space</kbd> で光の種を置く。<kbd>1</kbd> raw <kbd>2</kbd> history <kbd>3</kbd> composite。残像を“失敗”でなく観客の譜面として聴く。</p><div class="readout"></div></div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d'),info=document.querySelector('.readout');let W,H,dpr,px=.5,py=.5,mode=3,t=0,seeds=[];const N=540,pts=Array.from({length:N},(_,i)=>({x:Math.random(),y:Math.random(),h:Math.random(),age:99,phase:i*.618}));
+function resize(){dpr=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+function plant(a=px,b=py){seeds.push({x:a,y:b,life:1,id:Math.random()*9});if(seeds.length>12)seeds.shift()}function pos(e){px=e.clientX/W;py=e.clientY/H}addEventListener('pointermove',pos);addEventListener('pointerdown',e=>{pos(e);plant()});addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();plant()}if(+e.key>0&&+e.key<4)mode=+e.key});
+function loop(now){t=now*.001;x.fillStyle='rgba(3,8,20,.095)';x.fillRect(0,0,W,H);const windx=(px-.5)*1.8,windy=(py-.5)*1.8;for(const s of seeds){s.life-=.003;const r=(1-s.life)*260+12;const g=x.createRadialGradient(s.x*W,s.y*H,0,s.x*W,s.y*H,r);g.addColorStop(0,`hsla(${190+s.id*14},100%,75%,${s.life*.12})`);g.addColorStop(1,'transparent');x.fillStyle=g;x.fillRect(s.x*W-r,s.y*H-r,r*2,r*2)}seeds=seeds.filter(s=>s.life>0);
+x.globalCompositeOperation='lighter';for(const p of pts){let hit=0,energy=0;for(const s of seeds){let dx=p.x-s.x,dy=p.y-s.y,d=Math.hypot(dx,dy);energy+=Math.max(0,1-d/.38)*s.life;hit+=d<.16?1:0}const flow=Math.sin(p.y*12+t*1.2+p.phase)*.00048;p.x=(p.x+windx*.00035+flow+1)%1;p.y=(p.y+windy*.0002+Math.cos(p.x*10-t)*.00026+1)%1;const raw=.15+energy*.85;p.h=p.h*.955+raw*.045;p.age=Math.min(99,p.age+.7);if(hit)p.age=0;const val=mode===1?raw:mode===2?p.h:(raw*.4+p.h*.9);const a=.04+val*.75;const size=1+val*4+(mode===2?1:0);x.fillStyle=`hsla(${188+val*80},100%,${54+val*27}%,${a})`;x.beginPath();x.arc(p.x*W,p.y*H,size,0,7);x.fill()}x.globalCompositeOperation='source-over';
+// wind compass / sample markers
+x.strokeStyle='#b8efff88';x.lineWidth=1;x.beginPath();x.moveTo(px*W-13,py*H);x.lineTo(px*W+13,py*H);x.moveTo(px*W,py*H-13);x.lineTo(px*W,py*H+13);x.stroke();info.textContent=`mode ${['','RAW input','Catmull-like history','COMPOSITE'][mode]} · seeds ${seeds.length} · history gain ${(mode===2?1:.7).toFixed(1)}`;requestAnimationFrame(loop)}requestAnimationFrame(loop);
+</script><!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body></html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cloud Noise Lantern Weave</title><style>*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#06111d;color:#eefcff;font:13px/1.5 ui-monospace,monospace}canvas{display:block;width:100vw;height:100vh}.ui{position:fixed;right:18px;top:18px;width:min(340px,calc(100vw - 36px));padding:13px;background:#071525c9;border:1px solid #9cf0ff40;border-radius:13px}h1{font:600 16px system-ui;margin:0 0 5px}p{margin:0;color:#afc8d9}b{color:#ffe08b}.bar{height:4px;margin-top:10px;background:#18314a}.bar i{display:block;height:100%;background:linear-gradient(90deg,#72eaff,#ffe281);width:50%}</style></head><body><canvas></canvas><div class="ui"><h1>Cloud Noise Lantern Weave</h1><p>pointerで太陽を動かす。clickで雲の織り目に灯を縫う。<b>↑↓</b> はノイズの密度、<b>R</b> は織り目をリセット。雲テクスチャの反復を、舞台照明のリズムへ。</p><div class="bar"><i></i></div></div><script>
+const c=document.querySelector('canvas'),g=c.getContext('2d'),bar=document.querySelector('i');let W,H,D,px=.52,py=.35,density=1,t=0,lanterns=[];const strands=Array.from({length:86},(_,i)=>({y:i/85,seed:Math.random()*99,glow:0}));function size(){D=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;g.setTransform(D,0,0,D,0,0)}size();addEventListener('resize',size);addEventListener('pointermove',e=>{px=e.clientX/W;py=e.clientY/H});addEventListener('pointerdown',()=>lanterns.push({x:px,y:py,life:1}));addEventListener('keydown',e=>{if(e.key==='ArrowUp')density=Math.min(2.5,density+.15);if(e.key==='ArrowDown')density=Math.max(.35,density-.15);if(e.key.toLowerCase()==='r')lanterns=[]});
+const noise=(a,b)=>Math.sin(a*1.7+b*.9)+Math.sin(a*.47-b*1.9)*.55+Math.sin(a*3.9+b*2.1)*.18;
+function frame(ms){t=ms*.00022;g.fillStyle='#06111d';g.fillRect(0,0,W,H);const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#173655');sky.addColorStop(.55,'#0a213b');sky.addColorStop(1,'#06111d');g.fillStyle=sky;g.fillRect(0,0,W,H);for(const l of lanterns){l.life-=.003;let r=150*(1-l.life)+20,rad=g.createRadialGradient(l.x*W,l.y*H,0,l.x*W,l.y*H,r);rad.addColorStop(0,`rgba(255,212,105,${l.life*.25})`);rad.addColorStop(1,'transparent');g.fillStyle=rad;g.fillRect(l.x*W-r,l.y*H-r,r*2,r*2)}lanterns=lanterns.filter(l=>l.life>0);g.globalCompositeOperation='screen';for(const s of strands){g.beginPath();for(let q=0;q<=100;q++){let u=q/100;let n=noise(u*8*density+t+s.seed,s.y*12-t);let pull=Math.exp(-((u-px)**2+(s.y-py)**2)*13)*.24;let y=(s.y+n*.018+pull)*H;let xx=u*W+Math.sin(s.seed+u*9+t)*6;if(q)g.lineTo(xx,y);else g.moveTo(xx,y)}let near=Math.exp(-((s.y-py)**2)*18);g.strokeStyle=`hsla(${188+near*54},95%,${50+near*31}%,${.09+near*.25})`;g.lineWidth=.45+near*1.8;g.stroke()}g.globalCompositeOperation='source-over';const sx=px*W,sy=py*H;let rg=g.createRadialGradient(sx,sy,0,sx,sy,64);rg.addColorStop(0,'#fff6c2');rg.addColorStop(.1,'#ffd568bb');rg.addColorStop(1,'transparent');g.fillStyle=rg;g.fillRect(sx-64,sy-64,128,128);bar.style.width=`${density/2.5*100}%`;requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script><!-- mobile-preset-controls:v1 -->
+<style>
+  .mobile-preset-controls {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .mobile-preset-controls button {
+    pointer-events: auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    background: rgba(8, 10, 14, 0.68);
+    color: rgba(255, 255, 255, 0.92);
+    font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    touch-action: manipulation;
+  }
+  .mobile-preset-controls button:active,
+  .mobile-preset-controls button.is-active {
+    background: rgba(255, 221, 128, 0.86);
+    color: #101014;
+    border-color: rgba(255, 255, 255, 0.72);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mobile-preset-controls { opacity: 0.42; transition: opacity 160ms ease; }
+    .mobile-preset-controls:hover { opacity: 1; }
+  }
+  @media (max-width: 520px) {
+    .mobile-preset-controls { gap: 6px; }
+    .mobile-preset-controls button { min-width: 34px; height: 36px; padding: 0 10px; font-size: 12px; }
+  }
+</style>
+<div class="mobile-preset-controls" aria-label="Preset controls">
+  <button type="button" data-mobile-key="1" aria-label="Preset 1">1</button>
+  <button type="button" data-mobile-key="2" aria-label="Preset 2">2</button>
+  <button type="button" data-mobile-key="3" aria-label="Preset 3">3</button>
+  <button type="button" data-mobile-key="4" aria-label="Preset 4">4</button>
+  <button type="button" data-mobile-key="5" aria-label="Preset 5">5</button>
+  <button type="button" data-mobile-key="Space" aria-label="Pulse">Pulse</button>
+</div>
+<script>
+(() => {
+  const dock = document.currentScript.previousElementSibling;
+  if (!dock || dock.dataset.ready === 'true') return;
+  dock.dataset.ready = 'true';
+  const sendKey = (keyName) => {
+    const isSpace = keyName === 'Space';
+    const key = isSpace ? ' ' : keyName;
+    const code = isSpace ? 'Space' : 'Digit' + keyName;
+    const eventInit = { key, code, bubbles: true, cancelable: true };
+    window.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    document.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+    if (isSpace) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        document.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+      }, 140);
+    }
+  };
+  dock.querySelectorAll('button').forEach((button) => {
+    const keyName = button.dataset.mobileKey;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dock.querySelectorAll('button').forEach((item) => item.classList.remove('is-active'));
+      button.classList.add('is-active');
+      sendKey(keyName);
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+})();
+</script>
+</body></html>
