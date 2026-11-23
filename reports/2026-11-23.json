@@ -1,0 +1,175 @@
+{
+  "date": "2026-11-23",
+  "headline": "深度・再投影・Splatを、観客が触れる時間の層へ",
+  "headlineEn": "Make depth, reprojection, and splats into touchable layers of time",
+  "summary": "three.js の深度対応縮小共有・前フレーム再投影・Gaussian Splat省メモリ化と、PlayCanvas/Babylonの直近リリースを手掛かりに、レンダリング中間値を隠さず演出にする2本の軽量試作を実装した。",
+  "summaryEn": "Guided by current three.js work on shared depth-aware reduction, prior-frame reprojection and Gaussian Splat memory, plus recent PlayCanvas/Babylon releases, two lightweight studies expose rendering intermediates as an interaction.",
+  "links": [
+    {
+      "label": "three.js: shared depth-aware downsample #35641",
+      "url": "https://github.com/mrdoob/three.js/pull/35641"
+    },
+    {
+      "label": "three.js: ReprojectedBeautyNode #35430",
+      "url": "https://github.com/mrdoob/three.js/pull/35430"
+    },
+    {
+      "label": "three.js: Gaussian Splat half-float covariance #35610",
+      "url": "https://github.com/mrdoob/three.js/pull/35610"
+    },
+    {
+      "label": "PlayCanvas Engine v2.24.2",
+      "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+    },
+    {
+      "label": "Babylon.js 9.37.1",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+    },
+    {
+      "label": "Akshay Pachouri — Creative Coding Lab",
+      "url": "https://www.akshaypachouri.com/lab/"
+    },
+    {
+      "label": "Main prototype: Depth Weave Choir",
+      "url": "outputs/2026-11-23_depth_weave_choir.html"
+    },
+    {
+      "label": "Derived prototype: Reprojected Splat Tide",
+      "url": "outputs/2026-11-23_reprojected_splat_tide.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35641 はAO/SSGI/SSRなどが別々に行っていた縮小・最近接depth選択を、1回のdepth-aware pre-passへ共有する提案。複数の効果を重ねる作品では、深度の段階自体を共通のリズムにできる。2) #35430 は前フレームのbeautyをvelocity/depthで再投影し、SSR/SSGIの共有入力にする。alphaのconfidenceも含め、画面が記憶を持つ入口になる。3) #35610 はGaussian Splatのcovarianceをhalf floatへ詰め、実例で16〜33%のメモリ削減を報告。4) PlayCanvas v2.24.2はcontext loss後のgsplat shadow復旧とWebGPU上のhalf-float texture filterを修正、Babylon 9.37.1はWebGPU mesh drawの非同期pipeline作成をopt-inで追加した。",
+      "bodyEn": "Three.js is converging effect inputs into shared depth-aware buffers and a velocity/depth-validated previous-frame beauty, while a Gaussian Splat change reports 16–33% memory savings. Recent PlayCanvas fixes context-loss splat shadows and half-float filtering; Babylon adds opt-in async WebGPU draw pipelines.",
+      "links": [
+        {
+          "label": "Depth-aware downsample PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35641"
+        },
+        {
+          "label": "Reprojected beauty PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35430"
+        },
+        {
+          "label": "Splat memory PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35610"
+        },
+        {
+          "label": "PlayCanvas v2.24.2",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+        },
+        {
+          "label": "Babylon 9.37.1",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.1"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Akshay PachouriのCreative Coding Labは、完成画だけでなく、実装方法・性能コスト・実案件への落としどころを同じ導線で扱う。これは今回のような“裏方のbuffer”を作品に転じる際のよい基準になる。さらにPlayCanvasのcontext loss後にもgsplat shadowを戻す修正は、観客の端末で起きるGPU文脈喪失を単なる失敗にしないための実務的な前提だ。",
+      "bodyEn": "Akshay Pachouri’s lab places implementation, cost and production adaptation alongside live work—a useful standard for exposing renderer internals. PlayCanvas restoring gsplat shadows after context loss is an equally practical reminder that public pieces must recover gracefully.",
+      "links": [
+        {
+          "label": "Creative Coding Lab",
+          "url": "https://www.akshaypachouri.com/lab/"
+        },
+        {
+          "label": "PlayCanvas v2.24.2 release",
+          "url": "https://github.com/playcanvas/engine/releases/tag/v2.24.2"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命「Depth Weave Choir」は、depth-aware downsampleを9本の奥行き帯に翻訳し、pointerをガイド光、clickを鐘（時間と位置を持つ発音）にする。近景から遠景へ違う密度で波打つため、空間の層を目と手で読む。派生「Reprojected Splat Tide」は、現在のpointer速度と遅れて追う場を意図的にずらす。次に足すなら、motionが速い場所だけconfidenceを落として色を鈍らせ、再投影が“信用できない”ことを濁りとして見せる。",
+      "bodyEn": "Depth Weave Choir translates depth-aware reduction into nine spatial bands and click-placed bells. Reprojected Splat Tide deliberately separates current motion from its slower field. Next, reduce confidence during rapid motion and show uncertainty as a desaturated wake.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-23_depth_weave_choir.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-23_reprojected_splat_tide.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "複数のscreen-space効果を使うなら、各効果でresolutionScaleとnearest-depth選択を重複させず、depth/normal/materialを一度に縮小して共有する設計を検討する。効果出力のupscaleはdepth guided joint bilateralが候補。再投影はvelocityだけでなくprevious depthで遮蔽境界を検証し、RGBにradiance、alphaにconfidenceを持たせると、表示・debug・演出で同じtextureを使える。Splatのhalf-float化は帯域/メモリ改善と引き換えに精度確認が要る。",
+      "bodyEn": "For multiple screen-space effects, downsample depth/normal/material once rather than duplicating resolution and nearest-depth logic; depth-guided joint bilateral upsampling is a candidate. Validate reprojection with previous depth as well as velocity, and retain confidence in alpha. Half-float splat packing needs accuracy checks.",
+      "links": [
+        {
+          "label": "Depth-aware downsample details",
+          "url": "https://github.com/mrdoob/three.js/pull/35641"
+        },
+        {
+          "label": "Reprojected beauty details",
+          "url": "https://github.com/mrdoob/three.js/pull/35430"
+        },
+        {
+          "label": "Half-float splat details",
+          "url": "https://github.com/mrdoob/three.js/pull/35610"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "#35641 がどのeffects/APIで着地するか、#35430 のvelocity・jitter・confidenceの扱い、#35610 の精度オプションを継続確認する。PlayCanvasはWebGPU half-floatの対応範囲とgsplat recovery、Babylonはasync pipelineの実測スタッター改善を追う。表現面では、rendererのconfidence/depth/velocityを色や音に変換している制作者の一次ページを優先する。",
+      "bodyEn": "Track the final effects/API surface of #35641, velocity/jitter/confidence in #35430 and precision choices in #35610. Watch PlayCanvas half-float and gsplat recovery scope, Babylon async-pipeline stutter measurements, and creators who expose confidence/depth/velocity as art."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、中央から手前・奥へ3回clickして鐘を置く。pointerを横に払った後、停止して各帯の残り方を比較する。次の30分では、WebGL FBOを2枚用意し、各pixelの前回座標をvelocityで引いて、深度差が大きいときalpha confidenceを0にする。成功条件は、残像が“きれい”であることではなく、遮蔽をまたいで誤った色を借りていないこと。",
+      "bodyEn": "Open the main study, place three bells across depth, sweep the pointer, then pause to compare persistence. In 30 minutes, add two WebGL FBOs, reproject by velocity and zero confidence on large depth difference. Judge occlusion correctness, not mere smoothness.",
+      "links": [
+        {
+          "label": "Open main sample",
+          "url": "outputs/2026-11-23_depth_weave_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsのdepth/reprojection/splat PR、PlayCanvas/Babylonのrelease note、Creative Coding Labを確認。アイデア検討: 11/18〜22のtemporal tide・reflection repair・probe chorus・history gardenを、“可視化されたconfidence”へ接続。サンプル実装: 依存なしWebGL 1本とCanvas 1本を追加。結果の検証: JavaScript構文とgallery生成を確認する。継続案件=共有状態スコア（depth/velocity/history）。新規=Depth Weave Choir、Splat Tide。寝かせる案件=production BVH GI、XR multiview、重いasset streaming。短期=confidenceを音/色へ、中長期=実depth/motion vectorと共有URLスコア。",
+      "bodyEn": "Collect current renderer PRs, releases and a production-minded lab; connect recent temporal studies to visible confidence; implement a dependency-free WebGL and Canvas study; validate syntax and gallery generation. Continue shared depth/velocity/history score; defer BVH GI, XR multiview and heavy streaming."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird’s-eye memo",
+      "body": "最近の流れは、画質の裏方だったdepth pyramid、downsample、history、confidence、splat packingが、作品の時間設計・観客へのフィードバック・運用上の耐久性に直結し始めていること。11/18〜22の“残す/直す/探る”研究に、今日のshared depthを加えると、同じジェスチャーが近景では即時の光、奥では遅い合唱、境界ではconfidenceの濁りとして現れる。組み合わせる価値が高いのは、Audio Analyserで帯ごとの残留時間を変えること、MediaPipeの静止をhistory lockにすること、WebXR gazeで高解像度の帯を移すこと。",
+      "bodyEn": "Depth pyramids, reduction, history, confidence and splat packing are shifting from invisible quality work into time design, audience feedback and public robustness. Combine the recent retain/repair/probe studies with shared depth so one gesture becomes near-field light, distant choir and uncertain boundary. Audio, hand stillness and XR gaze are strong next inputs."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today’s mini prototype candidate",
+      "body": "本命 [`outputs/2026-11-23_depth_weave_choir.html`](../outputs/2026-11-23_depth_weave_choir.html) はWebGLの単一fragment shaderで9層の深度帯、pointer guide、click bellを描く。次はFBOの実再投影とconfidence可視化を足す。派生 [`outputs/2026-11-23_reprojected_splat_tide.html`](../outputs/2026-11-23_reprojected_splat_tide.html) はCanvasでsplat状の現在場と遅い追従場、click buoyを動かす。次は速度によるtrail clampと、half-float textureを用いたWebGL版へ進める。",
+      "bodyEn": "The main WebGL single-fragment study draws nine depth bands, pointer guidance and click bells; next add real FBO reprojection/confidence. The derived Canvas study moves a splat-like current and its slower field with click buoys; next add velocity clamping and a half-float WebGL version.",
+      "links": [
+        {
+          "label": "Main prototype",
+          "url": "outputs/2026-11-23_depth_weave_choir.html"
+        },
+        {
+          "label": "Derived prototype",
+          "url": "outputs/2026-11-23_reprojected_splat_tide.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "本命はbellの位置/時刻、guide位置、depth帯ごとのenergyを、派生はpointer velocity、buoy位置/年齢、粒子の局所密度をデータにできる。これを記録すれば、会場の音量を奥行き帯の振幅、商品に触れた順を鐘の順、カメラsegmentationをconfidence境界、MediaPipeの停止をhistory lock、WebXRの注視を高密度帯へ割り当てられる。展示の最終画は、来場者のbell/buoy時系列を一枚の“深度譜”としてexportするのが自然。",
+      "bodyEn": "Bell positions/times, guide location and band energy, plus pointer velocity, buoy age and local particle density can become data. Map venue audio, interaction sequence, segmentation boundaries, hand stillness and XR gaze into this score, then export visitor history as a depth notation."
+    }
+  ]
+}
