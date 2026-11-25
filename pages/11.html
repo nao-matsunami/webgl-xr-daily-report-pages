@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 152</span>
+        <span>days: 154</span>
         <span>page: 11 / 13</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -337,6 +337,52 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-07-20">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.20</p>
+              <h2>更新待ちと操作履歴を時間差のある shader scope として読む</h2>
+              <p class="card-subtitle">Read pending updates and interaction history as a temporal shader scope</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-20" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-20 は、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、SuperSplat v2.31.1 の公式状況を再確認し、Codrops の Trionn / ZERO / The Sleepers 事例を、7/19 の adaptive upload gesture scope に接続しました。今日の焦点は、現在の入力値、遅れて追従する履歴値、SOG/texture upload queue、Web Audio impulse を同じ GLSL 上で可視化し、読み込み・減衰・復帰の時間差を演出素材にすることです。</p>
+          <p class="description en-copy">For 2026-07-20, I rechecked official status for three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.31.1, then connected the Codrops Trionn / ZERO / The Sleepers case studies to the 07-19 adaptive upload gesture scope. Today's focus is visualizing current input, lagged history, SOG/texture upload queue, and Web Audio impulse in one GLSL layer so loading, decay, and recovery become expressive material.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">shader</span><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-07-20.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-07-20_temporal_hysteresis_state_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
+        <article class="card" data-slug="2026-07-19">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.07.19</p>
+              <h2>SOG/LOD 診断を gesture gate と adaptive upload の演出へ接続する</h2>
+              <p class="card-subtitle">Connect SOG/LOD diagnostics to gesture gates and adaptive upload expression</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-07-19" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">2026-07-19 は、three.js r185、Babylon.js 9.17.0、PlayCanvas Engine v2.20.6、SuperSplat v2.31.1 の公式リリース状況を確認しつつ、Codrops の ZERO 事例から gesture gate、idle texture upload、adaptive quality manager、deferred text / frost / shatter pass の考え方を取り込みました。昨日の LOD Fog Audio Scope を、今日の試作では upload pressure、quality tier、gesture frost、stale hitch residue を同時に読む shader scope へ進めています。</p>
+          <p class="description en-copy">For 2026-07-19, I checked official release status for three.js r185, Babylon.js 9.17.0, PlayCanvas Engine v2.20.6, and SuperSplat v2.31.1, then folded in the ZERO Codrops case study: gesture gates, idle texture uploads, adaptive quality management, and deferred text / frost / shatter passes. Yesterday's LOD Fog Audio Scope is advanced into a shader scope for upload pressure, quality tiers, gesture frost, and stale hitch residue.</p>
+          <p class="card-subtitle">samples: 1</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-07-19.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-07-19_adaptive_upload_gesture_scope.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-07-18">
           <div class="card-top">
             <div>
@@ -563,52 +609,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-07-09.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-07-09_audio_impulse_splat_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-08">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.08</p>
-              <h2>視点予測を temporal reprojection の残像へ接続する</h2>
-              <p class="card-subtitle">Connecting viewport prediction to temporal reprojection trails</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-08" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">7/7 の viewport prediction / splat streaming field を受けて、今日はシェーダー本流を temporal reprojection に寄せました。three.js r185 の TSL / WebGPU / shader 周辺、PlayCanvas v2.20.6 の GSplat streaming 修正、SuperSplat v2.29.0 の timeline / 360 書き出し、WebGPU 3DGS 系の sorting / culling を参照し、現在焦点と履歴焦点のズレを見える化する WebGL サンプルを追加しました。</p>
-          <p class="description en-copy">Following the July 7 viewport prediction / splat streaming field, today's shader track moves toward temporal reprojection. It references three.js r185 TSL / WebGPU / shader work, PlayCanvas v2.20.6 GSplat streaming fixes, SuperSplat v2.29.0 timeline and 360 export updates, and WebGPU 3DGS sorting / culling research. The added WebGL sample visualizes the gap between current focus and reprojected focus history.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span><span class="tag">focus</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-07-08.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-07-08_temporal_reprojection_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-07-07">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.07.07</p>
-              <h2>スプラット診断から視点予測ストリーミングへ</h2>
-              <p class="card-subtitle">From splat diagnostics to viewport-predicted streaming</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-07-07" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">今日は、three.js r185、Babylon.js 9.15.0、PlayCanvas Engine v2.20.5、SuperSplat v2.28.1、WICG HTML-in-Canvas、WebXR Layers に加え、WebGPU 3DGS 系の Visionary / WebSplatter / GSStream を確認しました。昨日の splat diagnostic lens を、視点予測と品質配分の演出へつなぎ、単体 WebGL サンプルを追加しました。</p>
-          <p class="description en-copy">Today checks three.js r185, Babylon.js 9.15.0, PlayCanvas Engine v2.20.5, SuperSplat v2.28.1, WICG HTML-in-Canvas, WebXR Layers, and WebGPU 3DGS work including Visionary, WebSplatter, and GSStream. It extends yesterday's splat diagnostic lens toward viewport prediction and quality allocation, with a new standalone WebGL sample.</p>
-          <p class="card-subtitle">samples: 1</p>
-          <div class="tags"><span class="tag">field</span><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-07-07.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-07-07_viewport_splat_stream_field.html">代表サンプル / Sample</a>
           </div>
         </article>
       

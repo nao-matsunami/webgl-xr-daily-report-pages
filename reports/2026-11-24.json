@@ -1,0 +1,167 @@
+{
+  "date": "2026-11-24",
+  "headline": "Sampler・空・pipelineの共有を、触れられる光の譜面にする",
+  "headlineEn": "Turn sampler, sky, and shared pipelines into a touchable light score",
+  "summary": "three.jsのSamplerNode、SkyNode、compute pipeline再利用、PBO整理を手掛かりに、入力・空・反復計算を隠れた最適化で終わらせず観客が読める時間表現へ接続した。GLSL本命とCanvas派生の2本を追加した。",
+  "summaryEn": "Using current three.js work on SamplerNode, SkyNode, compute-pipeline reuse and PBO cleanup, this report turns hidden rendering structure into audience-readable time. A GLSL main study and a Canvas derivative are included.",
+  "links": [
+    {
+      "label": "three.js SamplerNode PR #35681",
+      "url": "https://github.com/mrdoob/three.js/pull/35681"
+    },
+    {
+      "label": "three.js compute-pipeline reuse PR #35677",
+      "url": "https://github.com/mrdoob/three.js/pull/35677"
+    },
+    {
+      "label": "three.js SkyNode PR #35638",
+      "url": "https://github.com/mrdoob/three.js/pull/35638"
+    },
+    {
+      "label": "three.js PBO handling PR #35657",
+      "url": "https://github.com/mrdoob/three.js/pull/35657"
+    },
+    {
+      "label": "PlayCanvas Engine releases",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Main prototype: Sampler Sky Garden",
+      "url": "outputs/2026-11-24_sampler_sky_garden.html"
+    },
+    {
+      "label": "Derived prototype: Pipeline Echo Weave",
+      "url": "outputs/2026-11-24_pipeline_echo_weave.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35681はSamplerNodeを追加しTextureNodeをtexture bindingへ寄せる提案で、textureを“値”、samplerを“読み方”として分ける足場になる。2) #35677はmatching binding間のcompute pipeline再利用、#35657はWebGLのPBO処理を属性ユーティリティへ移動。どちらも作品側では、同じルールを共有していることを表現へ転写できる。3) #35638のSkyNodeは方向でサンプルする空を導入する。4) PlayCanvas/Babylonは直近release feedを継続監視し、WebGPU/gsplatの変更をこの共通状態スコアへ接続する。",
+      "bodyEn": "SamplerNode separates texture value from sampling policy; compute pipeline reuse and PBO consolidation make repeated GPU work more explicit; SkyNode makes the sky direction-sampled. Continue watching PlayCanvas and Babylon release feeds for WebGPU and splat changes.",
+      "links": [
+        {
+          "label": "SamplerNode",
+          "url": "https://github.com/mrdoob/three.js/pull/35681"
+        },
+        {
+          "label": "Compute reuse",
+          "url": "https://github.com/mrdoob/three.js/pull/35677"
+        },
+        {
+          "label": "SkyNode",
+          "url": "https://github.com/mrdoob/three.js/pull/35638"
+        },
+        {
+          "label": "PBO handling",
+          "url": "https://github.com/mrdoob/three.js/pull/35657"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "three.jsのPR一覧そのものが、表現制作にとっては“何を共有し、何を一回だけ計算するか”という設計の実例集になっている。Sampler/textureの分離は同じ画像でも観客の距離・速度・注視で読み方を変える設計に、SkyNodeは全天の方向をそのまま音場や時間帯へ割り当てる設計に開ける。公開中のHologramはブラウザ内で多数のリアルタイムshader実験を提示しており、単一画面の反復実験が鑑賞体験になり得る好例。",
+      "bodyEn": "The three.js PR stream is an applied catalogue of what to share and compute once. Separating sampler and texture supports context-sensitive readings of the same image; direction-sampled sky maps naturally to sound or time. Hologram shows that repeated single-screen shader experiments can become an exhibition.",
+      "links": [
+        {
+          "label": "Hologram shader art",
+          "url": "https://hologram-puce.vercel.app/"
+        },
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命「Sampler Sky Garden」はpointerを空の流れ、clickを“今この場所をどう読むか”という星の植え付けにする。星は同一のfieldに束ねられるが時間差で輪を出す。派生「Pipeline Echo Weave」は、同じ移動経路を複数laneで再利用し、clickしたwarm-up pulseを計算の既視感として残す。次に足すなら、pointer速度をsampler filter（nearest/linear風の粒度）に、静止時間をhistory gainに割り当てる。",
+      "bodyEn": "Sampler Sky Garden maps pointer motion to sky current and clicks to planted readings of a shared field. Pipeline Echo Weave recycles one route across lanes and leaves warm-up pulses as computational déjà vu. Next map pointer velocity to sampling grain and stillness to history gain.",
+      "links": [
+        {
+          "label": "Main local sample",
+          "url": "outputs/2026-11-24_sampler_sky_garden.html"
+        },
+        {
+          "label": "Derived local sample",
+          "url": "outputs/2026-11-24_pipeline_echo_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "Samplerとtexture bindingを分けられる環境では、同じtextureにnearest/linear/anisotropic相当の読み方を複数与え、UI状態をtexture複製でなくsampler状態として扱える。compute pipelineはbinding layout・workgroup・shader variantを安定させるほど再利用しやすい。WebGL側のPBO/readbackは属性更新・非同期読み出しの所有場所を一箇所に寄せ、表示、debug、録画で競合しないようにする。Skyはdirectionベクトルを共有しておくと反射・霧・音の方位が揃う。",
+      "bodyEn": "When texture and sampler bindings are separate, vary sampling policy without duplicating texture state. Stable binding layouts, workgroups and variants improve compute reuse. Centralize WebGL PBO/readback ownership; share a direction vector across sky, reflection, fog and audio.",
+      "links": [
+        {
+          "label": "SamplerNode PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35681"
+        },
+        {
+          "label": "PBO PR",
+          "url": "https://github.com/mrdoob/three.js/pull/35657"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "#35681のAPI名とbinding互換性、#35677がどのbackendとbinding差分まで再利用するか、#35638のSkyNodeが雲・太陽・environmentとどう接続するかを追う。PlayCanvasはgsplat/WebGPU修正、Babylonはasync pipelineとWebGPU更新をrelease noteとPRで確認する。表現面では、空の方位、サンプル粒度、履歴confidenceを音・手の静止・gazeへ結ぶ制作者ページを優先する。",
+      "bodyEn": "Watch the final SamplerNode API, compute reuse scope across backends, and SkyNode links to clouds, sun and environment. Follow PlayCanvas gsplat/WebGPU and Babylon async-pipeline changes; prioritize creators connecting sky direction, sample grain and history confidence to sound, stillness or gaze."
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、空の下側・地平線・上空に3つずつ星を植える。pointerを速く往復してから止め、同じfieldが時間差だけで別の層に見えることを確認する。次の30分では、WebGL2で同じfloat textureをnearestとlinearの2 samplerで読む小さなpassを用意し、pointer速度で混合率を変える。成功条件は“きれいな空”ではなく、読み方だけが変わっても場所の記憶が連続すること。",
+      "bodyEn": "Plant stars below, on and above the horizon; sweep and stop to see one field become layers through timing. Next make a WebGL2 pass with nearest and linear samplers on one float texture, mixed by pointer speed. Preserve place-memory while changing only the reading.",
+      "links": [
+        {
+          "label": "Open main sample",
+          "url": "outputs/2026-11-24_sampler_sky_garden.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.js #35681/#35677/#35638/#35657、PlayCanvas/Babylon release feed、Hologramを確認。アイデア検討: 11/18〜23のdepth/velocity/history/confidence scoreへ、sampler policy・sky direction・pipeline reuseを追加。サンプル実装: 依存なしWebGL本命とCanvas派生を追加。結果の検証: HTML内scriptの構文確認とgallery再生成を行う。継続=共有状態スコア。新規=Sampler Sky Garden/Pipeline Echo。寝かせる=production BVH GI、XR multiview、重いasset streaming。短期=二sampler混合、中長期=実velocity/depth confidence、Audio/MediaPipe/WebXR入力。",
+      "bodyEn": "Collect four three.js PRs, release feeds and Hologram; add sampler policy, sky direction and reuse to the depth/velocity/history/confidence score; build two dependency-free studies and verify syntax/gallery. Continue the shared score; defer BVH GI, XR multiview and heavy streaming."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird’s-eye memo",
+      "body": "直近一週間はdepth、reprojection、history、splat packingという“画質の裏方”が表現の時間構造へ変わる流れだった。今日のsampler/binding/pipelineの更新は、その前段にある“どの入力をどう共有するか”を明示する。組み合わせるなら、深度帯ごとにfilter粒度を変え、confidenceが低い箇所だけ空の反射を粗くし、Audio Analyserでcompute reuseのpulseを鳴らす。育てる価値が高いのは、一つの共通状態が光・音・操作ログ・最終exportへ翻訳される小さなレンダリング譜面。",
+      "bodyEn": "The past week turned depth, reprojection, history and splat packing into temporal expression. Sampler/binding/pipeline work exposes the earlier question: which inputs are shared and how. Combine depth bands with sampling grain, roughen sky reflection at low confidence, and sonify reuse pulses. Grow a compact rendering score that translates one state into light, sound, interaction log and export."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today’s mini prototype candidate",
+      "body": "本命 [`outputs/2026-11-24_sampler_sky_garden.html`](../outputs/2026-11-24_sampler_sky_garden.html) は単一fragment shaderの方向性のある空・雲・地平線に、pointer流とclick星を重ねる。次はWebGL2の実sampler切替とAudio Analyserを加える。派生 [`outputs/2026-11-24_pipeline_echo_weave.html`](../outputs/2026-11-24_pipeline_echo_weave.html) はCanvasで一つの経路を複数laneへ再利用し、click pulseを残す。次はFBO/computeで本当の状態bufferに置き換える。",
+      "bodyEn": "The main single-fragment GLSL study layers pointer current and click stars over directional sky, cloud and horizon; next add real WebGL2 sampler switching and audio. The Canvas derivative reuses one route across lanes with click pulses; next replace it with actual FBO/compute state.",
+      "links": [
+        {
+          "label": "Main prototype",
+          "url": "outputs/2026-11-24_sampler_sky_garden.html"
+        },
+        {
+          "label": "Derived prototype",
+          "url": "outputs/2026-11-24_pipeline_echo_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for sample data and combinations",
+      "body": "本命は星の位置・時刻、pointer方位、雲密度を、派生は経路座標・pulse年齢・laneごとの残光をデータにできる。これを音の周波数帯、会場カメラの人物位置、MediaPipeの静止、WebXR gaze、ブランドの地理データに接続すれば、同じ“空の譜面”を展示・ライブ演出・Webの導入画面へ展開できる。最終的には来場者の星とpulseをJSONでexportし、次の観客が前の観客の空を読む形式が自然。",
+      "bodyEn": "Star positions/times, pointer direction and cloud density, plus route coordinates, pulse age and lane afterglow, are useful data. Map them to audio bands, camera subjects, MediaPipe stillness, XR gaze or geographic brand data; export visitor stars and pulses as JSON for the next audience to read."
+    }
+  ]
+}

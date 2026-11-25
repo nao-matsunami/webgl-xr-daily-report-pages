@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>空の放射輝度と mipmap を、確信と余韻の演奏へ変える | 2026-11-25</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.25</p>
+      <h1>空の放射輝度と mipmap を、確信と余韻の演奏へ変える</h1>
+      <p class="hero-subtitle">Turn sky radiance and mipmaps into an orchestra of confidence and afterglow</p>
+      <p>three.js の SkyMesh 実世界単位放射輝度と offline node-frame、PlayCanvas の WebGPU mipmap view/bind-group キャッシュ・非同期shader compile を手掛かりに、直近の depth/history/sampler の流れを「現在値と確信度」の演出へ接続した。WebGL本命とWeb Audio派生の2本を追加。</p>
+      <p class="en-copy">Using three.js work on real-world SkyMesh radiance and offline node frames, plus PlayCanvas WebGPU mipmap caching and async shader compilation, this report connects recent depth/history/sampler studies to staging current value and confidence. A WebGL main study and Web Audio derivative are included.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-25_radiance_confidence_orchestra.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-24.html">← 2026.11.24</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Radiance Confidence Orchestra</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-25_radiance_confidence_orchestra.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Mipmap Pulse Lanterns</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-25_mipmap_pulse_lanterns.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js #35639 は SkyMesh を実世界単位の放射輝度で出力する提案で、空・露出・反射を同じ量として扱う入口になる。2) #35621 は offline rendering で node frame を進める公開手段の提案で、ライブの時間と書き出しの時間を揃える論点。3) PlayCanvas #10086 は WebGPU mipmap renderer の texture view/bind group保持、#10062 は未コンパイルshaderでdrawをstallさせずskipする非同期compileを提案。4) Babylon.js release feed も継続確認し、WebGPU表現を単一engineの機能に閉じない。</p>
+          <p class="en-copy">SkyMesh radiance can unify sky, exposure and reflection; advancing node frames offline can align live and exported time. PlayCanvas proposes cached WebGPU mipmap views/bind groups and non-stalling async shader compilation. Continue tracking Babylon releases as an engine-independent reference.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/issues/35639" target="_blank" rel="noreferrer">SkyMesh radiance</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/35621" target="_blank" rel="noreferrer">Offline node frame</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10086" target="_blank" rel="noreferrer">Mipmap cache</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10062" target="_blank" rel="noreferrer">Async shader compile</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>Afterlight は custom WebGL shader と小さなWeb Audio synthで、drag・pulse・scene共有を一つの光の楽器にしている。終了条件のない“遊べる場”にする点が重要で、最適化やrenderer内部の状態も、観客が触れられるパラメータに翻訳できる。今回のmipmapやcompile待ちも、粗密や余韻の音として見せれば待ち時間ではなく呼吸になる。</p>
+          <p class="en-copy">Afterlight turns drag, pulses and shared scenes into one light instrument with custom WebGL and Web Audio. It demonstrates that rendering-state concerns can become touchable parameters; mip level and compile latency can read as grain and breath rather than waiting.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>本命「Radiance Confidence Orchestra」は、pointerを空の方位、clickを信頼度の高いbeaconにする。水色の核を現在の放射輝度、橙の輪を時間と共に確信を失う履歴として見せる。派生「Mipmap Pulse Lanterns」はpointer横位置で格子の細かさを変え、click時のpulseを音にする。次は静止時間でhistory gain、pointer速度でmip bias、音量で露出を動かす。</p>
+          <p class="en-copy">The main study maps pointer to sky direction and clicks to high-confidence beacons: cyan cores are current radiance, amber rings are fading history. The derivative changes grid detail by pointer position and sonifies click pulses. Next map stillness to history gain, speed to mip bias and loudness to exposure.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-25_radiance_confidence_orchestra.html" target="_blank" rel="noreferrer">Main local sample</a></li>
+          
+            <li><a href="outputs/2026-11-25_mipmap_pulse_lanterns.html" target="_blank" rel="noreferrer">Derived local sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>物理単位の空を導入しても全画面を絶対輝度で設計し切る必要はない。まず sky/environment/reflection/post FX で共有するexposureとdirectionを一つにし、tone mappingの前にconfidenceをcolor・blur・history gainへ分配する。mipmap cacheはtextureごとのview/sampler組を使い回し、UIで急にdetailを変えるときは前frameのlevelへ補間する。async compileはskip中に低コスト代替passを出して黒フレームを避ける。</p>
+          <p class="en-copy">A physical sky does not require absolute-luminance design everywhere. First share exposure and direction across sky, environment, reflection and post FX; distribute confidence to color, blur and history gain before tone mapping. Reuse view/sampler pairs, interpolate mip levels, and show a cheap fallback pass while async compilation skips draws.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas PRs</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35639 がどのtone mapping / environmentとの整合を選ぶか、#35621 がXR・capture・deterministic exportにどう広がるかを追う。PlayCanvasは #10086/#10062 の統合範囲と測定値、Babylonは WebGPU/Node Material/particle の直近releaseを確認する。表現側は、共有可能なscene state・音・reduced motionを一体で設計する作者実装を優先する。</p>
+          <p class="en-copy">Watch how three.js aligns SkyMesh radiance with tone mapping/environments and how offline node frames extend to XR, capture and deterministic export. Track PlayCanvas integration/metrics and Babylon WebGPU, Node Material and particles; prioritize creator work joining shareable state, sound and reduced motion.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命を開いて3〜5箇所をclickし、止まった直後と移動直後のbeaconを比べる。現在の水色と履歴の橙を別々の意味で読めるなら成功。次の30分では、WebGL2のhistory FBOへ速度と深度差からconfidenceを書き、低confidenceだけmip levelを粗くする。画面がきれいかではなく、観客が“いま確かな場所”を理解できるかを検証する。</p>
+          <p class="en-copy">Open the main study, click three to five places, and compare beacons after stopping versus moving. Success is reading cyan current and amber history separately. Next write confidence from velocity/depth difference into a WebGL2 history FBO and coarsen mip level only where confidence is low.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-25_radiance_confidence_orchestra.html" target="_blank" rel="noreferrer">Open main sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #35639/#35621、PlayCanvas #10086/#10062、Babylon release feed、Afterlightを確認。アイデア検討: 11/18〜24のdepth・velocity・history・sampler・sky方向の共通state scoreへ、radiance・mip level・compile fallbackを追加。サンプル実装: 依存なしWebGL本命とCanvas/Web Audio派生。結果の検証: 構文確認、gallery/day再生成、公開。継続=confidence score。新規=radiance orchestra/mipmap lantern。寝かせる=production BVH GI、XR multiview、重いasset streaming。短期=実FBO confidence/mip bias、中長期=WebXR gazeとdeterministic export。</p>
+          <p class="en-copy">Collect current three.js, PlayCanvas, Babylon and Afterlight evidence; add radiance, mip level and compile fallback to the shared state score; build and verify two dependency-free studies. Continue confidence score; defer BVH GI, XR multiview and heavy streaming. Short-term: real FBO confidence/mip bias; long-term: XR gaze and deterministic export.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>この一週間は depth、reprojection、splat、sampler、sky と、フレーム内部に隠れていた状態を観客の時間感覚へ変える流れが続く。今日のradiance/mipmap/compileは、その状態を“強さ・粒度・待ち”の三軸に広げる。組み合わせ候補は、低confidenceを粗いmipと短い粒子寿命に、空の方向を空間音響に、offline node-frameを会場版とWeb版の同期に使うこと。最も育てる価値が高いのは、同じstate scoreがライブ・保存画像・共有URLで別の媒体へ壊れず移る仕組み。</p>
+          <p class="en-copy">The week has turned hidden frame state—depth, reprojection, splats, sampling and sky—into audience time. Radiance, mipmap and compile state extend it through strength, grain and waiting. Combine low confidence with coarse mip/short particle life, sky direction with spatial audio, and offline frames with venue/web sync. The strongest theme is one state score surviving live, saved and shared forms.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 [`outputs/2026-11-25_radiance_confidence_orchestra.html`](../outputs/2026-11-25_radiance_confidence_orchestra.html) は単一fragment shaderで空・放射輝度・現在/履歴beaconを描く。pointerで方位、clickでbeaconを置き、次は実FBOのvelocity/depth confidenceを入れる。派生 [`outputs/2026-11-25_mipmap_pulse_lanterns.html`](../outputs/2026-11-25_mipmap_pulse_lanterns.html) はdetail levelとclickの音を結ぶ。次は実texture mipmapとAudio Analyserを加える。</p>
+          <p class="en-copy">The main fragment-shader study draws sky, radiance and current/history beacons; pointer steers direction and clicks plant beacons. Next add real FBO velocity/depth confidence. The derivative connects detail level to click audio; next add real texture mipmaps and Audio Analyser.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-25_radiance_confidence_orchestra.html" target="_blank" rel="noreferrer">Main prototype</a></li>
+          
+            <li><a href="outputs/2026-11-25_mipmap_pulse_lanterns.html" target="_blank" rel="noreferrer">Derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>本命のbeacon位置・生成時刻・confidence、派生のdetail level・pulse時刻・音高は、来場者の操作ログであると同時に演出の譜面になる。音の周波数帯、カメラで推定した人の密度、MediaPipeの静止、WebXRのgaze、都市の気象/方位データへ接続すれば、展示の空・ライブの照明・ブランドサイトの導入を一つのデータ形式で扱える。URLにstateを保存し、offline frameで同じ瞬間をポスターや映像へ書き出す発展が自然。</p>
+          <p class="en-copy">Beacon positions/times/confidence and detail/pulse/pitch form both interaction logs and a score. Combine them with audio bands, camera-estimated crowd density, MediaPipe stillness, XR gaze, or weather/bearing data to drive installations, live light and web intros. Save state in URLs and export the same moment with offline frames.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/issues/35639" target="_blank" rel="noreferrer">three.js SkyMesh radiance issue #35639</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/issues/35621" target="_blank" rel="noreferrer">three.js offline node-frame issue #35621</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10086" target="_blank" rel="noreferrer">PlayCanvas WebGPU mipmap view/bind group PR #10086</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10062" target="_blank" rel="noreferrer">PlayCanvas async shader compile PR #10062</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight — interactive WebGL/Web Audio artwork</a></li>
+          
+            <li><a href="outputs/2026-11-25_radiance_confidence_orchestra.html" target="_blank" rel="noreferrer">Main prototype: Radiance Confidence Orchestra</a></li>
+          
+            <li><a href="outputs/2026-11-25_mipmap_pulse_lanterns.html" target="_blank" rel="noreferrer">Derived prototype: Mipmap Pulse Lanterns</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-25_radiance_confidence_orchestra.html" loading="lazy" title="Radiance Confidence Orchestra"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

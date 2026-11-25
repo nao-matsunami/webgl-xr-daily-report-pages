@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 152</span>
+        <span>days: 154</span>
         <span>page: 2 / 13</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -337,6 +337,52 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-11-11">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.11.11</p>
+              <h2>過去フレームの反射を、天候が解像していく時間にする</h2>
+              <p class="card-subtitle">Make reflected history a weather system that resolves over time</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-11-11" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js のTRAA Catmull-Rom履歴サンプリング、前フレーム放射輝度を使うSSR、雲ノイズの一回焼き込みを、昨日までの水面／収束案へ接続する。移動でほどけ、静止で空と反射が解像する演出を本命・派生の2本で検証した。</p>
+          <p class="description en-copy">three.js temporal history, previous-frame SSR and baked cloud noise extend the water-and-convergence thread into a resolving weather reflection.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-11-11.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-11-11_velocity_reprojection_lanterns.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
+        <article class="card" data-slug="2026-11-10">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.11.10</p>
+              <h2>再生成された描画面と、収束するスプラットを同じ反射の時間軸に置く</h2>
+              <p class="card-subtitle">Put rebuilt render surfaces and converging splats on one reflective timeline</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-11-10" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">Babylon.jsの破棄済みGPUテクスチャ対策、PlayCanvasのSteadySplatsと安定ソート、three.jsの水面物理表現を接続し、リサイズ・復帰・収束を隠す待機ではなく、反射が像を結ぶ時間として扱う。11/09の水面／収束案を継続し、2本の操作可能な最小試作へ落とした。</p>
+          <p class="description en-copy">Babylon texture recovery, PlayCanvas steady splats and three.js water work become a single visible reflection-and-settling timeline.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-11-10.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-11-10_stable_splat_reflection_orbit.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-11-09">
           <div class="card-top">
             <div>
@@ -563,52 +609,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-10-31.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-10-31_timestamp_splat_afterglow.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-28">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.28</p>
-              <h2>可視性と計測ログを、光が居場所を得るための演出譜にする</h2>
-              <p class="card-subtitle">Turn visibility and performance traces into a score for where light can stay</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-28" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js のLightProbeGrid/DDGI可視性重みとGPU駆動Drawer、PlayCanvasのGSplat到着順と粒子のfog/tone map、Babylon.js Inspector Liteのcapture/GPU計測を接続する。今日は『見えないものを描かない』最適化を、光が一瞬だけ現れて消える空間演出として扱う依存なしCanvas試作を2本追加した。</p>
-          <p class="description en-copy">This report connects three.js DDGI visibility and GPU-driven drawing, PlayCanvas GSplat arrival and particle controls, and Babylon Inspector Lite capture tools through two dependency-free Canvas studies.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-10-28.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-10-28_visibility_leak_score.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-27">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.27</p>
-              <h2>反射の視差とGSplatの到着順を、観客が歩ける時間譜にする</h2>
-              <p class="card-subtitle">Turn reflection parallax and GSplat arrival into a walkable temporal score</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-27" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js r187のPMREM/XRカメラ移行点、PlayCanvasのcoarsest-first GSplat LOD、Babylon.jsのGaussian Splatting改善、CodropsのDOM/WebGL同期表現を接続した。反射probeの位置ずれと粗い点群からの到着を、待機ではなく観客の移動で編集できる空間演出として扱う2本の依存なしCanvas試作を追加した。</p>
-          <p class="description en-copy">This report connects three.js r187 PMREM/XR changes, PlayCanvas coarsest-first GSplat LOD, Babylon Gaussian Splatting work, and Codrops DOM/WebGL synchrony through two dependency-free Canvas studies.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-10-27.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-10-27_probe_lod_parallax_score.html">代表サンプル / Sample</a>
           </div>
         </article>
       

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { spawn } from "node:child_process";
 import { Buffer } from "node:buffer";
 import { fileURLToPath } from "node:url";
@@ -187,10 +188,23 @@ async function main() {
     return;
   }
 
-  const targetDir = path.resolve(rootDir, pagesCloneDir);
-  await ensurePagesClone(targetDir, pagesRepoUrl);
-  await copyProject(rootDir, targetDir);
-  await publishInPlace(targetDir);
+  let targetDir = path.resolve(rootDir, pagesCloneDir);
+  let temporaryDir;
+  if (await pathExists(path.join(targetDir, ".git"))) {
+    const dirty = await runCapture("git", ["status", "--porcelain"], targetDir);
+    if (dirty) {
+      temporaryDir = await fs.mkdtemp(path.join(os.tmpdir(), "webgl-pages-publish-"));
+      targetDir = path.join(temporaryDir, "repo");
+      console.log("Preserving dirty Pages checkout; publishing from a fresh temporary clone.");
+    }
+  }
+  try {
+    await ensurePagesClone(targetDir, pagesRepoUrl);
+    await copyProject(rootDir, targetDir);
+    await publishInPlace(targetDir);
+  } finally {
+    if (temporaryDir) await fs.rm(temporaryDir, { recursive: true, force: true });
+  }
 }
 
 main().catch((error) => {
