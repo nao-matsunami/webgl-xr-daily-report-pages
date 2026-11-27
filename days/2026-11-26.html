@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>反射の置換と最短弧を、触れられる光の運動譜へ変える | 2026-11-26</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.26</p>
+      <h1>反射の置換と最短弧を、触れられる光の運動譜へ変える</h1>
+      <p class="hero-subtitle">Turn reflection replacement and shortest arcs into a touchable score of light</p>
+      <p>three.js のSSR環境反射置換とWebGPU compute pipeline共有、PlayCanvasの多回転角度補間、Babylon.js 9.37.2 のWebGPU context-loss対応を、直近のconfidence/history研究へ接続した。反射の差分を見せるWebGL本命と、最短角を体感するCanvas派生を実装。</p>
+      <p class="en-copy">This report connects three.js SSR environment replacement and WebGPU compute pipeline sharing, PlayCanvas multi-turn angle interpolation, and Babylon.js 9.37.2 WebGPU context-loss work to recent confidence/history studies. It includes a WebGL reflection-difference main study and a shortest-angle Canvas derivative.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-26_shortest_arc_orbit_choir.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-25.html">← 2026.11.25</a>
+      <a class="day-link" href="../days/2026-11-27.html">2026.11.27 →</a>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Shortest Arc Orbit Choir — 2026-11-26</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-26_shortest_arc_orbit_choir.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Reflection Replacement Loom — 2026-11-26</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-26_reflection_replacement_loom.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js #35697 はSSRヒットをbeautyへ足すのではなく、既存の環境反射を差し替える提案。GGX footprintで差分をぼかすため、局所normal/roughnessの表情を保ちやすい。2) #35655 は同一shader/layoutのcompute nodeでpipelineを共有し、100 nodeでasync作成100回→1回という検証を提示。3) PlayCanvas #10005 は複数回転を跨ぐ角度でも最短経路を選ぶ補間に修正。4) Babylon.js 9.37.2 はshader loading中のcontext lossでeffectを不要にrebuildしないWebGPU修正を含む。</p>
+          <p class="en-copy">three.js explores replacing—not adding—environment reflection and blurring the signed difference over the GGX footprint. Its compute cache reduces 100 equivalent async pipeline creations to one in validation. PlayCanvas fixes multi-turn shortest-arc angle interpolation; Babylon 9.37.2 avoids needless WebGPU effect rebuilds during shader loading after context loss.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35697" target="_blank" rel="noreferrer">SSR PR #35697</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35655" target="_blank" rel="noreferrer">Compute cache PR #35655</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10005" target="_blank" rel="noreferrer">lerpAngle PR #10005</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>Afterlightはdrag、pulse、world切替、共有URL、reduced-motionを一つの“終わりのない光の楽器”にしている。Lumen ShaderはGLSLを見せたままpresetとuniformを触らせる。内部実装の差分や補間を、最終的な品質だけでなく観客が操作できる読み方へ翻訳する好例である。</p>
+          <p class="en-copy">Afterlight turns dragging, pulses, worlds, shareable URLs and reduced motion into an endless light instrument. Lumen Shader exposes presets and uniforms alongside GLSL. Both make runtime behavior legible and touchable rather than hiding it behind final polish.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight</a></li>
+          
+            <li><a href="https://julianorton.co.nz/projects/lumen-shader/" target="_blank" rel="noreferrer">Lumen Shader</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>本命では青い環境反射の上に、clickで留めた金色の鏡片を“置換された反射”として重ねる。pointerは光源方位。派生では複数の衛星がpointer角へ最短弧で合唱する。次に足すなら、反射のconfidenceを鏡片の寿命と音のhigh-cutへ、角速度をtrail長と粒子密度へ割り当てる。</p>
+          <p class="en-copy">The main study layers click-pinned gold mirror shards as replaced reflection over blue environment light; pointer steers the source. The derivative makes satellites follow the target by shortest arcs. Next map reflection confidence to shard lifetime/audio high-cut and angular speed to trail length/particle density.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-26_reflection_replacement_loom.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-26_shortest_arc_orbit_choir.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>SSRをpost FXで加算する場合、environmentを既に含むbeautyと二重計上しやすい。replace差分をMRTに出すなら、hitなしは0、hitありはSSR−indirectSpecularとしてcompositeを安定させる。roughnessは単なるblur半径でなくBRDF footprintで扱う。computeはshader textだけでなくbind-group layoutをcache keyに含める。角度補間はdeltaを[-π,π]へwrapしてから追従係数を掛ける。</p>
+          <p class="en-copy">Adding SSR over beauty can double-count environment light. For a replacement difference MRT, emit zero without a hit and SSR minus indirect specular with a hit. Treat roughness as a BRDF footprint, key compute caches by shader plus bind-group layout, and wrap angular deltas to [-π, π] before damping.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35697" target="_blank" rel="noreferrer">three.js SSR details</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35655" target="_blank" rel="noreferrer">Compute cache validation</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>three.js #35697 はBRDF内で解決する代替案 #35699 へcloseされたため、最終形とSSR node APIを追う。WebGPU pipeline cacheのmerge・backend差、PlayCanvasのWebGL2/WebGPU only移行後の実例、Babylonのcontext recoveryとHTML-in-Canvasを継続観測する。</p>
+          <p class="en-copy">PR #35697 was closed in favor of the BRDF-level alternative #35699, so follow the final API. Also watch pipeline-cache merging/backend differences, practical PlayCanvas WebGL2/WebGPU-only work, and Babylon context recovery plus HTML-in-Canvas.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35699" target="_blank" rel="noreferrer">three.js alternative #35699</a></li>
+          
+            <li><a href="https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/engine/migrations.md" target="_blank" rel="noreferrer">PlayCanvas migration notes</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、3箇所をclickして鏡片の粗いfootprintが環境光と別の層に読めるかを見る。成功条件は“金色が上乗せの発光”ではなく“そこにあった空の反射を置き換えた面”に感じられること。次の30分ではWebGL2の2枚FBOにcurrent colorとindirectSpecular相当を描き、pointer速度でroughnessを動かす。</p>
+          <p class="en-copy">Open the main study and click three positions. Success is reading gold as a surface replacing sky reflection, not added glow. In the next 30 minutes render current color and indirect-specular-like data to two WebGL2 FBOs, then drive roughness with pointer velocity.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-26_reflection_replacement_loom.html" target="_blank" rel="noreferrer">Open main sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.js #35697/#35655、PlayCanvas #10005、Babylon 9.37.2、Afterlight/Lumenを確認。アイデア検討: 11/18〜25のdepth・history・radiance・mip・confidence scoreにreplacement/angleを追加。サンプル実装: 依存なしWebGL本命とCanvas派生。結果の検証: script構文、gallery/day再生成、Pages publishを実行。継続=confidence/historyと反射。新規=reflection replacement/shortest arc。寝かせる=本番BVH GI、XR multiview、重いsplat streaming。短期=FBO差分、中長期=共有URL・音・WebXR gazeのstate score。</p>
+          <p class="en-copy">Collect primary engine and creator evidence; extend the shared depth/history/radiance/mip/confidence score with replacement and angle; build a dependency-free WebGL main and Canvas derivative; verify syntax, gallery/day generation and Pages publish. Continue confidence/history/reflection; defer production BVH GI, XR multiview and heavy splat streaming.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近は“正しい計算”を見えない最適化で終わらせず、反射の差分、pipeline待ち、mip粒度、履歴の確信、角度の近道として知覚可能な状態へ変える流れが強い。組み合わせるなら、SSR hit/confidenceを音色へ、最短角度を空間音響の方位へ、pipeline readyを展示開始の呼吸へつなぐ。最も育てる価値が高いのは、正確さと遊びやすさを同じstate scoreで扱う表現系。</p>
+          <p class="en-copy">A strong trend is turning correct rendering details into perceptible state: reflection difference, pipeline waiting, mip grain, history confidence and shortest angular paths. Combine SSR hit/confidence with timbre, shortest arcs with spatial-audio direction, and pipeline readiness with exhibition breath. The highest-value theme is one state score for accuracy and playability.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 [`outputs/2026-11-26_reflection_replacement_loom.html`](../outputs/2026-11-26_reflection_replacement_loom.html) はraw WebGLで環境光と置換鏡片を描く。pointerで方位、clickで鏡片を追加し、次は実FBOのindirect specular差分を入れる。派生 [`outputs/2026-11-26_shortest_arc_orbit_choir.html`](../outputs/2026-11-26_shortest_arc_orbit_choir.html) は最短角の追従を可視化する。次は速度にWeb Audio filterを接続する。</p>
+          <p class="en-copy">The raw-WebGL main draws environment light and replacement shards; pointer steers direction and clicks add shards. Next use actual indirect-specular FBO differences. The derivative visualizes shortest-arc following; next connect angular velocity to a Web Audio filter.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-26_reflection_replacement_loom.html" target="_blank" rel="noreferrer">Main prototype</a></li>
+          
+            <li><a href="outputs/2026-11-26_shortest_arc_orbit_choir.html" target="_blank" rel="noreferrer">Derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for sample data and combinations</span></span></h2>
+          <p>鏡片の位置・生成時刻・roughness、pointer方位・速度、衛星の目標角と追従差は、観客の操作ログであり会場演出の譜面にもなる。音の周波数帯、カメラで推定する観客の向き、MediaPipeの姿勢、WebXR gaze、都市の方位・気象へ接続すれば、反射が集まる場所や、複数人の視線が和音になる場を作れる。URL stateとoffline frameに同じscoreを保存すれば、Web、ポスター、映像を一続きにできる。</p>
+          <p class="en-copy">Shard positions/times/roughness, pointer bearing/speed, and orbital target/error can serve as interaction logs and a venue score. Combine them with audio bands, camera-estimated orientation, MediaPipe pose, XR gaze or weather/bearing data. Persist the same score in URL state and offline frames for connected web, print and video forms.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35697" target="_blank" rel="noreferrer">three.js SSR environment replacement PR #35697</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35655" target="_blank" rel="noreferrer">three.js WebGPU compute pipeline cache PR #35655</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pull/10005" target="_blank" rel="noreferrer">PlayCanvas multi-turn lerpAngle PR #10005</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases/tag/9.37.2" target="_blank" rel="noreferrer">Babylon.js 9.37.2 release</a></li>
+          
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight — playable WebGL/Web Audio art</a></li>
+          
+            <li><a href="https://julianorton.co.nz/projects/lumen-shader/" target="_blank" rel="noreferrer">Lumen Shader — editable GLSL workbench</a></li>
+          
+            <li><a href="outputs/2026-11-26_reflection_replacement_loom.html" target="_blank" rel="noreferrer">Main prototype: Reflection Replacement Loom</a></li>
+          
+            <li><a href="outputs/2026-11-26_shortest_arc_orbit_choir.html" target="_blank" rel="noreferrer">Derived prototype: Shortest Arc Orbit Choir</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-26_shortest_arc_orbit_choir.html" loading="lazy" title="Shortest Arc Orbit Choir — 2026-11-26"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

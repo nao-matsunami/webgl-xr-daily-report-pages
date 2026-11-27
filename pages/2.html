@@ -269,7 +269,7 @@
         Each card opens a page for that specific day. The site is organized around daily entries rather than only standalone samples, and it paginates automatically as the archive grows.
       </p>
       <div class="meta">
-        <span>days: 154</span>
+        <span>days: 156</span>
         <span>page: 2 / 13</span>
         <span>storage: localStorage likes</span>
       </div>
@@ -337,6 +337,52 @@
 
     <section class="grid">
       
+        <article class="card" data-slug="2026-11-13">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.11.13</p>
+              <h2>水面の継ぎ目と遠景スプラットを、像が落ち着く織り目にする</h2>
+              <p class="card-subtitle">Make water seams and horizon splats a weave of settling imagery</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-11-13" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">three.js の水表現・SeamStitch/GutterFill提案と、PlayCanvas 2.24 のcoarse-first GSplat・アンチエイリアスを、11/12の露出／SSR coverageの続きとして読む。失敗に見える継ぎ目、粗い到着、反射の揺れを、画が信頼を獲得する時間として扱う2本の最小試作を実装した。</p>
+          <p class="description en-copy">Three.js water and seam proposals plus PlayCanvas 2.24 GSplat updates become a pair of sketches where seams, coarse arrival and reflection noise are the time an image earns trust.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-11-13.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-11-13_stitched_water_reflection_score.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
+        <article class="card" data-slug="2026-11-12">
+          <div class="card-top">
+            <div>
+              <p class="date">2026.11.12</p>
+              <h2>露出の遅れと反射の穴を、空間が呼吸する譜面にする</h2>
+              <p class="card-subtitle">Turn exposure lag and reflection gaps into a breathing spatial score</p>
+            </div>
+            <button class="like-button" type="button" data-slug="2026-11-12" aria-pressed="false">
+              <span class="heart">♡</span>
+              <span class="label">好き / Like</span>
+            </button>
+          </div>
+          <p class="description">PlayCanvas 2.24.0 の CameraFrame（時間的アップスケール、自動露出、Dynamic Sky）、three.js のSSR coverage／denoiser と ReflectorNode state 修復、Babylon.js の非同期 pipeline を、11/10–11 の水面・天候・履歴の流れへ接続する。自動露出の追従とSSR coverageを、待ち時間ではなく光が信頼を獲得する演出として本命・派生の2本で検証した。</p>
+          <p class="description en-copy">PlayCanvas CameraFrame, three.js coverage-based SSR and Babylon asynchronous pipelines become a spatial score where light gradually earns trust.</p>
+          <p class="card-subtitle">samples: 2</p>
+          <div class="tags"><span class="tag">html-surface</span></div>
+          <div class="actions">
+            <a class="primary" href="../days/2026-11-12.html">その日のページ / Day</a>
+            <a class="secondary-link" href="../outputs/2026-11-12_ssr_coverage_lantern_pool.html">代表サンプル / Sample</a>
+          </div>
+        </article>
+      
+
         <article class="card" data-slug="2026-11-11">
           <div class="card-top">
             <div>
@@ -563,52 +609,6 @@
           <div class="actions">
             <a class="primary" href="../days/2026-11-02.html">その日のページ / Day</a>
             <a class="secondary-link" href="../outputs/2026-11-02_seam_light_weave_field.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-11-01">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.11.01</p>
-              <h2>テクスチャ差し替えと圧縮メモリを、素材の共鳴と粒子の解放へ翻訳する</h2>
-              <p class="card-subtitle">Translate texture swaps and compressed memory into material resonance and particle release</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-11-01" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.jsで10月31日に出たcopyTextureToTextureの領域既定値、圧縮・mipmap・cube textureのメモリ計測、buildAsync中の共有texture sampler整合を、前回のtemporal historyから続く『素材が入れ替わる瞬間』として整理する。依存なしraw WebGL本命と、WebGL2粒子作品から着想したCanvas派生を追加した。</p>
-          <p class="description en-copy">This report turns fresh three.js texture-copy, memory-accounting and async-sampler work into two small studies: a raw WebGL material-resonance scope and a particle-release derivative.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span><span class="tag">particles</span><span class="tag">field</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-11-01.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-11-01_texture_swap_resonance_scope.html">代表サンプル / Sample</a>
-          </div>
-        </article>
-      
-
-        <article class="card" data-slug="2026-10-31">
-          <div class="card-top">
-            <div>
-              <p class="date">2026.10.31</p>
-              <h2>時間履歴とGPU計測を、反射と点群の残響として演出する</h2>
-              <p class="card-subtitle">Stage temporal history and GPU timing as reflection and splat afterglow</p>
-            </div>
-            <button class="like-button" type="button" data-slug="2026-10-31" aria-pressed="false">
-              <span class="heart">♡</span>
-              <span class="label">好き / Like</span>
-            </button>
-          </div>
-          <p class="description">three.js のTRAA履歴交換・velocity整合・SSR再構成、Babylon.js 9.33.0 のGPU timestamp／Gaussian Splat depth sort、PlayCanvasのcoarsest-first GSplat到着を接続する。10/28のvisibility/captureから一歩進め、描画したものを『いつ、どの視点で残すか』を空間演出にする依存なしWebGL試作とCanvas試作を追加した。</p>
-          <p class="description en-copy">This report connects three.js temporal reconstruction, Babylon GPU timing and splat depth sorting, and PlayCanvas coarse-first GSplat arrival through two small interactive studies.</p>
-          <p class="card-subtitle">samples: 2</p>
-          <div class="tags"><span class="tag">html-surface</span></div>
-          <div class="actions">
-            <a class="primary" href="../days/2026-10-31.html">その日のページ / Day</a>
-            <a class="secondary-link" href="../outputs/2026-10-31_timestamp_splat_afterglow.html">代表サンプル / Sample</a>
           </div>
         </article>
       

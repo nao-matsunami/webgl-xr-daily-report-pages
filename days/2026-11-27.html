@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>動く面の履歴とtexture寿命を、消えずに巡る光の譜面へ | 2026-11-27</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.27</p>
+      <h1>動く面の履歴とtexture寿命を、消えずに巡る光の譜面へ</h1>
+      <p class="hero-subtitle">Turn moving-surface history and texture lifetime into a circulating score of light</p>
+      <p>three.jsの動く面で履歴を維持するTRAAと、静的bundleの破棄済みtexture修正を、11/18以降のconfidence/history研究に接続。実FBO ping-pongの本命と、寿命プールを可視化する派生を実装した。</p>
+      <p class="en-copy">This connects three.js moving-surface TRAA history and disposed-texture handling in static bundles to the recent confidence/history thread. It implements a real FBO ping-pong main study and a lifetime-pool derivative.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-27_texture_lifetime_orbit.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-26.html">← 2026.11.26</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Texture Lifetime Orbit</h3>
+              <p>TEXTURE LIFETIME ORBITclick: retire a lantern → rebirth from the poolstatic constellation = bundle / pulse = safe replacement</p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-27_texture_lifetime_orbit.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Motion History Lantern Weave</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-27_motion_history_lantern_weave.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js #35716 は動くsurface上でもTRAAの履歴を保つ提案で、前日のdepth/velocity/confidence軸を直接前進させる。2) #35717 はstatic objectとbundleで破棄済みtextureを安全に扱うWebGPU修正。見た目を残す履歴と、資源を残さない寿命管理は対になる。3) r188移行では環境光の間接specularが変わるため、11/26のreflection差分比較は再確認が必要。4) PlayCanvasはWebGL1をやめWebGL2/WebGPUへ寄せ、compute shaderのdevice capabilityも明文化している。</p>
+          <p class="en-copy">three.js #35716 preserves TRAA history on moving surfaces, directly advancing the depth/velocity/confidence thread. #35717 safely handles disposed textures in static bundles. r188 changes indirect environment specular, while PlayCanvas documents its WebGL2/WebGPU shift and compute capability checks.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35716" target="_blank" rel="noreferrer">TRAA PR #35716</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35717" target="_blank" rel="noreferrer">Disposed texture PR #35717</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">r188 migration</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>three.jsの最新PR群は完成画の派手さより、連続性を崩さない下支えに焦点がある。動いた物体だけ履歴が割れる問題と、bundleが保持する古いtextureの問題を同時に扱うのが面白い。鑑賞者には“画像が時間を記憶する”“灯りが役目を終えて再生する”という体験へ翻訳できる。</p>
+          <p class="en-copy">The latest three.js work focuses on continuity infrastructure rather than spectacle: history that breaks only on moving objects and stale textures retained by bundles. These translate naturally into images that remember time and lanterns that retire and reappear.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>本命はpointer周辺をcurrent surface、周囲をdriftしたhistoryとして実FBOに蓄積し、clickを暖色の記憶種にする。派生はclickで灯りをretireし、同じpoolから別の軌道へ再生する。次に足すなら、velocityとdepth差からconfidence maskを作り、低confidenceを短命・高confidenceを長い残響と低域へ割り当てる。</p>
+          <p class="en-copy">The main accumulates a current pointer surface and drifted history in real FBOs; clicks plant warm memory seeds. The derivative retires a lantern on click and rebirths it from the same pool. Next derive confidence from velocity/depth difference and map it to lifetime, tail and bass.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-27_motion_history_lantern_weave.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-27_texture_lifetime_orbit.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>再投影のhistoryは前frameをそのままmixせず、velocityでUVを戻し、depth差・normal差・画面外でconfidenceを落とす。動体はobject motion vectorを足さないと背景だけ正しくても輪郭が滲む。FBOはRGBA16Fとlinear filterを使えるか確認し、不可ならRGBA8＋ditherへfallbackする。bundle/textureはdispose後の参照を持つ設計を避け、generation IDまたはnull guardで再作成を明示する。PlayCanvas computeはWebGPU限定なのでWebGL2 fallbackを分ける。</p>
+          <p class="en-copy">Do not simply mix the prior frame: reproject UVs with velocity and reduce confidence for depth/normal mismatch or out-of-screen samples. Moving objects need object motion vectors. Check RGBA16F+linear filtering and fall back to dithered RGBA8; avoid references to disposed textures with generation IDs or null guards. PlayCanvas compute is WebGPU-only, so keep a WebGL2 fallback.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/graphics/shaders/compute-shaders.md" target="_blank" rel="noreferrer">PlayCanvas compute guide</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>#35716の最終confidence/reprojection API、#35717のbundle invalidation方針、three.js r188での環境反射見えの差、PlayCanvasのSteadySplatsとWebGPU compute実例、Babylon.jsのWebGPU context recoveryを追う。</p>
+          <p class="en-copy">Watch the final confidence/reprojection API in #35716, bundle invalidation policy in #35717, r188 environment-reflection differences, PlayCanvas SteadySplats/WebGPU compute examples and Babylon WebGPU context recovery.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js PR list</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/pulls" target="_blank" rel="noreferrer">PlayCanvas PR list</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>まず本命を開き、pointerを速く横切らせて青い現在面とamberの残響を分けて読めるか確認する。3箇所clickし、記憶種が流れへ混ざる様子を見る。成功条件は、残像が単なるtrailではなく“どこまで信用できる過去か”に感じられること。次の30分は２枚目のFBOへsynthetic depthを入れ、深度差でseedの残響を切る。</p>
+          <p class="en-copy">Open the main study and sweep the pointer quickly: read cyan as now and amber as echo. Click three times and watch warm seeds enter the flow. Success is an afterimage that feels like the trustworthiness of the past, not a generic trail. Next add synthetic depth in a second FBO and cut echoes by depth difference.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-27_motion_history_lantern_weave.html" target="_blank" rel="noreferrer">Open main sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: #35716/#35717、r188移行、PlayCanvas compute/migration、Babylon releaseを確認。アイデア検討: 11/18〜26のdepth・history・radiance・mip・reflection・angleを“confidenceとlifetime”で接続。サンプル実装: WebGL2 ping-pong本命とCanvas pool派生。結果の検証: 構文、gallery/day再生成、Pages publish。継続=実velocity/depth confidenceとstate score。新規=texture lifetime。寝かせる=本番BVH GI、XR multiview、重いstreaming。短期=合成depth FBO、中長期=音・WebXR gaze・共有URL。</p>
+          <p class="en-copy">Collect current engine evidence; connect depth/history/radiance/mip/reflection/angle through confidence and lifetime; build a WebGL2 ping-pong main and Canvas pool derivative; verify syntax, gallery/day and Pages publish. Continue true velocity/depth confidence and the state score; defer BVH GI, XR multiview and heavy streaming.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の核は、品質を上げる処理を“いつまで信じるか”“いつ捨てて生まれ直すか”という時間の演出へ変換できる点にある。reprojection confidenceとtexture generationを共通の寿命パラメータにすれば、反射・splat・粒子・音を同じ譜面で制御できる。育てる価値が高いのは、正確なrenderingの無効化条件を観客の呼吸として見せる表現系。</p>
+          <p class="en-copy">The emerging core is turning quality work into temporal staging: how long to trust, when to discard, when to be reborn. A shared lifetime parameter for reprojection confidence and texture generation can score reflections, splats, particles and sound together.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 [`outputs/2026-11-27_motion_history_lantern_weave.html`](../outputs/2026-11-27_motion_history_lantern_weave.html) はWebGL2の2枚FBOをping-pongし、currentとdrifted historyを実際に蓄積する。pointerが面を、clickが暖色のseedを作る。次は合成depth/velocityからmaskを作る。派生 [`outputs/2026-11-27_texture_lifetime_orbit.html`](../outputs/2026-11-27_texture_lifetime_orbit.html) は灯りをpoolから再生する寿命テスト。次はWeb Audioのrelease envelopeを同期する。</p>
+          <p class="en-copy">The WebGL2 main uses two ping-pong FBOs to accumulate current and drifted history; pointer creates surface and clicks create warm seeds. Next derive a mask from synthetic depth/velocity. The derivative tests pooled lantern rebirth; next sync a Web Audio release envelope.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-27_motion_history_lantern_weave.html" target="_blank" rel="noreferrer">Main prototype</a></li>
+          
+            <li><a href="outputs/2026-11-27_texture_lifetime_orbit.html" target="_blank" rel="noreferrer">Derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>pointer座標・速度、seed時刻、FBOのconfidence相当、lanternのgeneration/lifetimeは、そのまま観客参加の時系列データになる。音のenvelope、カメラ由来の静止度、MediaPipeの手の速度、WebXR gazeの滞在時間、展示会場の混雑度と組み合わせれば、信頼された履歴ほど低く長く鳴り、寿命切れの灯りが別の参加者の動きで再生する作品に発展する。URL stateとoffline renderに同じscoreを保存すればWeb・映像・会場を接続できる。</p>
+          <p class="en-copy">Pointer coordinates/speed, seed times, FBO confidence and lantern generation/lifetime form participation time-series data. Combine them with audio envelopes, camera stillness, MediaPipe hand speed, XR gaze dwell and venue density: trusted history can ring lower and longer while expired lanterns revive through another visitor. Persist one score into URL state and offline renders to connect web, film and installation.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35716" target="_blank" rel="noreferrer">three.js TRAANode preserve history on moving surfaces PR #35716</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35717" target="_blank" rel="noreferrer">three.js static bundle disposed textures PR #35717</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js r188 migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/graphics/shaders/compute-shaders.md" target="_blank" rel="noreferrer">PlayCanvas compute shader guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/engine/migrations.md" target="_blank" rel="noreferrer">PlayCanvas WebGL2/WebGPU migration notes</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+            <li><a href="outputs/2026-11-27_motion_history_lantern_weave.html" target="_blank" rel="noreferrer">Main prototype: Motion History Lantern Weave</a></li>
+          
+            <li><a href="outputs/2026-11-27_texture_lifetime_orbit.html" target="_blank" rel="noreferrer">Derived prototype: Texture Lifetime Orbit</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-27_texture_lifetime_orbit.html" loading="lazy" title="Texture Lifetime Orbit"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

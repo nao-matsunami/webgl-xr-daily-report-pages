@@ -1,0 +1,165 @@
+{
+  "date": "2026-11-27",
+  "headline": "動く面の履歴とtexture寿命を、消えずに巡る光の譜面へ",
+  "headlineEn": "Turn moving-surface history and texture lifetime into a circulating score of light",
+  "summary": "three.jsの動く面で履歴を維持するTRAAと、静的bundleの破棄済みtexture修正を、11/18以降のconfidence/history研究に接続。実FBO ping-pongの本命と、寿命プールを可視化する派生を実装した。",
+  "summaryEn": "This connects three.js moving-surface TRAA history and disposed-texture handling in static bundles to the recent confidence/history thread. It implements a real FBO ping-pong main study and a lifetime-pool derivative.",
+  "links": [
+    {
+      "label": "three.js TRAANode preserve history on moving surfaces PR #35716",
+      "url": "https://github.com/mrdoob/three.js/pull/35716"
+    },
+    {
+      "label": "three.js static bundle disposed textures PR #35717",
+      "url": "https://github.com/mrdoob/three.js/pull/35717"
+    },
+    {
+      "label": "three.js r188 migration guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas compute shader guide",
+      "url": "https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/graphics/shaders/compute-shaders.md"
+    },
+    {
+      "label": "PlayCanvas WebGL2/WebGPU migration notes",
+      "url": "https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/engine/migrations.md"
+    },
+    {
+      "label": "Babylon.js releases",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Main prototype: Motion History Lantern Weave",
+      "url": "outputs/2026-11-27_motion_history_lantern_weave.html"
+    },
+    {
+      "label": "Derived prototype: Texture Lifetime Orbit",
+      "url": "outputs/2026-11-27_texture_lifetime_orbit.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35716 は動くsurface上でもTRAAの履歴を保つ提案で、前日のdepth/velocity/confidence軸を直接前進させる。2) #35717 はstatic objectとbundleで破棄済みtextureを安全に扱うWebGPU修正。見た目を残す履歴と、資源を残さない寿命管理は対になる。3) r188移行では環境光の間接specularが変わるため、11/26のreflection差分比較は再確認が必要。4) PlayCanvasはWebGL1をやめWebGL2/WebGPUへ寄せ、compute shaderのdevice capabilityも明文化している。",
+      "bodyEn": "three.js #35716 preserves TRAA history on moving surfaces, directly advancing the depth/velocity/confidence thread. #35717 safely handles disposed textures in static bundles. r188 changes indirect environment specular, while PlayCanvas documents its WebGL2/WebGPU shift and compute capability checks.",
+      "links": [
+        {
+          "label": "TRAA PR #35716",
+          "url": "https://github.com/mrdoob/three.js/pull/35716"
+        },
+        {
+          "label": "Disposed texture PR #35717",
+          "url": "https://github.com/mrdoob/three.js/pull/35717"
+        },
+        {
+          "label": "r188 migration",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "three.jsの最新PR群は完成画の派手さより、連続性を崩さない下支えに焦点がある。動いた物体だけ履歴が割れる問題と、bundleが保持する古いtextureの問題を同時に扱うのが面白い。鑑賞者には“画像が時間を記憶する”“灯りが役目を終えて再生する”という体験へ翻訳できる。",
+      "bodyEn": "The latest three.js work focuses on continuity infrastructure rather than spectacle: history that breaks only on moving objects and stale textures retained by bundles. These translate naturally into images that remember time and lanterns that retire and reappear.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命はpointer周辺をcurrent surface、周囲をdriftしたhistoryとして実FBOに蓄積し、clickを暖色の記憶種にする。派生はclickで灯りをretireし、同じpoolから別の軌道へ再生する。次に足すなら、velocityとdepth差からconfidence maskを作り、低confidenceを短命・高confidenceを長い残響と低域へ割り当てる。",
+      "bodyEn": "The main accumulates a current pointer surface and drifted history in real FBOs; clicks plant warm memory seeds. The derivative retires a lantern on click and rebirths it from the same pool. Next derive confidence from velocity/depth difference and map it to lifetime, tail and bass.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-27_motion_history_lantern_weave.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-27_texture_lifetime_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "再投影のhistoryは前frameをそのままmixせず、velocityでUVを戻し、depth差・normal差・画面外でconfidenceを落とす。動体はobject motion vectorを足さないと背景だけ正しくても輪郭が滲む。FBOはRGBA16Fとlinear filterを使えるか確認し、不可ならRGBA8＋ditherへfallbackする。bundle/textureはdispose後の参照を持つ設計を避け、generation IDまたはnull guardで再作成を明示する。PlayCanvas computeはWebGPU限定なのでWebGL2 fallbackを分ける。",
+      "bodyEn": "Do not simply mix the prior frame: reproject UVs with velocity and reduce confidence for depth/normal mismatch or out-of-screen samples. Moving objects need object motion vectors. Check RGBA16F+linear filtering and fall back to dithered RGBA8; avoid references to disposed textures with generation IDs or null guards. PlayCanvas compute is WebGPU-only, so keep a WebGL2 fallback.",
+      "links": [
+        {
+          "label": "PlayCanvas compute guide",
+          "url": "https://github.com/playcanvas/developer-site/blob/main/docs/user-manual/graphics/shaders/compute-shaders.md"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "#35716の最終confidence/reprojection API、#35717のbundle invalidation方針、three.js r188での環境反射見えの差、PlayCanvasのSteadySplatsとWebGPU compute実例、Babylon.jsのWebGPU context recoveryを追う。",
+      "bodyEn": "Watch the final confidence/reprojection API in #35716, bundle invalidation policy in #35717, r188 environment-reflection differences, PlayCanvas SteadySplats/WebGPU compute examples and Babylon WebGPU context recovery.",
+      "links": [
+        {
+          "label": "three.js PR list",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "PlayCanvas PR list",
+          "url": "https://github.com/playcanvas/engine/pulls"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "まず本命を開き、pointerを速く横切らせて青い現在面とamberの残響を分けて読めるか確認する。3箇所clickし、記憶種が流れへ混ざる様子を見る。成功条件は、残像が単なるtrailではなく“どこまで信用できる過去か”に感じられること。次の30分は２枚目のFBOへsynthetic depthを入れ、深度差でseedの残響を切る。",
+      "bodyEn": "Open the main study and sweep the pointer quickly: read cyan as now and amber as echo. Click three times and watch warm seeds enter the flow. Success is an afterimage that feels like the trustworthiness of the past, not a generic trail. Next add synthetic depth in a second FBO and cut echoes by depth difference.",
+      "links": [
+        {
+          "label": "Open main sample",
+          "url": "outputs/2026-11-27_motion_history_lantern_weave.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: #35716/#35717、r188移行、PlayCanvas compute/migration、Babylon releaseを確認。アイデア検討: 11/18〜26のdepth・history・radiance・mip・reflection・angleを“confidenceとlifetime”で接続。サンプル実装: WebGL2 ping-pong本命とCanvas pool派生。結果の検証: 構文、gallery/day再生成、Pages publish。継続=実velocity/depth confidenceとstate score。新規=texture lifetime。寝かせる=本番BVH GI、XR multiview、重いstreaming。短期=合成depth FBO、中長期=音・WebXR gaze・共有URL。",
+      "bodyEn": "Collect current engine evidence; connect depth/history/radiance/mip/reflection/angle through confidence and lifetime; build a WebGL2 ping-pong main and Canvas pool derivative; verify syntax, gallery/day and Pages publish. Continue true velocity/depth confidence and the state score; defer BVH GI, XR multiview and heavy streaming."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の核は、品質を上げる処理を“いつまで信じるか”“いつ捨てて生まれ直すか”という時間の演出へ変換できる点にある。reprojection confidenceとtexture generationを共通の寿命パラメータにすれば、反射・splat・粒子・音を同じ譜面で制御できる。育てる価値が高いのは、正確なrenderingの無効化条件を観客の呼吸として見せる表現系。",
+      "bodyEn": "The emerging core is turning quality work into temporal staging: how long to trust, when to discard, when to be reborn. A shared lifetime parameter for reprojection confidence and texture generation can score reflections, splats, particles and sound together."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 [`outputs/2026-11-27_motion_history_lantern_weave.html`](../outputs/2026-11-27_motion_history_lantern_weave.html) はWebGL2の2枚FBOをping-pongし、currentとdrifted historyを実際に蓄積する。pointerが面を、clickが暖色のseedを作る。次は合成depth/velocityからmaskを作る。派生 [`outputs/2026-11-27_texture_lifetime_orbit.html`](../outputs/2026-11-27_texture_lifetime_orbit.html) は灯りをpoolから再生する寿命テスト。次はWeb Audioのrelease envelopeを同期する。",
+      "bodyEn": "The WebGL2 main uses two ping-pong FBOs to accumulate current and drifted history; pointer creates surface and clicks create warm seeds. Next derive a mask from synthetic depth/velocity. The derivative tests pooled lantern rebirth; next sync a Web Audio release envelope.",
+      "links": [
+        {
+          "label": "Main prototype",
+          "url": "outputs/2026-11-27_motion_history_lantern_weave.html"
+        },
+        {
+          "label": "Derived prototype",
+          "url": "outputs/2026-11-27_texture_lifetime_orbit.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "pointer座標・速度、seed時刻、FBOのconfidence相当、lanternのgeneration/lifetimeは、そのまま観客参加の時系列データになる。音のenvelope、カメラ由来の静止度、MediaPipeの手の速度、WebXR gazeの滞在時間、展示会場の混雑度と組み合わせれば、信頼された履歴ほど低く長く鳴り、寿命切れの灯りが別の参加者の動きで再生する作品に発展する。URL stateとoffline renderに同じscoreを保存すればWeb・映像・会場を接続できる。",
+      "bodyEn": "Pointer coordinates/speed, seed times, FBO confidence and lantern generation/lifetime form participation time-series data. Combine them with audio envelopes, camera stillness, MediaPipe hand speed, XR gaze dwell and venue density: trusted history can ring lower and longer while expired lanterns revive through another visitor. Persist one score into URL state and offline renders to connect web, film and installation."
+    }
+  ]
+}
