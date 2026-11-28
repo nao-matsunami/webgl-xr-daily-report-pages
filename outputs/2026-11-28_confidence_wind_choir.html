@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confidence Wind Choir</title>
+<style>html,body,canvas{margin:0;width:100%;height:100%;overflow:hidden;background:#070a18}#note{position:fixed;left:18px;bottom:16px;color:#d9e8ff;font:12px/1.55 ui-monospace,monospace;letter-spacing:.06em;pointer-events:none}b{color:#f9be78}</style>
+<canvas></canvas><div id="note"><b>CONFIDENCE WIND CHOIR</b><br>drag: wind / click: memory bell / low confidence fades</div>
+<script>
+const c=document.querySelector('canvas'), gl=c.getContext('webgl',{antialias:false});
+if(!gl) document.querySelector('#note').textContent='WebGL is required for this study.';
+const vs=`attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+const fs=`precision highp float;uniform vec2 r,m;uniform float t,clicks[12],bell[12];
+float hash(vec2 p){return fract(sin(dot(p,vec2(41.73,289.19)))*14112.37);} float line(vec2 p,float y,float w){return smoothstep(w,0.,abs(p.y-y));}
+void main(){vec2 uv=(gl_FragCoord.xy-.5*r)/r.y; vec2 q=uv; q.x+=sin(uv.y*3.+t*.27)*.10;
+ float speed=length(m.xy-m.zw); float near=exp(-length(uv-m.xy)*7.); float confidence=clamp(1.-speed*5.-near*.27,0.,1.);
+ vec3 col=vec3(.018,.035,.10)+.11*vec3(.05,.25,.63)*(1.-length(uv)*.55);
+ for(int i=0;i<28;i++){float fi=float(i);float y=(fi-13.5)*.075+sin(fi*3.1+t*.35)*.018;float phase=sin(q.x*18.+fi*1.73+t*(.7+fract(fi*.31)));float strand=line(q,y+phase*.010,.0022+near*.002);float trust=mix(.15,1.,confidence);col+=strand*mix(vec3(.08,.38,.92),vec3(1.,.54,.15),1.-trust)*(.28+trust*.72);}
+ for(int j=0;j<12;j++){float a=bell[j];if(a>0.){vec2 bp=vec2(fract(clicks[j]*.19)*1.6-.8,fract(clicks[j]*.73)*.95-.47);float d=length(uv-bp);float ring=exp(-32.*abs(d-(1.-a)*.18))*a;col+=ring*vec3(1.,.38,.10)*(1.-confidence*.45);}}
+ float grain=hash(gl_FragCoord.xy+t)-.5; col+=grain*.025; gl_FragColor=vec4(col,1.);}`;
+function sh(type,s){let x=gl.createShader(type);gl.shaderSource(x,s);gl.compileShader(x);return x}const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);gl.useProgram(p);
+const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);let a=gl.getAttribLocation(p,'p');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+let mouse=[.5,.5,.5,.5], bells=Array(12).fill(0), spots=Array(12).fill(.5), slot=0, last=performance.now();
+function resize(){c.width=innerWidth*devicePixelRatio;c.height=innerHeight*devicePixelRatio;gl.viewport(0,0,c.width,c.height)}addEventListener('resize',resize);resize();
+addEventListener('pointermove',e=>{mouse[2]=mouse[0];mouse[3]=mouse[1];mouse[0]=e.clientX/innerWidth;mouse[1]=1-e.clientY/innerHeight});
+addEventListener('pointerdown',e=>{spots[slot]=(e.clientX/innerWidth)*17+(1-e.clientY/innerHeight)*41; bells[slot]=1;slot=(slot+1)%12});
+function draw(now){let dt=Math.min(.05,(now-last)/1000);last=now;for(let i=0;i<12;i++)bells[i]=Math.max(0,bells[i]-dt*.24);gl.uniform2f(gl.getUniformLocation(p,'r'),c.width,c.height);gl.uniform4f(gl.getUniformLocation(p,'m'),...mouse);gl.uniform1f(gl.getUniformLocation(p,'t'),now*.001);gl.uniform1fv(gl.getUniformLocation(p,'clicks'),spots);gl.uniform1fv(gl.getUniformLocation(p,'bell'),bells);gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(draw)}requestAnimationFrame(draw);
+</script></html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>確信度とBRDFを、消える履歴を奏でる風と光へ | 2026-11-28</title>
+  <style>
+    :root {
+      --bg0: #07111a;
+      --bg1: #102338;
+      --panel: rgba(9, 20, 31, 0.84);
+      --panel-2: rgba(255, 255, 255, 0.04);
+      --line: rgba(126, 228, 255, 0.12);
+      --text: #ebf8ff;
+      --muted: #9ab6c8;
+      --accent: #7ce4ff;
+      --accent2: #ffd868;
+      --shadow: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(124, 228, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(255, 216, 104, 0.12), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .hero,
+    .detail-block,
+    .preview,
+    .day-nav {
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .hero p,
+    .detail-block p,
+    .detail-block li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .en-copy,
+    .heading-pair-secondary,
+    .hero-subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .heading-pair {
+      display: grid;
+      gap: 4px;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .date {
+      margin: 0 0 10px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .actions,
+    .day-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .primary,
+    .secondary-link,
+    .day-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #8effc8);
+      color: #062334;
+    }
+
+    .secondary-link,
+    .day-link {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .day-nav {
+      justify-content: space-between;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-block {
+      padding: 22px;
+    }
+
+    .detail-block h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .link-list {
+      display: grid;
+      gap: 8px;
+      padding-left: 18px;
+      margin: 12px 0 0;
+    }
+
+    .link-list a {
+      color: var(--accent);
+    }
+
+    .sample-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sample-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sample-item-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sample-item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .sample-item p {
+      margin: 0;
+    }
+
+    .preview {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        position: static;
+      }
+
+      iframe {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="date">2026.11.28</p>
+      <h1>確信度とBRDFを、消える履歴を奏でる風と光へ</h1>
+      <p class="hero-subtitle">Turn confidence and BRDF into wind and light that play fading history</p>
+      <p>three.jsのTRAA履歴維持、SSRのBRDF内解決、texture寿命管理がいずれも継続中であることを確認。11/27の実FBO履歴研究を、速い動きで履歴を薄めるWebGLの風の合唱へ展開し、BRDF内の反射被覆を可視化する派生も実装した。</p>
+      <p class="en-copy">three.js TRAA history, BRDF-resolved SSR and texture lifetime work remain in flight. This extends the 11/27 FBO-history thread with a WebGL confidence wind choir and a derivative visualizing BRDF reflection coverage.</p>
+      <div class="actions">
+        <a class="primary" href="../outputs/2026-11-28_confidence_wind_choir.html">代表サンプルを開く / Open sample</a>
+        <a class="secondary-link" href="../index.html">一覧へ戻る / Back to archive</a>
+      </div>
+    </section>
+
+    <nav class="day-nav" aria-label="日付移動">
+      <a class="day-link" href="../days/2026-11-27.html">← 2026.11.27</a>
+      <span class="day-link">最新日 / Latest</span>
+    </nav>
+
+    <section class="content">
+      <div class="stack">
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">この日のサンプル</span><span class="heading-pair-secondary">Samples for this day</span></span></h2>
+          <div class="sample-list">
+            
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>Confidence Wind Choir</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-28_confidence_wind_choir.html">開く / Open</a>
+          </div>
+        </article>
+      
+        <article class="sample-item">
+          <div class="sample-item-head">
+            <div>
+              <h3>BRDF Echo Pulse</h3>
+              <p></p>
+            </div>
+            <a class="secondary-link" href="../outputs/2026-11-28_brdf_echo_pulse.html">開く / Open</a>
+          </div>
+        </article>
+      
+          </div>
+        </section>
+        
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日の重要トピック</span><span class="heading-pair-secondary">Key topics today</span></span></h2>
+          <p>1) three.js #35716 は動くsurfaceでTRAA historyを維持するOpen PRのまま。11/27のping-pong FBOに必要なのは“残す”だけでなく、motion/depthが怪しい領域をどれだけ早く薄めるかである。2) #35699 はSSRを完成画像への加算ではなくmaterial BRDFで解決するDraft。反射を別レイヤーの装飾でなく、材質の応答として扱える。3) #35717 のstatic object/bundleにおけるdispose済みtexture修正もDraftで、時間表現のためのhistory bufferにも明示的な寿命が要る。4) PlayCanvas最新はv2.24.3、Babylon.js最新は9.38.0。まず両者を安定版の参照点として、実装をWebGL2 fallback付きで保つ。</p>
+          <p class="en-copy">TRAA moving-surface history, BRDF-resolved SSR, and static-bundle texture disposal remain open three.js work. They make confidence, material response and explicit resource lifetime one production thread. PlayCanvas v2.24.3 and Babylon.js 9.38.0 are the current stable reference points.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35716" target="_blank" rel="noreferrer">TRAA #35716</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35699" target="_blank" rel="noreferrer">SSR #35699</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35717" target="_blank" rel="noreferrer">Texture disposal #35717</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">注目事例と何が面白いか</span><span class="heading-pair-secondary">Notable example and why it matters</span></span></h2>
+          <p>Afterlightは、dragで光を引き、releaseで自律させ、pulse・音・共有リンク・PNG保存までを“目的なしの探索”としてまとめる。計算量の多い技法がなくても、操作の連続性と結果の持ち帰りを揃えると鑑賞が作品になる。今回のconfidenceを数値表示で終わらせず、風の強さ・音の減衰・共有URLのseedへ渡す設計が有効。</p>
+          <p class="en-copy">Afterlight turns drag, release, pulses, sound, sharing and image export into purposeless exploration. It shows that continuity of action and a portable result can make interaction into an artwork; confidence should feed wind, audio decay and a shared seed rather than remain a diagnostic number.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">表現・インタラクションのアイデア</span><span class="heading-pair-secondary">Expression and interaction idea</span></span></h2>
+          <p>本命は速度が大きいほど青い現在面を優先し、amberの履歴ストランドを消す“Confidence Wind Choir”。dragで風の速度を作り、clickで暖色の記憶ベルを置く。派生は反射被覆をscreen-add風の光量ではなく、BRDF内で落ち着く強度として見せる“BRDF Echo Pulse”。次に足すなら、実depth差とobject motion vectorからconfidenceを作り、閾値未満だけ音をclickノイズへ切り替える。</p>
+          <p class="en-copy">The main Confidence Wind Choir privileges cyan present over amber history as motion rises; drag makes wind and clicks plant memory bells. BRDF Echo Pulse shows reflection coverage as a material response rather than screen-add light. Next derive confidence from real depth/object motion and turn low-confidence sound into click noise.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-28_confidence_wind_choir.html" target="_blank" rel="noreferrer">Main sample</a></li>
+          
+            <li><a href="outputs/2026-11-28_brdf_echo_pulse.html" target="_blank" rel="noreferrer">Derived sample</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">制作に使えそうな技術メモ</span><span class="heading-pair-secondary">Production note</span></span></h2>
+          <p>TAA/reprojectionは前frameを一律blendせず、velocityで戻したUVに対し、depth差・normal差・UV範囲外・reactive materialでconfidenceを掛ける。SSRも最終色に加算すると露出やroughnessとの整合が崩れやすいので、可能ならBRDF評価の内部へ入れる。WebGL2ではRGBA16F renderability/linear filterを検出し、失敗時はRGBA8＋blue-noise ditherへfallbackする。disposeはtextureとFBOをgeneration IDで結び、再生成前の参照をdraw listに残さない。</p>
+          <p class="en-copy">Do not uniformly blend a previous frame: apply confidence after velocity reprojection using depth/normal mismatch, out-of-bounds UV and reactive-material tests. Resolving SSR inside the BRDF avoids exposure/roughness mismatch. Feature-detect RGBA16F rendering/filtering, fall back to dithered RGBA8, and pair textures/FBOs with generation IDs so stale draw-list references cannot survive disposal.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">r188 migration notes</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">明日以降ウォッチする対象</span><span class="heading-pair-secondary">Watch next</span></span></h2>
+          <p>#35716の最終APIとvalidation条件、#35699が反射coverageをどう前frameへ持ち越すか、#35717のbundle invalidation、PlayCanvas v2.24.3の差分、Babylon 9.38.0のWebGPU/WebGL後方互換を追う。事例側はAfterlightの共有状態とreduced-motion配慮を、日次sampleのURL state・静止時pauseに移植できるかを見る。</p>
+          <p class="en-copy">Watch #35716’s final API/validation, #35699’s reflection coverage history, #35717 bundle invalidation, PlayCanvas v2.24.3 deltas and Babylon 9.38.0 compatibility. On the artwork side, test whether Afterlight-like shared state and reduced-motion behavior transfer to daily studies.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pulls" target="_blank" rel="noreferrer">three.js pull requests</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">試すならこれ</span><span class="heading-pair-secondary">If you try one thing</span></span></h2>
+          <p>本命を開き、ゆっくりdragした時と速くdragした時で、ストランドの残り方が“現在を優先する”挙動に読めるか試す。次に3回clickし、memory bellが風の中でも位置の手掛かりになるかを見る。成功条件は、trailの量ではなく、履歴の信用度を身体的に読めること。次の30分では11/27の二枚FBOへこのconfidence式を移植し、実際のfeedback係数を変える。</p>
+          <p class="en-copy">Open the main study, compare slow and fast drags, then click three memory bells. Success is reading the trustworthiness of history bodily—not merely seeing more or fewer trails. Next transplant this confidence function into the 11/27 two-FBO feedback coefficient.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-28_confidence_wind_choir.html" target="_blank" rel="noreferrer">Open main prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">進行マップ</span><span class="heading-pair-secondary">Progress map</span></span></h2>
+          <p>ネタ収集: three.jsの三つのOpen PR、r188移行、PlayCanvas/Babylonの現行release、Afterlightを確認。アイデア検討: 11/18〜27のdepth・reflection・history・lifetimeをconfidence/state scoreで接続。サンプル実装: WebGL fragment shader本命とCanvasのBRDF派生。結果の検証: 構文、gallery/day再生成、Pages push。継続=実velocity/depth confidenceと共有state。新規=反射coverageを音へ翻訳。寝かせる=本番BVH GI、XR multiview、重いasset streaming。短期=11/27 FBOへの移植、中長期=WebXR gaze/MediaPipe/音を同じscoreへ。</p>
+          <p class="en-copy">Collect three open PRs, migration/release facts and Afterlight; connect recent depth/reflection/history/lifetime work through a confidence state score; build a WebGL main and Canvas derivative; verify syntax, gallery/day and Pages push. Continue real velocity/depth confidence, defer BVH GI, XR multiview and heavy streaming.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">俯瞰メモ</span><span class="heading-pair-secondary">Bird's-eye memo</span></span></h2>
+          <p>最近の核は“時間を滑らかにする技術”を“何を記憶し、いつ忘れるか”という演出に反転できる点。TRAA、SSR coverage、texture disposeは別の実装課題に見えるが、全て無効化条件と寿命を持つ。ここを共通scoreにして、低confidenceは高域ノイズ・短命粒子、高confidenceは低域ドローン・長い残光へ配ると、描画品質の判断自体が作曲になる。</p>
+          <p class="en-copy">The emerging core turns smoothing technology into staging of what is remembered and forgotten. TRAA, SSR coverage and texture disposal all own invalidation conditions and lifetimes. Map one shared score to short high-frequency particles at low confidence and long low-frequency drones at high confidence, making rendering judgment itself compositional.</p>
+          
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">今日のミニ試作候補</span><span class="heading-pair-secondary">Today's mini prototype candidate</span></span></h2>
+          <p>本命 [`outputs/2026-11-28_confidence_wind_choir.html`](../outputs/2026-11-28_confidence_wind_choir.html) はraw WebGLのfragment shaderで、pointer速度からconfidenceを作り、現在のcyanと減衰するamber履歴を分離する。clickは12個までの暖色memory bell。次はこれを二枚FBOの実feedbackへ接続する。派生 [`outputs/2026-11-28_brdf_echo_pulse.html`](../outputs/2026-11-28_brdf_echo_pulse.html) はpointer速度で反射coverageを落とし、clickでBRDF echoを可視化する。次はWeb Audio oscillatorのgainをcoverageへ結ぶ。</p>
+          <p class="en-copy">The raw-WebGL main derives confidence from pointer speed and separates cyan present from fading amber history; clicks add up to 12 warm memory bells. Next connect it to actual two-FBO feedback. The derivative lowers reflection coverage with speed and visualizes BRDF echoes; next bind coverage to Web Audio gain.</p>
+          
+    <ul class="link-list">
+      
+            <li><a href="outputs/2026-11-28_confidence_wind_choir.html" target="_blank" rel="noreferrer">Main prototype</a></li>
+          
+            <li><a href="outputs/2026-11-28_brdf_echo_pulse.html" target="_blank" rel="noreferrer">Derived prototype</a></li>
+          
+    </ul>
+  
+        </section>
+      
+
+        <section class="detail-block">
+          <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルデータの可能性と組み合わせ考察</span><span class="heading-pair-secondary">Possibilities for the sample data and combinations</span></span></h2>
+          <p>この2本のpointer位置・速度、confidence、click時刻、pulse半径は、観客がいつ確かな行為をしたかを表す小さな譜面になる。Web Audio analyserの帯域、カメラの静止度、MediaPipe hand velocity、WebXR gaze dwell、会場センサーの滞在密度を同じscoreへ正規化すれば、確かな視線ほど長く低く鳴り、急な動きほど粒子がほどける展示にできる。URLにseedと操作列を保存すれば、Web展示・映像書き出し・会場再生を同じ記憶で接続できる。</p>
+          <p class="en-copy">Pointer position/speed, confidence, click time and pulse radius form a small score of when a visitor acts reliably. Normalize audio bands, camera stillness, MediaPipe hand velocity, XR gaze dwell and venue density into it: reliable gaze rings lower and longer, abrupt motion breaks into particles. Persist seed and action sequence in a URL to join web exhibition, video export and installation playback.</p>
+          
+        </section>
+      
+        
+              <section class="detail-block">
+                <h2><span class="heading-pair"><span class="heading-pair-primary">参考リンク</span><span class="heading-pair-secondary">Reference links</span></span></h2>
+                
+    <ul class="link-list">
+      
+            <li><a href="https://github.com/mrdoob/three.js/pull/35716" target="_blank" rel="noreferrer">three.js TRAANode moving-surface history PR #35716</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35699" target="_blank" rel="noreferrer">three.js SSR resolved in material BRDF PR #35699</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/pull/35717" target="_blank" rel="noreferrer">three.js static bundle texture disposal PR #35717</a></li>
+          
+            <li><a href="https://github.com/mrdoob/three.js/wiki/Migration-Guide" target="_blank" rel="noreferrer">three.js r188 migration guide</a></li>
+          
+            <li><a href="https://github.com/playcanvas/engine/releases" target="_blank" rel="noreferrer">PlayCanvas Engine releases (v2.24.3 latest)</a></li>
+          
+            <li><a href="https://github.com/BabylonJS/Babylon.js/releases" target="_blank" rel="noreferrer">Babylon.js releases (9.38.0 latest)</a></li>
+          
+            <li><a href="https://dbaney.com/afterlight/" target="_blank" rel="noreferrer">Afterlight — playable WebGL / Web Audio artwork</a></li>
+          
+            <li><a href="outputs/2026-11-28_confidence_wind_choir.html" target="_blank" rel="noreferrer">Main prototype: Confidence Wind Choir</a></li>
+          
+            <li><a href="outputs/2026-11-28_brdf_echo_pulse.html" target="_blank" rel="noreferrer">Derived prototype: BRDF Echo Pulse</a></li>
+          
+    </ul>
+  
+              </section>
+            
+      </div>
+
+      <aside class="preview">
+        <h2><span class="heading-pair"><span class="heading-pair-primary">サンプルプレビュー</span><span class="heading-pair-secondary">Sample preview</span></span></h2>
+        <iframe src="../outputs/2026-11-28_confidence_wind_choir.html" loading="lazy" title="Confidence Wind Choir"></iframe>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

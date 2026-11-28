@@ -1,0 +1,173 @@
+{
+  "date": "2026-11-28",
+  "headline": "確信度とBRDFを、消える履歴を奏でる風と光へ",
+  "headlineEn": "Turn confidence and BRDF into wind and light that play fading history",
+  "summary": "three.jsのTRAA履歴維持、SSRのBRDF内解決、texture寿命管理がいずれも継続中であることを確認。11/27の実FBO履歴研究を、速い動きで履歴を薄めるWebGLの風の合唱へ展開し、BRDF内の反射被覆を可視化する派生も実装した。",
+  "summaryEn": "three.js TRAA history, BRDF-resolved SSR and texture lifetime work remain in flight. This extends the 11/27 FBO-history thread with a WebGL confidence wind choir and a derivative visualizing BRDF reflection coverage.",
+  "links": [
+    {
+      "label": "three.js TRAANode moving-surface history PR #35716",
+      "url": "https://github.com/mrdoob/three.js/pull/35716"
+    },
+    {
+      "label": "three.js SSR resolved in material BRDF PR #35699",
+      "url": "https://github.com/mrdoob/three.js/pull/35699"
+    },
+    {
+      "label": "three.js static bundle texture disposal PR #35717",
+      "url": "https://github.com/mrdoob/three.js/pull/35717"
+    },
+    {
+      "label": "three.js r188 migration guide",
+      "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+    },
+    {
+      "label": "PlayCanvas Engine releases (v2.24.3 latest)",
+      "url": "https://github.com/playcanvas/engine/releases"
+    },
+    {
+      "label": "Babylon.js releases (9.38.0 latest)",
+      "url": "https://github.com/BabylonJS/Babylon.js/releases"
+    },
+    {
+      "label": "Afterlight — playable WebGL / Web Audio artwork",
+      "url": "https://dbaney.com/afterlight/"
+    },
+    {
+      "label": "Main prototype: Confidence Wind Choir",
+      "url": "outputs/2026-11-28_confidence_wind_choir.html"
+    },
+    {
+      "label": "Derived prototype: BRDF Echo Pulse",
+      "url": "outputs/2026-11-28_brdf_echo_pulse.html"
+    }
+  ],
+  "sections": [
+    {
+      "title": "今日の重要トピック",
+      "titleEn": "Key topics today",
+      "body": "1) three.js #35716 は動くsurfaceでTRAA historyを維持するOpen PRのまま。11/27のping-pong FBOに必要なのは“残す”だけでなく、motion/depthが怪しい領域をどれだけ早く薄めるかである。2) #35699 はSSRを完成画像への加算ではなくmaterial BRDFで解決するDraft。反射を別レイヤーの装飾でなく、材質の応答として扱える。3) #35717 のstatic object/bundleにおけるdispose済みtexture修正もDraftで、時間表現のためのhistory bufferにも明示的な寿命が要る。4) PlayCanvas最新はv2.24.3、Babylon.js最新は9.38.0。まず両者を安定版の参照点として、実装をWebGL2 fallback付きで保つ。",
+      "bodyEn": "TRAA moving-surface history, BRDF-resolved SSR, and static-bundle texture disposal remain open three.js work. They make confidence, material response and explicit resource lifetime one production thread. PlayCanvas v2.24.3 and Babylon.js 9.38.0 are the current stable reference points.",
+      "links": [
+        {
+          "label": "TRAA #35716",
+          "url": "https://github.com/mrdoob/three.js/pull/35716"
+        },
+        {
+          "label": "SSR #35699",
+          "url": "https://github.com/mrdoob/three.js/pull/35699"
+        },
+        {
+          "label": "Texture disposal #35717",
+          "url": "https://github.com/mrdoob/three.js/pull/35717"
+        }
+      ]
+    },
+    {
+      "title": "注目事例と何が面白いか",
+      "titleEn": "Notable example and why it matters",
+      "body": "Afterlightは、dragで光を引き、releaseで自律させ、pulse・音・共有リンク・PNG保存までを“目的なしの探索”としてまとめる。計算量の多い技法がなくても、操作の連続性と結果の持ち帰りを揃えると鑑賞が作品になる。今回のconfidenceを数値表示で終わらせず、風の強さ・音の減衰・共有URLのseedへ渡す設計が有効。",
+      "bodyEn": "Afterlight turns drag, release, pulses, sound, sharing and image export into purposeless exploration. It shows that continuity of action and a portable result can make interaction into an artwork; confidence should feed wind, audio decay and a shared seed rather than remain a diagnostic number.",
+      "links": [
+        {
+          "label": "Afterlight",
+          "url": "https://dbaney.com/afterlight/"
+        }
+      ]
+    },
+    {
+      "title": "表現・インタラクションのアイデア",
+      "titleEn": "Expression and interaction idea",
+      "body": "本命は速度が大きいほど青い現在面を優先し、amberの履歴ストランドを消す“Confidence Wind Choir”。dragで風の速度を作り、clickで暖色の記憶ベルを置く。派生は反射被覆をscreen-add風の光量ではなく、BRDF内で落ち着く強度として見せる“BRDF Echo Pulse”。次に足すなら、実depth差とobject motion vectorからconfidenceを作り、閾値未満だけ音をclickノイズへ切り替える。",
+      "bodyEn": "The main Confidence Wind Choir privileges cyan present over amber history as motion rises; drag makes wind and clicks plant memory bells. BRDF Echo Pulse shows reflection coverage as a material response rather than screen-add light. Next derive confidence from real depth/object motion and turn low-confidence sound into click noise.",
+      "links": [
+        {
+          "label": "Main sample",
+          "url": "outputs/2026-11-28_confidence_wind_choir.html"
+        },
+        {
+          "label": "Derived sample",
+          "url": "outputs/2026-11-28_brdf_echo_pulse.html"
+        }
+      ]
+    },
+    {
+      "title": "制作に使えそうな技術メモ",
+      "titleEn": "Production note",
+      "body": "TAA/reprojectionは前frameを一律blendせず、velocityで戻したUVに対し、depth差・normal差・UV範囲外・reactive materialでconfidenceを掛ける。SSRも最終色に加算すると露出やroughnessとの整合が崩れやすいので、可能ならBRDF評価の内部へ入れる。WebGL2ではRGBA16F renderability/linear filterを検出し、失敗時はRGBA8＋blue-noise ditherへfallbackする。disposeはtextureとFBOをgeneration IDで結び、再生成前の参照をdraw listに残さない。",
+      "bodyEn": "Do not uniformly blend a previous frame: apply confidence after velocity reprojection using depth/normal mismatch, out-of-bounds UV and reactive-material tests. Resolving SSR inside the BRDF avoids exposure/roughness mismatch. Feature-detect RGBA16F rendering/filtering, fall back to dithered RGBA8, and pair textures/FBOs with generation IDs so stale draw-list references cannot survive disposal.",
+      "links": [
+        {
+          "label": "r188 migration notes",
+          "url": "https://github.com/mrdoob/three.js/wiki/Migration-Guide"
+        },
+        {
+          "label": "PlayCanvas releases",
+          "url": "https://github.com/playcanvas/engine/releases"
+        }
+      ]
+    },
+    {
+      "title": "明日以降ウォッチする対象",
+      "titleEn": "Watch next",
+      "body": "#35716の最終APIとvalidation条件、#35699が反射coverageをどう前frameへ持ち越すか、#35717のbundle invalidation、PlayCanvas v2.24.3の差分、Babylon 9.38.0のWebGPU/WebGL後方互換を追う。事例側はAfterlightの共有状態とreduced-motion配慮を、日次sampleのURL state・静止時pauseに移植できるかを見る。",
+      "bodyEn": "Watch #35716’s final API/validation, #35699’s reflection coverage history, #35717 bundle invalidation, PlayCanvas v2.24.3 deltas and Babylon 9.38.0 compatibility. On the artwork side, test whether Afterlight-like shared state and reduced-motion behavior transfer to daily studies.",
+      "links": [
+        {
+          "label": "three.js pull requests",
+          "url": "https://github.com/mrdoob/three.js/pulls"
+        },
+        {
+          "label": "Babylon.js releases",
+          "url": "https://github.com/BabylonJS/Babylon.js/releases"
+        }
+      ]
+    },
+    {
+      "title": "試すならこれ",
+      "titleEn": "If you try one thing",
+      "body": "本命を開き、ゆっくりdragした時と速くdragした時で、ストランドの残り方が“現在を優先する”挙動に読めるか試す。次に3回clickし、memory bellが風の中でも位置の手掛かりになるかを見る。成功条件は、trailの量ではなく、履歴の信用度を身体的に読めること。次の30分では11/27の二枚FBOへこのconfidence式を移植し、実際のfeedback係数を変える。",
+      "bodyEn": "Open the main study, compare slow and fast drags, then click three memory bells. Success is reading the trustworthiness of history bodily—not merely seeing more or fewer trails. Next transplant this confidence function into the 11/27 two-FBO feedback coefficient.",
+      "links": [
+        {
+          "label": "Open main prototype",
+          "url": "outputs/2026-11-28_confidence_wind_choir.html"
+        }
+      ]
+    },
+    {
+      "title": "進行マップ",
+      "titleEn": "Progress map",
+      "body": "ネタ収集: three.jsの三つのOpen PR、r188移行、PlayCanvas/Babylonの現行release、Afterlightを確認。アイデア検討: 11/18〜27のdepth・reflection・history・lifetimeをconfidence/state scoreで接続。サンプル実装: WebGL fragment shader本命とCanvasのBRDF派生。結果の検証: 構文、gallery/day再生成、Pages push。継続=実velocity/depth confidenceと共有state。新規=反射coverageを音へ翻訳。寝かせる=本番BVH GI、XR multiview、重いasset streaming。短期=11/27 FBOへの移植、中長期=WebXR gaze/MediaPipe/音を同じscoreへ。",
+      "bodyEn": "Collect three open PRs, migration/release facts and Afterlight; connect recent depth/reflection/history/lifetime work through a confidence state score; build a WebGL main and Canvas derivative; verify syntax, gallery/day and Pages push. Continue real velocity/depth confidence, defer BVH GI, XR multiview and heavy streaming."
+    },
+    {
+      "title": "俯瞰メモ",
+      "titleEn": "Bird's-eye memo",
+      "body": "最近の核は“時間を滑らかにする技術”を“何を記憶し、いつ忘れるか”という演出に反転できる点。TRAA、SSR coverage、texture disposeは別の実装課題に見えるが、全て無効化条件と寿命を持つ。ここを共通scoreにして、低confidenceは高域ノイズ・短命粒子、高confidenceは低域ドローン・長い残光へ配ると、描画品質の判断自体が作曲になる。",
+      "bodyEn": "The emerging core turns smoothing technology into staging of what is remembered and forgotten. TRAA, SSR coverage and texture disposal all own invalidation conditions and lifetimes. Map one shared score to short high-frequency particles at low confidence and long low-frequency drones at high confidence, making rendering judgment itself compositional."
+    },
+    {
+      "title": "今日のミニ試作候補",
+      "titleEn": "Today's mini prototype candidate",
+      "body": "本命 [`outputs/2026-11-28_confidence_wind_choir.html`](../outputs/2026-11-28_confidence_wind_choir.html) はraw WebGLのfragment shaderで、pointer速度からconfidenceを作り、現在のcyanと減衰するamber履歴を分離する。clickは12個までの暖色memory bell。次はこれを二枚FBOの実feedbackへ接続する。派生 [`outputs/2026-11-28_brdf_echo_pulse.html`](../outputs/2026-11-28_brdf_echo_pulse.html) はpointer速度で反射coverageを落とし、clickでBRDF echoを可視化する。次はWeb Audio oscillatorのgainをcoverageへ結ぶ。",
+      "bodyEn": "The raw-WebGL main derives confidence from pointer speed and separates cyan present from fading amber history; clicks add up to 12 warm memory bells. Next connect it to actual two-FBO feedback. The derivative lowers reflection coverage with speed and visualizes BRDF echoes; next bind coverage to Web Audio gain.",
+      "links": [
+        {
+          "label": "Main prototype",
+          "url": "outputs/2026-11-28_confidence_wind_choir.html"
+        },
+        {
+          "label": "Derived prototype",
+          "url": "outputs/2026-11-28_brdf_echo_pulse.html"
+        }
+      ]
+    },
+    {
+      "title": "サンプルデータの可能性と組み合わせ考察",
+      "titleEn": "Possibilities for the sample data and combinations",
+      "body": "この2本のpointer位置・速度、confidence、click時刻、pulse半径は、観客がいつ確かな行為をしたかを表す小さな譜面になる。Web Audio analyserの帯域、カメラの静止度、MediaPipe hand velocity、WebXR gaze dwell、会場センサーの滞在密度を同じscoreへ正規化すれば、確かな視線ほど長く低く鳴り、急な動きほど粒子がほどける展示にできる。URLにseedと操作列を保存すれば、Web展示・映像書き出し・会場再生を同じ記憶で接続できる。",
+      "bodyEn": "Pointer position/speed, confidence, click time and pulse radius form a small score of when a visitor acts reliably. Normalize audio bands, camera stillness, MediaPipe hand velocity, XR gaze dwell and venue density into it: reliable gaze rings lower and longer, abrupt motion breaks into particles. Persist seed and action sequence in a URL to join web exhibition, video export and installation playback."
+    }
+  ]
+}
